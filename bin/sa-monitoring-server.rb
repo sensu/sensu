@@ -11,9 +11,11 @@ end
 config = JSON.parse(File.open(config_file, 'r'))
 
 AMQP.start(:host => config[:rabbitmq_server]) do
+  amq = MQ.new
+
   exchanges = Hash.new
-  config[:roles].each do |role|
-    exchanges[role] = MQ.new.fanout(role)
+  config[:exchanges].each do |exchange|
+    exchanges[exchange] = amq.fanout(exchange)
   end
 
   config[:checks].each do |check, info|
@@ -21,8 +23,7 @@ AMQP.start(:host => config[:rabbitmq_server]) do
       exchanges[role].publish(check.to_json)
     end
   end
-
-  amq = MQ.new
+  
   amq.queue('results').bind(amq.fanout('results')).subscribe do |msg|
     puts msg
   end

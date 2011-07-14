@@ -13,8 +13,8 @@ config = JSON.parse(File.open(config_file, 'r'))
 AMQP.start(:host => config[:rabbitmq_server]) do
   amq = MQ.new
   result = MQ.new.fanout('results')
-  roles.each do |role|
-    amq.queue(role).bind(amq.fanout(role)).subscribe do |msg|
+  config[:subscriptions].each do |subscription|
+    amq.queue(subscription).bind(amq.fanout(subscription)).subscribe do |msg|
       puts 'received: ' + msg
       result.publish('result for: ' + msg)
     end
