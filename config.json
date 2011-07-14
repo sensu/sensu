@@ -1,28 +1,27 @@
 {
   "servers": [
-    "localhost"
+    "localhost",
   ],
 
   "rabbitmq_server": "localhost",
 
   "roles": [
     "webserver",
-    "elasticsearch_ebs"
+    "elasticsearch_ebs",
   ],
 
   "checks": {
     "fitter_happier": {
       "command": "echo 'fitter_happier' >> /tmp/sa-monitoring",
       "roles": [
-        "webserver"
+        "webserver",
       ]
     },
     "cluster_health": {
       "command": "echo 'cluster_health' >> /tmp/sa-monitoring",
       "roles": [
-        "elasticsearch_ebs"
+        "elasticsearch_ebs",
       ]
     },
   }
-
 }
