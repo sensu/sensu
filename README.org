@@ -1,10 +1,12 @@
 * A Client Will
-- Subscribe to a set of fanout exchanges base on its run list or roles
-- Send keep alives via a TCP socket to the server (sending a subset of ohai attributes to help identify)
-- Execute a check and push the result with its check id to a direct exchange ("results")
+- Generate a set of client attributes to describe itself (using ohai)
+- Subscribe to a set of fanout exchanges base on its run list or roles (part of client attributes)
+- Send keep alives (client attributes) via a TCP socket to the server
+- Execute a check and push the result with its check id and the client attributes to a direct exchange ("results")
 
 * A Server Will
 - Populate an internal work queue from an OpsChef data bag (nagios checks mapped to roles)
 - Subscribe to a direct exchange ("results")
 - Pull a check from the internal work queue, tag it with a check id (uuid), and then push it out onto its associated fanout exchange (role)
-- Save sent check id, timestamp, and the command name in redis
+- Save sent check id, timestamp, and the command name in redis (will auto expire)
+- Process results, storing the latest critical/warning for that client in redis, a good result will flush previous results for that client
