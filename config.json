@@ -5,7 +5,12 @@
 
   "rabbitmq_server": "localhost",
 
-  "roles": [
+  "subscriptions": [
+    "webserver",
+    "elasticsearch_ebs",
+  ],
+
+  "exchanges": [
     "webserver",
     "elasticsearch_ebs",
   ],
