@@ -8,12 +8,12 @@ else
   '/etc/sa-monitoring/config.json'
 end
 
-config = JSON.parse(File.open(config_file, 'r'))
+config = JSON.parse(File.open(config_file, 'r').read)
 
-AMQP.start(:host => config[:rabbitmq_server]) do
+AMQP.start(:host => config['rabbitmq_server']) do
   amq = MQ.new
-  result = MQ.new.fanout('results')
-  config[:subscriptions].each do |subscription|
+  result = amq.fanout('results')
+  config['subscriptions'].each do |subscription|
     amq.queue(subscription).bind(amq.fanout(subscription)).subscribe do |msg|
       puts 'received: ' + msg
       result.publish('result for: ' + msg)
