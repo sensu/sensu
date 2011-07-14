@@ -19,7 +19,7 @@ AMQP.start(:host => server) do
   end
 
   amq = MQ.new
-  amq.queue('listener').bind(amq.fanout('results')).subscribe do |msg|
+  amq.queue('results').bind(amq.fanout('results')).subscribe do |msg|
     puts msg
   end
 end
