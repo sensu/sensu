@@ -10,7 +10,7 @@ AMQP.start(:host => server) do
   roles.each do |role|
     amq.queue(role).bind(amq.fanout(role)).subscribe do |msg|
       puts 'received: ' + msg
-      result.publish('result for:' + msg)
+      result.publish('result for: ' + msg)
     end
   end
 end
