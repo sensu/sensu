@@ -2,18 +2,22 @@ require 'rubygems'
 require 'amqp'
 require 'json'
 
-server = 'localhost'
-checks = { :fitter_happier => { :roles => ['webserver'] }, :cluster_health => { :roles => ['elasticsearch_ebs'] } }
-roles = ['webserver','elasticsearch_ebs']
+config_file = if ENV['development']
+  File.dirname(__FILE__) + '/../config.json'
+else
+  '/etc/sa-monitoring/config.json'
+end
 
-AMQP.start(:host => server) do
+config = JSON.parse(File.open(config_file, 'r'))
+
+AMQP.start(:host => config[:rabbitmq_server]) do
   exchanges = Hash.new
-  roles.each do |role|
+  config[:roles].each do |role|
     exchanges[role] = MQ.new.fanout(role)
   end
 
-  checks.each do |check, settings|
-    settings[:roles].each do |role|
+  config[:checks].each do |check, info|
+    info[:roles].each do |role|
       exchanges[role].publish(check.to_json)
     end
   end

@@ -1,10 +1,16 @@
 require 'rubygems'
 require 'amqp'
+require 'json'
 
-server = 'localhost'
-roles = ['webserver','elasticsearch_ebs']
+config_file = if ENV['development']
+  File.dirname(__FILE__) + '/../config.json'
+else
+  '/etc/sa-monitoring/config.json'
+end
 
-AMQP.start(:host => server) do
+config = JSON.parse(File.open(config_file, 'r'))
+
+AMQP.start(:host => config[:rabbitmq_server]) do
   amq = MQ.new
   result = MQ.new.fanout('results')
   roles.each do |role|
