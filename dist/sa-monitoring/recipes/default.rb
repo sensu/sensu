@@ -12,7 +12,8 @@ databag = data_bag('sa-monitoring')
 template '/etc/sa-monitoring/config.json' do
   mode 0600
   variables(
-    'roles' => search(:role, '*:*'),
+    'subscriptions' => node.roles,
+    'exchanges' => search(:role, '*:*'),
     'checks' => databag['checks']
   )
 end

@@ -5,9 +5,15 @@
 
   "rabbitmq_server": "localhost",
 
-  "roles": [
-    <% @roles.each do |r| -%>
-    "<%= r %>",
+  "subscriptions": [
+  <% @subscriptions.each do |s| -%>
+    "<%= s %>",
+  <% end -%>
+  ],
+
+  "exchanges": [
+    <% @exchanges.each do |e| -%>
+    "<%= e %>",
     <% end -%>
   ],
 
@@ -18,7 +24,7 @@
       "roles": [
         <% c['roles'].each do |r| -%>
         "<%= r %>",
-        <% end ->
+        <% end -%>
       ]
     },
     <% end -%>
