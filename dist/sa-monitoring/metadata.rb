@@ -1,4 +1,4 @@
-maintainer       "YOUR_COMPANY_NAME"
+maintainer       "Sonian, Inc."
 maintainer_email "YOUR_EMAIL"
 license          "All rights reserved"
 description      "Installs/Configures sa-monitoring"

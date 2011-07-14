@@ -1,0 +1,26 @@
+{
+  "servers": [
+    "localhost"
+  ],
+
+  "rabbitmq_server": "localhost",
+
+  "roles": [
+    <% @roles.each do |r| -%>
+    "<%= r %>"
+    <% end -%>
+  ],
+
+  "checks": {
+    <% @checks.each do |c| -%>
+    "<%= c['check_name'] %>": {
+      "command": "<%= c['command'] %>",
+      "roles": [
+        <% c['roles'].each do |r| -%>
+        "<%= r %>"
+        <% end ->
+      ]
+    },
+    <% end -%>
+  }
+}
