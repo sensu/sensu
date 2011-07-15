@@ -1,5 +1,7 @@
 {
-  "server": "localhost",
+  "workers": [
+    "localhost"
+  ],
   "rabbitmq_server": "localhost",
   "checks": {
     "fitter_happier": {

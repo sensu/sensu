@@ -10,6 +10,13 @@ end
 
 config = JSON.parse(File.open(config_file, 'r').read)
 
+class OhaiClient < EM::Connection
+  def post_init
+    send_data 'Ohai'
+    close_connection_after_writing
+  end
+end
+
 AMQP.start(:host => config['rabbitmq_server']) do
 
   amq = MQ.new
@@ -34,5 +41,9 @@ AMQP.start(:host => config['rabbitmq_server']) do
 
       EM.defer(execute_check, send_result)
     end
+  end
+
+  EM.add_periodic_timer(30) do
+    EM.connect(config['workers'].sample, 9000, OhaiClient)
   end
 end
