@@ -17,7 +17,7 @@ class OhaiClient < EM::Connection
   end
 end
 
-AMQP.start(:host => config['rabbitmq_server']) do
+AMQP.start(:host => config['rabbitmq']['server']) do
 
   amq = MQ.new
 

@@ -2,7 +2,12 @@
   "workers": [
     "localhost"
   ],
-  "rabbitmq_server": "localhost",
+  "rabbitmq": {
+    "server": "localhost"
+  },
+  "redis": {
+    "server": "localhost"
+  },
   "checks": {
     "fitter_happier": {
       "command": "echo 'fitter_happier'",
@@ -16,13 +21,6 @@
         "elasticsearch_ebs"
       ]
     }
-  },
-  "server": {
-    "exchanges": [
-      "webserver",
-      "elasticsearch_ebs",
-      "riak"
-    ]
   },
   "client": {
     "subscriptions": [

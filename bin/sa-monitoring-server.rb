@@ -20,17 +20,20 @@ module OhaiServer
   end
 end
 
-AMQP.start(:host => config['rabbitmq_server']) do
+AMQP.start(:host => config['rabbitmq']['server']) do
 
   amq = MQ.new
 
   exchanges = Hash.new
-  config['server']['exchanges'].each do |exchange|
-    exchanges[exchange] = amq.fanout(exchange)
-  end
 
   config['checks'].each do |check, info|
+
     info['subscribers'].each do |exchange|
+
+      if exchanges[exchange].nil?
+        exchanges[exchange] = amq.fanout(exchange)
+      end
+
       exchanges[exchange].publish(check)
     end
   end
