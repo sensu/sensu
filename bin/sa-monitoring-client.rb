@@ -21,7 +21,7 @@ AMQP.start(:host => config['rabbitmq']['server']) do
 
   amq = MQ.new
 
-  result = amq.fanout('results')
+  result = AMQP::Exchange.default
 
   config['client']['subscriptions'].each do |exchange|
 
@@ -39,7 +39,7 @@ AMQP.start(:host => config['rabbitmq']['server']) do
       end
 
       send_result = proc do |check_result|
-        result.publish(check_result)
+        result.publish(check_result, :routing_key => 'results')
       end
 
       EM.defer(execute_check, send_result)

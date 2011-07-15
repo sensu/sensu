@@ -27,27 +27,33 @@ AMQP.start(:host => config['rabbitmq']['server']) do
 
   exchanges = Hash.new
 
-  config['checks'].each do |check, info|
+  amq.queue('results').subscribe do |msg|
+    puts msg
+  end
 
-    info['subscribers'].each do |exchange|
+  amq.queue('checks').subscribe do |check|
+    check = JSON.parse(check)
+
+    check_id = UUIDTools::UUID.random_create.to_s
+    check_msg = {
+      :name => check['name'],
+      :id => check_id
+    }.to_json
+
+    check['subscribers'].each do |exchange|
 
       if exchanges[exchange].nil?
         exchanges[exchange] = amq.fanout(exchange)
       end
 
-      check_id = UUIDTools::UUID.random_create.to_s
-
-      check_msg = {
-        :name => check,
-        :id => check_id
-      }.to_json
-
       exchanges[exchange].publish(check_msg)
     end
   end
-  
-  amq.queue('results').bind(amq.fanout('results')).subscribe do |msg|
-    puts msg
+
+  work = AMQP::Exchange.default
+
+  config['checks'].each do |name, info|
+    work.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json, :routing_key => 'checks')
   end
 
   EM::start_server '0.0.0.0', 9000, OhaiServer
