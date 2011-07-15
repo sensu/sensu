@@ -11,6 +11,7 @@ end
 config = JSON.parse(File.open(config_file, 'r').read)
 
 AMQP.start(:host => config['rabbitmq']['server'],
+           :vhost => config['rabbitmq']['vhost'],
            :username => config['rabbitmq']['username'],
            :password => config['rabbitmq']['password']) do
 

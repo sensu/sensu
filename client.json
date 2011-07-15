@@ -4,6 +4,7 @@
   ],
   "rabbitmq": {
     "server": "localhost",
+    "vhost": "/sa-monitoring",
     "username": "user",
     "password": "pass"
   },

@@ -11,3 +11,13 @@
 - Save sent check id, timestamp, and the command name in redis (will auto expire)
 - Process results, storing the latest critical/warning for that client in redis, a good result will flush previous results for that client
 - Provide a REST API for getting current critical/warning messages
+
+* Notes
+** Create RabbitMQ user
+: rabbitmqctl add_user user pass
+
+** Create RabbitMQ vhost
+: rabbitmqctl add_vhost /sa-monitoring
+
+** Set RabbitMQ vhost permissions
+: rabbitmqctl set_permissions -p /sa-monitoring user "^user-.*" ".*" ".*"
