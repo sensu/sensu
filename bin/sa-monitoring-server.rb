@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'amqp'
 require 'json'
+require 'uuidtools'
 
 config_file = if ENV['dev']
   File.dirname(__FILE__) + '/../config.json'
@@ -34,7 +35,14 @@ AMQP.start(:host => config['rabbitmq']['server']) do
         exchanges[exchange] = amq.fanout(exchange)
       end
 
-      exchanges[exchange].publish(check)
+      check_id = UUIDTools::UUID.random_create.to_s
+
+      check_msg = {
+        :name => check,
+        :id => check_id
+      }.to_json
+
+      exchanges[exchange].publish(check_msg)
     end
   end
   

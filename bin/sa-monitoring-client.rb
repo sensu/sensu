@@ -25,18 +25,21 @@ AMQP.start(:host => config['rabbitmq']['server']) do
 
   config['client']['subscriptions'].each do |exchange|
 
-    amq.queue(exchange).bind(amq.fanout(exchange)).subscribe do |check|
+    amq.queue(exchange).bind(amq.fanout(exchange)).subscribe do |check_msg|
+
+      check = JSON.parse(check_msg)
 
       execute_check = proc do
-        output = IO.popen(config['checks'][check]['command']).gets
+        output = IO.popen(config['checks'][check['name']]['command']).gets
         {
           'output' => output,
-          'status' => $?.to_i
-        }
+          'status' => $?.to_i,
+          'id' => check['id']
+        }.to_json
       end
 
       send_result = proc do |check_result|
-        result.publish(check_result.to_json)
+        result.publish(check_result)
       end
 
       EM.defer(execute_check, send_result)
