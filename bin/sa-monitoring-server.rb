@@ -2,6 +2,7 @@ require 'rubygems'
 require 'amqp'
 require 'json'
 require 'uuidtools'
+require 'em-redis'
 
 config_file = if ENV['dev']
   File.dirname(__FILE__) + '/../config.json'
@@ -10,16 +11,6 @@ else
 end
 
 config = JSON.parse(File.open(config_file, 'r').read)
-
-module OhaiServer
-  def post_init
-    puts 'a client connected'
-  end
-
-  def receive_data data
-    puts data
-  end
-end
 
 AMQP.start(:host => config['rabbitmq']['server']) do
 
@@ -54,6 +45,14 @@ AMQP.start(:host => config['rabbitmq']['server']) do
 
   config['checks'].each do |name, info|
     work.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json, :routing_key => 'checks')
+  end
+
+  module OhaiServer
+    redis = EM::Protocols::Redis.connect
+    def receive_data data
+      puts data
+      redis.set("client1", "bits")
+    end
   end
 
   EM::start_server '0.0.0.0', 9000, OhaiServer
