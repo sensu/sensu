@@ -16,6 +16,8 @@ AMQP.start(:host => config['rabbitmq']['server']) do
 
   amq = MQ.new
 
+  redis = EM::Protocols::Redis.connect
+
   exchanges = Hash.new
 
   amq.queue('results').subscribe do |msg|
@@ -26,6 +28,9 @@ AMQP.start(:host => config['rabbitmq']['server']) do
     check = JSON.parse(check)
 
     check_id = UUIDTools::UUID.random_create.to_s
+
+    redis.set(check_id, check['name'])
+
     check_msg = {
       :name => check['name'],
       :id => check_id
@@ -48,10 +53,9 @@ AMQP.start(:host => config['rabbitmq']['server']) do
   end
 
   module OhaiServer
-    redis = EM::Protocols::Redis.connect
     def receive_data data
-      puts data
-      redis.set("client1", "bits")
+      redis = EM::Protocols::Redis.connect
+      redis.set("client1", data)
     end
   end
 
