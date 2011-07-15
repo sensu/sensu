@@ -12,9 +12,7 @@
   ],
 
   "exchanges": [
-    <% @exchanges.each do |e| -%>
-    "<%= e %>",
-    <% end -%>
+    <% @exchanges.join(", \n") -%>
   ],
 
   "checks": {
@@ -22,11 +20,9 @@
     "<%= c['check_name'] %>": {
       "command": "<%= c['command'] %>",
       "roles": [
-        <% c['roles'].each do |r| -%>
-        "<%= r %>",
-        <% end -%>
+        <% c['roles'].join(", \n") -%>
       ]
-    },
+    }<%= ',' unless c == @checks.last %>
     <% end -%>
   }
 }
