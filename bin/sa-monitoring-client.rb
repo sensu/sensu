@@ -3,14 +3,16 @@ require 'amqp'
 require 'json'
 
 config_file = if ENV['development']
-  File.dirname(__FILE__) + '/../config.json'
+  File.dirname(__FILE__) + '/../client.json'
 else
-  '/etc/sa-monitoring/config.json'
+  '/etc/sa-monitoring/client.json'
 end
 
 config = JSON.parse(File.open(config_file, 'r').read)
 
-AMQP.start(:host => config['rabbitmq_server']) do
+AMQP.start(:host => config['rabbitmq']['server'],
+           :username => config['rabbitmq']['username'],
+           :password => config['rabbitmq']['password']) do
 
   amq = MQ.new
 

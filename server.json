@@ -1,12 +1,9 @@
 {
-  "servers": [
-    "localhost"
-  ],
-  "rabbitmq_server": "localhost",
-  "subscriptions": [
-    "webserver",
-    "elasticsearch_ebs"
-  ],
+  "rabbitmq": {
+    "server": "localhost",
+    "username": "user",
+    "password": "pass"
+  },
   "exchanges": [
     "webserver",
     "elasticsearch_ebs"

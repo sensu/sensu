@@ -3,9 +3,9 @@ require 'amqp'
 require 'json'
 
 config_file = if ENV['development']
-  File.dirname(__FILE__) + '/../config.json'
+  File.dirname(__FILE__) + '/../server.json'
 else
-  '/etc/sa-monitoring/config.json'
+  '/etc/sa-monitoring/server.json'
 end
 
 config = JSON.parse(File.open(config_file, 'r').read)
