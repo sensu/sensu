@@ -20,7 +20,7 @@ AMQP.start(:host => config['rabbitmq_server']) do
 
   config['checks'].each do |check, info|
     info['roles'].each do |role|
-      exchanges[role].publish(check.to_json)
+      exchanges[role].publish(check)
     end
   end
   

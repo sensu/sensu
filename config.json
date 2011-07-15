@@ -13,13 +13,13 @@
   ],
   "checks": {
     "fitter_happier": {
-      "command": "echo 'fitter_happier' >> /tmp/sa-monitoring",
+      "command": "echo 'fitter_happier'",
       "roles": [
         "webserver"
       ]
     },
     "cluster_health": {
-      "command": "echo 'cluster_health' >> /tmp/sa-monitoring",
+      "command": "echo 'cluster_health'",
       "roles": [
         "elasticsearch_ebs"
       ]
