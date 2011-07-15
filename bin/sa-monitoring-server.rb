@@ -2,29 +2,26 @@ require 'rubygems'
 require 'amqp'
 require 'json'
 
-config_file = if ENV['development']
-  File.dirname(__FILE__) + '/../server.json'
+config_file = if ENV['dev']
+  File.dirname(__FILE__) + '/../config.json'
 else
-  '/etc/sa-monitoring/server.json'
+  '/etc/sa-monitoring/config.json'
 end
 
 config = JSON.parse(File.open(config_file, 'r').read)
 
-AMQP.start(:host => config['rabbitmq']['server'],
-           :vhost => config['rabbitmq']['vhost'],
-           :username => config['rabbitmq']['username'],
-           :password => config['rabbitmq']['password']) do
+AMQP.start(:host => config['rabbitmq_server']) do
 
   amq = MQ.new
 
   exchanges = Hash.new
-  config['exchanges'].each do |exchange|
+  config['server']['exchanges'].each do |exchange|
     exchanges[exchange] = amq.fanout(exchange)
   end
 
   config['checks'].each do |check, info|
-    info['roles'].each do |role|
-      exchanges[role].publish(check)
+    info['subscribers'].each do |exchange|
+      exchanges[exchange].publish(check)
     end
   end
   

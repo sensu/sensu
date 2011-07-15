@@ -1,0 +1,31 @@
+{
+  "server": "localhost",
+  "rabbitmq_server": "localhost",
+  "checks": {
+    "fitter_happier": {
+      "command": "echo 'fitter_happier'",
+      "subscribers": [
+        "webserver"
+      ]
+    },
+    "cluster_health": {
+      "command": "echo 'cluster_health'",
+      "subscribers": [
+        "elasticsearch_ebs"
+      ]
+    }
+  },
+  "server": {
+    "exchanges": [
+      "webserver",
+      "elasticsearch_ebs",
+      "riak"
+    ]
+  },
+  "client": {
+    "subscriptions": [
+      "webserver",
+      "elasticsearch_ebs"
+    ]
+  }
+}
