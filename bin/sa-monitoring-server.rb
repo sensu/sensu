@@ -10,6 +10,16 @@ end
 
 config = JSON.parse(File.open(config_file, 'r').read)
 
+module OhaiServer
+  def post_init
+    puts 'a client connected'
+  end
+
+  def receive_data data
+    puts data
+  end
+end
+
 AMQP.start(:host => config['rabbitmq_server']) do
 
   amq = MQ.new
@@ -28,4 +38,6 @@ AMQP.start(:host => config['rabbitmq_server']) do
   amq.queue('results').bind(amq.fanout('results')).subscribe do |msg|
     puts msg
   end
+
+  EM::start_server '0.0.0.0', 9000, OhaiServer
 end
