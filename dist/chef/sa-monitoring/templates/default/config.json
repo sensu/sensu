@@ -1,23 +1,15 @@
 {
-  "servers": [
+  "workers": [
     "localhost"
   ],
 
   "rabbitmq": {
-    "server": "localhost",
-    "username": "user",
-    "password": "pass"
+    "server": "localhost"
   },
 
-  "subscriptions": [
-  <% @subscriptions.each do |s| -%>
-    "<%= s %>",
-  <% end -%>
-  ],
-
-  "exchanges": [
-    <% @exchanges.join(", \n") -%>
-  ],
+  "redis": {
+    "server": "localhost"
+  },
 
   "checks": {
     <% @checks.each do |c| -%>
@@ -28,5 +20,11 @@
       ]
     }<%= ',' unless c == @checks.last %>
     <% end -%>
+  },
+
+  "client": {
+    "subscriptions": [
+      <%= @subscriptions.join(",\n") -%>
+    ]
   }
 }
