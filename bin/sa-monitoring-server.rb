@@ -10,7 +10,10 @@ end
 
 config = JSON.parse(File.open(config_file, 'r').read)
 
-AMQP.start(:host => config['rabbitmq_server']) do
+AMQP.start(:host => config['rabbitmq']['server'],
+           :username => config['rabbitmq']['username'],
+           :password => config['rabbitmq']['password']) do
+
   amq = MQ.new
 
   exchanges = Hash.new
