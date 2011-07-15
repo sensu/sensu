@@ -19,7 +19,7 @@
     <% @checks.each do |c| -%>
     "<%= c['check_name'] %>": {
       "command": "<%= c['command'] %>",
-      "roles": [
+      "subscriptions": [
         <% c['roles'].join(", \n") -%>
       ]
     }<%= ',' unless c == @checks.last %>
