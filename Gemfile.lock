@@ -1,0 +1,19 @@
+GEM
+  remote: http://rubygems.org/
+  specs:
+    amqp (0.7.1)
+      eventmachine (>= 0.12.4)
+    em-redis (0.3.0)
+      eventmachine
+    eventmachine (0.12.10)
+    json (1.5.3)
+    uuidtools (2.1.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  amqp (= 0.7.1)
+  em-redis
+  json
+  uuidtools

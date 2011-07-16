@@ -1,8 +1,6 @@
 require 'rubygems'
-require 'amqp'
-require 'json'
-require 'uuidtools'
-require 'em-redis'
+require 'bundler'
+Bundler.require(:default, :server)
 
 #
 # Read the CM created JSON config file

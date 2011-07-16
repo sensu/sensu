@@ -1,6 +1,6 @@
 require 'rubygems'
-require 'amqp'
-require 'json'
+require 'bundler'
+Bundler.require(:default)
 
 #
 # Read the CM created JSON config file
