@@ -16,7 +16,7 @@ AMQP.start(:host => config['rabbitmq']['server']) do
 
   amq = MQ.new
 
-  redis = EM::Protocols::Redis.connect
+  redis = EM::Protocols::Redis.connect(:host => config['redis']['server'])
 
   exchanges = Hash.new
 
@@ -53,11 +53,14 @@ AMQP.start(:host => config['rabbitmq']['server']) do
   end
 
   class OhaiServer < EM::Connection
+    attr_accessor :redis
+    
     def receive_data data
-      redis = EM::Protocols::Redis.connect
-      redis.set("client1", data)
+      @redis.set("client1", data)
     end
   end
 
-  EM::start_server('0.0.0.0', 9000, OhaiServer)
+  EM::start_server('0.0.0.0', 9000, OhaiServer) do |ohaiserver|
+    ohaiserver.redis = redis
+  end
 end
