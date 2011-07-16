@@ -1,8 +1,4 @@
-source 'http://rubygems.org'
-gem 'amqp', '0.7.1'
-gem 'json'
+source "http://rubygems.org"
 
-group :server do
-  gem 'uuidtools'
-  gem 'em-redis'
-end
+# Specify your gem's dependencies in sa-monitoring.gemspec
+gemspec
