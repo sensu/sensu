@@ -20,7 +20,7 @@ AMQP.start(:host => config['rabbitmq']['server']) do
 
   amq = MQ.new
 
-  result = AMQP::Exchange.default
+  result = amq.direct('')
 
   #
   # Recieve checks, execute them, and publish results for processing

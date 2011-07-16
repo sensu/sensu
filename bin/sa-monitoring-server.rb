@@ -61,7 +61,7 @@ AMQP.start(:host => config['rabbitmq']['server']) do
   #
   # Populate the work queue with checks defined in the JSON config file
   #
-  work = AMQP::Exchange.default
+  work = amq.direct('')
 
   config['checks'].each do |name, info|
     work.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json, :routing_key => 'checks')
