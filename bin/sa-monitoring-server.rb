@@ -52,12 +52,12 @@ AMQP.start(:host => config['rabbitmq']['server']) do
     work.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json, :routing_key => 'checks')
   end
 
-  module OhaiServer
+  class OhaiServer < EM::Connection
     def receive_data data
       redis = EM::Protocols::Redis.connect
       redis.set("client1", data)
     end
   end
 
-  EM::start_server '0.0.0.0', 9000, OhaiServer
+  EM::start_server('0.0.0.0', 9000, OhaiServer)
 end
