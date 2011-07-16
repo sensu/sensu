@@ -68,7 +68,7 @@ AMQP.start(:host => config['rabbitmq']['server']) do
   end
 
   #
-  # Accept client keep alives
+  # Accept client keep-alives
   #
   class OhaiServer < EM::Connection
     attr_accessor :redis

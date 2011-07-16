@@ -2,6 +2,9 @@ require 'rubygems'
 require 'amqp'
 require 'json'
 
+#
+# Read the CM created JSON config file
+#
 config_file = if ENV['dev']
   File.dirname(__FILE__) + '/../config.json'
 else
@@ -10,12 +13,18 @@ end
 
 config = JSON.parse(File.open(config_file, 'r').read)
 
+#
+# Connect to RabbitMQ
+#
 AMQP.start(:host => config['rabbitmq']['server']) do
 
   amq = MQ.new
 
   result = AMQP::Exchange.default
 
+  #
+  # Recieve checks, execute them, and publish results for processing
+  #
   config['client']['subscriptions'].each do |exchange|
 
     amq.queue(exchange).bind(amq.fanout(exchange)).subscribe do |check_msg|
@@ -39,6 +48,9 @@ AMQP.start(:host => config['rabbitmq']['server']) do
     end
   end
 
+  #
+  # Send keep-alives to a worker
+  #
   class OhaiClient < EM::Connection
     def post_init
       send_data('Ohai')
