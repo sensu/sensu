@@ -73,7 +73,7 @@ AMQP.start(:host => config['rabbitmq']['server']) do
   class OhaiServer < EM::Connection
     attr_accessor :redis
     
-    def receive_data data
+    def receive_data(data)
       @redis.set("client1", data)
     end
   end

@@ -41,7 +41,7 @@ AMQP.start(:host => config['rabbitmq']['server']) do
 
   class OhaiClient < EM::Connection
     def post_init
-      send_data 'Ohai'
+      send_data('Ohai')
       close_connection_after_writing
     end
   end
