@@ -4,6 +4,9 @@ require 'json'
 require 'uuidtools'
 require 'em-redis'
 
+#
+# Read the CM created JSON config file
+#
 config_file = if ENV['dev']
   File.dirname(__FILE__) + '/../config.json'
 else
@@ -12,17 +15,26 @@ end
 
 config = JSON.parse(File.open(config_file, 'r').read)
 
+#
+# Connect to RabbitMQ
+#
 AMQP.start(:host => config['rabbitmq']['server']) do
-
-  amq = MQ.new
 
   redis = EM::Protocols::Redis.connect(:host => config['redis']['server'])
 
-  exchanges = Hash.new
+  amq = MQ.new
 
+  #
+  # Publish critical/warning check results
+  #
   amq.queue('results').subscribe do |msg|
     puts msg
   end
+
+  #
+  # Send checks out to subscribed clients
+  #
+  exchanges = Hash.new
 
   amq.queue('checks').subscribe do |check|
     check = JSON.parse(check)
@@ -46,12 +58,18 @@ AMQP.start(:host => config['rabbitmq']['server']) do
     end
   end
 
+  #
+  # Populate the work queue with checks defined in the JSON config file
+  #
   work = AMQP::Exchange.default
 
   config['checks'].each do |name, info|
     work.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json, :routing_key => 'checks')
   end
 
+  #
+  # Accept client keep alives
+  #
   class OhaiServer < EM::Connection
     attr_accessor :redis
     
