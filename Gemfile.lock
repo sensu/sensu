@@ -1,3 +1,13 @@
+PATH
+  remote: .
+  specs:
+    sa-monitoring (0.0.1)
+      amqp (= 0.7.1)
+      bundler
+      em-redis
+      json
+      uuidtools
+
 GEM
   remote: http://rubygems.org/
   specs:
@@ -13,7 +23,4 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  amqp (= 0.7.1)
-  em-redis
-  json
-  uuidtools
+  sa-monitoring!

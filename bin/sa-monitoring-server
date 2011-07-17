@@ -1,24 +1,15 @@
-require 'rubygems'
-require 'bundler'
-Bundler.require(:default, :server)
+#!/usr/bin/env ruby
 
-#
-# Read the CM created JSON config file
-#
-config_file = if ENV['dev']
-  File.dirname(__FILE__) + '/../config.json'
-else
-  '/etc/sa-monitoring/config.json'
-end
-
-config = JSON.parse(File.open(config_file, 'r').read)
+require 'sa-monitoring/config'
+require 'uuidtools'
+require 'em-redis'
 
 #
 # Connect to RabbitMQ
 #
-AMQP.start(:host => config['rabbitmq']['server']) do
+AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
-  redis = EM::Protocols::Redis.connect(:host => config['redis']['server'])
+  redis = EM::Protocols::Redis.connect(:host => CONFIG['redis']['server'])
 
   amq = MQ.new
 
@@ -61,7 +52,7 @@ AMQP.start(:host => config['rabbitmq']['server']) do
   #
   work = amq.direct('')
 
-  config['checks'].each do |name, info|
+  CONFIG['checks'].each do |name, info|
     work.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json, :routing_key => 'checks')
   end
 

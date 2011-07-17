@@ -4,14 +4,18 @@ require "sa-monitoring/version"
 
 Gem::Specification.new do |s|
   s.name        = "sa-monitoring"
-  s.version     = Sa::Monitoring::VERSION
-  s.authors     = ["Sean Porter"]
-  s.email       = ["portertech@gmail.com"]
-  s.homepage    = ""
-  s.summary     = %q{TODO: Write a gem summary}
-  s.description = %q{TODO: Write a gem description}
+  s.version     = SA::Monitoring::VERSION
+  s.authors     = ["Sean Porter", "Justin Kolberg"]
+  s.email       = ["sean.porter@sonian.net"]
+  s.homepage    = "https://github.com/sonian/sa-monitoring"
+  s.summary     = %q{Monitor servers}
+  s.description = %q{Monitor servers}
 
-  s.rubyforge_project = "sa-monitoring"
+  s.add_dependency('bundler')
+  s.add_dependency('amqp', '0.7.1')
+  s.add_dependency('json')
+  s.add_dependency('uuidtools')
+  s.add_dependency('em-redis')
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
