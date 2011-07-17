@@ -11,7 +11,6 @@ Gem::Specification.new do |s|
   s.summary     = %q{Monitor servers}
   s.description = %q{Monitor servers}
 
-  s.add_dependency('bundler')
   s.add_dependency('amqp', '0.7.1')
   s.add_dependency('json')
   s.add_dependency('uuidtools')
