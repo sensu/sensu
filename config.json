@@ -13,13 +13,17 @@
       "command": "echo 'fitter_happier'",
       "subscribers": [
         "webserver"
-      ]
+      ],
+      "interval": 30,
+      "alert": false
     },
     "cluster_health": {
       "command": "echo 'cluster_health'",
       "subscribers": [
         "elasticsearch_ebs"
-      ]
+      ],
+      "interval": 60,
+      "alert": true
     }
   },
   "client": {
