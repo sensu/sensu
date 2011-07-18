@@ -24,20 +24,9 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
       check = JSON.parse(check_msg)
 
-      execute_check = proc do
-        output = IO.popen(CONFIG['checks'][check['name']]['command']).gets
-        {
-          'output' => output,
-          'status' => $?.to_i,
-          'id' => check['id']
-        }.to_json
+      EM.system(CONFIG['checks'][check['name']]['command']) do |output, status|
+        result.publish({'output' => output, 'status' => status.exitstatus, 'id' => check['id']}.to_json)
       end
-
-      send_result = proc do |check_result|
-        result.publish(check_result)
-      end
-
-      EM.defer(execute_check, send_result)
     end
   end
 
