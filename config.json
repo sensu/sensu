@@ -27,13 +27,11 @@
     }
   },
   "client": {
+    "name": "i-424242",
+    "address": "127.0.0.1",
     "subscriptions": [
       "webserver",
       "elasticsearch_ebs"
-    ],
-    "details": {
-      "name": "i-424242",
-      "address": "127.0.0.1"
-    }
+    ]
   }
 }

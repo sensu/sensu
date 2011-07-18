@@ -46,7 +46,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   #
   class OhaiClient < EM::Connection
     def post_init
-      send_data(CONFIG['client']['details'].to_json)
+      send_data(CONFIG['client'].to_json)
       close_connection_after_writing
     end
   end
