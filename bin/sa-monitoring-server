@@ -53,8 +53,8 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   check = amq.queue('checks')
 
   CONFIG['checks'].each_with_index do |(name, info), index|
-    EM::Timer.new(7*index) do
-      EM::PeriodicTimer.new(info['interval']) do
+    EM.add_timer(7*index) do
+      EM.add_periodic_timer(info['interval']) do
         check.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json)
       end
     end
@@ -71,7 +71,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
     end
   end
 
-  EM::start_server('0.0.0.0', 9000, OhaiServer) do |ohaiserver|
+  EM.start_server('0.0.0.0', 9000, OhaiServer) do |ohaiserver|
     ohaiserver.redis = redis
   end
 end

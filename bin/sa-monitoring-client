@@ -50,7 +50,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
     end
   end
 
-  EM::PeriodicTimer.new(30) do
+  EM.add_periodic_timer(30) do
     EM.connect(CONFIG['workers'].sample, 9000, OhaiClient)
   end
 end
