@@ -10,11 +10,11 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
   amq = MQ.new
 
-  result = amq.queue('results')
-
   #
   # Recieve checks, execute them, and publish results for processing
   #
+  result = amq.queue('results')
+
   CONFIG['client']['subscriptions'].each do |exchange|
 
     uniq_queue_name = UUIDTools::UUID.random_create.to_s
@@ -50,7 +50,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
     end
   end
 
-  EM.add_periodic_timer(30) do
+  EM::PeriodicTimer.new(30) do
     EM.connect(CONFIG['workers'].sample, 9000, OhaiClient)
   end
 end
