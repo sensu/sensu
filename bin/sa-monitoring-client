@@ -54,4 +54,14 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   EM.add_periodic_timer(30) do
     EM.connect(CONFIG['workers'].sample, 9000, OhaiClient)
   end
+
+  #
+  # Recognize exit command
+  #
+  Signal.trap("INT") do
+    EM.stop
+  end
+  Signal.trap("TERM") do
+    EM.stop
+  end
 end

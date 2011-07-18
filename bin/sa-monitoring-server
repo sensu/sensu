@@ -75,4 +75,14 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   EM.start_server('0.0.0.0', 9000, OhaiServer) do |ohaiserver|
     ohaiserver.redis = redis
   end
+
+  #
+  # Recognize exit command
+  #
+  Signal.trap("INT") do
+    EM.stop
+  end
+  Signal.trap("TERM") do
+    EM.stop
+  end
 end
