@@ -14,7 +14,7 @@
       "subscribers": [
         "webserver"
       ],
-      "interval": 30,
+      "interval": 10,
       "alert": false
     },
     "cluster_health": {
@@ -22,7 +22,7 @@
       "subscribers": [
         "elasticsearch_ebs"
       ],
-      "interval": 60,
+      "interval": 15,
       "alert": true
     }
   },

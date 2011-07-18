@@ -1,8 +1,7 @@
 #!/usr/bin/env ruby
 
+$: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
 require 'sa-monitoring/config'
-require 'amqp'
-require 'uuidtools'
 require 'em-redis'
 
 #
@@ -17,8 +16,8 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   #
   # Publish critical/warning check results
   #
-  amq.queue('results').subscribe do |msg|
-    puts msg
+  amq.queue('results').subscribe do |result|
+    puts result
   end
 
   #
@@ -53,9 +52,11 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   #
   check = amq.queue('checks')
 
-  CONFIG['checks'].each do |name, info|
-    EM::PeriodicTimer.new(5) do
-      check.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json)
+  CONFIG['checks'].each_with_index do |(name, info), index|
+    EM::Timer.new(7*index) do
+      EM::PeriodicTimer.new(info['interval']) do
+        check.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json)
+      end
     end
   end
 
