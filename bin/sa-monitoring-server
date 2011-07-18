@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'sa-monitoring/config'
+require 'amqp'
 require 'uuidtools'
 require 'em-redis'
 
@@ -48,12 +49,14 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   end
 
   #
-  # Populate the work queue with checks defined in the JSON config file
+  # Populate the checks queue with checks defined in the JSON config file
   #
-  work = amq.direct('')
+  check = amq.queue('checks')
 
   CONFIG['checks'].each do |name, info|
-    work.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json, :routing_key => 'checks')
+    EM::PeriodicTimer.new(5) do
+      check.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json)
+    end
   end
 
   #

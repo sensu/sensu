@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 
 require 'sa-monitoring/config'
+require 'amqp'
+require 'uuidtools'
 
 #
 # Connect to RabbitMQ
@@ -9,14 +11,16 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
   amq = MQ.new
 
-  result = amq.direct('')
+  result = amq.queue('results')
 
   #
   # Recieve checks, execute them, and publish results for processing
   #
   CONFIG['client']['subscriptions'].each do |exchange|
 
-    amq.queue(exchange).bind(amq.fanout(exchange)).subscribe do |check_msg|
+    uniq_queue_name = UUIDTools::UUID.random_create.to_s
+
+    amq.queue(uniq_queue_name, :auto_delete => true).bind(amq.fanout(exchange)).subscribe do |check_msg|
 
       check = JSON.parse(check_msg)
 
@@ -30,7 +34,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
       end
 
       send_result = proc do |check_result|
-        result.publish(check_result, :routing_key => 'results')
+        result.publish(check_result)
       end
 
       EM.defer(execute_check, send_result)

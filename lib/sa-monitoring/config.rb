@@ -1,5 +1,4 @@
 require 'rubygems' if RUBY_VERSION < '1.9.0'
-require 'amqp'
 require 'json'
 
 #
