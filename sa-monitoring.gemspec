@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.add_dependency('amqp', '0.7.1')
   s.add_dependency('json')
   s.add_dependency('uuidtools')
-  s.add_dependency('em-redis')
+  s.add_dependency('em-hiredis')
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
