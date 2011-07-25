@@ -35,7 +35,8 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   #
   class OhaiClient < EM::Connection
     def post_init
-      send_data(CONFIG['client'].to_json)
+      keep_alive = CONFIG['client'].merge({'timestamp' => Time.now.to_i})
+      send_data(keep_alive.to_json)
       close_connection_after_writing
     end
   end

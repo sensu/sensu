@@ -31,11 +31,12 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
     check_id = UUIDTools::UUID.random_create.to_s
 
-    redis.set(check_id, check['name'])
-
+    redis.set(check_id, {'name' => check['name'], 'timestamp' => Time.now.to_i}.to_json)
+    redis.sadd('checks', check_id)
+    #puts redis.smembers('checks').first # smembers returning an int :/
     check_msg = {
-      :name => check['name'],
-      :id => check_id
+      'name' => check['name'],
+      'id' => check_id
     }.to_json
 
     check['subscribers'].each do |exchange|
@@ -46,6 +47,19 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
       exchanges[exchange].publish(check_msg)
     end
+  end
+
+  #
+  # Manually expire checks
+  #
+  EM.add_periodic_timer(300) do
+#    redis.smembers('checks').each do |check_id|
+#      check = JSON.parse(redis.get(check_id))
+#      if check['timestamp'] < Time.now.to_i - 600
+#        redis.del(check_id)
+#        redis.srem('checks', check_id)
+#      end
+#    end
   end
 
   #
@@ -68,7 +82,9 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
     attr_accessor :redis
 
     def receive_data(data)
-      @redis.set(JSON.parse(data)['name'], data)
+      client = JSON.parse(data)['name']
+      @redis.set(client, data)
+      @redis.sadd('clients', client)
     end
   end
 
