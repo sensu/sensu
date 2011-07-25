@@ -35,7 +35,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
     redis.set(check_id, {'name' => check['name'], 'timestamp' => Time.now.to_i}.to_json).callback do
       redis.sadd('checks', check_id).callback do
         redis.smembers('checks').callback do |checks|
-          puts checks
+          puts checks.first
         end
       end
     end
@@ -59,13 +59,17 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   # Manually expire checks
   #
   EM.add_periodic_timer(300) do
-#    redis.smembers('checks').each do |check_id|
-#      check = JSON.parse(redis.get(check_id))
-#      if check['timestamp'] < Time.now.to_i - 600
-#        redis.del(check_id)
-#        redis.srem('checks', check_id)
-#      end
-#    end
+    redis.smembers('checks').callback do |c|
+      c.each do |check_id|
+        redis.get(check_id).callback do |check_data|
+          check = JSON.parse(check_data)
+          if check['timestamp'] < Time.now.to_i - 600
+            redis.del(check_id)
+            redis.srem('checks', check_id)
+          end
+        end
+      end
+    end
   end
 
   #
