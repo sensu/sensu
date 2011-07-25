@@ -21,10 +21,14 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   amq.queue('results').subscribe do |result|
     puts result
     response = JSON.parse(result)
-    unless response['status'] == 0
-      redis.get("check:#{response['id']}").callback do |id|
-        check = JSON.parse(id)
-        redis.sadd("alerts:#{response['name']}", {'name' => check['name'], 'status' => response['status'], 'output' => response['output']}.to_json)
+    redis.get("check:#{response['id']}").callback do |id|
+      check = JSON.parse(id)
+      if response['status'] == 0
+        redis.hexists("alerts:#{response['client']}", check['name']).callback do |exists|
+          redis.hdel("alerts:#{response['client']}", check['name']) if exists
+        end
+      else
+        redis.hset("alerts:#{response['client']}", check['name'], {'name' => check['name'], 'status' => response['status'], 'output' => response['output']}.to_json)
       end
     end
   end
@@ -68,7 +72,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   EM.add_periodic_timer(300) do
     redis.smembers('checks').callback do |c|
       c.each do |check_id|
-        redis.get(check_id).callback do |check_data|
+        redis.get("check:#{check_id}").callback do |check_data|
           check = JSON.parse(check_data)
           if check['timestamp'] < Time.now.to_i - 600
             redis.del("check:#{check_id}")
