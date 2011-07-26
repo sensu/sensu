@@ -12,6 +12,22 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   amq = MQ.new
 
   #
+  # Send keep-alives to a worker
+  #
+  class OhaiClient < EM::Connection
+    def post_init
+      keep_alive = CONFIG['client'].merge({'timestamp' => Time.now.to_i})
+      send_data(keep_alive.to_json)
+      close_connection_after_writing
+    end
+  end
+
+  EM.connect(CONFIG['workers'].sample, 9000, OhaiClient)
+  EM.add_periodic_timer(30) do
+    EM.connect(CONFIG['workers'].sample, 9000, OhaiClient)
+  end
+
+  #
   # Recieve checks, execute them, and publish results for processing
   #
   result = amq.queue('results')
@@ -28,21 +44,6 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
         result.publish({'id' => check['id'], 'client' => CONFIG['client']['name'], 'status' => status.exitstatus, 'output' => output}.to_json)
       end
     end
-  end
-
-  #
-  # Send keep-alives to a worker
-  #
-  class OhaiClient < EM::Connection
-    def post_init
-      keep_alive = CONFIG['client'].merge({'timestamp' => Time.now.to_i})
-      send_data(keep_alive.to_json)
-      close_connection_after_writing
-    end
-  end
-
-  EM.add_periodic_timer(30) do
-    EM.connect(CONFIG['workers'].sample, 9000, OhaiClient)
   end
 
   #
