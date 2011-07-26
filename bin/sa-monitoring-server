@@ -68,7 +68,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
         client = JSON.parse(client_json)
         event = {
           'client' => client,
-          'check' => check['name'],
+          'check' => check,
           'status' => result['status'],
           'output' => result['output']
         }
