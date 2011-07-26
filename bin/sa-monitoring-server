@@ -28,7 +28,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
           redis.hdel("alerts:#{response['client']}", check['name']) if exists
         end
       else
-        redis.hset("alerts:#{response['client']}", check['name'], {'name' => check['name'], 'status' => response['status'], 'output' => response['output']}.to_json)
+        redis.hset("alerts:#{response['client']}", check['name'], {'status' => response['status'], 'output' => response['output']}.to_json)
       end
     end
   end
