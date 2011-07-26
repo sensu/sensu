@@ -18,7 +18,7 @@
       "alert": false
     },
     "cluster_health": {
-      "command": "echo 'cluster_health'",
+      "command": "rm /tmp/thiswillfail",
       "subscribers": [
         "elasticsearch_ebs"
       ],
