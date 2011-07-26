@@ -10,8 +10,7 @@ require 'em-hiredis'
 #
 AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
-  #redis = EM::Hiredis.connect(CONFIG['redis']['server'])
-  redis = EM::Hiredis.connect
+  redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['server'] + ':' + CONFIG['redis']['port'].to_s)
 
   amq = MQ.new
 

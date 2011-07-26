@@ -6,7 +6,8 @@
     "server": "localhost"
   },
   "redis": {
-    "server": "localhost"
+    "server": "localhost",
+    "port": 6379
   },
   "checks": {
     "fitter_happier": {
