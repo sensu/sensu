@@ -40,6 +40,24 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   end
 
   #
+  # Accept client keep-alives
+  #
+  class OhaiServer < EM::Connection
+    attr_accessor :redis
+
+    def receive_data(client_json)
+      client = JSON.parse(client_json)['name']
+      @redis.set("client:#{client}", client_json).callback do
+        @redis.sadd('clients', client)
+      end
+    end
+  end
+
+  EM.start_server('0.0.0.0', 9000, OhaiServer) do |ohaiserver|
+    ohaiserver.redis = redis
+  end
+
+  #
   # Publish critical/warning check results
   #
   amq.queue('results').subscribe do |result_json|
@@ -119,29 +137,6 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   end
 
   #
-  # Alert when a keep-alive hasn't been received in a defined amount of time
-  #
-  EM.add_periodic_timer(30) do
-    redis.smembers('clients').callback do |c|
-      c.each do |client_id|
-        redis.get("client:#{client_id}").callback do |client_data|
-          client = JSON.parse(client_data)
-          time_since_last_check = Time.now.to_i - client['timestamp']
-          if time_since_last_check >= 180 # critical
-            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 2, 'output' => 'No keep-alive returned from host in over 180 seconds'}.to_json)
-          elsif time_since_last_check >= 120 # warning
-            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 1, 'output' => 'No keep-alive returned from host in over 120 seconds'}.to_json)
-          else # healthy
-            redis.hexists("alerts:#{client_id}", 'keepalive').callback do |exists|
-              redis.hdel("alerts:#{client_id}", 'keepalive') if exists
-            end
-          end
-        end
-      end
-    end
-  end
-
-  #
   # Populate the checks queue with checks defined in the JSON config file
   #
   check = amq.queue('checks')
@@ -155,21 +150,27 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   end
 
   #
-  # Accept client keep-alives
+  # Alert when a keep-alive hasn't been received in a defined amount of time
   #
-  class OhaiServer < EM::Connection
-    attr_accessor :redis
-
-    def receive_data(client_json)
-      client = JSON.parse(client_json)['name']
-      @redis.set("client:#{client}", client_json).callback do
-        @redis.sadd('clients', client)
+  EM.add_periodic_timer(30) do
+    redis.smembers('clients').callback do |clients|
+      clients.each do |client_id|
+        redis.get("client:#{client_id}").callback do |client_json|
+          client = JSON.parse(client_json)
+          time_since_last_check = Time.now.to_i - client['timestamp']
+          case
+          when time_since_last_check >= 180
+            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 2, 'output' => 'No keep-alive returned from host in over 180 seconds'}.to_json)
+          when time_since_last_check >= 120
+            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 1, 'output' => 'No keep-alive returned from host in over 120 seconds'}.to_json)
+          else
+            redis.hexists("alerts:#{client_id}", 'keepalive').callback do |exists|
+              redis.hdel("alerts:#{client_id}", 'keepalive') if exists == 1
+            end
+          end
+        end
       end
     end
-  end
-
-  EM.start_server('0.0.0.0', 9000, OhaiServer) do |ohaiserver|
-    ohaiserver.redis = redis
   end
 
   #
