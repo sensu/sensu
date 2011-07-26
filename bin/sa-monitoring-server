@@ -44,11 +44,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
     check_id = UUIDTools::UUID.random_create.to_s
 
     redis.set("check:#{check_id}", {'name' => check['name'], 'timestamp' => Time.now.to_i}.to_json).callback do
-      redis.sadd('checks', check_id).callback do
-        redis.smembers('checks').callback do |checks|
-          puts checks.first
-        end
-      end
+      redis.sadd('checks', check_id)
     end
 
     check_msg = {

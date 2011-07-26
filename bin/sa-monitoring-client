@@ -24,7 +24,7 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
       check = JSON.parse(check_msg)
 
-      EM.system(CONFIG['checks'][check['name']]['command']) do |output, status|
+      EM.system(CONFIG['checks'][check['name']]['command'] + ' 2>&1') do |output, status|
         result.publish({'id' => check['id'], 'client' => CONFIG['client']['name'], 'status' => status.exitstatus, 'output' => output}.to_json)
       end
     end
