@@ -16,30 +16,6 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   amq = MQ.new
 
   #
-  # Use custom handlers for events
-  #
-  def handlers(event)
-    event_file = proc do
-      file = Tempfile.new('/tmp/sa-monitoring-event')
-      file.print(JSON.pretty_generate(event))
-      file.flush
-      file.path
-    end
-
-    handle = proc do |event_file|
-      CONFIG['handlers'].each do |handler, command|
-        EM.system('sh', '-c', command + ' -f ' + event_file  + ' 2>&1') do |output, status|
-          puts handler
-          puts status.exitstatus
-          puts output
-        end
-      end
-    end
-
-    EM.defer(event_file, handle)
-  end
-
-  #
   # Accept client keep-alives
   #
   class OhaiServer < EM::Connection
@@ -58,33 +34,54 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   end
 
   #
+  # Use custom handlers for events
+  #
+  def handle(event)
+    event_file = proc do
+      file = Tempfile.new('/tmp/sa-monitoring-event')
+      file.print(JSON.pretty_generate(event))
+      file.flush
+      file.path
+    end
+
+    handlers = proc do |event_file|
+      CONFIG['handlers'].each do |handler, command|
+        EM.system('sh', '-c', command + ' -f ' + event_file  + ' 2>&1') do |output, status|
+          puts handler
+          puts status.exitstatus
+          puts output
+        end
+      end
+    end
+
+    EM.defer(event_file, handlers)
+  end
+
+  #
   # Publish critical/warning check results
   #
   amq.queue('results').subscribe do |result_json|
     result = JSON.parse(result_json)
-    redis.get("check:#{result['id']}").callback do |check_json|
-      check = JSON.parse(check_json)
-      redis.get("client:#{result['client']}").callback do |client_json|
-        client = JSON.parse(client_json)
-        event = {
-          'client' => client,
-          'check' => CONFIG['checks'][check['name']].merge('name' => check['name']),
-          'status' => result['status'],
-          'output' => result['output']
-        }
-        if result['status'] == 0
-          redis.hexists("alerts:#{client['name']}", check['name']).callback do |exists|
-            if exists == 1
-              redis.hdel("alerts:#{client['name']}", check['name'])
-              event['action'] = 'resolve'
-              handlers(event)
-            end
+    redis.get("client:#{result['client']}").callback do |client_json|
+      client = JSON.parse(client_json)
+      event = {
+        'client' => client,
+        'check' => CONFIG['checks'][result['check']].merge('name' => result['check']),
+        'status' => result['status'],
+        'output' => result['output']
+      }
+      if result['status'] == 0
+        redis.hexists("alerts:#{client['name']}", result['check']).callback do |exists|
+          if exists == 1
+            redis.hdel("alerts:#{client['name']}", result['check'])
+            event['action'] = 'resolve'
+            handle(event)
           end
-        else
-          redis.hset("alerts:#{client['name']}", check['name'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
-            event['action'] = 'create'
-            handlers(event)
-          end
+        end
+      else
+        redis.hset("alerts:#{client['name']}", result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
+          event['action'] = 'create'
+          handle(event)
         end
       end
     end
@@ -98,41 +95,13 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   amq.queue('checks').subscribe do |check_json|
     check = JSON.parse(check_json)
 
-    check_id = UUIDTools::UUID.random_create.to_s
-
-    redis.set("check:#{check_id}", {'name' => check['name'], 'timestamp' => Time.now.to_i}.to_json).callback do
-      redis.sadd('checks', check_id)
-    end
-
-    check_msg = {
-      'name' => check['name'],
-      'id' => check_id
-    }.to_json
-
     check['subscribers'].each do |exchange|
 
       if exchanges[exchange].nil?
         exchanges[exchange] = amq.fanout(exchange)
       end
 
-      exchanges[exchange].publish(check_msg)
-    end
-  end
-
-  #
-  # Manually expire checks
-  #
-  EM.add_periodic_timer(300) do
-    redis.smembers('checks').callback do |checks|
-      checks.each do |check_id|
-        redis.get("check:#{check_id}").callback do |check_json|
-          check = JSON.parse(check_json)
-          if check['timestamp'] < Time.now.to_i - 600
-            redis.del("check:#{check_id}")
-            redis.srem('checks', check_id)
-          end
-        end
-      end
+      exchanges[exchange].publish({'name' => check['name']}.to_json)
     end
   end
 
