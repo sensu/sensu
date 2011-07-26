@@ -79,6 +79,29 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   end
 
   #
+  # Alert when a keep-alive hasn't been received in a defined amount of time
+  #
+  EM.add_periodic_timer(30) do
+    redis.smembers('clients').callback do |c|
+      c.each do |client_id|
+        redis.get("client:#{client_id}").callback do |client_data|
+          client = JSON.parse(client_data)
+          time_since_last_check = Time.now.to_i - client['timestamp']
+          if time_since_last_check >= 180 # critical
+            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 2, 'output' => 'No keep-alive returned from host in over 180 seconds'}.to_json)
+          elsif time_since_last_check >= 120 # warning
+            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 1, 'output' => 'No keep-alive returned from host in over 120 seconds'}.to_json)
+          else # healthy
+            redis.hexists("alerts:#{client_id}", 'keepalive').callback do |exists|
+              redis.hdel("alerts:#{client_id}", 'keepalive') if exists
+            end
+          end
+        end
+      end
+    end
+  end
+
+  #
   # Populate the checks queue with checks defined in the JSON config file
   #
   check = amq.queue('checks')
