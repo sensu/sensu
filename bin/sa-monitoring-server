@@ -99,8 +99,9 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
     def receive_data(data)
       client = JSON.parse(data)['name']
-      @redis.set("client:#{client}", data)
-      @redis.sadd('clients', client)
+      @redis.set("client:#{client}", data).callback do
+        @redis.sadd('clients', client)
+      end
     end
   end
 
