@@ -22,9 +22,9 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
     end
   end
 
-  EM.connect(CONFIG['workers'].sample, 9000, OhaiClient)
+  EM.connect(CONFIG['server'], 9000, OhaiClient)
   EM.add_periodic_timer(30) do
-    EM.connect(CONFIG['workers'].sample, 9000, OhaiClient)
+    EM.connect(CONFIG['server'], 9000, OhaiClient)
   end
 
   #

@@ -1,7 +1,5 @@
 {
-  "workers": [
-    "localhost"
-  ],
+  "server": "localhost",
   "rabbitmq": {
     "server": "localhost"
   },
