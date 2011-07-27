@@ -4,7 +4,6 @@ $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE_
 require 'sa-monitoring/config'
 require 'amqp'
 require 'em-hiredis'
-require 'tempfile'
 
 #
 # Connect to RabbitMQ
@@ -38,10 +37,11 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   #
   def handle(event)
     event_file = proc do
-      file = Tempfile.new('/tmp/sa-monitoring-event')
-      file.print(JSON.pretty_generate(event))
-      file.flush
-      file.path
+      file_name = '/tmp/sa-monitoring/event-' + UUIDTools::UUID.random_create.to_s
+      File.open(file_name, 'w') do |file|
+        file.write(JSON.pretty_generate(event))
+      end
+      file_name
     end
 
     handlers = proc do |event_file|
@@ -51,6 +51,9 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
           puts status.exitstatus
           puts output
         end
+      end
+      EM.add_timer(10) do
+        File.delete(event_file)
       end
     end
 

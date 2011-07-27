@@ -12,3 +12,11 @@ else
 end
 
 CONFIG = JSON.parse(File.open(config_file, 'r').read)
+
+#
+# Create a tmp directory
+#
+begin
+  Dir.mkdir('/tmp/sa-monitoring')
+rescue SystemCallError
+end
