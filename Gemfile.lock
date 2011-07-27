@@ -6,7 +6,6 @@ PATH
       async_sinatra
       em-hiredis
       json
-      sinatra
       uuidtools
 
 GEM
