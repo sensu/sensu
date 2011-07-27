@@ -14,6 +14,7 @@
 * An API Will
 - List all current critical/warning events
 - Remove a client from redis and resolve any associated keep-alive events
+- List all clients and their subscriptions
 
 * A Handler Will
 - Accept a single command line argument for an event file path
