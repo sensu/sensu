@@ -2,4 +2,42 @@
 
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
 require 'sa-monitoring/config'
+require 'eventmachine'
+require 'sinatra/async'
+require 'em-hiredis'
 
+EventMachine.run do
+
+  class ApiServer < Sinatra::Base
+    register Sinatra::Async
+
+    redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['server'] + ':' + CONFIG['redis']['port'].to_s)
+
+    aget '/' do
+      body "front-end will be here"
+    end
+
+    aget '/clients' do
+      content_type 'application/json'
+      redis.smembers('clients').callback do |clients|
+        body clients.to_json
+      end
+    end
+
+    aget '/alerts' do
+      content_type 'application/json'
+      client_alerts = Hash.new
+      redis.smembers('clients').callback do |clients|
+        clients.each_with_index do |client, index|
+          redis.hgetall("alerts:#{client}").callback do |alerts|
+            client_alerts.store(client, Hash[*alerts])
+            body client_alerts.to_json if index == clients.size-1
+          end
+        end
+      end
+    end
+  end
+
+  ApiServer.run!({:port => 4567})
+
+end

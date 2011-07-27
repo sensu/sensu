@@ -15,6 +15,8 @@ Gem::Specification.new do |s|
   s.add_dependency('json')
   s.add_dependency('uuidtools')
   s.add_dependency('em-hiredis')
+  s.add_dependency('sinatra')
+  s.add_dependency('async_sinatra')
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")

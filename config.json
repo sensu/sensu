@@ -12,7 +12,7 @@
   },
   "checks": {
     "fitter_happier": {
-      "command": "echo 'fitter_happier'",
+      "command": "cat 'fitter_happier'",
       "subscribers": [
         "webserver"
       ],
