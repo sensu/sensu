@@ -1,8 +1,8 @@
 * A Client Will
-- Generate a set of client attributes to describe itself (using ohai)
+- Generate a set of client attributes to describe itself (using ohai/factor)
 - Subscribe to a set of fanout exchanges base on its run list or roles (part of client attributes)
 - Send keep alives (client attributes) via a TCP socket to the server
-- Execute a check and push the result with its check id and the client attributes to a direct exchange ("results")
+- Execute a check and push the result and the client name to a direct exchange ("results")
 
 * A Server Will
 - Populate an internal work queue from an OpsChef data bag (nagios checks mapped to roles)
@@ -13,7 +13,12 @@
 
 * An API Will
 - List all current critical/warning events
-- Remove a client from redis and resolve any related keep-alive alerts
+- Remove a client from redis and resolve any associated keep-alive events
+
+* A Handler Will
+- Accept a single command line argument for an event file path
+- Parse the JSON event file
+- Handle the event as it wishes
 
 * Goals
 ** Friday, July 29th
