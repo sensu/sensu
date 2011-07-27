@@ -1,6 +1,6 @@
 module SAM
 
-  def self.generate_config(node, checks)
+  def self.generate_config(node, databag)
     config = Hash.new
 
     config.merge!(node.sa-monitoring.to_hash)
@@ -14,6 +14,8 @@ module SAM
         :subscriptions => node.roles
       }
     })
+
+    config.merge!(databag)
 
     return config
   end

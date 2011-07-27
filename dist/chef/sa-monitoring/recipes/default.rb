@@ -11,14 +11,13 @@ directory "/etc/sa-monitoring"
 
 databag = data_bag('sa-monitoring')
 
-template '/etc/sa-monitoring/config.json' do
-  mode 0600
-  variables(
-    'subscriptions' => node.roles,
-    'checks' => databag['checks']
-  )
+file '/etc/sa-monitoring/config.json' do
+  content SAM.generate_config(node, databag)
+  mode 0644
 end
 
 %w{server api client}.each do |service|
-  cookbook_file "/etc/init/sa-monitoring-#{service}.conf"
+  cookbook_file "/etc/init/sa-monitoring-#{service}.conf" do
+    mode 0644
+  end
 end
