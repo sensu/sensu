@@ -10,4 +10,15 @@
 - Pull a check from the internal work queue, tag it with a check id (uuid), and then push it out onto its associated fanout exchange (role)
 - Save sent check id, timestamp, and the command name in redis (will auto expire)
 - Process results, storing the latest critical/warning for that client in redis, a good result will flush previous results for that client
-- Provide a REST API for getting current critical/warning messages
+
+* An API Will
+- List all current critical/warning events
+- Remove a client from redis and resolve any related keep-alive alerts
+
+* Goals
+** Friday, July 29th
+- A client/server/api that fulfills the above behavior
+** Friday, August 6th
+- SA-Monitoring running in parallel to Nagios
+- Executing several nagios plugins
+- A Pagerduty handler (not paging)
