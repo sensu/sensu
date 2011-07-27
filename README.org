@@ -21,6 +21,10 @@
 - Parse the JSON event file
 - Handle the event as it wishes
 
+* A Dashboard Will
+- Display all critical/warning messages (including additional check information; owner, notes, etc)
+- Query OpsChef/Puppet for additional client (node) information
+
 * Goals
 ** Friday, July 29th
 - A client/server/api that fulfills the behavior above

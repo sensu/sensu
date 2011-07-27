@@ -1,2 +1,5 @@
 default.sa-monitoring.rabbitmq.server = "localhost"
 default.sa-monitoring.redis.server = "localhost"
+default.sa-monitoring.server = "localhost"
+default.sa-monitoring.api.server = "localhost"
+default.sa-monitoring.api.port = "8080"

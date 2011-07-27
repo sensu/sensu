@@ -9,3 +9,5 @@
 
 include_recipe "rabbitmq"
 include_recipe "redis2"
+
+include_recipe "sa-monitoring::default"
