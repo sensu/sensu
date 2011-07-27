@@ -5,14 +5,14 @@
 - Execute a check and push the result and the client name to a direct exchange ("results")
 
 * A Server Will
-- Populate an internal work queue from an OpsChef data bag (nagios checks mapped to roles)
+- Populate an internal work queue from a JSON config file (generate with OpsChef/Puppet)
 - Subscribe to a direct exchange ("results")
-- Pull a check from the internal work queue, tag it with a check id (uuid), and then push it out onto its associated fanout exchange (role)
-- Save sent check id, timestamp, and the command name in redis (will auto expire)
+- Pull a check from the internal work queue and then push it out onto its associated fanout exchanges (roles)
 - Process results, storing the latest critical/warning for that client in redis, a good result will flush previous results for that client
+- Trigger the event handlers
 
 * An API Will
-- List all current critical/warning events
+- List all current events
 - Remove a client from redis and resolve any associated keep-alive events
 - List all clients and their subscriptions
 
@@ -23,7 +23,7 @@
 
 * Goals
 ** Friday, July 29th
-- A client/server/api that fulfills the above behavior
+- A client/server/api that fulfills the behavior above
 ** Friday, August 6th
 - SA-Monitoring running in parallel to Nagios
 - Executing several nagios plugins
