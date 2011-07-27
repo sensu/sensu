@@ -127,14 +127,38 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
         redis.get("client:#{client_id}").callback do |client_json|
           client = JSON.parse(client_json)
           time_since_last_check = Time.now.to_i - client['timestamp']
+          event = {
+            'client' => client,
+            'check' => {
+              'name' => 'keepalive',
+              'command' => 'internal'
+            }
+          }
           case
           when time_since_last_check >= 180
-            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 2, 'output' => 'No keep-alive returned from host in over 180 seconds'}.to_json)
+            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 2, 'output' => 'No keep-alive sent from host in over 180 seconds'}.to_json)
+            handle(event.merge({
+              'status' => 2,
+              'output' => 'No keep-alive sent from host in over 180 seconds',
+              'action' => 'create'
+            }))
           when time_since_last_check >= 120
-            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 1, 'output' => 'No keep-alive returned from host in over 120 seconds'}.to_json)
+            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 1, 'output' => 'No keep-alive sent from host in over 120 seconds'}.to_json)
+            handle(event.merge({
+              'status' => 1,
+              'output' => 'No keep-alive sent from host in over 120 seconds',
+              'action' => 'create'
+            }))
           else
             redis.hexists("alerts:#{client_id}", 'keepalive').callback do |exists|
-              redis.hdel("alerts:#{client_id}", 'keepalive') if exists == 1
+              if exists == 1
+                redis.hdel("alerts:#{client_id}", 'keepalive')
+                handle(event.merge({
+                  'status' => 0,
+                  'output' => 'keep-alive sent from host',
+                  'action' => 'resolve'
+                }))
+              end
             end
           end
         end
