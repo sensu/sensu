@@ -17,7 +17,7 @@ module SAM
 
     config.merge!(databag)
 
-    return config
+    JSON.pretty_generate(config)
   end
 
 end
