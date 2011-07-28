@@ -55,15 +55,15 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   # Publish critical/warning check results
   #
   amq.queue('results').subscribe do |result_json|
-    puts result_json
     result = JSON.parse(result_json)
     redis.get("client:#{result['client']}").callback do |client_json|
       unless client_json.nil?
         client = JSON.parse(client_json)
-        puts result['check']
+        check = {'name' => result['check']}
+        check.merge!(CONFIG['checks'][result['check']]) if CONFIG['checks'].has_key?(result['check'])
         event = {
           'client' => client,
-          'check' => CONFIG['checks'][result['check']].merge('name' => result['check']),
+          'check' => check,
           'status' => result['status'],
           'output' => result['output']
         }
@@ -119,43 +119,23 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   #
   # Alert when a keep-alive hasn't been received in a defined amount of time
   #
+  result = amq.queue('results')
+
   EM.add_periodic_timer(30) do
     redis.smembers('clients').callback do |clients|
       clients.each do |client_id|
         redis.get("client:#{client_id}").callback do |client_json|
           client = JSON.parse(client_json)
           time_since_last_check = Time.now.to_i - client['timestamp']
-          event = {
-            'client' => client,
-            'check' => {
-              'name' => 'keepalive',
-              'command' => 'internal'
-            }
-          }
           case
           when time_since_last_check >= 180
-            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 2, 'output' => 'No keep-alive sent from host in over 180 seconds'}.to_json)
-            handle(event.merge({
-              'status' => 2,
-              'output' => 'No keep-alive sent from host in over 180 seconds',
-              'action' => 'create'
-            }))
+            result.publish({'check' => 'keepalive', 'client' => client['name'], 'status' => 2, 'output' => 'No keep-alive sent from host in over 180 seconds'}.to_json)
           when time_since_last_check >= 120
-            redis.hset("alerts:#{client_id}", 'keepalive', {'status' => 1, 'output' => 'No keep-alive sent from host in over 120 seconds'}.to_json)
-            handle(event.merge({
-              'status' => 1,
-              'output' => 'No keep-alive sent from host in over 120 seconds',
-              'action' => 'create'
-            }))
+            result.publish({'check' => 'keepalive', 'client' => client['name'], 'status' => 1, 'output' => 'No keep-alive sent from host in over 120 seconds'}.to_json)
           else
             redis.hexists("alerts:#{client_id}", 'keepalive').callback do |exists|
               if exists == 1
-                redis.hdel("alerts:#{client_id}", 'keepalive')
-                handle(event.merge({
-                  'status' => 0,
-                  'output' => 'keep-alive sent from host',
-                  'action' => 'resolve'
-                }))
+                result.publish({'check' => 'keepalive', 'client' => client['name'], 'status' => 0, 'output' => 'Keep-alive sent from host'}.to_json)
               end
             end
           end
