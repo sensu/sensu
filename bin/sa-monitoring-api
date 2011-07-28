@@ -2,10 +2,8 @@
 
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
 require 'sa-monitoring/config'
-require 'eventmachine'
 require 'sinatra/async'
 require 'em-hiredis'
-require 'amqp'
 
 AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
@@ -17,6 +15,9 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
     amq = MQ.new
     result = amq.queue('results')
 
+    #
+    # Get all clients
+    #
     aget '/clients' do
       content_type 'application/json'
       redis.smembers('clients').callback do |clients|
@@ -24,6 +25,9 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
       end
     end
 
+    #
+    # Get current events
+    #
     aget '/alerts' do
       content_type 'application/json'
       client_alerts = Hash.new
@@ -37,6 +41,9 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
       end
     end
 
+    #
+    # Remove a client and resolve its events
+    #
     adelete '/client/:id' do |id|
       content_type 'application/json'
       redis.sismember('clients', id).callback do |client_exists|
