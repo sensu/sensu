@@ -8,7 +8,7 @@
 #
 
 include_recipe "rabbitmq"
-include_recipe "redis2"
+include_recipe "redis2::default_instance"
 
 include_recipe "sa-monitoring::default"
 
