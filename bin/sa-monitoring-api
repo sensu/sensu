@@ -5,13 +5,17 @@ require 'sa-monitoring/config'
 require 'eventmachine'
 require 'sinatra/async'
 require 'em-hiredis'
+require 'amqp'
 
-EventMachine.run do
+AMQP.start(:host => CONFIG['rabbitmq']['server']) do
 
   class ApiServer < Sinatra::Base
     register Sinatra::Async
 
     redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['server'] + ':' + CONFIG['redis']['port'].to_s)
+
+    amq = MQ.new
+    result = amq.queue('results')
 
     aget '/clients' do
       content_type 'application/json'
@@ -34,10 +38,45 @@ EventMachine.run do
     end
 
     adelete '/client/:id' do |id|
-      # handle the removal of a client
+      content_type 'application/json'
+      redis.sismember('clients', id).callback do |client_exists|
+        if client_exists != 0
+          redis.exists("alerts:#{id}").callback do |alerts_exist|
+            if alerts_exist != 0
+              redis.hgetall("alerts:#{id}").callback do |alerts|
+                Hash[*alerts].keys.each do |k|
+                  result.publish({'check' => k, 'client' => id, 'status' => 0, 'output' => 'client is being removed from database...'}.to_json)
+                  EM.add_timer(10) do
+                    redis.srem("clients", id)
+                    redis.del("alerts:#{id}")
+                    redis.del("client:#{id}")
+                  end
+                end
+              end
+            else
+              redis.srem("clients", id)
+              redis.del("alerts:#{id}")
+              redis.del("client:#{id}")
+            end
+            body({'success' => 'Client is being removed'}.to_json)
+          end
+        else
+          status 404 # client doesn't exist
+          body({'error' => 'Client not found'}.to_json)
+        end
+      end
     end
   end
 
   ApiServer.run!({:port => CONFIG['api']['port']})
 
+  #
+  # Recognize exit command
+  #
+  Signal.trap("INT") do
+    EM.stop
+  end
+  Signal.trap("TERM") do
+    EM.stop
+  end
 end

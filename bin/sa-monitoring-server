@@ -64,27 +64,31 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   # Publish critical/warning check results
   #
   amq.queue('results').subscribe do |result_json|
+    puts result_json
     result = JSON.parse(result_json)
     redis.get("client:#{result['client']}").callback do |client_json|
-      client = JSON.parse(client_json)
-      event = {
-        'client' => client,
-        'check' => CONFIG['checks'][result['check']].merge('name' => result['check']),
-        'status' => result['status'],
-        'output' => result['output']
-      }
-      if result['status'] == 0
-        redis.hexists("alerts:#{client['name']}", result['check']).callback do |exists|
-          if exists == 1
-            redis.hdel("alerts:#{client['name']}", result['check'])
-            event['action'] = 'resolve'
+      unless client_json.nil?
+        client = JSON.parse(client_json)
+        puts result['check']
+        event = {
+          'client' => client,
+          'check' => CONFIG['checks'][result['check']].merge('name' => result['check']),
+          'status' => result['status'],
+          'output' => result['output']
+        }
+        if result['status'] == 0
+          redis.hexists("alerts:#{client['name']}", result['check']).callback do |exists|
+            if exists == 1
+              redis.hdel("alerts:#{client['name']}", result['check'])
+              event['action'] = 'resolve'
+              handle(event)
+            end
+          end
+        else
+          redis.hset("alerts:#{client['name']}", result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
+            event['action'] = 'create'
             handle(event)
           end
-        end
-      else
-        redis.hset("alerts:#{client['name']}", result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
-          event['action'] = 'create'
-          handle(event)
         end
       end
     end
