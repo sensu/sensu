@@ -16,19 +16,11 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   #
   # Accept client keep-alives
   #
-  class OhaiServer < EM::Connection
-    attr_accessor :redis
-
-    def receive_data(client_json)
-      client = JSON.parse(client_json)['name']
-      @redis.set("client:#{client}", client_json).callback do
-        @redis.sadd('clients', client)
-      end
+  amq.queue('keepalives').subscribe do |keepalive_json|
+    client = JSON.parse(keepalive_json)['name']
+    redis.set("client:#{client}", keepalive_json).callback do
+      redis.sadd('clients', client)
     end
-  end
-
-  EM.start_server('0.0.0.0', 9000, OhaiServer) do |ohaiserver|
-    ohaiserver.redis = redis
   end
 
   #
