@@ -14,4 +14,5 @@ include_recipe "sa-monitoring::default"
 
 service "sa-monitoring-server" do
   provider Chef::Provider::Service::Upstart
+  action [:enable, :start]
 end
