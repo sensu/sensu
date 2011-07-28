@@ -13,10 +13,6 @@ EventMachine.run do
 
     redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['server'] + ':' + CONFIG['redis']['port'].to_s)
 
-    aget '/' do
-      body "front-end will be here"
-    end
-
     aget '/clients' do
       content_type 'application/json'
       redis.smembers('clients').callback do |clients|
@@ -36,8 +32,12 @@ EventMachine.run do
         end
       end
     end
+
+    adelete '/client/:id' do |id|
+      # handle the removal of a client
+    end
   end
 
-  ApiServer.run!({:port => 4567})
+  ApiServer.run!({:port => CONFIG['api']['port']})
 
 end

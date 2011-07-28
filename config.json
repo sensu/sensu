@@ -1,5 +1,8 @@
 {
   "server": "localhost",
+  "api": {
+    "port": 4567
+  },
   "rabbitmq": {
     "server": "localhost"
   },
