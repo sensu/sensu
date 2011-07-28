@@ -3,7 +3,7 @@ module SAM
   def self.generate_config(node, databag)
     config = Hash.new
 
-    config.merge!(node.sa-monitoring.to_hash)
+    config.merge!(node.sa_monitoring.to_hash)
 
     address = (node.has_key? :ec2) ? node.ec2.public_ipv4 : node.ip_address
 
@@ -15,7 +15,7 @@ module SAM
       }
     })
 
-    config.merge!(databag)
+    config.merge!(databag.reject {|key,value| %w[id chef_type data_bag].include? key})
 
     JSON.pretty_generate(config)
   end

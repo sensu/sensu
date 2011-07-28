@@ -9,7 +9,7 @@
 
 directory "/etc/sa-monitoring"
 
-databag = data_bag('sa-monitoring')
+databag = data_bag_item('sa_monitoring', 'config')
 
 file '/etc/sa-monitoring/config.json' do
   content SAM.generate_config(node, databag)
