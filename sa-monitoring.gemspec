@@ -1,14 +1,11 @@
-# -*- encoding: utf-8 -*-
-$:.push File.expand_path("../lib", __FILE__)
-
 Gem::Specification.new do |s|
   s.name        = "sa-monitoring"
   s.version     = "0.0.4"
   s.authors     = ["Sean Porter", "Justin Kolberg"]
-  s.email       = ["sean.porter@sonian.net"]
+  s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sa-monitoring"
-  s.summary     = %q{Monitor servers}
-  s.description = %q{Monitor servers}
+  s.summary     = %q{Pub/Sub Server Monitoring}
+  s.description = %q{Monitor servers with Ruby EventMachine & RabbitMQ}
 
   s.add_dependency("amqp", "0.7.1")
   s.add_dependency("json")
