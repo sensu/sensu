@@ -20,8 +20,14 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
     #
     aget '/clients' do
       content_type 'application/json'
+      clients_info = Array.new
       redis.smembers('clients').callback do |clients|
-        body clients.to_json
+        clients.each_with_index do |client, index|
+          redis.get("client:#{client}").callback do |client_info|
+            clients_info << JSON.parse(client_info)
+            body clients_info.to_json if index == clients.size-1
+          end
+        end
       end
     end
 
