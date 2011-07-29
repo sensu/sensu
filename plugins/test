@@ -1,8 +1,6 @@
 #!/usr/bin/env ruby
 
-exitstatus = (0..2).to_a.sample
-
-case exitstatus
+case (0..2).to_a.sample
 when 0
   puts "Everything is just peachy :D"
   exit
