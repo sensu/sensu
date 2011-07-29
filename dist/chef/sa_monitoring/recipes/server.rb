@@ -1,5 +1,5 @@
 #
-# Cookbook Name:: sa-monitoring
+# Cookbook Name:: sa_monitoring
 # Recipe:: server
 #
 # Copyright 2011, YOUR_COMPANY_NAME
@@ -8,9 +8,13 @@
 #
 
 include_recipe "rabbitmq"
-include_recipe "redis2::default_instance"
+include_recipe "redis::server"
 
-include_recipe "sa-monitoring::default"
+include_recipe "sa_monitoring::default"
+
+cookbook_file "/etc/sa-monitoring/handler" do
+  mode 0755
+end
 
 service "sa-monitoring-server" do
   provider Chef::Provider::Service::Upstart

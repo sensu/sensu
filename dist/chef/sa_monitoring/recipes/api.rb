@@ -1,5 +1,5 @@
 #
-# Cookbook Name:: sa-monitoring
+# Cookbook Name:: sa_monitoring
 # Recipe:: api
 #
 # Copyright 2011, YOUR_COMPANY_NAME
@@ -7,7 +7,7 @@
 # All rights reserved - Do Not Redistribute
 #
 
-include_recipe "sa-monitoring::default"
+include_recipe "sa_monitoring::default"
 
 service "sa-monitoring-api" do
   provider Chef::Provider::Service::Upstart

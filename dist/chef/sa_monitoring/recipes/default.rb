@@ -1,5 +1,5 @@
 #
-# Cookbook Name:: sa-monitoring
+# Cookbook Name:: sa_monitoring
 # Recipe:: default
 #
 # Copyright 2011, YOUR_COMPANY_NAME
@@ -7,15 +7,19 @@
 # All rights reserved - Do Not Redistribute
 #
 
-gem_package "sa-monitoring"
+gem_package "sa-monitoring" do
   version node.sa_monitoring.version
 end
 
 directory "/etc/sa-monitoring"
 
-databag = data_bag_item('sa_monitoring', 'config')
+remote_directory "/etc/sa-monitoring/plugins" do
+  files_mode 0755
+end
 
-file '/etc/sa-monitoring/config.json' do
+databag = data_bag_item("sa_monitoring", "config")
+
+file "/etc/sa-monitoring/config.json" do
   content SAM.generate_config(node, databag)
   mode 0644
 end
@@ -26,4 +30,12 @@ end
     variables :service => service
     mode 0644
   end
+end
+
+%w{
+  nagios-plugins
+  nagios-plugins-basic
+  nagios-plugins-standard
+}.each do |pkg|
+  package pkg
 end

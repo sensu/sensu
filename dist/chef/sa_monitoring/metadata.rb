@@ -8,5 +8,5 @@ version          "0.0.1"
 # available @ http://community.opscode.com/cookbooks/rabbitmq
 depends "rabbitmq"
 
-# available @ http://community.opscode.com/cookbooks/redis2
-depends "redis2"
+# available @ http://community.opscode.com/cookbooks/redis-package
+depends "redis"
