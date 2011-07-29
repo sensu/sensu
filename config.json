@@ -14,18 +14,18 @@
     "pagerduty": "ruby ./handlers/pagerduty"
   },
   "checks": {
-    "fitter_happier": {
-      "command": "cat 'fitter_happier'",
+    "foo": {
+      "command": "ruby ./plugins/test",
       "subscribers": [
-        "webserver"
+        "foo"
       ],
       "interval": 10,
       "alert": false
     },
-    "cluster_health": {
-      "command": "rm /tmp/thiswillfail",
+    "bar": {
+      "command": "ruby ./plugins/test",
       "subscribers": [
-        "elasticsearch_ebs"
+        "bar"
       ],
       "interval": 15,
       "alert": true
@@ -35,8 +35,8 @@
     "name": "i-424242",
     "address": "127.0.0.1",
     "subscriptions": [
-      "webserver",
-      "elasticsearch_ebs"
+      "foo",
+      "bar"
     ]
   }
 }

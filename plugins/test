@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+
+exitstatus = (0..2).to_a.sample
+
+case exitstatus
+when 0
+  puts "Everything is just peachy :D"
+  exit
+when 1
+  puts "Something may be wrong :/"
+  exit 1
+when 2
+  puts "GET TO DA CHOPPA! 0_0"
+  exit 2
+end
