@@ -4,18 +4,18 @@ require "sa-monitoring/version"
 
 Gem::Specification.new do |s|
   s.name        = "sa-monitoring"
-  s.version     = SA::Monitoring::VERSION
+  s.version     = "0.0.4"
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net"]
   s.homepage    = "https://github.com/sonian/sa-monitoring"
   s.summary     = %q{Monitor servers}
   s.description = %q{Monitor servers}
 
-  s.add_dependency('amqp', '0.7.1')
-  s.add_dependency('json')
-  s.add_dependency('uuidtools')
-  s.add_dependency('em-hiredis')
-  s.add_dependency('async_sinatra')
+  s.add_dependency("amqp", "0.7.1")
+  s.add_dependency("json")
+  s.add_dependency("uuidtools")
+  s.add_dependency("em-hiredis")
+  s.add_dependency("async_sinatra")
 
   s.files         = `git ls-files`.split("\n").reject {|f| f =~ /dist/}
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
