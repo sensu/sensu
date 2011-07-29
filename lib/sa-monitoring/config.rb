@@ -6,7 +6,7 @@ require 'amqp'
 #
 # Read the CM created JSON config file
 #
-config_file = if ENV['dev']
+config_file = if ENV['test']
   File.dirname(__FILE__) + '/../../config.json'
 else
   '/etc/sa-monitoring/config.json'
