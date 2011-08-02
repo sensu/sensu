@@ -1,19 +1,19 @@
 * A Client Will
-- Generate a set of client attributes to describe itself (using ohai/factor)
-- Subscribe to a set of fanout exchanges base on its run list or roles (part of client attributes)
-- Send keep alives (client attributes) via a TCP socket to the server
-- Execute a check and push the result and the client name to a direct exchange ("results")
+- Have a set of attributes to describe it, including its responsibilities (generate w/ ohai/factor)
+- Subscribe to a set of fanout exchanges base on its responsibilities (roles)
+- Send keep alives to a server
+- Execute a check and push the result and its client name to a direct exchange (named "results")
 
 * A Server Will
 - Populate an internal work queue from a JSON config file (generate with OpsChef/Puppet)
-- Subscribe to a direct exchange ("results")
+- Subscribe to a direct exchange (named "results")
 - Pull a check from the internal work queue and then push it out onto its associated fanout exchanges (roles)
-- Process results, storing the latest critical/warning for that client in redis, a good result will flush previous results for that client
+- Process results, storing the latest events (critical/warnings) for clients, a good result will flush a previous event for that client (resolve)
 - Trigger the event handlers
 
 * An API Will
-- List all current events
-- Remove a client from redis and resolve any associated keep-alive events
+- List events
+- Remove a client and resolve any associated events
 - List all clients and their subscriptions
 
 * A Handler Will
@@ -22,13 +22,11 @@
 - Handle the event as it wishes
 
 * A Dashboard Will
-- Display all critical/warning messages (including additional check information; owner, notes, etc)
+- Display all events (critical/warnings) (including additional check information; owner, notes, etc)
 - Query OpsChef/Puppet for additional client (node) information
 
 * Goals
-** Friday, July 29th
-- A client/server/api that fulfills the behavior above
 ** Friday, August 6th
-- SA-Monitoring running in parallel to Nagios
-- Executing several nagios plugins
 - A Pagerduty handler (not paging)
+- RabbitMQ authentication and SSL
+- Reconnect on network failure
