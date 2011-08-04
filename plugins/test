@@ -1,13 +1,18 @@
 #!/usr/bin/env ruby
 
+time = (0..30).to_a.sample
+
 case (0..2).to_a.sample
 when 0
-  puts "Everything is just peachy :D"
+  sleep(time)
+  puts "Everything is just peachy :D (sleep: #{time})"
   exit
 when 1
-  puts "Something may be wrong :/"
+  sleep(time)
+  puts "Something may be wrong :/ (sleep: #{time})"
   exit 1
 when 2
-  puts "GET TO DA CHOPPA! 0_0"
+  sleep(time)
+  puts "GET TO DA CHOPPA! 0_0 (sleep: #{time})"
   exit 2
 end

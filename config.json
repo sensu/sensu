@@ -19,7 +19,7 @@
       "subscribers": [
         "foo"
       ],
-      "interval": 10,
+      "interval": 5,
       "alert": false
     },
     "bar": {
@@ -27,7 +27,7 @@
       "subscribers": [
         "bar"
       ],
-      "interval": 15,
+      "interval": 12,
       "alert": true
     }
   },
