@@ -25,16 +25,18 @@ AMQP.start(:host => CONFIG['rabbitmq']['server']) do
   #
   result = amq.queue('results')
 
+  in_progress = Array.new
+
   CONFIG['client']['subscriptions'].each do |exchange|
-
     uniq_queue_name = UUIDTools::UUID.random_create.to_s
-
     amq.queue(uniq_queue_name, :auto_delete => true).bind(amq.fanout(exchange)).subscribe do |check_msg|
-
       check = JSON.parse(check_msg)
-
-      EM.system('sh', '-c', CONFIG['checks'][check['name']]['command'] + ' 2>&1') do |output, status|
-        result.publish({'check' => check['name'], 'client' => CONFIG['client']['name'], 'status' => status.exitstatus, 'output' => output}.to_json)
+      unless in_progress.include?(check['name'])
+        in_progress.push check['name']
+        EM.system('sh', '-c', CONFIG['checks'][check['name']]['command'] + ' 2>&1') do |output, status|
+          result.publish({'check' => check['name'], 'client' => CONFIG['client']['name'], 'status' => status.exitstatus, 'output' => output}.to_json)
+          in_progress.delete(check['name'])
+        end
       end
     end
   end
