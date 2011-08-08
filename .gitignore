@@ -2,3 +2,4 @@ pkg/*
 *~
 \#*
 dump.rdb
+certs/*
