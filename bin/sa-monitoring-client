@@ -6,9 +6,19 @@ require 'sa-monitoring/config'
 #
 # Connect to RabbitMQ
 #
-AMQP.start(:host => CONFIG['rabbitmq']['server']) do
+rabbitmq_settings = {
+  :host => CONFIG['rabbitmq']['server'],
+  :port => CONFIG['rabbitmq']['port'],
+  :ssl => {
+    :cert_chain_file => CONFIG['rabbitmq']['ssl']['cert'],
+    :private_key_file => CONFIG['rabbitmq']['ssl']['key']
+  }
+}
 
-  amq = MQ.new
+AMQP.start(rabbitmq_settings) do |rabbitmq|
+
+  amq = AMQP::Channel.new(rabbitmq)
+  amq.auto_recovery = true
 
   #
   # Send keep-alives

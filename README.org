@@ -30,3 +30,16 @@
 - A Pagerduty handler (not paging)
 - RabbitMQ authentication and SSL
 - Reconnect on network failure
+* Configure RabbitMQ
+  /usr/local/etc/rabbitmq/rabbitmq.config
+
+  : [
+  :   {rabbit, [
+  :     {ssl_listeners, [5671]},
+  :     {ssl_options, [{cacertfile,"PATH/certs/sa-monitoring-ca/cacert.pem"},
+  :                    {certfile,"PATH/certs/sa-monitoring-server/cert.pem"},
+  :                    {keyfile,"PATH/certs/sa-monitoring-server/key.pem"},
+  :                    {verify,verify_peer},
+  :                    {fail_if_no_peer_cert,true}]}
+  :   ]}
+  : ].

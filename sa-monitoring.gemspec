@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.summary     = %q{Pub/Sub Server Monitoring}
   s.description = %q{Monitor servers with Ruby EventMachine & RabbitMQ}
 
-  s.add_dependency("amqp", "0.7.1")
+  s.add_dependency("amqp", "0.8.0.rc14")
   s.add_dependency("json")
   s.add_dependency("uuidtools")
   s.add_dependency("em-hiredis")

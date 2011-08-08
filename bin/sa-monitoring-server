@@ -7,11 +7,21 @@ require 'em-hiredis'
 #
 # Connect to RabbitMQ
 #
-AMQP.start(:host => CONFIG['rabbitmq']['server']) do
+rabbitmq_settings = {
+  :host => CONFIG['rabbitmq']['server'],
+  :port => CONFIG['rabbitmq']['port'],
+  :ssl => {
+    :cert_chain_file => CONFIG['rabbitmq']['ssl']['cert'],
+    :private_key_file => CONFIG['rabbitmq']['ssl']['key']
+  }
+}
+
+AMQP.start(rabbitmq_settings) do |rabbitmq|
+
+  amq = AMQP::Channel.new(rabbitmq)
+  amq.auto_recovery = true
 
   redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['server'] + ':' + CONFIG['redis']['port'].to_s)
-
-  amq = MQ.new
 
   #
   # Accept client keep-alives

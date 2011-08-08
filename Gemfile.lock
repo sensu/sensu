@@ -1,8 +1,8 @@
 PATH
   remote: .
   specs:
-    sa-monitoring (0.0.3)
-      amqp (= 0.7.1)
+    sa-monitoring (0.0.4)
+      amqp (= 0.8.0.rc14)
       async_sinatra
       em-hiredis
       json
@@ -11,8 +11,14 @@ PATH
 GEM
   remote: http://rubygems.org/
   specs:
-    amqp (0.7.1)
-      eventmachine (>= 0.12.4)
+    amq-client (0.8.0)
+      amq-protocol (>= 0.8.0)
+      eventmachine
+    amq-protocol (0.8.0)
+    amqp (0.8.0.rc14)
+      amq-client (>= 0.8.0)
+      amq-protocol (>= 0.8.0)
+      eventmachine
     async_sinatra (0.5.0)
       rack (>= 1.2.1)
       sinatra (>= 1.0)

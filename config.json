@@ -1,6 +1,11 @@
 {
   "rabbitmq": {
-    "server": "localhost"
+    "server": "localhost",
+    "port": 5671,
+    "ssl": {
+      "cert": "./certs/sa-monitoring-client/cert.pem",
+      "key": "./certs/sa-monitoring-client/key.pem"
+    }
   },
   "redis": {
     "server": "localhost",
