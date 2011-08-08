@@ -43,3 +43,7 @@
   :                    {fail_if_no_peer_cert,true}]}
   :   ]}
   : ].
+
+  rabbitmq_auth_mechanism_ssl
+
+  : curl -L http://www.rabbitmq.com/releases/plugins/v2.5.1/rabbitmq_auth_mechanism_ssl-2.5.1.ez > /usr/local/Cellar/rabbitmq/2.5.1/lib/rabbitmq/erlang/lib/rabbitmq-2.5.1/plugins/rabbitmq_auth_mechanism_ssl-2.5.1.ez
