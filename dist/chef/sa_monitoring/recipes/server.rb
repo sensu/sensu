@@ -25,7 +25,7 @@ ssl = data_bag_item("sa_monitoring", "ssl")
   end
 end
 
-cookbook_file "/etc/rabbitmq/rabbitmq.config" do
+template "/etc/rabbitmq/rabbitmq.config" do
   mode 0644
   notifies :restart, resources(:service => "rabbitmq-server")
 end
