@@ -11,7 +11,7 @@ gem_package "sa-monitoring" do
   version node.sa_monitoring.version
 end
 
-directory "/etc/sa-monitoring/"
+directory "/etc/sa-monitoring"
 
 remote_directory "/etc/sa-monitoring/plugins" do
   files_mode 0755
@@ -26,7 +26,7 @@ ssl = data_bag_item("sa_monitoring", "ssl")
   key
 }.each do |file|
   file "/etc/sa-monitoring/ssl/#{file}.key" do
-    content ssl[file]
+    content ssl["client"][file]
     mode 0644
   end
 end
