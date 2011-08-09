@@ -7,7 +7,7 @@ require 'em-hiredis'
 #
 # Connect to RabbitMQ
 #
-AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
+AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
   amq = AMQP::Channel.new(rabbitmq)
   amq.auto_recovery = true

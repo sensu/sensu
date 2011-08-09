@@ -2,6 +2,7 @@ require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'json'
 require 'uuidtools'
 require 'amqp'
+require 'sa-monitoring/helpers'
 
 #
 # Read the CM created JSON config file

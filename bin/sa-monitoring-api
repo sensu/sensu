@@ -8,7 +8,7 @@ require 'em-hiredis'
 #
 # Connect to RabbitMQ
 #
-AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
+AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
   class ApiServer < Sinatra::Base
     register Sinatra::Async
