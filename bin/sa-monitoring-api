@@ -37,7 +37,7 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     end
 
     #
-    # Get all clients
+    # Get a client
     #
     aget '/client/:id' do |id|
       content_type 'application/json'
