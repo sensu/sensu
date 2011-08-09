@@ -17,10 +17,8 @@ remote_directory "/etc/sa-monitoring/plugins" do
   files_mode 0755
 end
 
-databag = data_bag_item("sa_monitoring", "config")
-
 file "/etc/sa-monitoring/config.json" do
-  content SAM.generate_config(node, databag)
+  content SAM.generate_config(node, data_bag_item("sa_monitoring", "config"))
   mode 0644
 end
 

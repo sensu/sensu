@@ -14,6 +14,12 @@ rabbitmq_vhost node.sa_monitoring.rabbitmq.vhost do
   action :create
 end
 
+rabbitmq_user node.sa_monitoring.rabbitmq.user do
+  action :create
+  password node.sa_monitoring.rabbitmq.password
+  permissions({node.sa_monitoring.rabbitmq.vhost => [".*", ".*", ".*"]})
+end
+
 include_recipe "sa_monitoring::default"
 
 cookbook_file "/etc/sa-monitoring/handler" do
