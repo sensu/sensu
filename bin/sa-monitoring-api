@@ -45,7 +45,11 @@ AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
       redis.smembers('clients').callback do |clients|
         clients.each_with_index do |client, index|
           redis.hgetall("alerts:#{client}").callback do |alerts|
-            client_alerts.store(client, Hash[*alerts])
+            alerts_hash = Hash[*alerts]
+            alerts_hash.each do |k, v|
+              alerts_hash[k] = JSON.parse(v)
+            end
+            client_alerts.store(client, alerts_hash)
             body client_alerts.to_json if index == clients.size-1
           end
         end
