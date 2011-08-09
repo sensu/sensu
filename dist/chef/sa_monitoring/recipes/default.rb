@@ -11,10 +11,24 @@ gem_package "sa-monitoring" do
   version node.sa_monitoring.version
 end
 
-directory "/etc/sa-monitoring"
+directory "/etc/sa-monitoring/"
 
 remote_directory "/etc/sa-monitoring/plugins" do
   files_mode 0755
+end
+
+directory "/etc/sa-monitoring/ssl"
+
+ssl = data_bag_item("sa_monitoring", "ssl")
+
+%w{
+  cert
+  key
+}.each do |file|
+  file "/etc/sa-monitoring/ssl/#{file}.key" do
+    content ssl[file]
+    mode 0644
+  end
 end
 
 file "/etc/sa-monitoring/config.json" do
@@ -22,7 +36,11 @@ file "/etc/sa-monitoring/config.json" do
   mode 0644
 end
 
-%w{server api client}.each do |service|
+%w{
+  server
+  api
+  client
+}.each do |service|
   template "/etc/init/sa-monitoring-#{service}.conf" do
     source "upstart.erb"
     variables :service => service
