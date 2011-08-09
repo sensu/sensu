@@ -10,6 +10,26 @@
 include_recipe "rabbitmq"
 include_recipe "redis::server"
 
+directory "/etc/rabbitmq/ssl"
+
+ssl = data_bag_item("sa_monitoring", "ssl")
+
+%w{
+  cacert
+  cert
+  key
+}.each do |file|
+  file "/etc/rabbitmq/ssl/#{file}.pem" do
+    content ssl["server"][file]
+    mode 0644
+  end
+end
+
+cookbook_file "/etc/rabbitmq/rabbitmq.config" do
+  mode 0644
+  notifies :restart, resources(:service => "rabbitmq-server")
+end
+
 rabbitmq_vhost node.sa_monitoring.rabbitmq.vhost do
   action :create
 end

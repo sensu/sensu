@@ -25,7 +25,7 @@ ssl = data_bag_item("sa_monitoring", "ssl")
   cert
   key
 }.each do |file|
-  file "/etc/sa-monitoring/ssl/#{file}.key" do
+  file "/etc/sa-monitoring/ssl/#{file}.pem" do
     content ssl["client"][file]
     mode 0644
   end
