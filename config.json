@@ -23,7 +23,7 @@
   },
   "checks": {
     "foo": {
-      "command": "ruby ./plugins/test",
+      "command": "ruby ./plugins/test -c :::name:::",
       "subscribers": [
         "foo"
       ],
@@ -31,7 +31,7 @@
       "alert": false
     },
     "bar": {
-      "command": "ruby ./plugins/test",
+      "command": "ruby ./plugins/test -c :::name:::",
       "subscribers": [
         "bar"
       ],

@@ -4,7 +4,7 @@ def symbolize_keys(item)
     item.map {|i| symbolize_keys(i)}
   when Hash
     Hash[
-          item.map { |key, value|  
+          item.map { |key, value|
            k = key.is_a?(String) ? key.to_sym : key
            v = symbolize_keys(value)
            [k,v]
