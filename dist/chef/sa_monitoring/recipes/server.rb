@@ -10,6 +10,10 @@
 include_recipe "rabbitmq"
 include_recipe "redis::server"
 
+rabbitmq_vhost node.sa_monitoring.rabbitmq.vhost do
+  action :create
+end
+
 include_recipe "sa_monitoring::default"
 
 cookbook_file "/etc/sa-monitoring/handler" do
