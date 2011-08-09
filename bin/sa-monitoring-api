@@ -20,11 +20,14 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
     result = amq.queue('results')
 
+    before do
+      content_type 'application/json'
+    end
+
     #
     # Get all clients
     #
     aget '/clients' do
-      content_type 'application/json'
       clients_info = Array.new
       redis.smembers('clients').callback do |clients|
         clients.each_with_index do |client, index|
@@ -40,7 +43,6 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     # Get a client
     #
     aget '/client/:id' do |id|
-      content_type 'application/json'
       redis.get("client:#{id}").callback do |client_info|
         body JSON.parse(client_info).to_json
       end
@@ -50,7 +52,6 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     # Get current events
     #
     aget '/events' do
-      content_type 'application/json'
       client_events = Hash.new
       redis.smembers('clients').callback do |clients|
         clients.each_with_index do |client, index|
@@ -70,7 +71,6 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     # Remove a client and resolve its events
     #
     adelete '/client/:id' do |id|
-      content_type 'application/json'
       redis.sismember('clients', id).callback do |client_exists|
         if client_exists != 0
           redis.exists("events:#{id}").callback do |events_exist|
