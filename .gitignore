@@ -3,3 +3,4 @@ pkg/*
 \#*
 dump.rdb
 certs/*
+.DS_Store
