@@ -9,6 +9,12 @@
 
 include_recipe "sa_monitoring::default"
 
+template "/etc/init/sa-monitoring-client.conf" do
+  source "upstart.erb"
+  variables :service => "client"
+  mode 0644
+end
+
 service "sa-monitoring-client" do
   provider Chef::Provider::Service::Upstart
   action [:enable, :start]

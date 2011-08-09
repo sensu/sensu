@@ -42,6 +42,12 @@ end
 
 include_recipe "sa_monitoring::default"
 
+template "/etc/init/sa-monitoring-server.conf" do
+  source "upstart.erb"
+  variables :service => "server"
+  mode 0644
+end
+
 cookbook_file "/etc/sa-monitoring/handler" do
   mode 0755
 end

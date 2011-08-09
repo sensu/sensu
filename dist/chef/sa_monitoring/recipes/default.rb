@@ -37,18 +37,6 @@ file "/etc/sa-monitoring/config.json" do
 end
 
 %w{
-  server
-  api
-  client
-}.each do |service|
-  template "/etc/init/sa-monitoring-#{service}.conf" do
-    source "upstart.erb"
-    variables :service => service
-    mode 0644
-  end
-end
-
-%w{
   nagios-plugins
   nagios-plugins-basic
   nagios-plugins-standard
