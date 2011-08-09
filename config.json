@@ -19,7 +19,7 @@
     "port": 8080
   },
   "handlers": {
-    "pagerduty": "ruby ./handlers/pagerduty"
+    "pagerduty": "ruby ./handlers/test"
   },
   "checks": {
     "foo": {
