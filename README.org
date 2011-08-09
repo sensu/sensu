@@ -31,6 +31,18 @@
 - RabbitMQ authentication and SSL
 - Reconnect on network failure
 * Configure RabbitMQ
+  user
+
+  : rabbitmqctl add_user sa-monitoring password
+
+  vhost
+
+  : rabbitmqctl add_vhost /sa-monitoring
+
+  permissions
+
+  : rabbitmqctl set_permissions -p /sa-monitoring sa-monitoring ".*" ".*" ".*"
+
   /usr/local/etc/rabbitmq/rabbitmq.config
 
   : [
@@ -43,7 +55,3 @@
   :                    {fail_if_no_peer_cert,true}]}
   :   ]}
   : ].
-
-  rabbitmq_auth_mechanism_ssl
-
-  : curl -L http://www.rabbitmq.com/releases/plugins/v2.5.1/rabbitmq_auth_mechanism_ssl-2.5.1.ez > /usr/local/Cellar/rabbitmq/2.5.1/lib/rabbitmq/erlang/lib/rabbitmq-2.5.1/plugins/rabbitmq_auth_mechanism_ssl-2.5.1.ez

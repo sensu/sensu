@@ -5,21 +5,15 @@ require 'sa-monitoring/config'
 require 'sinatra/async'
 require 'em-hiredis'
 
-rabbitmq_settings = {
-  :host => CONFIG['rabbitmq']['server'],
-  :port => CONFIG['rabbitmq']['port'],
-  :ssl => {
-    :cert_chain_file => CONFIG['rabbitmq']['ssl']['cert'],
-    :private_key_file => CONFIG['rabbitmq']['ssl']['key']
-  }
-}
-
-AMQP.start(rabbitmq_settings) do
+#
+# Connect to RabbitMQ
+#
+AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
 
   class ApiServer < Sinatra::Base
     register Sinatra::Async
 
-    redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['server'] + ':' + CONFIG['redis']['port'].to_s)
+    redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['host'] + ':' + CONFIG['redis']['port'].to_s)
 
     amq = AMQP::Channel.new
     amq.auto_recovery = true

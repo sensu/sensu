@@ -1,18 +1,21 @@
 {
   "rabbitmq": {
-    "server": "localhost",
+    "host": "localhost",
     "port": 5671,
     "ssl": {
-      "cert": "./certs/sa-monitoring-client/cert.pem",
-      "key": "./certs/sa-monitoring-client/key.pem"
-    }
+      "cert_chain_file": "./certs/sa-monitoring-client/cert.pem",
+      "private_key_file": "./certs/sa-monitoring-client/key.pem"
+    },
+    "vhost": "/sa-monitoring",
+    "user": "sa-monitoring",
+    "password": "password"
   },
   "redis": {
-    "server": "localhost",
+    "host": "localhost",
     "port": 6379
   },
   "api": {
-    "server": "localhost",
+    "host": "localhost",
     "port": 8080
   },
   "handlers": {
