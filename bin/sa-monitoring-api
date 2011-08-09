@@ -37,6 +37,16 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     end
 
     #
+    # Get all clients
+    #
+    aget '/client/:id' do |id|
+      content_type 'application/json'
+      redis.get("client:#{id}").callback do |client_info|
+        body JSON.parse(client_info).to_json
+      end
+    end
+
+    #
     # Get current events
     #
     aget '/events' do
