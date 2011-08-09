@@ -69,15 +69,15 @@ AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
           'output' => result['output']
         }
         if result['status'] == 0
-          redis.hexists("alerts:#{client['name']}", result['check']).callback do |exists|
+          redis.hexists("events:#{client['name']}", result['check']).callback do |exists|
             if exists == 1
-              redis.hdel("alerts:#{client['name']}", result['check'])
+              redis.hdel("events:#{client['name']}", result['check'])
               event['action'] = 'resolve'
               handle(event)
             end
           end
         else
-          redis.hset("alerts:#{client['name']}", result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
+          redis.hset("events:#{client['name']}", result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
             event['action'] = 'create'
             handle(event)
           end
@@ -118,7 +118,7 @@ AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
   end
 
   #
-  # Alert when a keep-alive hasn't been received in a defined amount of time
+  # Create an event when a keep-alive hasn't been received in a defined amount of time
   #
   result = amq.queue('results')
 
@@ -134,7 +134,7 @@ AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
           when time_since_last_check >= 120
             result.publish({'check' => 'keepalive', 'client' => client['name'], 'status' => 1, 'output' => 'No keep-alive sent from host in over 120 seconds'}.to_json)
           else
-            redis.hexists("alerts:#{client_id}", 'keepalive').callback do |exists|
+            redis.hexists("events:#{client_id}", 'keepalive').callback do |exists|
               if exists == 1
                 result.publish({'check' => 'keepalive', 'client' => client['name'], 'status' => 0, 'output' => 'Keep-alive sent from host'}.to_json)
               end

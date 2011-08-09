@@ -29,7 +29,7 @@ AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
       redis.smembers('clients').callback do |clients|
         clients.each_with_index do |client, index|
           redis.get("client:#{client}").callback do |client_info|
-            clients_info << JSON.parse(client_info)
+            clients_info.push(JSON.parse(client_info))
             body clients_info.to_json if index == clients.size-1
           end
         end
@@ -39,18 +39,18 @@ AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
     #
     # Get current events
     #
-    aget '/alerts' do
+    aget '/events' do
       content_type 'application/json'
-      client_alerts = Hash.new
+      client_events = Hash.new
       redis.smembers('clients').callback do |clients|
         clients.each_with_index do |client, index|
-          redis.hgetall("alerts:#{client}").callback do |alerts|
-            alerts_hash = Hash[*alerts]
-            alerts_hash.each do |k, v|
-              alerts_hash[k] = JSON.parse(v)
+          redis.hgetall("events:#{client}").callback do |events|
+            events_hash = Hash[*events]
+            events_hash.each do |k, v|
+              events_hash[k] = JSON.parse(v)
             end
-            client_alerts.store(client, alerts_hash)
-            body client_alerts.to_json if index == clients.size-1
+            client_events.store(client, events_hash)
+            body client_events.to_json if index == clients.size-1
           end
         end
       end
@@ -63,21 +63,21 @@ AMQP.start(CONFIG['rabbitmq']) do |rabbitmq|
       content_type 'application/json'
       redis.sismember('clients', id).callback do |client_exists|
         if client_exists != 0
-          redis.exists("alerts:#{id}").callback do |alerts_exist|
-            if alerts_exist != 0
-              redis.hgetall("alerts:#{id}").callback do |alerts|
-                Hash[*alerts].keys.each do |k|
+          redis.exists("events:#{id}").callback do |events_exist|
+            if events_exist != 0
+              redis.hgetall("events:#{id}").callback do |events|
+                Hash[*events].keys.each do |k|
                   result.publish({'check' => k, 'client' => id, 'status' => 0, 'output' => 'client is being removed from database...'}.to_json)
                   EM.add_timer(10) do
                     redis.srem("clients", id)
-                    redis.del("alerts:#{id}")
+                    redis.del("events:#{id}")
                     redis.del("client:#{id}")
                   end
                 end
               end
             else
               redis.srem("clients", id)
-              redis.del("alerts:#{id}")
+              redis.del("events:#{id}")
               redis.del("client:#{id}")
             end
             body({'success' => 'Client is being removed'}.to_json)
