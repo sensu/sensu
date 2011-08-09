@@ -21,14 +21,14 @@ directory "/etc/sa-monitoring/ssl"
 
 ssl = data_bag_item("sa_monitoring", "ssl")
 
-%w{
-  cert
-  key
-}.each do |file|
-  file "/etc/sa-monitoring/ssl/#{file}.pem" do
-    content ssl["client"][file]
-    mode 0644
-  end
+file node.sa_monitoring.rabbitmq.ssl.cert_chain_file do
+  content ssl["client"][cert]
+  mode 0644
+end
+
+file node.sa_monitoring.rabbitmq.ssl.private_key_file do
+  content ssl["client"][key]
+  mode 0644
 end
 
 file "/etc/sa-monitoring/config.json" do
