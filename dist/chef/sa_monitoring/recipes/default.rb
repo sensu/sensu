@@ -7,6 +7,8 @@
 # All rights reserved - Do Not Redistribute
 #
 
+package "libssl-dev"
+
 gem_package "sa-monitoring" do
   version node.sa_monitoring.version
 end
