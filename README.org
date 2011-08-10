@@ -1,35 +1,39 @@
 * A Client Will
 - Have a set of attributes to describe it, including its responsibilities (generate w/ ohai/factor)
-- Subscribe to a set of fanout exchanges base on its responsibilities (roles)
+- Subscribe to a set of fanout exchanges determined by its responsibilities (roles)
 - Send keep alives to a server
 - Execute a check and push the result and its client name to a direct exchange (named "results")
+- Substitute a token (:::token:::) in commands with its matching client attribute
+- Not allow for overlapping check executions of the same name
+- Report when it is unaware of a check
 
 * A Server Will
 - Populate an internal work queue from a JSON config file (generate with OpsChef/Puppet)
 - Subscribe to a direct exchange (named "results")
 - Pull a check from the internal work queue and then push it out onto its associated fanout exchanges (roles)
 - Process results, storing the latest events (critical/warnings) for clients, a good result will flush a previous event for that client (resolve)
-- Trigger the event handlers
+- Trigger the event handlers, providing them with an event file (JSON document)
 
 * An API Will
 - List events
 - Remove a client and resolve any associated events
-- List all clients and their subscriptions
+- List all clients and their attributes
+- List a client and its attributes
 
 * A Handler Will
-- Accept a single command line argument for an event file path
+- Accept a single command line argument for an event file path (-f)
 - Parse the JSON event file
 - Handle the event as it wishes
 
 * A Dashboard Will
 - Display all events (critical/warnings) (including additional check information; owner, notes, etc)
-- Query OpsChef/Puppet for additional client (node) information
+- Display all clients
 
 * Goals
-** Friday, August 6th
+** Friday, August 13th
+- Deploy version 0.1.0 to meta/dev/dev1/qa/ua
 - A Pagerduty handler (not paging)
-- RabbitMQ authentication and SSL
-- Reconnect on network failure
+
 * Configure RabbitMQ
   user
 

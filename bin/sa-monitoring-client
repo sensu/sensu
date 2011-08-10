@@ -34,7 +34,7 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
       if CONFIG['checks'][check['name']]
         unless in_progress.include?(check['name'])
           in_progress.push(check['name'])
-          command = CONFIG['checks'][check['name']]['command'].gsub(/:::(.*?):::/) { CONFIG['client'][ $1.to_s ].to_s }
+          command = CONFIG['checks'][check['name']]['command'].gsub(/:::(.*?):::/) {CONFIG['client'][ $1.to_s ].to_s}
           EM.system('sh', '-c', command + ' 2>&1') do |output, status|
             result.publish({'check' => check['name'], 'client' => CONFIG['client']['name'], 'status' => status.exitstatus, 'output' => output}.to_json)
             in_progress.delete(check['name'])
