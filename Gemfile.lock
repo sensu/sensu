@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    sa-monitoring (0.0.7)
+    sa-monitoring (0.0.9)
       amqp (= 0.7.4)
       async_sinatra
       em-hiredis
