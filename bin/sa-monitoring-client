@@ -9,7 +9,6 @@ require 'sa-monitoring/config'
 AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
   amq = AMQP::Channel.new(rabbitmq)
-  amq.auto_recovery = true
 
   #
   # Send keep-alives

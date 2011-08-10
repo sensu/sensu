@@ -16,7 +16,6 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['host'] + ':' + CONFIG['redis']['port'].to_s)
 
     amq = AMQP::Channel.new
-    amq.auto_recovery = true
 
     result = amq.queue('results')
 
