@@ -7,7 +7,7 @@ module SAM
 
     address = (node.has_key? :ec2) ? node.ec2.public_ipv4 : node.ip_address
 
-    config.merge!({
+    config['client'].merge!({
       :client => {
         :name => node.name,
         :address => address,

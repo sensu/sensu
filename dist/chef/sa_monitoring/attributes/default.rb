@@ -11,4 +11,4 @@ default.sa_monitoring.redis.host = "localhost"
 default.sa_monitoring.redis.port = 6379
 default.sa_monitoring.api.host = "localhost"
 default.sa_monitoring.api.port = 8080
-default.sa_monitoring.client.additional = Hash.new
+default.sa_monitoring.client = Hash.new
