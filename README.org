@@ -29,11 +29,6 @@
 - Display all events (critical/warnings) (including additional check information; owner, notes, etc)
 - Display all clients
 
-* Goals
-** Friday, August 13th
-- Deploy version 0.1.0 to meta/dev/dev1/qa/ua
-- A Pagerduty handler (not paging)
-
 * Configure RabbitMQ
   user
 
@@ -49,6 +44,8 @@
 
   /usr/local/etc/rabbitmq/rabbitmq.config
 
+  substitute PATH with your sa-monitoring project path
+
   : [
   :   {rabbit, [
   :     {ssl_listeners, [5671]},
@@ -59,3 +56,8 @@
   :                    {fail_if_no_peer_cert,true}]}
   :   ]}
   : ].
+
+* Goals
+** Friday, August 12th
+- Deploy version 0.1.0 to meta/dev/dev1/qa/ua
+- A Pagerduty handler (not paging)
