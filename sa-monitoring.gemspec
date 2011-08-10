@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "sa-monitoring"
-  s.version     = "0.0.9"
+  s.version     = "0.1.0"
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sa-monitoring"
@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.add_dependency("em-hiredis")
   s.add_dependency("async_sinatra")
 
-  s.files         = `git ls-files`.split("\n").reject {|f| f =~ /dist/}
+  s.files         = `git ls-files`.split("\n").reject {|f| f =~ /(dist|certs)/}
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
   s.require_paths = ["lib"]
