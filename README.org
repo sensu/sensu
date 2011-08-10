@@ -4,7 +4,7 @@
 - Send keep alives to a server
 - Execute a check and push the result and its client name to a direct exchange (named "results")
 - Substitute a token (:::token:::) in commands with its matching client attribute
-- Not allow for overlapping check executions of the same name
+- Not allow overlapping check executions of the same name
 - Report when it is unaware of a check
 
 * A Server Will
