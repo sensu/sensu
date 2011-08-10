@@ -44,14 +44,14 @@
 
   /usr/local/etc/rabbitmq/rabbitmq.config
 
-  substitute PATH with your sa-monitoring project path
+  substitute **PATH** with your sa-monitoring project path
 
   : [
   :   {rabbit, [
   :     {ssl_listeners, [5671]},
-  :     {ssl_options, [{cacertfile,"PATH/certs/sa-monitoring-ca/cacert.pem"},
-  :                    {certfile,"PATH/certs/sa-monitoring-server/cert.pem"},
-  :                    {keyfile,"PATH/certs/sa-monitoring-server/key.pem"},
+  :     {ssl_options, [{cacertfile,"**PATH**/certs/testca/cacert.pem"},
+  :                    {certfile,"**PATH**/certs/server/cert.pem"},
+  :                    {keyfile,"**PATH**/certs/server/key.pem"},
   :                    {verify,verify_peer},
   :                    {fail_if_no_peer_cert,true}]}
   :   ]}

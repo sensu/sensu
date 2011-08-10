@@ -3,8 +3,8 @@
     "host": "localhost",
     "port": 5671,
     "ssl": {
-      "cert_chain_file": "./certs/sa-monitoring-client/cert.pem",
-      "private_key_file": "./certs/sa-monitoring-client/key.pem"
+      "cert_chain_file": "./certs/client/cert.pem",
+      "private_key_file": "./certs/client/key.pem"
     },
     "vhost": "/sa-monitoring",
     "user": "sa-monitoring",
