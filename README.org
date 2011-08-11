@@ -12,6 +12,7 @@
 - Subscribe to two direct exchanges (named "results" & "checks")
 - Pull a check from the internal work queue and then push it out onto its associated fanout exchanges (roles)
 - Process results, storing the latest events (critical/warnings) for clients, a good result will flush a previous event for that client (resolve)
+- Create an event (critical/warning) when it stops receiving keep-alives from a client
 - Trigger the event handlers, providing them with an event file (JSON document)
 
 * An API Will
