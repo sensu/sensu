@@ -61,4 +61,5 @@
 * Goals
 ** Friday, August 12th
 - Deploy version 0.1.0 to meta/dev/dev1/qa/ua
+- Run with unprivileged user (limited sudo)
 - A Pagerduty handler (not paging)
