@@ -25,7 +25,7 @@ end
 
 time = (0..30).to_a.sample
 
-case (0..2).to_a.sample
+case (0..3).to_a.sample
 when 0
   sleep(time)
   puts "Everything is just peachy :D (sleep: #{time}) (client: #{options[:client]})"
@@ -38,4 +38,8 @@ when 2
   sleep(time)
   puts "GET TO DA CHOPPA! 0_0 (sleep: #{time}) (client: #{options[:client]})"
   exit 2
+when 3
+  sleep(time)
+  puts "Unknown error! (sleep: #{time}) (client: #{options[:client]})"
+  exit 3
 end

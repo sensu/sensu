@@ -59,7 +59,7 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
             events_hash.each do |k, v|
               events_hash[k] = JSON.parse(v)
             end
-            client_events.store(client, events_hash)
+            client_events.store(client, events_hash) unless events_hash.empty?
             body client_events.to_json if index == clients.size-1
           end
         end
