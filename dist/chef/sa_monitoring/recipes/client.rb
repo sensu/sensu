@@ -18,4 +18,5 @@ end
 service "sa-monitoring-client" do
   provider Chef::Provider::Service::Upstart
   action [:enable, :start]
+  subscribes :restart, resources(:file => "/etc/sa-monitoring/config.json"), :delayed
 end
