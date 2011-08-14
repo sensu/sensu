@@ -9,6 +9,8 @@
 
 include_recipe "sa_monitoring::default"
 
+gem_package "thin"
+
 template "/etc/init/sa-monitoring-api.conf" do
   source "upstart.erb"
   variables :service => "api"
