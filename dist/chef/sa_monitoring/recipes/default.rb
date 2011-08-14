@@ -15,6 +15,12 @@ end
 
 directory "/etc/sa-monitoring"
 
+user node.sa_monitoring.user do
+  comment "monitoring user"
+  system true
+  home "/etc/sa-monitoring"
+end
+
 remote_directory "/etc/sa-monitoring/plugins" do
   files_mode 0755
 end

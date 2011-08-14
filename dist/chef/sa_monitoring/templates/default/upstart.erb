@@ -12,4 +12,4 @@ pre-start script
   test -x /usr/bin/sa-monitoring-<%= @service %> || { stop; exit 0; }
 end script
 
-exec /usr/bin/sa-monitoring-<%= @service %>
+exec sudo -u <%= node.sa_monitoring.user %> sh -c "/usr/bin/sa-monitoring-<%= @service %>"
