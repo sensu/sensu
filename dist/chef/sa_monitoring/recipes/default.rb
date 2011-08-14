@@ -21,6 +21,11 @@ user node.sa_monitoring.user do
   home "/etc/sa-monitoring"
 end
 
+template "/etc/sudoers.d/sa-monitoring" do
+  source "sudoers.erb"
+  mode 0440
+end
+
 remote_directory "/etc/sa-monitoring/plugins" do
   files_mode 0755
 end
