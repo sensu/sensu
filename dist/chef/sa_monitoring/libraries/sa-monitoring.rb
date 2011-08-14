@@ -3,7 +3,7 @@ module SAM
   def self.generate_config(node, databag)
     config = Hash.new
 
-    config.merge!(node.sa_monitoring.to_hash)
+    config.merge!(node.sa_monitoring.to_hash.reject {|key,value| %w[user version].include? key})
 
     address = (node.has_key? :ec2) ? node.ec2.public_ipv4 : node.ip_address
 
