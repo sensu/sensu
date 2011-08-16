@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "sa-monitoring"
-  s.version     = "0.1.0"
+  s.version     = "0.1.1"
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sa-monitoring"
