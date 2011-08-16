@@ -67,18 +67,22 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
           'status' => result['status'],
           'output' => result['output']
         }
-        if result['status'] == 0
-          redis.hexists("events:#{client['name']}", result['check']).callback do |exists|
-            if exists == 1
-              redis.hdel("events:#{client['name']}", result['check'])
-              event['action'] = 'resolve'
+        if check['metric']
+          handle(event)
+        else
+          if result['status'] == 0
+            redis.hexists("events:#{client['name']}", result['check']).callback do |exists|
+              if exists == 1
+                redis.hdel("events:#{client['name']}", result['check'])
+                event['action'] = 'resolve'
+                handle(event)
+              end
+            end
+          else
+            redis.hset("events:#{client['name']}", result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
+              event['action'] = 'create'
               handle(event)
             end
-          end
-        else
-          redis.hset("events:#{client['name']}", result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
-            event['action'] = 'create'
-            handle(event)
           end
         end
       end
