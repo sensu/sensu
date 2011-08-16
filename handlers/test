@@ -27,4 +27,6 @@ end
 
 event = JSON.parse(File.open(options[:file], 'r').read)
 
-pp event
+if event.has_key?('action')
+  pp event
+end
