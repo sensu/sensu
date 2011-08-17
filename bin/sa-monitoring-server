@@ -35,20 +35,15 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
       file_name
     end
 
-    handlers = proc do |event_file|
-      CONFIG['handlers'].each do |handler, command|
-        EM.system('sh', '-c', command + ' -f ' + event_file  + ' 2>&1') do |output, status|
-          puts handler
-          puts status.exitstatus
-          puts output
-        end
-      end
-      EM.add_timer(10) do
+    handler = proc do |event_file|
+      EM.system('sh', '-c', CONFIG['handlers'][event['check']['type']] + ' -f ' + event_file  + ' 2>&1') do |output, status|
+        puts status.exitstatus
+        puts output
         File.delete(event_file)
       end
     end
 
-    EM.defer(event_file, handlers)
+    EM.defer(event_file, handler)
   end
 
   #
@@ -61,13 +56,14 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
         client = JSON.parse(client_json)
         check = {'name' => result['check']}
         check.merge!(CONFIG['checks'][result['check']]) if CONFIG['checks'].has_key?(result['check'])
+        check['type'] = 'default' unless check['type']
         event = {
           'client' => client,
           'check' => check,
           'status' => result['status'],
           'output' => result['output']
         }
-        if check['metric']
+        if check['type'] == 'metric'
           handle(event)
         else
           if result['status'] == 0
