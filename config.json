@@ -19,7 +19,7 @@
     "port": 8080
   },
   "handlers": {
-    "test": "ruby ./handlers/test"
+    "default": "ruby ./handlers/test"
   },
   "checks": {
     "foo": {
