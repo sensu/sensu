@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "sa-monitoring"
-  s.version     = "0.1.2"
+  s.version     = "0.1.3"
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sa-monitoring"
@@ -11,6 +11,7 @@ Gem::Specification.new do |s|
   s.add_dependency("json")
   s.add_dependency("uuidtools")
   s.add_dependency("em-hiredis")
+  s.add_dependency("em-syslog")
   s.add_dependency("async_sinatra")
 
   s.files         = `git ls-files`.split("\n").reject {|f| f =~ /(dist|certs|handlers|plugins|config.json)/}

@@ -11,6 +11,14 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
   amq = AMQP::Channel.new(rabbitmq)
 
+  #
+  # Send logs to syslog daemon (UDP)
+  #
+  EM.syslog_setup(CONFIG['syslog']['host'], CONFIG['syslog']['port'])
+
+  #
+  # Connect to redis
+  #
   redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['host'] + ':' + CONFIG['redis']['port'].to_s)
 
   #
@@ -37,8 +45,7 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
     handler = proc do |event_file|
       EM.system('sh', '-c', CONFIG['handlers'][event['check']['type']] + ' -f ' + event_file  + ' 2>&1') do |output, status|
-        puts status.exitstatus
-        puts output
+        EM.debug(event['check']['type'] + ' :: ' + status.exitstatus.to_s + ' :: ' + output)
         File.delete(event_file)
       end
     end

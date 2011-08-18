@@ -14,6 +14,10 @@
     "host": "localhost",
     "port": 6379
   },
+  "syslog": {
+    "host": "localhost",
+    "port": 514
+  },
   "api": {
     "host": "localhost",
     "port": 8080
