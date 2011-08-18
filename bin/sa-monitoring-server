@@ -12,12 +12,12 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
   amq = AMQP::Channel.new(rabbitmq)
 
   #
-  # Send logs to syslog daemon (UDP)
+  # Send logs to a syslog daemon (UDP)
   #
   EM.syslog_setup(CONFIG['syslog']['host'], CONFIG['syslog']['port'])
 
   #
-  # Connect to redis
+  # Connect to redis to store client & event data
   #
   redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['host'] + ':' + CONFIG['redis']['port'].to_s)
 
