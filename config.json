@@ -6,8 +6,8 @@
       "cert_chain_file": "./certs/client/cert.pem",
       "private_key_file": "./certs/client/key.pem"
     },
-    "vhost": "/sa-monitoring",
-    "user": "sa-monitoring",
+    "vhost": "/sensu",
+    "user": "sensu",
     "password": "password"
   },
   "redis": {
