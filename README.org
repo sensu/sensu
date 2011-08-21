@@ -33,19 +33,19 @@
 * Configure RabbitMQ
   user
 
-  : rabbitmqctl add_user sa-monitoring password
+  : rabbitmqctl add_user sensu password
 
   vhost
 
-  : rabbitmqctl add_vhost /sa-monitoring
+  : rabbitmqctl add_vhost /sensu
 
   permissions
 
-  : rabbitmqctl set_permissions -p /sa-monitoring sa-monitoring ".*" ".*" ".*"
+  : rabbitmqctl set_permissions -p /sensu sensu ".*" ".*" ".*"
 
   /usr/local/etc/rabbitmq/rabbitmq.config
 
-  substitute **PATH** with your sa-monitoring project path
+  substitute **PATH** with your sensu project path
 
   : [
   :   {rabbit, [
@@ -57,8 +57,4 @@
   :                    {fail_if_no_peer_cert,true}]}
   :   ]}
   : ].
-
-* Goals
-** Friday, August 19th
-- A Pagerduty handler (not paging)
 
