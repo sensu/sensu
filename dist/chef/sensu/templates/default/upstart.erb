@@ -1,7 +1,7 @@
-# Upstart: /etc/init/sa-monitoring-<%= @service %>.conf
+# Upstart: /etc/init/sensu-<%= @service %>.conf
 # Managed by OpsChef
 
-description "sa monitoring <%= @service %>"
+description "sensu <%= @service %>"
 
 start on (local-filesystems and net-device-up IFACE=eth0)
 stop on [!12345]
@@ -9,7 +9,7 @@ stop on [!12345]
 respawn
 
 pre-start script
-  test -x /usr/bin/sa-monitoring-<%= @service %> || { stop; exit 0; }
+  test -x /usr/bin/sensu-<%= @service %> || { stop; exit 0; }
 end script
 
-exec sudo -u <%= node.sa_monitoring.user %> sh -c "/usr/bin/sa-monitoring-<%= @service %>"
+exec sudo -u <%= node.sensu.user %> sh -c "/usr/bin/sensu-<%= @service %>"

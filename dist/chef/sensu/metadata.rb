@@ -1,7 +1,7 @@
 maintainer       "Sonian, Inc."
-maintainer_email "YOUR_EMAIL"
+maintainer_email "chefs@sonian.net"
 license          "All rights reserved"
-description      "Installs/Configures sa-monitoring"
+description      "Installs/Configures sensu"
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.rdoc'))
 version          "0.0.1"
 

@@ -1,8 +1,8 @@
 #
-# Cookbook Name:: sa_monitoring
+# Cookbook Name:: sensu
 # Recipe:: server
 #
-# Copyright 2011, YOUR_COMPANY_NAME
+# Copyright 2011, Sonian Inc.
 #
 # All rights reserved - Do Not Redistribute
 #
@@ -12,7 +12,7 @@ include_recipe "redis::server"
 
 directory "/etc/rabbitmq/ssl"
 
-ssl = data_bag_item("sa_monitoring", "ssl")
+ssl = data_bag_item("sensu", "ssl")
 
 %w{
   cacert
@@ -30,30 +30,30 @@ template "/etc/rabbitmq/rabbitmq.config" do
   notifies :restart, resources(:service => "rabbitmq-server")
 end
 
-rabbitmq_vhost node.sa_monitoring.rabbitmq.vhost do
+rabbitmq_vhost node.sensu.rabbitmq.vhost do
   action :create
 end
 
-rabbitmq_user node.sa_monitoring.rabbitmq.user do
+rabbitmq_user node.sensu.rabbitmq.user do
   action :create
-  password node.sa_monitoring.rabbitmq.password
-  permissions({node.sa_monitoring.rabbitmq.vhost => [".*", ".*", ".*"]})
+  password node.sensu.rabbitmq.password
+  permissions({node.sensu.rabbitmq.vhost => [".*", ".*", ".*"]})
 end
 
-include_recipe "sa_monitoring::default"
+include_recipe "sensu::default"
 
-template "/etc/init/sa-monitoring-server.conf" do
+template "/etc/init/sensu-server.conf" do
   source "upstart.erb"
   variables :service => "server"
   mode 0644
 end
 
-cookbook_file "/etc/sa-monitoring/handler" do
+cookbook_file "/etc/sensu/handler" do
   mode 0755
 end
 
-service "sa-monitoring-server" do
+service "sensu-server" do
   provider Chef::Provider::Service::Upstart
   action [:enable, :start]
-  subscribes :restart, resources(:file => "/etc/sa-monitoring/config.json"), :delayed
+  subscribes :restart, resources(:file => "/etc/sensu/config.json"), :delayed
 end

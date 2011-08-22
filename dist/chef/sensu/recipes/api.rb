@@ -1,24 +1,24 @@
 #
-# Cookbook Name:: sa_monitoring
+# Cookbook Name:: sensu
 # Recipe:: api
 #
-# Copyright 2011, YOUR_COMPANY_NAME
+# Copyright 2011, Sonian Inc.
 #
 # All rights reserved - Do Not Redistribute
 #
 
-include_recipe "sa_monitoring::default"
+include_recipe "sensu::default"
 
 gem_package "thin"
 
-template "/etc/init/sa-monitoring-api.conf" do
+template "/etc/init/sensu-api.conf" do
   source "upstart.erb"
   variables :service => "api"
   mode 0644
 end
 
-service "sa-monitoring-api" do
+service "sensu-api" do
   provider Chef::Provider::Service::Upstart
   action [:enable, :start]
-  subscribes :restart, resources(:file => "/etc/sa-monitoring/config.json"), :delayed
+  subscribes :restart, resources(:file => "/etc/sensu/config.json"), :delayed
 end

@@ -3,7 +3,6 @@
 require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'optparse'
 require 'json'
-require 'logger'
 
 options = {}
 
@@ -27,5 +26,4 @@ end
 
 event = JSON.parse(File.open(options[:file], 'r').read)
 
-log = Logger.new('/tmp/sa-monitoring.log')
-log.debug event.to_json
+puts event.to_json

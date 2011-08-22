@@ -1,22 +1,22 @@
 #
-# Cookbook Name:: sa_monitoring
+# Cookbook Name:: sensu
 # Recipe:: client
 #
-# Copyright 2011, YOUR_COMPANY_NAME
+# Copyright 2011, Sonian Inc.
 #
 # All rights reserved - Do Not Redistribute
 #
 
-include_recipe "sa_monitoring::default"
+include_recipe "sensu::default"
 
-template "/etc/init/sa-monitoring-client.conf" do
+template "/etc/init/sensu-client.conf" do
   source "upstart.erb"
   variables :service => "client"
   mode 0644
 end
 
-service "sa-monitoring-client" do
+service "sensu-client" do
   provider Chef::Provider::Service::Upstart
   action [:enable, :start]
-  subscribes :restart, resources(:file => "/etc/sa-monitoring/config.json"), :delayed
+  subscribes :restart, resources(:file => "/etc/sensu/config.json"), :delayed
 end

@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
-require 'sa-monitoring/config'
+require 'sensu/config'
 require 'em-hiredis'
 
 #
@@ -36,7 +36,7 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
   #
   def handle(event)
     event_file = proc do
-      file_name = '/tmp/sa-monitoring/event-' + UUIDTools::UUID.random_create.to_s
+      file_name = '/tmp/sensu/event-' + UUIDTools::UUID.random_create.to_s
       File.open(file_name, 'w') do |file|
         file.write(JSON.pretty_generate(event))
       end
