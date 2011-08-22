@@ -34,7 +34,8 @@
   - Display all events (critical/warnings) (including additional check information; owner, notes, etc)
   - Display all clients
 
-** Configure RabbitMQ
+** Local Setup
+*** Configure RabbitMQ
   user
 
   : rabbitmqctl add_user sensu password
