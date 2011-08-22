@@ -3,7 +3,6 @@
 require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'optparse'
 require 'json'
-require 'pp'
 
 options = {}
 
@@ -28,5 +27,5 @@ end
 event = JSON.parse(File.open(options[:file], 'r').read)
 
 if event.has_key?('action')
-  pp event
+  puts event.to_json
 end
