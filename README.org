@@ -1,36 +1,40 @@
-* A Client Will
-- Have a set of attributes to describe it, including its responsibilities (generate w/ ohai/factor)
-- Subscribe to a set of fanout exchanges determined by its responsibilities (roles)
-- Send keep alives to a server
-- Execute a check and push the result and its client name to a direct exchange (named "results")
-- Substitute a token (:::token:::) in commands with its matching client attribute
-- Not allow overlapping check executions of the same name
-- Report when it is unaware of a check
+* Development
+  Keep it simple.
 
-* A Server Will
-- Populate an internal work queue from a JSON config file (generate with OpsChef/Puppet)
-- Subscribe to two direct exchanges (named "results" & "checks")
-- Pull a check from the internal work queue and then push it out onto its associated fanout exchanges (roles)
-- Process results, storing the latest events (critical/warnings) for clients, a good result will flush a previous event for that client (resolve)
-- Create an event (critical/warning) when it stops receiving keep-alives from a client
-- Trigger the event handlers, providing them with an event file (JSON document)
+** RDD
+*** A Client Will
+  - Have a set of attributes to describe it, including its responsibilities (generate w/ ohai/factor)
+  - Subscribe to a set of fanout exchanges determined by its responsibilities (roles)
+  - Send keep alives to a server
+  - Execute a check and push the result and its client name to a direct exchange (named "results")
+  - Substitute a token (:::token:::) in commands with its matching client attribute
+  - Not allow overlapping check executions of the same name
+  - Report when it is unaware of a check
 
-* An API Will
-- List events
-- Remove a client and resolve any associated events
-- List all clients and their attributes
-- List a client and its attributes
+*** A Server Will
+  - Populate an internal work queue from a JSON config file (generate with OpsChef/Puppet)
+  - Subscribe to two direct exchanges (named "results" & "checks")
+  - Pull a check from the internal work queue and then push it out onto its associated fanout exchanges (roles)
+  - Process results, storing the latest events (critical/warnings) for clients, a good result will flush a previous event for that client (resolve)
+  - Create an event (critical/warning) when it stops receiving keep-alives from a client
+  - Trigger the event handlers, providing them with an event file (JSON document)
 
-* A Handler Will
-- Accept a single command line argument for an event file path (-f)
-- Parse the JSON event file
-- Handle the event as it wishes
+*** An API Will
+  - List events
+  - Remove a client and resolve any associated events
+  - List all clients and their attributes
+  - List a client and its attributes
 
-* A Dashboard Will
-- Display all events (critical/warnings) (including additional check information; owner, notes, etc)
-- Display all clients
+*** A Handler Will
+  - Accept a single command line argument for an event file path (-f)
+  - Parse the JSON event file
+  - Handle the event as it wishes
 
-* Configure RabbitMQ
+*** A Dashboard Will
+  - Display all events (critical/warnings) (including additional check information; owner, notes, etc)
+  - Display all clients
+
+** Configure RabbitMQ
   user
 
   : rabbitmqctl add_user sensu password
@@ -57,4 +61,3 @@
   :                    {fail_if_no_peer_cert,true}]}
   :   ]}
   : ].
-
