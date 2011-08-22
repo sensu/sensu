@@ -16,8 +16,11 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
   keepalive = amq.queue('keepalives')
 
   keepalive.publish(CONFIG['client'].merge({'timestamp' => Time.now.to_i}).to_json)
+
   EM.add_periodic_timer(30) do
+
     keepalive.publish(CONFIG['client'].merge({'timestamp' => Time.now.to_i}).to_json)
+
   end
 
   #
@@ -28,31 +31,54 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
   in_progress = Array.new
 
   CONFIG['client']['subscriptions'].each do |exchange|
+
     uniq_queue_name = UUIDTools::UUID.random_create.to_s
+
     amq.queue(uniq_queue_name, :auto_delete => true).bind(amq.fanout(exchange)).subscribe do |check_json|
+
       check = JSON.parse(check_json)
+
       if CONFIG['checks'][check['name']]
+
         unless in_progress.include?(check['name'])
+
           in_progress.push(check['name'])
-          command = CONFIG['checks'][check['name']]['command'].gsub(/:::(.*?):::/) {CONFIG['client'][ $1.to_s ].to_s}
+
+          command = CONFIG['checks'][check['name']]['command'].gsub(/:::(.*?):::/) {CONFIG['client'][$1.to_s].to_s}
+
           EM.system('sh', '-c', command + ' 2>&1') do |output, status|
+
             result.publish({'check' => check['name'], 'client' => CONFIG['client']['name'], 'status' => status.exitstatus, 'output' => output}.to_json)
+
             in_progress.delete(check['name'])
+
           end
+
         end
+
       else
+
         result.publish({'check' => check['name'], 'client' => CONFIG['client']['name'], 'status' => 3, 'output' => "Unknown check"}.to_json)
+
       end
+
     end
+
   end
 
   #
   # Recognize exit command
   #
   Signal.trap("INT") do
+
     EM.stop
+
   end
+
   Signal.trap("TERM") do
+
     EM.stop
+
   end
+
 end

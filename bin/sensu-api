@@ -11,6 +11,7 @@ require 'em-hiredis'
 AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
   class ApiServer < Sinatra::Base
+
     register Sinatra::Async
 
     #
@@ -19,92 +20,151 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['host'] + ':' + CONFIG['redis']['port'].to_s)
 
     #
-    # Use the result queue to create or resolve events
+    # Use the RabbitMQ result queue to create or resolve events
     #
     amq = AMQP::Channel.new
+
     result = amq.queue('results')
 
     #
     # Default JSON content type
     #
     before do
+
       content_type 'application/json'
+
     end
 
     #
     # Get all clients
     #
     aget '/clients' do
+
       clients_info = Array.new
+
       redis.smembers('clients').callback do |clients|
+
         clients.each_with_index do |client, index|
+
           redis.get("client:#{client}").callback do |client_info|
+
             clients_info.push(JSON.parse(client_info))
+
             body clients_info.to_json if index == clients.size-1
+
           end
+
         end
+
       end
+
     end
 
     #
     # Get a client
     #
     aget '/client/:id' do |id|
+
       redis.get("client:#{id}").callback do |client_info|
+
         body JSON.parse(client_info).to_json
+
       end
+
     end
 
     #
     # Get current events
     #
     aget '/events' do
+
       client_events = Hash.new
+
       redis.smembers('clients').callback do |clients|
+
         clients.each_with_index do |client, index|
+
           redis.hgetall("events:#{client}").callback do |events|
+
             events_hash = Hash[*events]
+
             events_hash.each do |k, v|
+
               events_hash[k] = JSON.parse(v)
+
             end
+
             client_events.store(client, events_hash) unless events_hash.empty?
+
             body client_events.to_json if index == clients.size-1
+
           end
+
         end
+
       end
+
     end
 
     #
     # Remove a client and resolve its events
     #
     adelete '/client/:id' do |id|
+
       redis.sismember('clients', id).callback do |client_exists|
+
         if client_exists != 0
+
           redis.exists("events:#{id}").callback do |events_exist|
+
             if events_exist != 0
+
               redis.hgetall("events:#{id}").callback do |events|
+
                 Hash[*events].keys.each do |k|
+
                   result.publish({'check' => k, 'client' => id, 'status' => 0, 'output' => 'client is being removed from database...'}.to_json)
+
                   EM.add_timer(10) do
+
                     redis.srem("clients", id)
+
                     redis.del("events:#{id}")
+
                     redis.del("client:#{id}")
+
                   end
+
                 end
+
               end
+
             else
+
               redis.srem("clients", id)
+
               redis.del("events:#{id}")
+
               redis.del("client:#{id}")
+
             end
+
             body({'success' => 'Client is being removed'}.to_json)
+
           end
+
         else
-          status 404 # client doesn't exist
+
+          status 404
+
           body({'error' => 'Client not found'}.to_json)
+
         end
+
       end
+
     end
+
   end
 
   ApiServer.run!({:port => CONFIG['api']['port']})
@@ -113,9 +173,15 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
   # Recognize exit command
   #
   Signal.trap("INT") do
+
     EM.stop
+
   end
+
   Signal.trap("TERM") do
+
     EM.stop
+
   end
+
 end
