@@ -15,19 +15,19 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     register Sinatra::Async
 
     #
-    # Connect to Redis
+    # Connect to redis to read client & event data
     #
     redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['host'] + ':' + CONFIG['redis']['port'].to_s)
 
     #
-    # Use the RabbitMQ result queue to create or resolve events
+    # Use the RabbitMQ results queue to create or resolve events
     #
     amq = AMQP::Channel.new
 
     result = amq.queue('results')
 
     #
-    # Default JSON content type
+    # Set API content type to JSON
     #
     before do
 
@@ -46,9 +46,9 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
         clients.each_with_index do |client, index|
 
-          redis.get("client:#{client}").callback do |client_info|
+          redis.get("client:#{client}").callback do |client_json|
 
-            clients_info.push(JSON.parse(client_info))
+            clients_info.push(JSON.parse(client_json))
 
             body clients_info.to_json if index == clients.size-1
 
@@ -65,9 +65,9 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     #
     aget '/client/:id' do |id|
 
-      redis.get("client:#{id}").callback do |client_info|
+      redis.get("client:#{id}").callback do |client_json|
 
-        body JSON.parse(client_info).to_json
+        body client_json
 
       end
 
