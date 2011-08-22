@@ -1,14 +1,16 @@
 def symbolize_keys(item)
   case item
   when Array
-    item.map {|i| symbolize_keys(i)}
+    item.map do |i|
+      symbolize_keys(i)
+    end
   when Hash
     Hash[
-          item.map { |key, value|
-           k = key.is_a?(String) ? key.to_sym : key
-           v = symbolize_keys(value)
-           [k,v]
-          }
+          item.map do |key, value|
+            k = key.is_a?(String) ? key.to_sym : key
+            v = symbolize_keys(value)
+            [k,v]
+          end
         ]
   else
     item

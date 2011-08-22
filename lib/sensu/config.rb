@@ -3,7 +3,7 @@ require 'json'
 require 'uuidtools'
 require 'amqp'
 require 'em/syslog'
-require 'sa-monitoring/helpers'
+require 'sensu/helpers'
 
 #
 # Read the CM created JSON config file
@@ -11,7 +11,7 @@ require 'sa-monitoring/helpers'
 config_file = if ENV['test']
   File.dirname(__FILE__) + '/../../config.json'
 else
-  '/etc/sa-monitoring/config.json'
+  '/etc/sensu/config.json'
 end
 
 CONFIG = JSON.parse(File.open(config_file, 'r').read)
@@ -20,6 +20,6 @@ CONFIG = JSON.parse(File.open(config_file, 'r').read)
 # Create a tmp directory
 #
 begin
-  Dir.mkdir('/tmp/sa-monitoring')
+  Dir.mkdir('/tmp/sensu')
 rescue SystemCallError
 end
