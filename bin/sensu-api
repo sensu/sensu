@@ -13,12 +13,20 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
   class ApiServer < Sinatra::Base
     register Sinatra::Async
 
+    #
+    # Connect to Redis
+    #
     redis = EM::Hiredis.connect('redis://' + CONFIG['redis']['host'] + ':' + CONFIG['redis']['port'].to_s)
 
+    #
+    # Use the result queue to create or resolve events
+    #
     amq = AMQP::Channel.new
-
     result = amq.queue('results')
 
+    #
+    # Default JSON content type
+    #
     before do
       content_type 'application/json'
     end
