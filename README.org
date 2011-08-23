@@ -2,7 +2,7 @@
   Sensu is a monitoring system framework, handling the remote execution of checks.
 
 * License
-  Sensu is released under the MIT license.
+  Sensu is released under the [[https://github.com/sonian/sensu/blob/master/MIT-LICENSE.txt][MIT license]].
 
 * Contributing
   - [[http://help.github.com/fork-a-repo/][Fork]] [[https://github.com/sonian/sensu][Sensu]]
