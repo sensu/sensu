@@ -1,38 +1,48 @@
-* Development
+* Welcome to Sensu
+  Sensu is a monitoring system framework, handling the remote execution of checks.
+
+* License
+  Sensu is released under the MIT license.
+
+* Contributing
+  - [[http://help.github.com/fork-a-repo/][Fork]] [[https://github.com/sonian/sensu][Sensu]]
+  - Use a [[https://github.com/dchelimsky/rspec/wiki/Topic-Branches][topic branch]]
+  - Create a [[http://help.github.com/send-pull-requests/][pull request]]
+
   Keep it simple.
 
-** RDD
+** Readme Driven Development
 *** A Client Will
-  - Have a set of attributes to describe it, including its responsibilities (generate w/ ohai/factor)
-  - Subscribe to a set of fanout exchanges determined by its responsibilities (roles)
+  - Have a set of attributes to describe it, including its responsibilities
+  - Subscribe to a set of AMQP fanout exchanges determined by its responsibilities
   - Send keep alives to a server
-  - Execute a check and push the result and its client name to a direct exchange (named "results")
-  - Substitute a token (:::token:::) in commands with its matching client attribute
+  - Substitute tokens in a check command with its matching client attribute
+  - Receive a check from a queue, execute it, and publish the result with its client name
   - Not allow overlapping check executions of the same name
   - Report when it is unaware of a check
 
 *** A Server Will
-  - Populate an internal work queue from a JSON config file (generate with OpsChef/Puppet)
-  - Subscribe to two direct exchanges (named "results" & "checks")
-  - Pull a check from the internal work queue and then push it out onto its associated fanout exchanges (roles)
-  - Process results, storing the latest events (critical/warnings) for clients, a good result will flush a previous event for that client (resolve)
-  - Create an event (critical/warning) when it stops receiving keep-alives from a client
-  - Trigger the event handlers, providing them with an event file (JSON document)
+  - Subscribe to a AMQP direct exhange, one queue for check scheduling/execution, one for check results
+  - Populate a check scheduling queue from a JSON config file
+  - Pull a check from the check scheduling queue and push it onto its associated fanout exchanges
+  - Pull check results, storing the latest events for clients, a good result will flush a previous event for that client
+  - Create an event when it stops receiving keep-alives from a client
+  - Trigger a specific event handler, determined by the check type that produced the event, providing it with a JSON event file
 
 *** An API Will
-  - List events
-  - Remove a client and resolve any associated events
+  - List all current events
   - List all clients and their attributes
-  - List a client and its attributes
+  - Show a client and its attributes
+  - Remove a client and resolve associated events
+
+*** A Plugin Will
+  - Output to STDOUT
+  - Return a valid exit status code
 
 *** A Handler Will
-  - Accept a single command line argument for an event file path (-f)
+  - Accept command line argument for an event file path (-f)
   - Parse the JSON event file
   - Handle the event as it wishes
-
-*** A Dashboard Will
-  - Display all events (critical/warnings) (including additional check information; owner, notes, etc)
-  - Display all clients
 
 ** Local Setup
 *** Configure RabbitMQ
