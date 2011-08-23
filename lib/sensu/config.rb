@@ -32,6 +32,6 @@ rescue SystemCallError
 end
 
 #
-# Set config constant
+# Set the config constant
 #
 CONFIG = config
