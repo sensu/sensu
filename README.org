@@ -14,20 +14,20 @@
 ** Readme Driven Development
 *** A Client Will
   - Have a set of attributes to describe it, including its responsibilities
-  - Subscribe to a set of AMQP fanout exchanges determined by its responsibilities
-  - Send keep alives to a server
-  - Substitute tokens in a check command with its matching client attribute
-  - Receive a check from a queue, execute it, and publish the result with its client name
+  - Send keep-alives to a server
+  - Subscribe to a set of queues bound to a set of fanout exchanges, determined by its responsibilities
+  - Substitute tokens in check commands with their matching client attribute
+  - Receive checks from subscriptions, execute them, and publish the results to a queue with its client name
   - Not allow overlapping check executions of the same name
-  - Report when it is unaware of a check
+  - Report when it is unaware of a check it received from a subscription
 
 *** A Server Will
-  - Subscribe to a AMQP direct exhange, one queue for check scheduling/execution, one for check results
-  - Populate a check scheduling queue from a JSON config file
+  - Subscribe to a queue for check scheduling, another for check results
+  - Populate the check scheduling queue using a JSON config file
   - Pull a check from the check scheduling queue and push it onto its associated fanout exchanges
   - Pull check results, storing the latest events for clients, a good result will flush a previous event for that client
-  - Create an event when it stops receiving keep-alives from a client
-  - Trigger a specific event handler, determined by the check type that produced the event, providing it with a JSON event file
+  - Create an event when it stops receiving keep-alives from a client, a new keep-alive for the client will clear the event
+  - Trigger a event handler, determined by the type of the check that produced the event, providing it with a JSON event file
 
 *** An API Will
   - List all current events
@@ -40,7 +40,7 @@
   - Return a valid exit status code
 
 *** A Handler Will
-  - Accept command line argument for an event file path (-f)
+  - Accept a command line argument "-f", for an event file path
   - Parse the JSON event file
   - Handle the event as it wishes
 
@@ -60,7 +60,7 @@
 
   /usr/local/etc/rabbitmq/rabbitmq.config
 
-  substitute **PATH** with your sensu project path
+  substitute **PATH** with your Sensu project path
 
   : [
   :   {rabbit, [
