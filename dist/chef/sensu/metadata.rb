@@ -1,7 +1,7 @@
 maintainer       "Sonian, Inc."
 maintainer_email "chefs@sonian.net"
-license          "All rights reserved"
-description      "Installs/Configures sensu"
+license          "Apache 2.0"
+description      "Installs/Configures Sensu"
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.rdoc'))
 version          "0.0.1"
 

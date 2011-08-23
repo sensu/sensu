@@ -1,5 +1,5 @@
 # most of these values can be replaced with your method of discovery
-default.sensu.version = "0.1.0"
+default.sensu.version = "0.2.0"
 default.sensu.user = "sensu"
 default.sensu.rabbitmq.host = "localhost"
 default.sensu.rabbitmq.port = 5671
