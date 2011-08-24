@@ -8,11 +8,9 @@ module Sensu
     address = (node.has_key? :ec2) ? node.ec2.public_ipv4 : node.ip_address
 
     config['client'].merge!({
-      :client => {
-        :name => node.name,
-        :address => address,
-        :subscriptions => node.roles
-      }
+      :name => node.name,
+      :address => address,
+      :subscriptions => node.roles
     })
 
     config.merge!(databag.reject {|key,value| %w[id chef_type data_bag].include? key})

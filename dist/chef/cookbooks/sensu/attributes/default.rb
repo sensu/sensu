@@ -12,4 +12,6 @@ default.sensu.redis.host = "localhost"
 default.sensu.redis.port = 6379
 default.sensu.api.host = "localhost"
 default.sensu.api.port = 8080
+default.sensu.syslog.host = "localhost"
+default.sensu.syslog.port = "514"
 default.sensu.client = Hash.new
