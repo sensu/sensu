@@ -14,14 +14,7 @@ else
   '/etc/sensu/config.json'
 end
 
-config = JSON.parse(File.open(config_file, 'r').read)
-
-#
-# Substitute tokens in check commands with their matching client attribute
-#
-config['checks'].each_key do |name|
-  config['checks'][name]['command'].gsub!(/:::(.*?):::/) { config['client'][$1.to_s].to_s }
-end
+CONFIG = JSON.parse(File.open(config_file, 'r').read)
 
 #
 # Create a tmp directory
@@ -30,8 +23,3 @@ begin
   Dir.mkdir('/tmp/sensu')
 rescue SystemCallError
 end
-
-#
-# Set the config constant
-#
-CONFIG = config
