@@ -44,7 +44,11 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
           in_progress.push(check['name'])
 
-          command = CONFIG['checks'][check['name']]['command'].gsub!(/:::(.*?):::/) { CONFIG['client'][$1.to_s].to_s }
+          command = CONFIG['checks'][check['name']]['command'].gsub(/:::(.*?):::/) do
+
+            CONFIG['client'][$1.to_s].to_s
+
+          end
 
           EM.system('sh', '-c', command + ' 2>&1') do |output, status|
 
