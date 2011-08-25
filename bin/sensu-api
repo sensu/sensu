@@ -159,7 +159,7 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
             else
 
-              redis.srem("clients", client)
+              redis.srem('clients', client)
 
               redis.del('events:' + client)
 
@@ -169,7 +169,7 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
             status 204
 
-            body ""
+            body ''
 
           end
 
@@ -177,7 +177,7 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
           status 404
 
-          body ""
+          body ''
 
         end
 
@@ -192,13 +192,13 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
   #
   # Recognize exit command
   #
-  Signal.trap("INT") do
+  Signal.trap('INT') do
 
     EM.stop
 
   end
 
-  Signal.trap("TERM") do
+  Signal.trap('TERM') do
 
     EM.stop
 

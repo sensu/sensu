@@ -62,7 +62,7 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
       else
 
-        result.publish({'check' => check['name'], 'client' => CONFIG['client']['name'], 'status' => 3, 'output' => "Unknown check"}.to_json)
+        result.publish({'check' => check['name'], 'client' => CONFIG['client']['name'], 'status' => 3, 'output' => 'Unknown check'}.to_json)
 
       end
 
@@ -73,13 +73,13 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
   #
   # Recognize exit command
   #
-  Signal.trap("INT") do
+  Signal.trap('INT') do
 
     EM.stop
 
   end
 
-  Signal.trap("TERM") do
+  Signal.trap('TERM') do
 
     EM.stop
 
