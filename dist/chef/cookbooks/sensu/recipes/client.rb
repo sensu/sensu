@@ -19,6 +19,10 @@
 
 include_recipe "sensu::default"
 
+remote_directory "/etc/sensu/plugins" do
+  files_mode 0755
+end
+
 template "/etc/init/sensu-client.conf" do
   source "upstart.erb"
   variables :service => "client"

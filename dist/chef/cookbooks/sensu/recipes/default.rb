@@ -36,10 +36,6 @@ template "/etc/sudoers.d/sensu" do
   mode 0440
 end
 
-remote_directory "/etc/sensu/plugins" do
-  files_mode 0755
-end
-
 directory "/etc/sensu/ssl"
 
 ssl = data_bag_item("sensu", "ssl")
