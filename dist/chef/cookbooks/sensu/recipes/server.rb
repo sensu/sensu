@@ -52,14 +52,14 @@ end
 
 include_recipe "sensu::default"
 
+remote_directory "/etc/sensu/handlers" do
+  files_mode 0755
+end
+
 template "/etc/init/sensu-server.conf" do
   source "upstart.erb"
   variables :service => "server"
   mode 0644
-end
-
-remote_directory "/etc/sensu/handlers" do
-  files_mode 0755
 end
 
 service "sensu-server" do
