@@ -10,8 +10,10 @@ require 'em-hiredis'
 #
 AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
 
+  #
+  # Use async Sinatra to provide an API
+  #
   class ApiServer < Sinatra::Base
-
     register Sinatra::Async
 
     #
@@ -23,185 +25,115 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
     # Use the RabbitMQ results queue to create or resolve events
     #
     amq = AMQP::Channel.new
-
     result = amq.queue('results')
 
     #
     # Set API content type to JSON
     #
     before do
-
       content_type 'application/json'
-
     end
 
     #
     # Get all clients
     #
     aget '/clients' do
-
       current_clients = Array.new
-
       redis.smembers('clients').callback do |clients|
-
         unless clients.empty?
-
           clients.each_with_index do |client, index|
-
             redis.get('client:' + client).callback do |client_json|
-
               current_clients.push(JSON.parse(client_json))
-
               body current_clients.to_json if index == clients.size-1
-
             end
-
           end
-
         else
-
           body current_clients.to_json
-
         end
-
       end
-
     end
 
     #
     # Get a client
     #
     aget '/client/:id' do |client|
-
       redis.get('client:' + client).callback do |client_json|
-
         status 404 if client_json.nil?
-
         body client_json
-
       end
-
     end
 
     #
     # Get current events
     #
     aget '/events' do
-
       current_events = Hash.new
-
       redis.smembers('clients').callback do |clients|
-
         unless clients.empty?
-
           clients.each_with_index do |client, index|
-
             redis.hgetall('events:' + client).callback do |events|
-
               client_events = Hash[*events]
-
               client_events.each do |key, value|
-
                 client_events[key] = JSON.parse(value)
-
               end
-
               current_events.store(client, client_events) unless client_events.empty?
-
               body current_events.to_json if index == clients.size-1
-
             end
-
           end
-
         else
-
           body current_events.to_json
-
         end
-
       end
-
     end
 
     #
     # Remove a client and resolve its events
     #
     adelete '/client/:id' do |client|
-
       redis.sismember('clients', client).callback do |client_exists|
-
         unless client_exists == 0
-
           redis.exists('events:' + client).callback do |events_exist|
-
             unless events_exist == 0
-
               redis.hgetall('events:' + client).callback do |events|
-
                 Hash[*events].keys.each do |check|
-
                   result.publish({'check' => check, 'client' => client, 'status' => 0, 'output' => 'client is being removed...'}.to_json)
-
                 end
-
                 EM.add_timer(10) do
-
                   redis.srem('clients', client)
-
                   redis.del('events:' + client)
-
                   redis.del('client:' + client)
-
                 end
-
               end
-
             else
-
               redis.srem('clients', client)
-
               redis.del('events:' + client)
-
               redis.del('client:' + client)
-
             end
-
             status 204
-
             body ''
-
           end
-
         else
-
           status 404
-
           body ''
-
         end
-
       end
-
     end
-
   end
 
+  #
+  # Run the API on the port defined in the config
+  #
   ApiServer.run!({:port => CONFIG['api']['port']})
 
   #
   # Recognize exit command
   #
   Signal.trap('INT') do
-
     EM.stop
-
   end
 
   Signal.trap('TERM') do
-
     EM.stop
-
   end
 
 end
