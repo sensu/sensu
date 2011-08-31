@@ -8,7 +8,6 @@ require 'em-hiredis'
 # Connect to RabbitMQ
 #
 AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
-
   amq = AMQP::Channel.new(rabbitmq)
 
   #
@@ -25,226 +24,134 @@ AMQP.start(symbolize_keys(CONFIG['rabbitmq'])) do |rabbitmq|
   # Accept client keep-alives
   #
   amq.queue('keepalives').subscribe do |keepalive_json|
-
     client = JSON.parse(keepalive_json)['name']
-
     redis.set('client:' + client, keepalive_json).callback do
-
       redis.sadd('clients', client)
-
     end
-
   end
 
   #
   # Use custom handlers for events
   #
   def handle(event)
-
     event_file = proc do
-
       file_name = '/tmp/sensu/event-' + UUIDTools::UUID.random_create.to_s
-
       File.open(file_name, 'w') do |file|
-
         file.write(JSON.pretty_generate(event))
-
       end
-
       file_name
-
     end
-
     handler = proc do |event_file|
-
       EM.system('sh', '-c', CONFIG['handlers'][event['check']['handler']] + ' -f ' + event_file  + ' 2>&1') do |output, status|
-
         EM.debug('handled :: ' + event['check']['handler'] + ' :: ' + status.exitstatus.to_s + ' :: ' + output)
-
         File.delete(event_file)
-
       end
-
     end
-
     EM.defer(event_file, handler)
-
   end
 
   #
   # Publish critical/warning check results
   #
   amq.queue('results').subscribe do |result_json|
-
     result = JSON.parse(result_json)
-
     redis.get('client:' + result['client']).callback do |client_json|
-
       unless client_json.nil?
-
         client = JSON.parse(client_json)
-
         check = {'name' => result['check']}
-
         check.merge!(CONFIG['checks'][result['check']]) if CONFIG['checks'].has_key?(result['check'])
-
         check['handler'] = 'default' unless check['handler']
-
         event = {
           'client' => client,
           'check' => check,
           'status' => result['status'],
           'output' => result['output']
         }
-
         if check['handler'] == 'metric'
-
           handle(event)
-
         else
-
           if result['status'] == 0
-
             redis.hexists('events:' + client['name'], result['check']).callback do |exists|
-
               if exists == 1
-
                 redis.hdel('events:' + client['name'], result['check'])
-
                 event['action'] = 'resolve'
-
                 handle(event)
-
               end
-
             end
-
           else
-
             redis.hset('events:' + client['name'], result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
-
               event['action'] = 'create'
-
               handle(event)
-
             end
-
           end
-
         end
-
       end
-
     end
-
   end
 
   #
   # Send checks out to subscribed clients
   #
   exchanges = Hash.new
-
   amq.queue('checks').subscribe do |check_json|
-
     check = JSON.parse(check_json)
-
     check['subscribers'].each do |exchange|
-
       if exchanges[exchange].nil?
-
         exchanges[exchange] = amq.fanout(exchange)
-
       end
-
       exchanges[exchange].publish({'name' => check['name']}.to_json)
-
       EM.debug('published :: ' + exchange + ' :: ' + check['name'])
-
     end
-
   end
 
   #
   # Populate the checks queue with checks defined in the JSON config file
   #
   check = amq.queue('checks')
-
   CONFIG['checks'].each_with_index do |(name, info), index|
-
     EM.add_timer(7*index) do
-
       EM.add_periodic_timer(info['interval']) do
-
         check.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json)
-
       end
-
     end
-
   end
 
   #
   # Create an event when a keep-alive hasn't been received in a defined amount of time
   #
   result = amq.queue('results')
-
   EM.add_periodic_timer(30) do
-
     redis.smembers('clients').callback do |clients|
-
       clients.each do |client_id|
-
         redis.get('client:' + client_id).callback do |client_json|
-
           client = JSON.parse(client_json)
-
           time_since_last_check = Time.now.to_i - client['timestamp']
-
           case
-
           when time_since_last_check >= 180
-
             result.publish({'check' => 'keepalive', 'client' => client['name'], 'status' => 2, 'output' => 'No keep-alive sent from host in over 180 seconds'}.to_json)
-
           when time_since_last_check >= 120
-
             result.publish({'check' => 'keepalive', 'client' => client['name'], 'status' => 1, 'output' => 'No keep-alive sent from host in over 120 seconds'}.to_json)
-
           else
-
             redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
-
               if exists == 1
-
                 result.publish({'check' => 'keepalive', 'client' => client['name'], 'status' => 0, 'output' => 'Keep-alive sent from host'}.to_json)
-
               end
-
             end
-
           end
-
         end
-
       end
-
     end
-
   end
 
   #
   # Recognize exit command
   #
   Signal.trap('INT') do
-
     EM.stop
-
   end
 
   Signal.trap('TERM') do
-
     EM.stop
-
   end
 
 end
