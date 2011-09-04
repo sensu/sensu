@@ -3,7 +3,7 @@ require 'json'
 require 'uuidtools'
 require 'amqp'
 require 'em/syslog'
-require 'sensu/helpers'
+require File.join(File.dirname(__FILE__), 'helpers')
 
 module Sensu
   class Config

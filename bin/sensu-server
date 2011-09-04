@@ -1,7 +1,17 @@
 #!/usr/bin/env ruby
 
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
-require 'sensu/environment'
+require 'sensu/config'
+
+config_file = if ENV['test']
+  File.join(File.dirname(__FILE__), '../config.json')
+else
+  '/etc/sensu/config.json'
+end
+
+config = Sensu::Config.new(:config_file => config_file)
+CONFIG = config.settings
+
 require 'em-hiredis'
 
 #
