@@ -27,6 +27,7 @@ module Sensu
 
     def initialize(options={})
       config = Sensu::Config.new(:config_file => options[:config_file])
+      config.create_working_directory
       @settings = config.settings
     end
 
