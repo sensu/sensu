@@ -3,6 +3,8 @@ require 'em-hiredis'
 
 module Sensu
   class Server
+    attr_accessor :settings, :redis
+
     def self.run(options={})
       EM.run do
         server = self.new(options)

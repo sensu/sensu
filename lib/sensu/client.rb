@@ -2,6 +2,8 @@ require File.join(File.dirname(__FILE__), 'config')
 
 module Sensu
   class Client
+    attr_accessor :settings
+
     def self.run(options={})
       EM.run do
         client = self.new(options)
