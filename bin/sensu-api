@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
-require 'sensu/config'
+require 'sensu/environment'
 require 'sinatra/async'
 require 'em-hiredis'
 
