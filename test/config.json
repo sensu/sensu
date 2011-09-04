@@ -1,14 +1,7 @@
 {
   "rabbitmq": {
     "host": "localhost",
-    "port": 5671,
-    "ssl": {
-      "cert_chain_file": "./certs/client/cert.pem",
-      "private_key_file": "./certs/client/key.pem"
-    },
-    "vhost": "/sensu",
-    "user": "sensu",
-    "password": "password"
+    "port": 5672
   },
   "redis": {
     "host": "localhost",
@@ -23,11 +16,11 @@
     "port": 8080
   },
   "handlers": {
-    "default": "ruby ./handlers/test"
+    "default": "ruby ./handler.rb"
   },
   "checks": {
     "foo": {
-      "command": "ruby ./plugins/test -c :::name:::",
+      "command": "ruby ./plugin.rb -c :::name:::",
       "subscribers": [
         "foo"
       ],
@@ -35,7 +28,7 @@
       "alert": false
     },
     "bar": {
-      "command": "ruby ./plugins/test -c :::name:::",
+      "command": "ruby ./plugin.rb -c :::name:::",
       "subscribers": [
         "bar"
       ],
