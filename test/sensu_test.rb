@@ -40,6 +40,6 @@ class TestSensu < MiniTest::Unit::TestCase
         test_client_name = test_client['name']
       end
     end
-    eventually(@client.settings['client']['name'], :every => 0.5, :total => 2) { test_client_name }
+    eventually(@client.settings['client']['name'], :every => 1, :total => 2) { test_client_name }
   end
 end

@@ -3,10 +3,4 @@
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
 require 'sensu/client'
 
-config_file = if ENV['test']
-  File.join(File.dirname(__FILE__), '../config.json')
-else
-  '/etc/sensu/config.json'
-end
-
-client = Sensu::Client.run(:config_file => config_file)
+Sensu::Client.run

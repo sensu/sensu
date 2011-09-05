@@ -14,32 +14,32 @@ optparse = OptionParser.new do |opts|
   opts.on('-c', '--client NAME', 'Client NAME') do |client|
     options[:client] = client
   end
+
+  opts.on('-e', '--exit CODE', 'Exit status CODE') do |code|
+    options[:exit] = code.to_i
+  end
 end
 
 optparse.parse!
 
-unless options[:client]
-  puts "You must supply a client name"
+unless options[:client] && options[:exit]
+  puts "You must supply a client name (-c) and a exit status code (-e)"
   exit
 end
 
-time = (0..30).to_a.sample
+sleep(2)
 
-case (0..3).to_a.sample
+case options[:exit]
 when 0
-  sleep(time)
-  puts "GOOD :: sleep => #{time} :: client => #{options[:client]}"
+  puts "GOOD :: client '#{options[:client]}'"
   exit
 when 1
-  sleep(time)
-  puts "WARNING :: sleep => #{time} :: client => #{options[:client]}"
+  puts "WARNING :: client '#{options[:client]}'"
   exit 1
 when 2
-  sleep(time)
-  puts "CRITICAL :: sleep => #{time} :: client => #{options[:client]}"
+  puts "CRITICAL :: client '#{options[:client]}'"
   exit 2
 when 3
-  sleep(time)
-  puts "UNKNOWN :: sleep => #{time} :: client => #{options[:client]}"
+  puts "UNKNOWN :: client '#{options[:client]}'"
   exit 3
 end
