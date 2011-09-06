@@ -1,12 +1,14 @@
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
 require 'rubygems' if RUBY_VERSION < '1.9.0'
+gem 'minitest'
 require 'minitest/autorun'
-require 'em-ventually/minitest'
+require 'em-ventually'
 require 'sensu/config'
 require 'sensu/server'
 require 'sensu/client'
 
 class TestSensu < MiniTest::Unit::TestCase
+  include EM::Ventually
   EM::Ventually.total_default = 0.5
 
   def setup

@@ -13,7 +13,7 @@
   },
   "api": {
     "host": "localhost",
-    "port": 8080
+    "port": 4567
   },
   "handlers": {
     "default": "ruby ./handler.rb"
