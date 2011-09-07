@@ -29,16 +29,21 @@ module Sensu
       set :amq, AMQP::Channel.new(connection)
     end
 
+    helpers do
+      include Rack::Utils
+      alias_method :conn, :settings
+    end
+
     before do
       content_type 'application/json'
     end
 
     aget '/clients' do
       current_clients = Array.new
-      settings.redis.smembers('clients').callback do |clients|
+      conn.redis.smembers('clients').callback do |clients|
         unless clients.empty?
           clients.each_with_index do |client, index|
-            settings.redis.get('client:' + client).callback do |client_json|
+            conn.redis.get('client:' + client).callback do |client_json|
               current_clients.push(JSON.parse(client_json))
               body current_clients.to_json if index == clients.size-1
             end
@@ -50,7 +55,7 @@ module Sensu
     end
 
     aget '/client/:id' do |client|
-      settings.redis.get('client:' + client).callback do |client_json|
+      conn.redis.get('client:' + client).callback do |client_json|
         status 404 if client_json.nil?
         body client_json
       end
@@ -58,10 +63,10 @@ module Sensu
 
     aget '/events' do
       current_events = Hash.new
-      settings.redis.smembers('clients').callback do |clients|
+      conn.redis.smembers('clients').callback do |clients|
         unless clients.empty?
           clients.each_with_index do |client, index|
-            settings.redis.hgetall('events:' + client).callback do |events|
+            conn.redis.hgetall('events:' + client).callback do |events|
               client_events = Hash[*events]
               client_events.each do |key, value|
                 client_events[key] = JSON.parse(value)
@@ -77,24 +82,24 @@ module Sensu
     end
 
     adelete '/client/:id' do |client|
-      settings.redis.sismember('clients', client).callback do |client_exists|
+      conn.redis.sismember('clients', client).callback do |client_exists|
         unless client_exists == 0
-          settings.redis.exists('events:' + client).callback do |events_exist|
+          conn.redis.exists('events:' + client).callback do |events_exist|
             unless events_exist == 0
-              settings.redis.hgetall('events:' + client).callback do |events|
+              conn.redis.hgetall('events:' + client).callback do |events|
                 Hash[*events].keys.each do |check|
-                  settings.amq.queue('results').publish({'check' => check, 'client' => client, 'status' => 0, 'output' => 'client is being removed...'}.to_json)
+                  conn.amq.queue('results').publish({'check' => check, 'client' => client, 'status' => 0, 'output' => 'client is being removed...'}.to_json)
                 end
                 EM.add_timer(10) do
-                  settings.redis.srem('clients', client)
-                  settings.redis.del('events:' + client)
-                  settings.redis.del('client:' + client)
+                  conn.redis.srem('clients', client)
+                  conn.redis.del('events:' + client)
+                  conn.redis.del('client:' + client)
                 end
               end
             else
-              settings.redis.srem('clients', client)
-              settings.redis.del('events:' + client)
-              settings.redis.del('client:' + client)
+              conn.redis.srem('clients', client)
+              conn.redis.del('events:' + client)
+              conn.redis.del('client:' + client)
             end
             status 204
             body ''
@@ -103,6 +108,29 @@ module Sensu
           status 404
           body ''
         end
+      end
+    end
+
+    apost '/test/client' do
+      client = '{
+        "name": "test",
+        "address": "127.0.0.1",
+        "subscriptions": [
+          "foo",
+          "bar"
+        ]
+      }'
+      conn.redis.set('client:test', client).callback do
+        conn.redis.sadd('clients', 'test')
+        status 201
+        body ''
+      end
+    end
+
+    apost '/test/event' do
+      conn.redis.hset('events:test', 'test', {'status' => 2, 'output' => 'CRITICAL :: test'}.to_json).callback do
+        status 201
+        body ''
       end
     end
   end
