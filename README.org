@@ -1,6 +1,10 @@
 * Welcome to Sensu
   Sensu is a monitoring system framework, handling the remote execution of checks.
 
+  Checks can utilize user created plugins, returning an exit status code and outputting to STDOUT.
+
+  Check results are handled by user created handlers.
+
 * License
   Sensu is released under the [[https://github.com/sonian/sensu/blob/master/MIT-LICENSE.txt][MIT license]].
 
@@ -44,31 +48,11 @@
   - Parse the JSON event file
   - Handle the event as it wishes
 
-** Local Setup
-*** Configure RabbitMQ
-  user
+** Testing
+*** Requirements
+  - RabbitMQ (default configuration)
+  - Redis (default configuration)
 
-  : rabbitmqctl add_user sensu password
+*** MiniTest
 
-  vhost
-
-  : rabbitmqctl add_vhost /sensu
-
-  permissions
-
-  : rabbitmqctl set_permissions -p /sensu sensu ".*" ".*" ".*"
-
-  /usr/local/etc/rabbitmq/rabbitmq.config
-
-  substitute **PATH** with your Sensu project path
-
-  : [
-  :   {rabbit, [
-  :     {ssl_listeners, [5671]},
-  :     {ssl_options, [{cacertfile,"*PATH*/certs/testca/cacert.pem"},
-  :                    {certfile,"*PATH*/certs/server/cert.pem"},
-  :                    {keyfile,"*PATH*/certs/server/key.pem"},
-  :                    {verify,verify_peer},
-  :                    {fail_if_no_peer_cert,true}]}
-  :   ]}
-  : ].
+  : rake test
