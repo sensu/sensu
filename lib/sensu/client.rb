@@ -24,7 +24,6 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(:config_file => options[:config_file])
       @settings = config.settings
-      @checks_in_progress = Array.new
     end
 
     def setup_amqp
@@ -42,6 +41,7 @@ module Sensu
 
     def setup_subscriptions
       @result_queue = @amq.queue('results')
+      @checks_in_progress = Array.new
       @settings['client']['subscriptions'].each do |exchange|
         uniq_queue_name = UUIDTools::UUID.random_create.to_s
         @amq.queue(uniq_queue_name, :auto_delete => true).bind(@amq.fanout(exchange)).subscribe do |check_json|
