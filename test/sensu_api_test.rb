@@ -10,10 +10,22 @@ api = Process.fork do
 end
 
 class TestSensuAPI < MiniTest::Unit::TestCase
+  def setup
+    RestClient.post 'localhost:4567/test/client', nil
+    RestClient.post 'localhost:4567/test/event', nil
+  end
+
   def test_get_clients
     response = RestClient.get 'localhost:4567/clients'
     assert_block "Unexpected response body" do
       JSON.parse(response.body).kind_of?(Array)
+    end
+    contains = false
+    assert_block "Response doesn't include the test client" do
+      JSON.parse(response.body).each do |client|
+        contains = true if client['name'] == 'test'
+      end
+      contains
     end
     assert_equal(200, response.code.to_i)
   end
@@ -23,6 +35,22 @@ class TestSensuAPI < MiniTest::Unit::TestCase
     assert_block "Unexpected response body" do
       JSON.parse(response.body).kind_of?(Hash)
     end
+    contains = false
+    assert_block "Response doesn't include the test event" do
+      JSON.parse(response.body).each do |client, events|
+        if client == 'test'
+          events.each do |check, event|
+            contains = true if check == 'test'
+          end
+        end
+      end
+      contains
+    end
+    assert_equal(200, response.code.to_i)
+  end
+
+  def test_get_client
+    response = RestClient.get 'localhost:4567/client/test'
     assert_equal(200, response.code.to_i)
   end
 
@@ -34,6 +62,11 @@ class TestSensuAPI < MiniTest::Unit::TestCase
       code = error.response.code.to_i
     end
     assert_equal(404, code)
+  end
+
+  def test_delete_client
+    response = RestClient.delete 'localhost:4567/client/test'
+    assert_equal(204, response.code.to_i)
   end
 
   def test_delete_nonexistent_client
