@@ -1,11 +1,13 @@
 Gem::Specification.new do |s|
   s.name        = "sensu"
-  s.version     = "0.4.0"
+  s.version     = "0.5.0"
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sensu"
-  s.summary     = %q{A publish/subscribe server monitoring framework}
-  s.description = %q{Monitor servers with Ruby EventMachine & RabbitMQ}
+  s.summary     = %q{A server monitoring framework}
+  s.description = %q{A server monitoring framework using the publish-subscribe model}
+  s.license     = "MIT"
+  s.has_rdoc    = false
 
   s.add_dependency("amqp", "0.7.4")
   s.add_dependency("json")
