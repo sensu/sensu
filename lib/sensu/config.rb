@@ -3,23 +3,22 @@ require 'json'
 require 'uuidtools'
 require 'amqp'
 require 'em/syslog'
-require 'sensu/helpers'
+require File.join(File.dirname(__FILE__), 'helpers')
 
-#
-# Read the CM created JSON config file
-#
-config_file = if ENV['test']
-  File.dirname(__FILE__) + '/../../config.json'
-else
-  '/etc/sensu/config.json'
-end
+module Sensu
+  class Config
+    attr_accessor :settings
 
-CONFIG = JSON.parse(File.open(config_file, 'r').read)
+    def initialize(options={})
+      config_file = options[:config_file] || '/etc/sensu/config.json'
+      @settings = JSON.parse(File.open(config_file, 'r').read)
+    end
 
-#
-# Create a tmp directory
-#
-begin
-  Dir.mkdir('/tmp/sensu')
-rescue SystemCallError
+    def create_working_directory
+      begin
+        Dir.mkdir('/tmp/sensu')
+      rescue SystemCallError
+      end
+    end
+  end
 end

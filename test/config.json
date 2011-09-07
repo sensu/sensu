@@ -1,0 +1,64 @@
+{
+  "rabbitmq": {
+    "host": "localhost",
+    "port": 5672
+  },
+  "redis": {
+    "host": "localhost",
+    "port": 6379
+  },
+  "syslog": {
+    "host": "localhost",
+    "port": 514
+  },
+  "api": {
+    "host": "localhost",
+    "port": 4567
+  },
+  "handlers": {
+    "default": "ruby ./handler.rb"
+  },
+  "checks": {
+    "foo": {
+      "command": "ruby ./plugin.rb -c :::name::: -e 0",
+      "subscribers": [
+        "foo"
+      ],
+      "interval": 1
+    },
+    "bar": {
+      "command": "ruby ./plugin.rb -c :::name::: -e 1",
+      "subscribers": [
+        "bar"
+      ],
+      "interval": 1
+    },
+    "baz": {
+      "command": "ruby ./plugin.rb -c :::name::: -e 2",
+      "subscribers": [
+        "baz"
+      ],
+      "interval": 1
+    },
+    "qux": {
+      "command": "ruby ./plugin.rb -c :::name::: -e 3",
+      "subscribers": [
+        "foo",
+        "bar",
+        "baz",
+        "qux"
+      ],
+      "interval": 1
+    }
+  },
+  "client": {
+    "name": "i-424242",
+    "address": "127.0.0.1",
+    "subscriptions": [
+      "foo",
+      "bar",
+      "baz",
+      "qux"
+    ]
+  }
+}
