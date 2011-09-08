@@ -16,7 +16,7 @@
     "port": 4567
   },
   "handlers": {
-    "default": "ruby ./handler.rb"
+    "default": "ruby ./test/handler.rb"
   },
   "checks": {
     "foo": {

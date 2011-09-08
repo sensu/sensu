@@ -26,6 +26,6 @@ end
 
 event = JSON.parse(File.open(options[:file], 'r').read)
 
-if event.has_key?('action')
-  puts event.to_json
+File.open('/tmp/sensu/test_handlers', 'w') do |file|
+  file.write(JSON.pretty_generate(event))
 end
