@@ -40,14 +40,13 @@ class TestSensu < MiniTest::Unit::TestCase
     server.setup_keep_alives
     client.setup_amqp
     client.setup_keep_alives
-    test_client_name = ''
+    test_client = ''
     EM.add_timer(1) do
-      server.redis.get('client:' + @settings['client']['name']).callback do |client_json|
-        test_client = JSON.parse(client_json)
-        test_client_name = test_client['name']
+      server.redis_connection.get('client:' + @settings['client']['name']).callback do |client_json|
+        test_client = JSON.parse(client_json).reject { |key, value| key == 'timestamp' }
       end
     end
-    eventually(@settings['client']['name'], :every => 1, :total => 2) { test_client_name }
+    eventually(@settings['client'], :every => 1, :total => 2) { test_client }
   end
 
   def test_handlers
