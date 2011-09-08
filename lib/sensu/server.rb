@@ -4,6 +4,7 @@ require 'em-hiredis'
 module Sensu
   class Server
     attr_accessor :redis
+    alias :redis_connection :redis
 
     def self.run(options={})
       EM.run do

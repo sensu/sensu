@@ -20,28 +20,28 @@
   },
   "checks": {
     "foo": {
-      "command": "ruby ./plugin.rb -c :::name::: -e 0",
+      "command": "ruby -e \"puts 'OK - :::name:::'; exit 0\"",
       "subscribers": [
         "foo"
       ],
       "interval": 1
     },
     "bar": {
-      "command": "ruby ./plugin.rb -c :::name::: -e 1",
+      "command": "ruby -e \"puts 'WARNING - :::name:::'; exit 1\"",
       "subscribers": [
         "bar"
       ],
       "interval": 1
     },
     "baz": {
-      "command": "ruby ./plugin.rb -c :::name::: -e 2",
+      "command": "ruby -e \"puts 'CRITICAL - :::name:::'; exit 2\"",
       "subscribers": [
         "baz"
       ],
       "interval": 1
     },
     "qux": {
-      "command": "ruby ./plugin.rb -c :::name::: -e 3",
+      "command": "ruby -e \"puts 'UNKNOWN - :::name:::'; exit 3\"",
       "subscribers": [
         "foo",
         "bar",
