@@ -3,7 +3,7 @@ require 'em-hiredis'
 
 module Sensu
   class Server
-    attr_accessor :settings, :redis
+    attr_accessor :redis
 
     def self.run(options={})
       EM.run do
@@ -60,7 +60,7 @@ module Sensu
       @handler_queue = EM::Queue.new
       handlers_in_progress = 0
       handle = Proc.new do |event|
-        if handlers_in_progress < 20
+        if handlers_in_progress < 15
           event_file = proc do
             handlers_in_progress += 1
             file_name = '/tmp/sensu/event-' + UUIDTools::UUID.random_create.to_s
