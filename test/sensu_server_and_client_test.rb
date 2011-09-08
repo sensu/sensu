@@ -46,7 +46,7 @@ class TestSensu < MiniTest::Unit::TestCase
         test_client = JSON.parse(client_json).reject { |key, value| key == 'timestamp' }
       end
     end
-    eventually(@settings['client'], :every => 1, :total => 2) { test_client }
+    eventually(@settings['client'], :total => 1.5) { test_client }
   end
 
   def test_handlers
@@ -62,8 +62,40 @@ class TestSensu < MiniTest::Unit::TestCase
       'output' => 'WARNING\n'
     }
     server.handle_event(event)
-    eventually(true, :every => 0.5, :total => 1) do
+    eventually(true, :total => 1.5) do
       JSON.parse(File.open('/tmp/sensu/test_handlers', 'rb').read) == event
+    end
+  end
+
+  def test_checks
+    server = Sensu::Server.new(@options)
+    client = Sensu::Client.new(@options)
+    server.setup_logging
+    server.setup_redis
+    server.setup_amqp
+    server.setup_keep_alives
+    server.setup_handlers
+    server.setup_results
+    client.setup_amqp
+    client.setup_keep_alives
+    client.setup_subscriptions
+    @settings['checks'].each_key do |check_name|
+      client.execute_check({'name' => check_name})
+    end
+    client_events = {}
+    EM.add_timer(1) do
+      server.redis_connection.hgetall('events:' + @settings['client']['name']).callback do |events|
+        client_events = Hash[*events]
+        client_events.each do |key, value|
+          client_events[key] = JSON.parse(value)
+        end
+      end
+    end
+    parallel do
+      eventually({'status' => 1, 'output' => "WARNING - #{@settings['client']['name']}\n"}, :total => 1.5) { client_events['bar'] }
+      eventually({'status' => 2, 'output' => "CRITICAL - #{@settings['client']['name']}\n"}, :total => 1.5) { client_events['baz'] }
+      eventually({'status' => 3, 'output' => "UNKNOWN - #{@settings['client']['name']}\n"}, :total => 1.5) { client_events['qux'] }
+      eventually(3, :total => 1.5) { client_events.count }
     end
   end
 end
