@@ -16,6 +16,7 @@ class TestSensu < MiniTest::Unit::TestCase
     @config = Sensu::Config.new(options)
     @server = Sensu::Server.new(options)
     @client = Sensu::Client.new(options)
+    @config.purge_working_directory
   end
 
   def test_read_config_file
@@ -43,5 +44,22 @@ class TestSensu < MiniTest::Unit::TestCase
       end
     end
     eventually(@client.settings['client']['name'], :every => 1, :total => 2) { test_client_name }
+  end
+
+  def test_handlers
+    @server.setup_logging
+    @server.setup_handlers
+    event = {
+      'client' => {
+        'name' => 'i-424242'
+      },
+      'check' => {
+        'handler' => 'default'
+      },
+      'status' => 1,
+      'output' => 'WARNING\n'
+    }
+    @server.handle_event(event)
+    eventually(true) { File.exists?('/tmp/sensu/test_handlers') }
   end
 end

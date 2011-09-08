@@ -20,5 +20,12 @@ module Sensu
       rescue SystemCallError
       end
     end
+
+    def purge_working_directory
+      Dir.foreach('/tmp/sensu') do |file|
+        next if file == '.' || file == '..'
+        File.delete('/tmp/sensu/' + file)
+      end
+    end
   end
 end

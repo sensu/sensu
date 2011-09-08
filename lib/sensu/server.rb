@@ -12,6 +12,7 @@ module Sensu
         server.setup_redis
         server.setup_amqp
         server.setup_keep_alives
+        server.setup_handlers
         server.setup_results
         server.setup_publisher
         server.setup_populator
@@ -55,6 +56,37 @@ module Sensu
       end
     end
 
+    def setup_handlers
+      @handler_queue = EM::Queue.new
+      handlers_in_progress = 0
+      handle = Proc.new do |event|
+        if handlers_in_progress < 20
+          event_file = proc do
+            handlers_in_progress += 1
+            file_name = '/tmp/sensu/event-' + UUIDTools::UUID.random_create.to_s
+            File.open(file_name, 'w') do |file|
+              file.write(JSON.pretty_generate(event))
+            end
+            file_name
+          end
+          handler = proc do |event_file|
+            EM.system('sh', '-c', @settings['handlers'][event['check']['handler']] + ' -f ' + event_file  + ' 2>&1') do |output, status|
+              EM.debug('handled :: ' + event['check']['handler'] + ' :: ' + status.exitstatus.to_s + ' :: ' + output)
+              File.delete(event_file)
+              handlers_in_progress -= 1
+            end
+          end
+          EM.defer(event_file, handler)
+        else
+          @handler_queue.push(event)
+        end
+        EM.next_tick do
+          @handler_queue.pop(&handle)
+        end
+      end
+      @handler_queue.pop(&handle)
+    end
+
     def setup_results
       @amq.queue('results').subscribe do |result_json|
         result = JSON.parse(result_json)
@@ -94,20 +126,7 @@ module Sensu
     end
 
     def handle_event(event)
-      event_file = proc do
-        file_name = '/tmp/sensu/event-' + UUIDTools::UUID.random_create.to_s
-        File.open(file_name, 'w') do |file|
-          file.write(JSON.pretty_generate(event))
-        end
-        file_name
-      end
-      handler = proc do |event_file|
-        EM.system('sh', '-c', @settings['handlers'][event['check']['handler']] + ' -f ' + event_file  + ' 2>&1') do |output, status|
-          EM.debug('handled :: ' + event['check']['handler'] + ' :: ' + status.exitstatus.to_s + ' :: ' + output)
-          File.delete(event_file)
-        end
-      end
-      EM.defer(event_file, handler)
+      @handler_queue.push(event)
     end
 
     def setup_publisher
