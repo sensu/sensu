@@ -67,7 +67,7 @@ class TestSensu < MiniTest::Unit::TestCase
     end
   end
 
-  def test_checks
+  def test_execute_checks
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
     server.setup_logging
@@ -78,7 +78,6 @@ class TestSensu < MiniTest::Unit::TestCase
     server.setup_results
     client.setup_amqp
     client.setup_keep_alives
-    client.setup_subscriptions
     @settings['checks'].each_key do |check_name|
       client.execute_check({'name' => check_name})
     end
