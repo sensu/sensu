@@ -27,6 +27,15 @@ module Sensu
           raise 'configuration invalid, missing subscribers for check ' + name
         end
       end
+      unless @settings['client']['name'].is_a?(String)
+        raise 'configuration invalid, client must have a name'
+      end
+      unless @settings['client']['address'].is_a?(String)
+        raise 'configuration invalid, client must have an address (ip or hostname)'
+      end
+      unless @settings['client']['subscriptions'].is_a?(Array) && @settings['client']['subscriptions'].count > 0
+        raise 'configuration invalid, client must have subscriptions'
+      end
     end
 
     def create_working_directory
