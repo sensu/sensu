@@ -78,8 +78,8 @@ class TestSensu < MiniTest::Unit::TestCase
     server.setup_results
     client.setup_amqp
     client.setup_keep_alives
-    @settings['checks'].each_key do |check_name|
-      client.execute_check({'name' => check_name})
+    @settings['checks'].each_key do |name|
+      client.execute_check({'name' => name})
     end
     client_events = Hash.new
     EM.add_timer(1) do
@@ -91,7 +91,7 @@ class TestSensu < MiniTest::Unit::TestCase
       end
     end
     parallel do
-      %w[bar baz qux].each_with_index do |name, index|
+      @settings['checks'].each_with_index do |(name, info), index|
         eventually({'status' => index + 1, 'output' => @settings['client']['name'] + "\n"}, :total => 1.5) { client_events[name] }
       end
     end
