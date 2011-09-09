@@ -91,10 +91,10 @@ class TestSensu < MiniTest::Unit::TestCase
       end
     end
     parallel do
-      eventually({'status' => 1, 'output' => "WARNING - #{@settings['client']['name']}\n"}, :total => 1.5) { client_events['bar'] }
-      eventually({'status' => 2, 'output' => "CRITICAL - #{@settings['client']['name']}\n"}, :total => 1.5) { client_events['baz'] }
-      eventually({'status' => 3, 'output' => "UNKNOWN - #{@settings['client']['name']}\n"}, :total => 1.5) { client_events['qux'] }
-      eventually(3, :total => 1.5) { client_events.count }
+      @settings['checks'].each_with_index do |(name, info), index|
+        next if index == 0
+        eventually({'status' => index, 'output' => @settings['client']['name'] + "\n"}, :total => 1.5) { client_events[name] }
+      end
     end
   end
 end
