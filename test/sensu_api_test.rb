@@ -18,7 +18,7 @@ class TestSensuAPI < MiniTest::Unit::TestCase
   def test_get_clients
     response = RestClient.get 'localhost:4567/clients'
     assert_block "Unexpected response body" do
-      JSON.parse(response.body).kind_of?(Array)
+      JSON.parse(response.body).is_a?(Array)
     end
     contains = false
     assert_block "Response doesn't include the test client" do
@@ -33,7 +33,7 @@ class TestSensuAPI < MiniTest::Unit::TestCase
   def test_get_events
     response = RestClient.get 'localhost:4567/events'
     assert_block "Unexpected response body" do
-      JSON.parse(response.body).kind_of?(Hash)
+      JSON.parse(response.body).is_a?(Hash)
     end
     contains = false
     assert_block "Response doesn't include the test event" do
