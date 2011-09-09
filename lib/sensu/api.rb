@@ -71,7 +71,7 @@ module Sensu
               client_events.each do |key, value|
                 client_events[key] = JSON.parse(value)
               end
-              current_events.store(client, client_events) unless client_events.empty?
+              current_events[client] = client_events unless client_events.empty?
               body current_events.to_json if index == clients.size-1
             end
           end
@@ -88,7 +88,12 @@ module Sensu
             unless events_exist == 0
               conn.redis.hgetall('events:' + client).callback do |events|
                 Hash[*events].keys.each do |check|
-                  conn.amq.queue('results').publish({'check' => check, 'client' => client, 'status' => 0, 'output' => 'client is being removed...'}.to_json)
+                  conn.amq.queue('results').publish({
+                    'check' => check,
+                    'client' => client,
+                    'status' => 0,
+                    'output' => 'client is being removed...'
+                  }.to_json)
                 end
                 EM.add_timer(10) do
                   conn.redis.srem('clients', client)
