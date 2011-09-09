@@ -40,19 +40,43 @@ module Sensu
     end
 
     def execute_check(check)
-      if @settings['checks'][check['name']]
+      if @settings['checks'].has_key?(check['name'])
         unless @checks_in_progress.include?(check['name'])
           @checks_in_progress.push(check['name'])
+          unmatched_tokens = Array.new
           command = @settings['checks'][check['name']]['command'].gsub(/:::(.*?):::/) do
-            @settings['client'][$1.to_s].to_s
+            key = $1.to_s
+            unmatched_tokens.push(key) unless @settings['client'].has_key?(key)
+            @settings['client'][key].to_s
           end
-          EM.system('sh', '-c', command + ' 2>&1') do |output, status|
-            @result_queue.publish({'check' => check['name'], 'client' => @settings['client']['name'], 'status' => status.exitstatus, 'output' => output}.to_json)
+          if unmatched_tokens.empty?
+            EM.system('sh', '-c', command + ' 2>&1') do |output, status|
+              @result_queue.publish({
+                'check' => check['name'],
+                'client' => @settings['client']['name'],
+                'status' => status.exitstatus,
+                'output' => output
+              }.to_json)
+              @checks_in_progress.delete(check['name'])
+            end
+          else
+            @result_queue.publish({
+              'check' => check['name'],
+              'client' => @settings['client']['name'],
+              'status' => 3,
+              'output' => 'Missing client attributes: ' + unmatched_tokens.join(', ')
+            }.to_json)
             @checks_in_progress.delete(check['name'])
           end
         end
       else
-        @result_queue.publish({'check' => check['name'], 'client' => @settings['client']['name'], 'status' => 3, 'output' => 'Unknown check'}.to_json)
+        @result_queue.publish({
+          'check' => check['name'],
+          'client' => @settings['client']['name'],
+          'status' => 3,
+          'output' => 'Unknown check'
+        }.to_json)
+        @checks_in_progress.delete(check['name'])
       end
     end
 
