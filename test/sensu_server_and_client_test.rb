@@ -81,7 +81,7 @@ class TestSensu < MiniTest::Unit::TestCase
     @settings['checks'].each_key do |check_name|
       client.execute_check({'name' => check_name})
     end
-    client_events = {}
+    client_events = Hash.new
     EM.add_timer(1) do
       server.redis_connection.hgetall('events:' + @settings['client']['name']).callback do |events|
         client_events = Hash[*events]
