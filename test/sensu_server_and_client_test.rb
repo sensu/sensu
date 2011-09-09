@@ -91,9 +91,8 @@ class TestSensu < MiniTest::Unit::TestCase
       end
     end
     parallel do
-      @settings['checks'].each_with_index do |(name, info), index|
-        next if index == 0
-        eventually({'status' => index, 'output' => @settings['client']['name'] + "\n"}, :total => 1.5) { client_events[name] }
+      %w[bar baz qux].each_with_index do |name, index|
+        eventually({'status' => index + 1, 'output' => @settings['client']['name'] + "\n"}, :total => 1.5) { client_events[name] }
       end
     end
   end
