@@ -19,34 +19,26 @@
     "default": "ruby ./test/handler.rb"
   },
   "checks": {
-    "foo": {
-      "command": "ruby -e \"puts ':::name:::'; exit 0\"",
-      "subscribers": [
-        "foo"
-      ],
-      "interval": 1
-    },
-    "bar": {
+    "a": {
       "command": "ruby -e \"puts ':::name:::'; exit 1\"",
       "subscribers": [
-        "bar"
+        "a"
       ],
       "interval": 1
     },
-    "baz": {
+    "b": {
       "command": "ruby -e \"puts ':::name:::'; exit 2\"",
       "subscribers": [
-        "baz"
+        "b"
       ],
       "interval": 1
     },
-    "qux": {
+    "c": {
       "command": "ruby -e \"puts ':::name:::'; exit 3\"",
       "subscribers": [
-        "foo",
-        "bar",
-        "baz",
-        "qux"
+        "a",
+        "b",
+        "c"
       ],
       "interval": 1
     }
@@ -55,10 +47,9 @@
     "name": "i-424242",
     "address": "127.0.0.1",
     "subscriptions": [
-      "foo",
-      "bar",
-      "baz",
-      "qux"
+      "a",
+      "b",
+      "c"
     ]
   }
 }
