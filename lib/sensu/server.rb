@@ -88,6 +88,10 @@ module Sensu
       @handler_queue.pop(&handle)
     end
 
+    def handle_event(event)
+      @handler_queue.push(event)
+    end
+
     def setup_results
       @amq.queue('results').subscribe do |result_json|
         result = JSON.parse(result_json)
@@ -124,10 +128,6 @@ module Sensu
           end
         end
       end
-    end
-
-    def handle_event(event)
-      @handler_queue.push(event)
     end
 
     def setup_publisher

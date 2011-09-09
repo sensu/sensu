@@ -22,11 +22,13 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(:config_file => options[:config_file])
       @settings = config.settings
+      @checks_in_progress = Array.new
     end
 
     def setup_amqp
       connection = AMQP.connect(symbolize_keys(@settings['rabbitmq']))
       @amq = AMQP::Channel.new(connection)
+      @result_queue = @amq.queue('results')
     end
 
     def setup_keep_alives
@@ -34,18 +36,6 @@ module Sensu
       keepalive_queue.publish(@settings['client'].merge({'timestamp' => Time.now.to_i}).to_json)
       EM.add_periodic_timer(30) do
         keepalive_queue.publish(@settings['client'].merge({'timestamp' => Time.now.to_i}).to_json)
-      end
-    end
-
-    def setup_subscriptions
-      @result_queue = @amq.queue('results')
-      @checks_in_progress = Array.new
-      @settings['client']['subscriptions'].each do |exchange|
-        uniq_queue_name = UUIDTools::UUID.random_create.to_s
-        @amq.queue(uniq_queue_name, :auto_delete => true).bind(@amq.fanout(exchange)).subscribe do |check_json|
-          check = JSON.parse(check_json)
-          execute_check(check)
-        end
       end
     end
 
@@ -63,6 +53,16 @@ module Sensu
         end
       else
         @result_queue.publish({'check' => check['name'], 'client' => @settings['client']['name'], 'status' => 3, 'output' => 'Unknown check'}.to_json)
+      end
+    end
+
+    def setup_subscriptions
+      @settings['client']['subscriptions'].each do |exchange|
+        uniq_queue_name = UUIDTools::UUID.random_create.to_s
+        @amq.queue(uniq_queue_name, :auto_delete => true).bind(@amq.fanout(exchange)).subscribe do |check_json|
+          check = JSON.parse(check_json)
+          execute_check(check)
+        end
       end
     end
   end
