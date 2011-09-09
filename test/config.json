@@ -22,23 +22,23 @@
     "a": {
       "command": "ruby -e \"puts ':::name:::'; exit 1\"",
       "subscribers": [
-        "foo"
+        "a"
       ],
       "interval": 1
     },
     "b": {
       "command": "ruby -e \"puts ':::name:::'; exit 2\"",
       "subscribers": [
-        "bar"
+        "b"
       ],
       "interval": 1
     },
     "c": {
       "command": "ruby -e \"puts ':::name:::'; exit 3\"",
       "subscribers": [
-        "foo",
-        "bar",
-        "baz"
+        "a",
+        "b",
+        "c"
       ],
       "interval": 1
     }
