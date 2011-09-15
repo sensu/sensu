@@ -144,10 +144,10 @@ module Sensu
 
     def setup_populator
       check_queue = @amq.queue('checks')
-      @settings['checks'].each_with_index do |(name, info), index|
+      @settings['checks'].each_with_index do |(name, details), index|
         EM.add_timer(7*index) do
-          EM.add_periodic_timer(info['interval']) do
-            check_queue.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json)
+          EM.add_periodic_timer(details['interval']) do
+            check_queue.publish({'name' => name, 'subscribers' => details['subscribers']}.to_json)
           end
         end
       end
@@ -161,30 +161,19 @@ module Sensu
             @redis.get('client:' + client_id).callback do |client_json|
               client = JSON.parse(client_json)
               time_since_last_check = Time.now.to_i - client['timestamp']
+              result = {'client' => client['name'], 'check' => {'name' => 'keepalive', 'issued' => Time.now.to_i}}
               case
               when time_since_last_check >= 180
-                result_queue.publish({
-                  'check' => 'keepalive',
-                  'client' => client['name'],
-                  'status' => 2,
-                  'output' => 'No keep-alive sent from host in over 180 seconds'
-                }.to_json)
+                result['check'].merge!({'status' => 2, 'output' => 'No keep-alive sent from host in over 180 seconds'})
+                result_queue.publish(result.to_json)
               when time_since_last_check >= 120
-                result_queue.publish({
-                  'check' => 'keepalive',
-                  'client' => client['name'],
-                  'status' => 1,
-                  'output' => 'No keep-alive sent from host in over 120 seconds'
-                }.to_json)
+                result['check'].merge!({'status' => 1, 'output' => 'No keep-alive sent from host in over 120 seconds'})
+                result_queue.publish(result.to_json)
               else
                 @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
                   if exists == 1
-                    result_queue.publish({
-                      'check' => 'keepalive',
-                      'client' => client['name'],
-                      'status' => 0,
-                      'output' => 'Keep-alive sent from host'
-                    }.to_json)
+                    result['check'].merge!({'status' => 0, 'output' => 'Keep-alive sent from host'})
+                    result_queue.publish(result.to_json)
                   end
                 end
               end
