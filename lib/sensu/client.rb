@@ -43,6 +43,7 @@ module Sensu
       if @settings['checks'].has_key?(check['name'])
         unless @checks_in_progress.include?(check['name'])
           @checks_in_progress.push(check['name'])
+          result = {'client' => @settings['client']['name'], 'check' => check}
           unmatched_tokens = Array.new
           command = @settings['checks'][check['name']]['command'].gsub(/:::(.*?):::/) do
             key = $1.to_s
@@ -51,31 +52,19 @@ module Sensu
           end
           if unmatched_tokens.empty?
             EM.system('sh', '-c', command + ' 2>&1') do |output, status|
-              @result_queue.publish({
-                'check' => check['name'],
-                'client' => @settings['client']['name'],
-                'status' => status.exitstatus,
-                'output' => output
-              }.to_json)
+              result['check'].merge!({'status' => status.exitstatus, 'output' => output})
+              @result_queue.publish(result.to_json)
               @checks_in_progress.delete(check['name'])
             end
           else
-            @result_queue.publish({
-              'check' => check['name'],
-              'client' => @settings['client']['name'],
-              'status' => 3,
-              'output' => 'Missing client attributes: ' + unmatched_tokens.join(', ')
-            }.to_json)
+            result['check'].merge!({'status' => 3, 'output' => 'Missing client attributes: ' + unmatched_tokens.join(', ')})
+            @result_queue.publish(result.to_json)
             @checks_in_progress.delete(check['name'])
           end
         end
       else
-        @result_queue.publish({
-          'check' => check['name'],
-          'client' => @settings['client']['name'],
-          'status' => 3,
-          'output' => 'Unknown check'
-        }.to_json)
+        result['check'].merge!({'status' => 3, 'output' => 'Unknown check'})
+        @result_queue.publish(result.to_json)
         @checks_in_progress.delete(check['name'])
       end
     end

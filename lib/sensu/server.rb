@@ -98,30 +98,38 @@ module Sensu
         @redis.get('client:' + result['client']).callback do |client_json|
           unless client_json.nil?
             client = JSON.parse(client_json)
-            check = {'name' => result['check']}
-            check.merge!(@settings['checks'][result['check']]) if @settings['checks'].has_key?(result['check'])
+            check = result['check']
+            check.merge!(@settings['checks'][check['name']]) if @settings['checks'].has_key?(check['name'])
             check['handler'] = 'default' unless check['handler']
             event = {
               'client' => client,
-              'check' => check,
-              'status' => result['status'],
-              'output' => result['output']
+              'check' => check
             }
-            if check['handler'] == 'metric'
+            if check['type'] == 'metric'
               handle_event(event)
             else
               if result['status'] == 0
-                @redis.hexists('events:' + client['name'], result['check']).callback do |exists|
+                @redis.hexists('events:' + client['name'], check['name']).callback do |exists|
                   if exists == 1
-                    @redis.hdel('events:' + client['name'], result['check'])
+                    @redis.hdel('events:' + client['name'], check['name'])
                     event['action'] = 'resolve'
                     handle_event(event)
                   end
                 end
               else
-                @redis.hset('events:' + client['name'], result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
-                  event['action'] = 'create'
-                  handle_event(event)
+                @redis.hget('events:' + client['name'], check['name']).callback do |event_json|
+                  occurrences = 1
+                  unless event_json.nil?
+                    previous_event = JSON.parse(event_json)
+                    if previous_event['status'] == check['status']
+                      occurrences = previous_event['occurrences'] += 1
+                    end
+                  end
+                  @redis.hset('events:' + client['name'], check['name'], {'status' => check['status'], 'output' => check['output'], 'occurrences' => occurrences}.to_json).callback do
+                    event['occurrences'] = occurrences
+                    event['action'] = 'create'
+                    handle_event(event)
+                  end
                 end
               end
             end
@@ -138,7 +146,7 @@ module Sensu
           if exchanges[exchange].nil?
             exchanges[exchange] = @amq.fanout(exchange)
           end
-          exchanges[exchange].publish({'name' => check['name']}.to_json)
+          exchanges[exchange].publish({'name' => check['name'], 'issued' => Time.now.to_i}.to_json)
           EM.debug('published :: ' + exchange + ' :: ' + check['name'])
         end
       end
@@ -146,10 +154,10 @@ module Sensu
 
     def setup_populator
       check_queue = @amq.queue('checks')
-      @settings['checks'].each_with_index do |(name, info), index|
+      @settings['checks'].each_with_index do |(name, details), index|
         EM.add_timer(7*index) do
-          EM.add_periodic_timer(info['interval']) do
-            check_queue.publish({'name' => name, 'subscribers' => info['subscribers']}.to_json)
+          EM.add_periodic_timer(details['interval']) do
+            check_queue.publish({'name' => name, 'subscribers' => details['subscribers']}.to_json)
           end
         end
       end
@@ -163,30 +171,19 @@ module Sensu
             @redis.get('client:' + client_id).callback do |client_json|
               client = JSON.parse(client_json)
               time_since_last_check = Time.now.to_i - client['timestamp']
+              result = {'client' => client['name'], 'check' => {'name' => 'keepalive', 'issued' => Time.now.to_i}}
               case
               when time_since_last_check >= 180
-                result_queue.publish({
-                  'check' => 'keepalive',
-                  'client' => client['name'],
-                  'status' => 2,
-                  'output' => 'No keep-alive sent from host in over 180 seconds'
-                }.to_json)
+                result['check'].merge!({'status' => 2, 'output' => 'No keep-alive sent from host in over 180 seconds'})
+                result_queue.publish(result.to_json)
               when time_since_last_check >= 120
-                result_queue.publish({
-                  'check' => 'keepalive',
-                  'client' => client['name'],
-                  'status' => 1,
-                  'output' => 'No keep-alive sent from host in over 120 seconds'
-                }.to_json)
+                result['check'].merge!({'status' => 1, 'output' => 'No keep-alive sent from host in over 120 seconds'})
+                result_queue.publish(result.to_json)
               else
                 @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
                   if exists == 1
-                    result_queue.publish({
-                      'check' => 'keepalive',
-                      'client' => client['name'],
-                      'status' => 0,
-                      'output' => 'Keep-alive sent from host'
-                    }.to_json)
+                    result['check'].merge!({'status' => 0, 'output' => 'Keep-alive sent from host'})
+                    result_queue.publish(result.to_json)
                   end
                 end
               end

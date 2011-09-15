@@ -87,15 +87,11 @@ module Sensu
           conn.redis.exists('events:' + client).callback do |events_exist|
             unless events_exist == 0
               conn.redis.hgetall('events:' + client).callback do |events|
-                Hash[*events].keys.each do |check|
-                  conn.amq.queue('results').publish({
-                    'check' => check,
-                    'client' => client,
-                    'status' => 0,
-                    'output' => 'client is being removed...'
-                  }.to_json)
+                Hash[*events].keys.each do |check_name|
+                  check = {'name' => check_name, 'issued' => Time.now.to_i, 'status' => 0, 'output' => 'client is being removed...'}
+                  conn.amq.queue('results').publish({'client' => client, 'check' => check}.to_json)
                 end
-                EM.add_timer(10) do
+                EM.add_timer(8) do
                   conn.redis.srem('clients', client)
                   conn.redis.del('events:' + client)
                   conn.redis.del('client:' + client)
@@ -117,15 +113,15 @@ module Sensu
     end
 
     apost '/test/client' do
-      client = '{
+      attributes = '{
         "name": "test",
-        "address": "127.0.0.1",
+        "address": "localhost",
         "subscriptions": [
           "foo",
           "bar"
         ]
       }'
-      conn.redis.set('client:test', client).callback do
+      conn.redis.set('client:test', attributes).callback do
         conn.redis.sadd('clients', 'test')
         status 201
         body ''
@@ -133,7 +129,7 @@ module Sensu
     end
 
     apost '/test/event' do
-      conn.redis.hset('events:test', 'test', {'status' => 2, 'output' => 'CRITICAL :: test'}.to_json).callback do
+      conn.redis.hset('events:test', 'test', {'status' => 2, 'output' => 'CRITICAL :: test', 'occurrences' => 1}.to_json).callback do
         status 201
         body ''
       end
