@@ -15,7 +15,7 @@ class TestSensu < MiniTest::Unit::TestCase
     @options = { :config_file => File.join(File.dirname(__FILE__), 'config.json') }
     config = Sensu::Config.new(@options)
     config.create_working_directory
-    config.purge_working_directory
+#    config.purge_working_directory
     @settings = config.settings
   end
 
@@ -79,7 +79,7 @@ class TestSensu < MiniTest::Unit::TestCase
     client.setup_amqp
     client.setup_keep_alives
     @settings['checks'].each_key do |name|
-      client.execute_check({'name' => name})
+      client.execute_check({'name' => name, 'issued' => Time.now.to_i})
     end
     client_events = Hash.new
     EM.add_timer(1) do

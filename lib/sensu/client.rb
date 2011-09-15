@@ -52,7 +52,7 @@ module Sensu
           if unmatched_tokens.empty?
             EM.system('sh', '-c', command + ' 2>&1') do |output, status|
               @result_queue.publish({
-                'check' => check['name'],
+                'check' => check,
                 'client' => @settings['client']['name'],
                 'status' => status.exitstatus,
                 'output' => output
@@ -61,7 +61,7 @@ module Sensu
             end
           else
             @result_queue.publish({
-              'check' => check['name'],
+              'check' => check,
               'client' => @settings['client']['name'],
               'status' => 3,
               'output' => 'Missing client attributes: ' + unmatched_tokens.join(', ')
@@ -71,7 +71,7 @@ module Sensu
         end
       else
         @result_queue.publish({
-          'check' => check['name'],
+          'check' => check,
           'client' => @settings['client']['name'],
           'status' => 3,
           'output' => 'Unknown check'

@@ -98,8 +98,8 @@ module Sensu
         @redis.get('client:' + result['client']).callback do |client_json|
           unless client_json.nil?
             client = JSON.parse(client_json)
-            check = {'name' => result['check']}
-            check.merge!(@settings['checks'][result['check']]) if @settings['checks'].has_key?(result['check'])
+            check = result['check']
+            check.merge!(@settings['checks'][check['name']]) if @settings['checks'].has_key?(check['name'])
             check['handler'] = 'default' unless check['handler']
             event = {
               'client' => client,
@@ -107,19 +107,19 @@ module Sensu
               'status' => result['status'],
               'output' => result['output']
             }
-            if check['handler'] == 'metric'
+            if check['type'] == 'metric'
               handle_event(event)
             else
               if result['status'] == 0
-                @redis.hexists('events:' + client['name'], result['check']).callback do |exists|
+                @redis.hexists('events:' + client['name'], check['name']).callback do |exists|
                   if exists == 1
-                    @redis.hdel('events:' + client['name'], result['check'])
+                    @redis.hdel('events:' + client['name'], check['name'])
                     event['action'] = 'resolve'
                     handle_event(event)
                   end
                 end
               else
-                @redis.hset('events:' + client['name'], result['check'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
+                @redis.hset('events:' + client['name'], check['name'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
                   event['action'] = 'create'
                   handle_event(event)
                 end
@@ -138,7 +138,7 @@ module Sensu
           if exchanges[exchange].nil?
             exchanges[exchange] = @amq.fanout(exchange)
           end
-          exchanges[exchange].publish({'name' => check['name']}.to_json)
+          exchanges[exchange].publish({'name' => check['name'], 'issued' => Time.now.to_i}.to_json)
           EM.debug('published :: ' + exchange + ' :: ' + check['name'])
         end
       end
