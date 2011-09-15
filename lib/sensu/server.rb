@@ -117,9 +117,19 @@ module Sensu
                   end
                 end
               else
-                @redis.hset('events:' + client['name'], check['name'], {'status' => check['status'], 'output' => check['output']}.to_json).callback do
-                  event['action'] = 'create'
-                  handle_event(event)
+                @redis.hget('events:' + client['name'], check['name']).callback do |event_json|
+                  occurrences = 1
+                  unless event_json.nil?
+                    previous_event = JSON.parse(event_json)
+                    if previous_event['status'] == check['status']
+                      occurrences = previous_event['occurrences'] += 1
+                    end
+                  end
+                  @redis.hset('events:' + client['name'], check['name'], {'status' => check['status'], 'output' => check['output'], 'occurrences' => occurrences}.to_json).callback do
+                    event['occurrences'] = occurrences
+                    event['action'] = 'create'
+                    handle_event(event)
+                  end
                 end
               end
             end

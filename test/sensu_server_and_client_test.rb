@@ -56,11 +56,14 @@ class TestSensu < MiniTest::Unit::TestCase
     event = {
       'client' => @settings['client'],
       'check' => {
+        'name' => 'test',
         'handler' => 'default',
         'issued' => Time.now.to_i,
         'status' => 1,
         'output' => 'WARNING\n'
-      }
+      },
+      'occurrences' => 1,
+      'action' => 'create'
     }
     server.handle_event(event)
     eventually(true, :total => 1.5) do
@@ -79,6 +82,7 @@ class TestSensu < MiniTest::Unit::TestCase
     server.setup_results
     client.setup_amqp
     client.setup_keep_alives
+    server.redis_connection.flushall
     @settings['checks'].each_key do |name|
       client.execute_check({'name' => name, 'issued' => Time.now.to_i})
     end
@@ -92,8 +96,8 @@ class TestSensu < MiniTest::Unit::TestCase
       end
     end
     parallel do
-      @settings['checks'].each_with_index do |(name, info), index|
-        eventually({'status' => index + 1, 'output' => @settings['client']['name'] + "\n"}, :total => 1.5) { client_events[name] }
+      @settings['checks'].each_with_index do |(name, details), index|
+        eventually({'status' => index + 1, 'output' => @settings['client']['name'] + "\n", "occurrences" => 1}, :total => 1.5) { client_events[name] }
       end
     end
   end
