@@ -51,31 +51,19 @@ module Sensu
           end
           if unmatched_tokens.empty?
             EM.system('sh', '-c', command + ' 2>&1') do |output, status|
-              @result_queue.publish({
-                'check' => check,
-                'client' => @settings['client']['name'],
-                'status' => status.exitstatus,
-                'output' => output
-              }.to_json)
+              check.merge!({'status' => status.exitstatus, 'output' => output})
+              @result_queue.publish({'client' => @settings['client']['name'], 'check' => check}.to_json)
               @checks_in_progress.delete(check['name'])
             end
           else
-            @result_queue.publish({
-              'check' => check,
-              'client' => @settings['client']['name'],
-              'status' => 3,
-              'output' => 'Missing client attributes: ' + unmatched_tokens.join(', ')
-            }.to_json)
+            check.merge!({'status' => 3, 'output' => 'Missing client attributes: ' + unmatched_tokens.join(', ')})
+            @result_queue.publish({'client' => @settings['client']['name'], 'check' => check}.to_json)
             @checks_in_progress.delete(check['name'])
           end
         end
       else
-        @result_queue.publish({
-          'check' => check,
-          'client' => @settings['client']['name'],
-          'status' => 3,
-          'output' => 'Unknown check'
-        }.to_json)
+        check.merge!({'status' => 3, 'output' => 'Unknown check'})
+        @result_queue.publish({'client' => @settings['client']['name'], 'check' => check}.to_json)
         @checks_in_progress.delete(check['name'])
       end
     end

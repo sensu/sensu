@@ -15,7 +15,7 @@ class TestSensu < MiniTest::Unit::TestCase
     @options = { :config_file => File.join(File.dirname(__FILE__), 'config.json') }
     config = Sensu::Config.new(@options)
     config.create_working_directory
-#    config.purge_working_directory
+    config.purge_working_directory
     @settings = config.settings
   end
 
@@ -56,10 +56,11 @@ class TestSensu < MiniTest::Unit::TestCase
     event = {
       'client' => @settings['client'],
       'check' => {
-        'handler' => 'default'
-      },
-      'status' => 1,
-      'output' => 'WARNING\n'
+        'handler' => 'default',
+        'issued' => Time.now.to_i,
+        'status' => 1,
+        'output' => 'WARNING\n'
+      }
     }
     server.handle_event(event)
     eventually(true, :total => 1.5) do

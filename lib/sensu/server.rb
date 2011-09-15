@@ -103,9 +103,7 @@ module Sensu
             check['handler'] = 'default' unless check['handler']
             event = {
               'client' => client,
-              'check' => check,
-              'status' => result['status'],
-              'output' => result['output']
+              'check' => check
             }
             if check['type'] == 'metric'
               handle_event(event)
@@ -119,7 +117,7 @@ module Sensu
                   end
                 end
               else
-                @redis.hset('events:' + client['name'], check['name'], {'status' => result['status'], 'output' => result['output']}.to_json).callback do
+                @redis.hset('events:' + client['name'], check['name'], {'status' => check['status'], 'output' => check['output']}.to_json).callback do
                   event['action'] = 'create'
                   handle_event(event)
                 end
