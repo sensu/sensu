@@ -101,29 +101,20 @@ module Sensu
             check = result['check']
             check.merge!(@settings['checks'][check['name']]) if @settings['checks'].has_key?(check['name'])
             check['handler'] = 'default' unless check['handler']
-            event = {
-              'client' => client,
-              'check' => check
-            }
+            event = {'client' => client, 'check' => check}
             if check['type'] == 'metric'
               handle_event(event)
             else
-              if check['status'] == 0
-                @redis.hexists('events:' + client['name'], check['name']).callback do |exists|
-                  if exists == 1
-                    @redis.hdel('events:' + client['name'], check['name'])
-                    event['action'] = 'resolve'
-                    handle_event(event)
-                  end
-                end
-              else
-                @redis.hget('events:' + client['name'], check['name']).callback do |event_json|
+              @redis.hget('events:' + client['name'], check['name']).callback do |event_json|
+                previous_event = event_json ? JSON.parse(event_json) : nil
+                if previous_event && check['status'] == 0
+                  @redis.hdel('events:' + client['name'], check['name'])
+                  event['action'] = 'resolve'
+                  handle_event(event)
+                else
                   occurrences = 1
-                  unless event_json.nil?
-                    previous_event = JSON.parse(event_json)
-                    if previous_event['status'] == check['status']
-                      occurrences = previous_event['occurrences'] += 1
-                    end
+                  if previous_event && check['status'] == previous_event['status']
+                    occurrences = previous_event['occurrences'] += 1
                   end
                   @redis.hset('events:' + client['name'], check['name'], {'status' => check['status'], 'output' => check['output'], 'occurrences' => occurrences}.to_json).callback do
                     event['occurrences'] = occurrences
