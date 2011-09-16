@@ -108,7 +108,7 @@ module Sensu
             if check['type'] == 'metric'
               handle_event(event)
             else
-              if result['status'] == 0
+              if check['status'] == 0
                 @redis.hexists('events:' + client['name'], check['name']).callback do |exists|
                   if exists == 1
                     @redis.hdel('events:' + client['name'], check['name'])
