@@ -26,7 +26,7 @@ module Sensu
       @settings = config.settings
       set :redis, EM::Hiredis.connect('redis://' + @settings['redis']['host'] + ':' + @settings['redis']['port'].to_s)
       connection = AMQP.connect(symbolize_keys(@settings['rabbitmq']))
-      set :amq, AMQP::Channel.new(connection)
+      set :amq, MQ.new(connection)
     end
 
     helpers do
