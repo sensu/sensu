@@ -72,7 +72,7 @@ module Sensu
     def setup_subscriptions
       @settings['client']['subscriptions'].each do |exchange|
         uniq_queue_name = UUIDTools::UUID.random_create.to_s
-        @amq.queue(uniq_queue_name, :auto_delete => true).bind(@amq.fanout(exchange)).subscribe do |check_json|
+        @amq.queue(uniq_queue_name, :exclusive => true).bind(@amq.fanout(exchange)).subscribe do |check_json|
           check = JSON.parse(check_json)
           execute_check(check)
         end
