@@ -45,7 +45,7 @@ module Sensu
 
     def setup_amqp
       connection = AMQP.connect(symbolize_keys(@settings['rabbitmq']))
-      @amq = AMQP::Channel.new(connection)
+      @amq = MQ.new(connection)
     end
 
     def setup_keep_alives
