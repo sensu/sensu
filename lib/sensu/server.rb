@@ -101,10 +101,7 @@ module Sensu
             check = result['check']
             check.merge!(@settings['checks'][check['name']]) if @settings['checks'].has_key?(check['name'])
             check['handler'] = 'default' unless check['handler']
-            event = {
-              'client' => client,
-              'check' => check
-            }
+            event = {'client' => client, 'check' => check}
             if check['type'] == 'metric'
               handle_event(event)
             else
@@ -115,7 +112,10 @@ module Sensu
                   event['action'] = 'resolve'
                   handle_event(event)
                 else
-                  occurrences = previous_event ? previous_event['occurrences'] += 1 : 1
+                  occurrences = 1
+                  if previous_event && check['status'] == previous_event['status']
+                    occurrences = previous_event['occurrences'] += 1
+                  end
                   @redis.hset('events:' + client['name'], check['name'], {'status' => check['status'], 'output' => check['output'], 'occurrences' => occurrences}.to_json).callback do
                     event['occurrences'] = occurrences
                     event['action'] = 'create'
