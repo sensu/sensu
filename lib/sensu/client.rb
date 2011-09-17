@@ -40,10 +40,10 @@ module Sensu
     end
 
     def execute_check(check)
+      result = {'client' => @settings['client']['name'], 'check' => check}
       if @settings['checks'].has_key?(check['name'])
         unless @checks_in_progress.include?(check['name'])
           @checks_in_progress.push(check['name'])
-          result = {'client' => @settings['client']['name'], 'check' => check}
           unmatched_tokens = Array.new
           command = @settings['checks'][check['name']]['command'].gsub(/:::(.*?):::/) do
             key = $1.to_s
@@ -70,12 +70,13 @@ module Sensu
     end
 
     def setup_subscriptions
+      uniq_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
       @settings['client']['subscriptions'].each do |exchange|
-        uniq_queue_name = UUIDTools::UUID.random_create.to_s
-        @amq.queue(uniq_queue_name, :exclusive => true).bind(@amq.fanout(exchange)).subscribe do |check_json|
-          check = JSON.parse(check_json)
-          execute_check(check)
-        end
+        uniq_queue.bind(@amq.fanout(exchange))
+      end
+      uniq_queue.subscribe do |check_json|
+        check = JSON.parse(check_json)
+        execute_check(check)
       end
     end
   end
