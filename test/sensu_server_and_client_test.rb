@@ -56,7 +56,7 @@ class TestSensu < MiniTest::Unit::TestCase
     event = {
       'client' => @settings['client'],
       'check' => {
-        'name' => 'test',
+        'name' => 'test_handlers',
         'handler' => 'default',
         'issued' => Time.now.to_i,
         'status' => 1,
@@ -71,7 +71,7 @@ class TestSensu < MiniTest::Unit::TestCase
     end
   end
 
-  def test_execute_checks
+  def test_publish_subscribe
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
     server.setup_logging
@@ -80,12 +80,11 @@ class TestSensu < MiniTest::Unit::TestCase
     server.setup_keep_alives
     server.setup_handlers
     server.setup_results
+    server.redis_connection.flushall
     client.setup_amqp
     client.setup_keep_alives
-    server.redis_connection.flushall
-    @settings['checks'].each_key do |name|
-      client.execute_check({'name' => name, 'issued' => Time.now.to_i})
-    end
+    client.setup_subscriptions
+    server.setup_publisher(:test => true)
     client_events = Hash.new
     EM.add_timer(1) do
       server.redis_connection.hgetall('events:' + @settings['client']['name']).callback do |events|
@@ -97,7 +96,9 @@ class TestSensu < MiniTest::Unit::TestCase
     end
     parallel do
       @settings['checks'].each_with_index do |(name, details), index|
-        eventually({'status' => index + 1, 'output' => @settings['client']['name'] + "\n", "occurrences" => 1}, :total => 1.5) { client_events[name] }
+        eventually({'status' => index + 1, 'output' => @settings['client']['name'] + "\n", "occurrences" => 1}, :total => 1.5) do
+          client_events[name]
+        end
       end
     end
   end

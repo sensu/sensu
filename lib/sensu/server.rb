@@ -16,7 +16,6 @@ module Sensu
         server.setup_handlers
         server.setup_results
         server.setup_publisher
-        server.setup_populator
         server.setup_keep_alive_monitor
 
         Signal.trap('INT') do
@@ -129,26 +128,20 @@ module Sensu
       end
     end
 
-    def setup_publisher
+    def setup_publisher(options={})
       exchanges = Hash.new
-      @amq.queue('checks').subscribe do |check_json|
-        check = JSON.parse(check_json)
-        check['subscribers'].each do |exchange|
-          if exchanges[exchange].nil?
-            exchanges[exchange] = @amq.fanout(exchange)
-          end
-          exchanges[exchange].publish({'name' => check['name'], 'issued' => Time.now.to_i}.to_json)
-          EM.debug('published :: ' + exchange + ' :: ' + check['name'])
-        end
-      end
-    end
-
-    def setup_populator
-      check_queue = @amq.queue('checks')
+      stagger = options[:test] ? 0 : 7
       @settings['checks'].each_with_index do |(name, details), index|
-        EM.add_timer(7*index) do
-          EM.add_periodic_timer(details['interval']) do
-            check_queue.publish({'name' => name, 'subscribers' => details['subscribers']}.to_json)
+        EM.add_timer(stagger*index) do
+          details['subscribers'].each do |exchange|
+            if exchanges[exchange].nil?
+              exchanges[exchange] = @amq.fanout(exchange)
+            end
+            interval = options[:test] ? 0.5 : details['interval']
+            EM.add_periodic_timer(interval) do
+              exchanges[exchange].publish({'name' => name, 'issued' => Time.now.to_i}.to_json)
+              EM.debug('published :: ' + exchange + ' :: ' + name)
+            end
           end
         end
       end
