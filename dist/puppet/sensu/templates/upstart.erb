@@ -1,0 +1,14 @@
+# Upstart: /etc/init/sensu-<%= service %>.conf
+
+description "sensu <%= service %>"
+
+start on (local-filesystems and net-device-up IFACE=eth0)
+stop on [!12345]
+
+respawn
+
+pre-start script
+  test -x /usr/bin/sensu-<%= service %> || { stop; exit 0; }
+end script
+
+exec sudo -u <%= sensu_user %> sh -c "/usr/bin/sensu-<%= service %>"
