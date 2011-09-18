@@ -48,10 +48,15 @@ module Sensu
     end
 
     def setup_keep_alives
-      @amq.queue('keepalives').subscribe do |keepalive_json|
-        client = JSON.parse(keepalive_json)['name']
-        @redis.set('client:' + client, keepalive_json).callback do
-          @redis.sadd('clients', client)
+      keepalive_queue = @amq.queue('keepalives')
+      EM.add_periodic_timer(0.5) do
+        unless keepalive_queue.subscribed?
+          keepalive_queue.subscribe do |keepalive_json|
+            client = JSON.parse(keepalive_json)['name']
+            @redis.set('client:' + client, keepalive_json).callback do
+              @redis.sadd('clients', client)
+            end
+          end
         end
       end
     end
@@ -91,38 +96,47 @@ module Sensu
       @handler_queue.push(event)
     end
 
-    def setup_results
-      @amq.queue('results').subscribe do |result_json|
-        result = JSON.parse(result_json)
-        @redis.get('client:' + result['client']).callback do |client_json|
-          unless client_json.nil?
-            client = JSON.parse(client_json)
-            check = result['check']
-            check.merge!(@settings['checks'][check['name']]) if @settings['checks'].has_key?(check['name'])
-            check['handler'] = 'default' unless check['handler']
-            event = {'client' => client, 'check' => check}
-            if check['type'] == 'metric'
-              handle_event(event)
-            else
-              @redis.hget('events:' + client['name'], check['name']).callback do |event_json|
-                previous_event = event_json ? JSON.parse(event_json) : nil
-                if previous_event && check['status'] == 0
-                  @redis.hdel('events:' + client['name'], check['name'])
-                  event['action'] = 'resolve'
+    def process_result(result)
+      @redis.get('client:' + result['client']).callback do |client_json|
+        unless client_json.nil?
+          client = JSON.parse(client_json)
+          check = result['check']
+          check.merge!(@settings['checks'][check['name']]) if @settings['checks'].has_key?(check['name'])
+          check['handler'] = 'default' unless check['handler']
+          event = {'client' => client, 'check' => check}
+          if check['type'] == 'metric'
+            handle_event(event)
+          else
+            @redis.hget('events:' + client['name'], check['name']).callback do |event_json|
+              previous_event = event_json ? JSON.parse(event_json) : nil
+              if previous_event && check['status'] == 0
+                @redis.hdel('events:' + client['name'], check['name'])
+                event['action'] = 'resolve'
+                handle_event(event)
+              elsif check['status'] > 0
+                occurrences = 1
+                if previous_event && check['status'] == previous_event['status']
+                  occurrences = previous_event['occurrences'] += 1
+                end
+                @redis.hset('events:' + client['name'], check['name'], {'status' => check['status'], 'output' => check['output'], 'occurrences' => occurrences}.to_json).callback do
+                  event['occurrences'] = occurrences
+                  event['action'] = 'create'
                   handle_event(event)
-                elsif check['status'] > 0
-                  occurrences = 1
-                  if previous_event && check['status'] == previous_event['status']
-                    occurrences = previous_event['occurrences'] += 1
-                  end
-                  @redis.hset('events:' + client['name'], check['name'], {'status' => check['status'], 'output' => check['output'], 'occurrences' => occurrences}.to_json).callback do
-                    event['occurrences'] = occurrences
-                    event['action'] = 'create'
-                    handle_event(event)
-                  end
                 end
               end
             end
+          end
+        end
+      end
+    end
+
+    def setup_results
+      result_queue = @amq.queue('results')
+      EM.add_periodic_timer(0.5) do
+        unless result_queue.subscribed?
+          result_queue.subscribe do |result_json|
+            result = JSON.parse(result_json)
+            process_result(result)
           end
         end
       end
