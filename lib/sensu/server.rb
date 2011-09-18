@@ -110,7 +110,7 @@ module Sensu
                   @redis.hdel('events:' + client['name'], check['name'])
                   event['action'] = 'resolve'
                   handle_event(event)
-                else
+                elsif check['status'] > 0
                   occurrences = 1
                   if previous_event && check['status'] == previous_event['status']
                     occurrences = previous_event['occurrences'] += 1
