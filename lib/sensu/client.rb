@@ -74,9 +74,13 @@ module Sensu
       @settings['client']['subscriptions'].each do |exchange|
         uniq_queue.bind(@amq.fanout(exchange))
       end
-      uniq_queue.subscribe do |check_json|
-        check = JSON.parse(check_json)
-        execute_check(check)
+      EM.add_periodic_timer(0.5) do
+        unless uniq_queue.subscribed?
+          uniq_queue.subscribe do |check_json|
+            check = JSON.parse(check_json)
+            execute_check(check)
+          end
+        end
       end
     end
   end
