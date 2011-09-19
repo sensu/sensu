@@ -31,15 +31,15 @@ class TestSensu < MiniTest::Unit::TestCase
     eventually(true) { File.exists?('/tmp/sensu') }
   end
 
-  def test_keep_alives
+  def test_keepalives
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
     server.setup_logging
     server.setup_redis
     server.setup_amqp
-    server.setup_keep_alives
+    server.setup_keepalives
     client.setup_amqp
-    client.setup_keep_alives
+    client.setup_keepalives
     test_client = ''
     EM.add_timer(1) do
       server.redis_connection.get('client:' + @settings['client']['name']).callback do |client_json|
@@ -77,12 +77,12 @@ class TestSensu < MiniTest::Unit::TestCase
     server.setup_logging
     server.setup_redis
     server.setup_amqp
-    server.setup_keep_alives
+    server.setup_keepalives
     server.setup_handlers
     server.setup_results
     server.redis_connection.flushall
     client.setup_amqp
-    client.setup_keep_alives
+    client.setup_keepalives
     client.setup_subscriptions
     server.setup_publisher(:test => true)
     client_events = Hash.new

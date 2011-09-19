@@ -6,7 +6,7 @@ module Sensu
       EM.run do
         client = self.new(options)
         client.setup_amqp
-        client.setup_keep_alives
+        client.setup_keepalives
         client.setup_subscriptions
 
         Signal.trap('INT') do
@@ -31,7 +31,7 @@ module Sensu
       @result_queue = @amq.queue('results')
     end
 
-    def setup_keep_alives
+    def setup_keepalives
       keepalive_queue = @amq.queue('keepalives')
       keepalive_queue.publish(@settings['client'].merge({'timestamp' => Time.now.to_i}).to_json)
       EM.add_periodic_timer(30) do
@@ -76,6 +76,7 @@ module Sensu
       end
       EM.add_periodic_timer(0.5) do
         unless uniq_queue.subscribed?
+          uniq_queue.unsubscribe
           uniq_queue.subscribe do |check_json|
             check = JSON.parse(check_json)
             execute_check(check)
