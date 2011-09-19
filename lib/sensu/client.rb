@@ -76,7 +76,8 @@ module Sensu
       end
       EM.add_periodic_timer(0.5) do
         unless uniq_queue.subscribed?
-          uniq_queue.subscribe(:ack => true) do |check_json|
+          uniq_queue.subscribe(:ack => true) do |header, check_json|
+            header.ack
             check = JSON.parse(check_json)
             execute_check(check)
           end
