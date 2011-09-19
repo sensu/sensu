@@ -51,8 +51,7 @@ module Sensu
       keepalive_queue = @amq.queue('keepalives')
       EM.add_periodic_timer(0.5) do
         unless keepalive_queue.subscribed?
-          keepalive_queue.unsubscribe
-          keepalive_queue.subscribe do |keepalive_json|
+          keepalive_queue.subscribe(:ack => true) do |keepalive_json|
             client = JSON.parse(keepalive_json)['name']
             @redis.set('client:' + client, keepalive_json).callback do
               @redis.sadd('clients', client)
@@ -135,8 +134,7 @@ module Sensu
       result_queue = @amq.queue('results')
       EM.add_periodic_timer(0.5) do
         unless result_queue.subscribed?
-          result_queue.unsubscribe
-          result_queue.subscribe do |result_json|
+          result_queue.subscribe(:ack => true) do |result_json|
             result = JSON.parse(result_json)
             process_result(result)
           end
