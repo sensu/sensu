@@ -8,6 +8,7 @@ module Sensu
         client.setup_amqp
         client.setup_keepalives
         client.setup_subscriptions
+        client.monitor_queues
 
         Signal.trap('INT') do
           EM.stop
@@ -28,14 +29,14 @@ module Sensu
     def setup_amqp
       connection = AMQP.connect(symbolize_keys(@settings['rabbitmq']))
       @amq = MQ.new(connection)
+      @keepalive_queue = @amq.queue('keepalives')
       @result_queue = @amq.queue('results')
     end
 
     def setup_keepalives
-      keepalive_queue = @amq.queue('keepalives')
-      keepalive_queue.publish(@settings['client'].merge({'timestamp' => Time.now.to_i}).to_json)
+      @keepalive_queue.publish(@settings['client'].merge({'timestamp' => Time.now.to_i}).to_json)
       EM.add_periodic_timer(30) do
-        keepalive_queue.publish(@settings['client'].merge({'timestamp' => Time.now.to_i}).to_json)
+        @keepalive_queue.publish(@settings['client'].merge({'timestamp' => Time.now.to_i}).to_json)
       end
     end
 
@@ -70,16 +71,22 @@ module Sensu
     end
 
     def setup_subscriptions
-      uniq_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
+      @uniq_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
       @settings['client']['subscriptions'].each do |exchange|
-        uniq_queue.bind(@amq.fanout(exchange))
+        @uniq_queue.bind(@amq.fanout(exchange))
       end
-      EM.add_periodic_timer(0.5) do
-        unless uniq_queue.subscribed?
-          uniq_queue.subscribe(:ack => true) do |header, check_json|
-            header.ack
-            check = JSON.parse(check_json)
-            execute_check(check)
+      @uniq_queue.subscribe do |check_json|
+        check = JSON.parse(check_json)
+        execute_check(check)
+      end
+    end
+
+    def monitor_queues
+      EM.add_periodic_timer(5) do
+        unless @uniq_queue.subscribed?
+          @uniq_queue.delete
+          EM.add_timer(1) do
+            setup_subscriptions
           end
         end
       end

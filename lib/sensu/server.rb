@@ -17,6 +17,7 @@ module Sensu
         server.setup_results
         server.setup_publisher
         server.setup_keepalive_monitor
+        server.monitor_queues
 
         Signal.trap('INT') do
           EM.stop
@@ -48,16 +49,11 @@ module Sensu
     end
 
     def setup_keepalives
-      keepalive_queue = @amq.queue('keepalives')
-      EM.add_periodic_timer(0.5) do
-        unless keepalive_queue.subscribed?
-          keepalive_queue.subscribe(:ack => true) do |header, keepalive_json|
-            header.ack
-            client = JSON.parse(keepalive_json)['name']
-            @redis.set('client:' + client, keepalive_json).callback do
-              @redis.sadd('clients', client)
-            end
-          end
+      @keepalive_queue = @amq.queue('keepalives')
+      @keepalive_queue.subscribe do |keepalive_json|
+        client = JSON.parse(keepalive_json)['name']
+        @redis.set('client:' + client, keepalive_json).callback do
+          @redis.sadd('clients', client)
         end
       end
     end
@@ -132,15 +128,10 @@ module Sensu
     end
 
     def setup_results
-      result_queue = @amq.queue('results')
-      EM.add_periodic_timer(0.5) do
-        unless result_queue.subscribed?
-          result_queue.subscribe(:ack => true) do |header, result_json|
-            header.ack
-            result = JSON.parse(result_json)
-            process_result(result)
-          end
-        end
+      @result_queue = @amq.queue('results')
+      @result_queue.subscribe do |result_json|
+        result = JSON.parse(result_json)
+        process_result(result)
       end
     end
 
@@ -188,6 +179,23 @@ module Sensu
                 end
               end
             end
+          end
+        end
+      end
+    end
+
+    def monitor_queues
+      EM.add_periodic_timer(5) do
+        unless @keepalive_queue.subscribed?
+          @keepalive_queue.delete
+          EM.add_timer(1) do
+            setup_keepalives
+          end
+        end
+        unless @result_queue.subscribed?
+          @result_queue.delete
+          EM.add_timer(1) do
+            setup_results
           end
         end
       end

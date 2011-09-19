@@ -66,7 +66,7 @@ class TestSensu < MiniTest::Unit::TestCase
       'action' => 'create'
     }
     server.handle_event(event)
-    eventually(true, :total => 2) do
+    eventually(true, :total => 1.5) do
       JSON.parse(File.open('/tmp/sensu/test_handlers', 'rb').read) == event
     end
   end
