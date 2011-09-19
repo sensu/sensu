@@ -12,11 +12,11 @@ module Sensu
         server.setup_logging
         server.setup_redis
         server.setup_amqp
-        server.setup_keep_alives
+        server.setup_keepalives
         server.setup_handlers
         server.setup_results
         server.setup_publisher
-        server.setup_keep_alive_monitor
+        server.setup_keepalive_monitor
 
         Signal.trap('INT') do
           EM.stop
@@ -47,10 +47,11 @@ module Sensu
       @amq = MQ.new(connection)
     end
 
-    def setup_keep_alives
+    def setup_keepalives
       keepalive_queue = @amq.queue('keepalives')
       EM.add_periodic_timer(0.5) do
         unless keepalive_queue.subscribed?
+          keepalive_queue.unsubscribe
           keepalive_queue.subscribe do |keepalive_json|
             client = JSON.parse(keepalive_json)['name']
             @redis.set('client:' + client, keepalive_json).callback do
@@ -134,6 +135,7 @@ module Sensu
       result_queue = @amq.queue('results')
       EM.add_periodic_timer(0.5) do
         unless result_queue.subscribed?
+          result_queue.unsubscribe
           result_queue.subscribe do |result_json|
             result = JSON.parse(result_json)
             process_result(result)
@@ -161,7 +163,7 @@ module Sensu
       end
     end
 
-    def setup_keep_alive_monitor
+    def setup_keepalive_monitor
       result_queue = @amq.queue('results')
       EM.add_periodic_timer(30) do
         @redis.smembers('clients').callback do |clients|
