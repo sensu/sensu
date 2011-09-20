@@ -65,5 +65,5 @@ end
 service "sensu-server" do
   provider Chef::Provider::Service::Upstart
   action [:enable, :start]
-  subscribes :restart, resources(:file => "/etc/sensu/config.json"), :delayed
+  subscribes :restart, resources(:file => "/etc/sensu/config.json", :gem_package => "sensu"), :delayed
 end
