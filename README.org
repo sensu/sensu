@@ -5,6 +5,8 @@
 
   Check results are handled by user created handlers.
 
+  Documentation can be found [[https://github.com/sonian/sensu/wiki][here]].
+
 * License
   Sensu is released under the [[https://github.com/sonian/sensu/blob/master/MIT-LICENSE.txt][MIT license]].
 
@@ -19,19 +21,20 @@
 *** A Client Will
   - Have a set of attributes to describe it, including its responsibilities
   - Send keep-alives to a server
-  - Subscribe to a set of queues bound to a set of fanout exchanges, determined by its responsibilities
+  - Subscribe to a queue bound to a set of fanout exchanges, determined by its responsibilities
   - Substitute tokens in check commands with their matching client attribute
+  - Report when it does not have a client attribute for token substitution
   - Receive checks from subscriptions, execute them, and publish the results to a queue with its client name
   - Not allow overlapping check executions of the same name
   - Report when it is unaware of a check it received from a subscription
 
 *** A Server Will
-  - Subscribe to a queue for check scheduling, another for check results
-  - Populate the check scheduling queue using a JSON config file
-  - Pull a check from the check scheduling queue and push it onto its associated fanout exchanges
+  - Subscribe to a queue for check results, another for keep-alives
+  - Pull keep-alives, storing client details
+  - Publish checks on defined intervals to their associated fanout exchanges
   - Pull check results, storing the latest events for clients, a good result will flush a previous event for that client
   - Create an event when it stops receiving keep-alives from a client, a new keep-alive for the client will clear the event
-  - Trigger a event handler, determined by the type of the check that produced the event, providing it with a JSON event file
+  - Trigger a event handler, either the default handler or one specified for the check, providing it with a JSON event file
 
 *** An API Will
   - List all current events
