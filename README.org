@@ -29,7 +29,8 @@
   - Report when it is unaware of a check it received from a subscription
 
 *** A Server Will
-  - Subscribe to a queue for for check results
+  - Subscribe to a queue for check results, another for keep-alives
+  - Pull keep-alives, storing client details
   - Publish checks on defined intervals to their associated fanout exchanges
   - Pull check results, storing the latest events for clients, a good result will flush a previous event for that client
   - Create an event when it stops receiving keep-alives from a client, a new keep-alive for the client will clear the event
