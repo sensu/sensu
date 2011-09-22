@@ -1,4 +1,5 @@
 require 'rubygems' if RUBY_VERSION < '1.9.0'
+require 'optparse'
 require 'json'
 require 'uuidtools'
 require 'amqp'
@@ -36,6 +37,26 @@ module Sensu
       unless @settings['client']['subscriptions'].is_a?(Array) && @settings['client']['subscriptions'].count > 0
         raise 'configuration invalid, client must have subscriptions'
       end
+    end
+
+    def self.read_arguments(arguments)
+      options = Hash.new
+      optparse = OptionParser.new do |opts|
+        opts.on('-h', '--help', 'Display this screen') do
+          puts opts
+          exit
+        end
+        options[:worker] = false
+        opts.on('-w', '--worker', 'Only consume jobs, no check publishing (default: false)') do
+          options[:worker] = true
+        end
+        options[:config_file] = nil
+        opts.on('-c', '--config FILE', 'Sensu JSON config FILE (default: /etc/sensu/config.json)') do |file|
+          options[:config_file] = file
+        end
+      end
+      optparse.parse!(arguments)
+      options
     end
 
     def create_working_directory
