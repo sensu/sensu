@@ -3,7 +3,7 @@ require 'em-hiredis'
 
 module Sensu
   class Server
-    attr_accessor :redis
+    attr_accessor :redis, :is_worker
     alias :redis_connection :redis
 
     def self.run(options={})
@@ -15,8 +15,10 @@ module Sensu
         server.setup_keepalives
         server.setup_handlers
         server.setup_results
-        server.setup_publisher
-        server.setup_keepalive_monitor
+        unless server.is_worker
+          server.setup_publisher
+          server.setup_keepalive_monitor
+        end
         server.monitor_queues
 
         Signal.trap('INT') do
@@ -33,6 +35,7 @@ module Sensu
       config = Sensu::Config.new(:config_file => options[:config_file])
       config.create_working_directory
       @settings = config.settings
+      @is_worker = options[:worker]
     end
 
     def setup_logging
@@ -187,16 +190,10 @@ module Sensu
     def monitor_queues
       EM.add_periodic_timer(5) do
         unless @keepalive_queue.subscribed?
-          @keepalive_queue.delete
-          EM.add_timer(1) do
-            setup_keepalives
-          end
+          setup_keepalives
         end
         unless @result_queue.subscribed?
-          @result_queue.delete
-          EM.add_timer(1) do
-            setup_results
-          end
+          setup_results
         end
       end
     end

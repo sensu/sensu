@@ -12,7 +12,7 @@ class TestSensu < MiniTest::Unit::TestCase
   EM::Ventually.total_default = 0.5
 
   def setup
-    @options = { :config_file => File.join(File.dirname(__FILE__), 'config.json') }
+    @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json')}
     config = Sensu::Config.new(@options)
     config.create_working_directory
     config.purge_working_directory
@@ -23,6 +23,11 @@ class TestSensu < MiniTest::Unit::TestCase
     config = Sensu::Config.new(@options)
     settings = config.settings
     eventually(true) { settings.has_key?('client') }
+  end
+
+  def test_cli_arguments
+    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file]])
+    eventually({:worker => true, :config_file => @options[:config_file]}) { options }
   end
 
   def test_create_working_directory
