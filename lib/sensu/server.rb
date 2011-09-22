@@ -49,7 +49,9 @@ module Sensu
     end
 
     def setup_keepalives
-      @keepalive_queue = @amq.queue('keepalives')
+      @keepalive_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
+      keepalives = @amq.direct('keepalives')
+      @keepalive_queue.bind(keepalives)
       @keepalive_queue.subscribe do |keepalive_json|
         client = JSON.parse(keepalive_json)['name']
         @redis.set('client:' + client, keepalive_json).callback do
@@ -128,7 +130,9 @@ module Sensu
     end
 
     def setup_results
-      @result_queue = @amq.queue('results')
+      @result_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
+      results = @amq.direct('results')
+      @result_queue.bind(results)
       @result_queue.subscribe do |result_json|
         result = JSON.parse(result_json)
         process_result(result)

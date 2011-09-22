@@ -29,8 +29,8 @@ module Sensu
     def setup_amqp
       connection = AMQP.connect(symbolize_keys(@settings['rabbitmq']))
       @amq = MQ.new(connection)
-      @keepalive_queue = @amq.queue('keepalives')
-      @result_queue = @amq.queue('results')
+      @keepalive_queue = @amq.direct('keepalives')
+      @result_queue = @amq.direct('results')
     end
 
     def setup_keepalives
