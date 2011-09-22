@@ -29,8 +29,8 @@ module Sensu
     def setup_amqp
       connection = AMQP.connect(symbolize_keys(@settings['rabbitmq']))
       @amq = MQ.new(connection)
-      @keepalive_queue = @amq.direct('keepalives')
-      @result_queue = @amq.direct('results')
+      @keepalive_queue = @amq.queue('keepalives')
+      @result_queue = @amq.queue('results')
     end
 
     def setup_keepalives
@@ -71,11 +71,11 @@ module Sensu
     end
 
     def setup_subscriptions
-      @uniq_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
+      @check_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
       @settings['client']['subscriptions'].each do |exchange|
-        @uniq_queue.bind(@amq.fanout(exchange))
+        @check_queue.bind(@amq.fanout(exchange))
       end
-      @uniq_queue.subscribe do |check_json|
+      @check_queue.subscribe do |check_json|
         check = JSON.parse(check_json)
         execute_check(check)
       end
@@ -83,8 +83,8 @@ module Sensu
 
     def monitor_queues
       EM.add_periodic_timer(5) do
-        unless @uniq_queue.subscribed?
-          @uniq_queue.delete
+        unless @check_queue.subscribed?
+          @check_queue.delete
           EM.add_timer(1) do
             setup_subscriptions
           end
