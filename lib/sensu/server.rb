@@ -33,7 +33,6 @@ module Sensu
 
     def initialize(options={})
       config = Sensu::Config.new(:config_file => options[:config_file])
-      config.create_working_directory
       @settings = config.settings
       @is_worker = options[:worker]
     end
@@ -66,22 +65,22 @@ module Sensu
       handlers_in_progress = 0
       handle = Proc.new do |event|
         if handlers_in_progress < 15
-          event_file = proc do
+          handler = proc do
             handlers_in_progress += 1
-            file_name = '/tmp/sensu/event-' + UUIDTools::UUID.random_create.to_s
-            File.open(file_name, 'w') do |file|
-              file.write(JSON.pretty_generate(event))
+            result = Hash.new
+            IO.popen(@settings['handlers'][event['check']['handler']] + ' 2>&1', 'r+') do |io|
+              io.write(JSON.pretty_generate(event))
+              io.close_write
+              result['output'] = io.read
             end
-            file_name
+            result['status'] = $?.exitstatus
+            result
           end
-          handler = proc do |event_file|
-            EM.system('sh', '-c', @settings['handlers'][event['check']['handler']] + ' -f ' + event_file  + ' 2>&1') do |output, status|
-              EM.debug('handled :: ' + event['check']['handler'] + ' :: ' + status.exitstatus.to_s + ' :: ' + output)
-              File.delete(event_file)
-              handlers_in_progress -= 1
-            end
+          completed = proc do |result|
+            EM.debug('handled :: ' + event['check']['handler'] + ' :: ' + result['status'].to_s + ' :: ' + result['output'])
+            handlers_in_progress -= 1
           end
-          EM.defer(event_file, handler)
+          EM.defer(handler, completed)
         else
           @handler_queue.push(event)
         end

@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    sensu (0.5.12)
+    sensu (0.5.13)
       amqp (= 0.7.4)
       async_sinatra
       em-hiredis

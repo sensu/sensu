@@ -14,8 +14,6 @@ class TestSensu < MiniTest::Unit::TestCase
   def setup
     @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json')}
     config = Sensu::Config.new(@options)
-    config.create_working_directory
-    config.purge_working_directory
     @settings = config.settings
   end
 
@@ -28,12 +26,6 @@ class TestSensu < MiniTest::Unit::TestCase
   def test_cli_arguments
     options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file]])
     eventually({:worker => true, :config_file => @options[:config_file]}) { options }
-  end
-
-  def test_create_working_directory
-    config = Sensu::Config.new(@options)
-    config.create_working_directory
-    eventually(true) { File.exists?('/tmp/sensu') }
   end
 
   def test_keepalives
@@ -72,7 +64,7 @@ class TestSensu < MiniTest::Unit::TestCase
     }
     server.handle_event(event)
     eventually(true, :total => 1.5) do
-      JSON.parse(File.open('/tmp/sensu/test_handlers', 'rb').read) == event
+      JSON.parse(File.open('/tmp/sensu_test_handlers', 'rb').read) == event
     end
   end
 
