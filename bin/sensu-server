@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
-raise "The Sensu Server does not run on Windows" if RUBY_PLATFORM.downcase.include?('mswin32')
+platform = RUBY_PLATFORM.downcase
+raise "The Sensu Server does not run on Windows" if platform.include?('mswin32') || platform.include?('mingw32')
 
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
 require 'sensu/server'
