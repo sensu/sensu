@@ -3,4 +3,5 @@
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
 require 'sensu/client'
 
-Sensu::Client.run(Sensu::Config.read_arguments(ARGV))
+options = Sensu::Config.read_arguments(ARGV)
+Sensu::Client.run(options)

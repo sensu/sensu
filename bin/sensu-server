@@ -1,6 +1,9 @@
 #!/usr/bin/env ruby
 
+raise "The Sensu Server does not run on Windows" if RUBY_PLATFORM.downcase.include?('mswin32')
+
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
 require 'sensu/server'
 
-Sensu::Server.run(Sensu::Config.read_arguments(ARGV))
+options = Sensu::Config.read_arguments(ARGV)
+Sensu::Server.run(options)
