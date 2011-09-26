@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "sensu"
-  s.version     = "0.5.17"
+  s.version     = "0.6.0"
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
