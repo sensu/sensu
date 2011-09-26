@@ -49,7 +49,6 @@ class TestSensu < MiniTest::Unit::TestCase
   def test_handlers
     server = Sensu::Server.new(@options)
     server.setup_logging
-    server.setup_handlers
     event = {
       'client' => @settings['client'],
       'check' => {
@@ -75,7 +74,6 @@ class TestSensu < MiniTest::Unit::TestCase
     server.setup_redis
     server.setup_amqp
     server.setup_keepalives
-    server.setup_handlers
     server.setup_results
     server.redis_connection.flushall
     client.setup_amqp
