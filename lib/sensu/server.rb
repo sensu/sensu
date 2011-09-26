@@ -150,15 +150,18 @@ module Sensu
               result = {'client' => client['name'], 'check' => {'name' => 'keepalive', 'issued' => Time.now.to_i}}
               case
               when time_since_last_check >= 180
-                result['check'].merge!({'status' => 2, 'output' => 'No keep-alive sent from host in over 180 seconds'})
+                result['check']['status'] = 2
+                result['check']['output'] = 'No keep-alive sent from host in over 180 seconds'
                 @result_queue.publish(result.to_json)
               when time_since_last_check >= 120
-                result['check'].merge!({'status' => 1, 'output' => 'No keep-alive sent from host in over 120 seconds'})
+                result['check']['status'] = 1
+                result['check']['output'] = 'No keep-alive sent from host in over 120 seconds'
                 @result_queue.publish(result.to_json)
               else
                 @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
                   if exists == 1
-                    result['check'].merge!({'status' => 0, 'output' => 'Keep-alive sent from host'})
+                    result['check']['status'] = 0
+                    result['check']['output'] = 'Keep-alive sent from host'
                     @result_queue.publish(result.to_json)
                   end
                 end
