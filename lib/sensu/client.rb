@@ -52,19 +52,28 @@ module Sensu
             @settings['client'][key].to_s
           end
           if unmatched_tokens.empty?
-            EM.system('sh', '-c', command + ' 2>&1') do |output, status|
-              result['check'].merge!({'status' => status.exitstatus, 'output' => output})
-              @result_queue.publish(result.to_json)
-              @checks_in_progress.delete(check['name'])
+            execute = proc do
+              IO.popen(command + ' 2>&1') do |io|
+                result['check']['output'] = io.read
+              end
+              result['check']['status'] = $?.exitstatus
+              result
             end
+            publish = proc do |result|
+              @result_queue.publish(result.to_json)
+              @checks_in_progress.delete(result['check']['name'])
+            end
+            EM.defer(execute, publish)
           else
-            result['check'].merge!({'status' => 3, 'output' => 'Missing client attributes: ' + unmatched_tokens.join(', ')})
+            result['check']['status'] = 3
+            result['check']['output'] = 'Missing client attributes: ' + unmatched_tokens.join(', ')
             @result_queue.publish(result.to_json)
             @checks_in_progress.delete(check['name'])
           end
         end
       else
-        result['check'].merge!({'status' => 3, 'output' => 'Unknown check'})
+        result['check']['status'] = 3
+        result['check']['output'] = 'Unknown check'
         @result_queue.publish(result.to_json)
         @checks_in_progress.delete(check['name'])
       end
