@@ -7,13 +7,13 @@ module Sensu
     alias :redis_connection :redis
 
     def self.run(options={})
+      EM.threadpool_size = 15
       EM.run do
         server = self.new(options)
         server.setup_logging
         server.setup_redis
         server.setup_amqp
         server.setup_keepalives
-        server.setup_handlers
         server.setup_results
         unless server.is_worker
           server.setup_publisher
@@ -60,39 +60,21 @@ module Sensu
       end
     end
 
-    def setup_handlers
-      @handler_queue = EM::Queue.new
-      handlers_in_progress = 0
-      handle = Proc.new do |event|
-        if handlers_in_progress < 15
-          handler = proc do
-            handlers_in_progress += 1
-            result = Hash.new
-            IO.popen(@settings['handlers'][event['check']['handler']] + ' 2>&1', 'r+') do |io|
-              io.write(JSON.pretty_generate(event))
-              io.close_write
-              result['output'] = io.read
-            end
-            result['status'] = $?.exitstatus
-            result
-          end
-          completed = proc do |result|
-            EM.debug('handled :: ' + event['check']['handler'] + ' :: ' + result['status'].to_s + ' :: ' + result['output'])
-            handlers_in_progress -= 1
-          end
-          EM.defer(handler, completed)
-        else
-          @handler_queue.push(event)
-        end
-        EM.next_tick do
-          @handler_queue.pop(&handle)
-        end
-      end
-      @handler_queue.pop(&handle)
-    end
-
     def handle_event(event)
-      @handler_queue.push(event)
+      handler = proc do
+        result = Hash.new
+        IO.popen(@settings['handlers'][event['check']['handler']] + ' 2>&1', 'r+') do |io|
+          io.write(JSON.pretty_generate(event))
+          io.close_write
+          result['output'] = io.read
+        end
+        result['status'] = $?.exitstatus
+        result
+      end
+      report = proc do |result|
+        EM.debug('handled :: ' + event['check']['handler'] + ' :: ' + result['status'].to_s + ' :: ' + result['output'])
+      end
+      EM.defer(handler, report)
     end
 
     def process_result(result)
@@ -101,8 +83,8 @@ module Sensu
           client = JSON.parse(client_json)
           check = result['check']
           check.merge!(@settings['checks'][check['name']]) if @settings['checks'].has_key?(check['name'])
-          check['handler'] = 'default' unless check['handler']
-          event = {'client' => client, 'check' => check}
+          check['handler'] ||= 'default'
+          event = {'client' => client, 'check' => check, 'occurrences' => 1}
           if check['type'] == 'metric'
             handle_event(event)
           else
@@ -113,12 +95,14 @@ module Sensu
                 event['action'] = 'resolve'
                 handle_event(event)
               elsif check['status'] > 0
-                occurrences = 1
                 if previous_event && check['status'] == previous_event['status']
-                  occurrences = previous_event['occurrences'] += 1
+                  event['occurrences'] = previous_event['occurrences'] += 1
                 end
-                @redis.hset('events:' + client['name'], check['name'], {'status' => check['status'], 'output' => check['output'], 'occurrences' => occurrences}.to_json).callback do
-                  event['occurrences'] = occurrences
+                @redis.hset('events:' + client['name'], check['name'], {
+                  'status' => check['status'],
+                  'output' => check['output'],
+                  'occurrences' => event['occurrences']
+                }.to_json).callback do
                   event['action'] = 'create'
                   handle_event(event)
                 end
