@@ -13,7 +13,8 @@ Gem::Specification.new do |s|
   s.add_dependency("json")
   s.add_dependency("uuidtools")
   s.add_dependency("em-syslog")
-  unless RUBY_PLATFORM.downcase.include?('mswin32')
+  platform = RUBY_PLATFORM.downcase
+  unless platform.include?('mswin32') || platform.include?('mingw32')
     s.add_dependency("em-hiredis")
     s.add_dependency("async_sinatra")
     s.add_dependency("thin")
