@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "sensu"
-  s.version     = "0.5.14"
+  s.version     = "0.5.15"
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sensu"
