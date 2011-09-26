@@ -1,6 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = "sensu"
   s.version     = "0.5.17"
+  s.platform    = Gem::Platform::RUBY
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sensu"
@@ -9,17 +10,17 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
   s.has_rdoc    = false
 
-  s.platform    = $platform || RUBY_PLATFORM.downcase || 'ruby'
-
   s.add_dependency("amqp", "0.7.4")
   s.add_dependency("json")
   s.add_dependency("uuidtools")
   s.add_dependency("em-syslog")
-  unless s.platform =~ /mswin|mingw32|windows/
+
+  unless RUBY_PLATFORM.downcase =~ /mswin|mingw32|windows/
     s.add_dependency("em-hiredis")
     s.add_dependency("async_sinatra")
     s.add_dependency("thin")
   end
+
   s.add_development_dependency('rake')
   s.add_development_dependency('minitest')
   s.add_development_dependency('em-ventually')
