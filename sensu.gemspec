@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "sensu"
-  s.version     = "0.6.0"
+  s.version     = "0.6.1"
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sensu"
@@ -14,8 +14,6 @@ Gem::Specification.new do |s|
     s.platform  = "x86-mingw32"
   when "mswin"
     s.platform  = "x86-mswin32"
-  else
-    s.platform  = Gem::Platform::RUBY
   end
 
   s.add_dependency("eventmachine", "1.0.0.beta.4.1") if s.platform =~ /mswin|mingw32|windows/
