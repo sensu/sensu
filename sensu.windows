@@ -3,7 +3,6 @@ require File.expand_path("../lib/sensu", __FILE__)
 Gem::Specification.new do |s|
   s.name        = "sensu"
   s.version     = Sensu::VERSION
-  s.platform    = Gem::Platform::RUBY
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sensu"
@@ -12,18 +11,18 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
   s.has_rdoc    = false
 
+  s.platform = case ENV['BUILD']
+  when "mswin"
+    "x86-mswin32"
+  when "mingw"
+    "x86-mingw32"
+  end
+
+  s.add_dependency("eventmachine", "1.0.0.beta.4.1")
   s.add_dependency("amqp", "0.7.4")
   s.add_dependency("json")
   s.add_dependency("uuidtools")
   s.add_dependency("em-syslog")
-  s.add_dependency("em-hiredis")
-  s.add_dependency("async_sinatra")
-  s.add_dependency("thin")
-
-  s.add_development_dependency('rake')
-  s.add_development_dependency('minitest')
-  s.add_development_dependency('em-ventually')
-  s.add_development_dependency('rest-client')
 
   s.files         = `git ls-files`.split("\n").reject {|f| f =~ /(dist|test)/}
   s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
