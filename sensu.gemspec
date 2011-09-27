@@ -9,11 +9,13 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
   s.has_rdoc    = false
 
-  case ENV['BUILD']
+  s.platform = case ENV['BUILD']
   when "mingw"
-    s.platform  = "x86-mingw32"
+    "x86-mingw32"
   when "mswin"
-    s.platform  = "x86-mswin32"
+    "x86-mswin32"
+  else
+    RUBY_PLATFORM[/mingw32|mswin32/] || 'ruby'
   end
 
   s.add_dependency("eventmachine", "1.0.0.beta.4.1") if s.platform =~ /mswin|mingw32|windows/
