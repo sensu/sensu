@@ -62,17 +62,18 @@ module Sensu
 
     def handle_event(event)
       handler = proc do
-        result = Hash.new
+        output = ''
         IO.popen(@settings['handlers'][event['check']['handler']] + ' 2>&1', 'r+') do |io|
           io.write(JSON.pretty_generate(event))
           io.close_write
-          result['output'] = io.read
+          output = io.read
         end
-        result['status'] = $?.exitstatus
-        result
+        output
       end
-      report = proc do |result|
-        EM.debug('handled :: ' + event['check']['handler'] + ' :: ' + result['status'].to_s + ' :: ' + result['output'])
+      report = proc do |output|
+        output.split(/\n+/).each do |line|
+          EM.debug(line)
+        end
       end
       EM.defer(handler, report)
     end
@@ -133,7 +134,7 @@ module Sensu
             interval = options[:test] ? 0.5 : details['interval']
             EM.add_periodic_timer(interval) do
               exchanges[exchange].publish({'name' => name, 'issued' => Time.now.to_i}.to_json)
-              EM.debug('published :: ' + exchange + ' :: ' + name)
+              EM.debug('name="Published Check" event_id=server action="Published check ' + name + ' to the ' + exchange + ' exchange"')
             end
           end
         end
