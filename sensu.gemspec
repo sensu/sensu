@@ -1,7 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "sensu"
   s.version     = "0.6.0"
-  s.platform    = Gem::Platform::RUBY
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sensu"
@@ -10,12 +9,23 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
   s.has_rdoc    = false
 
+  case ENV['BUILD']
+  when "mingw"
+    s.platform  = "x86-mingw32"
+  when "mswin"
+    s.platform  = "x86-mswin32"
+  else
+    s.platform  = Gem::Platform::RUBY
+  end
+
+  s.add_dependency("eventmachine", "1.0.0.beta.4.1") if s.platform =~ /mswin|mingw32|windows/
+
   s.add_dependency("amqp", "0.7.4")
   s.add_dependency("json")
   s.add_dependency("uuidtools")
   s.add_dependency("em-syslog")
 
-  unless RUBY_PLATFORM.downcase =~ /mswin|mingw32|windows/
+  unless s.platform =~ /mswin|mingw32|windows/
     s.add_dependency("em-hiredis")
     s.add_dependency("async_sinatra")
     s.add_dependency("thin")
