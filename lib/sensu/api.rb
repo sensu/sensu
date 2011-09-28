@@ -54,10 +54,50 @@ module Sensu
       end
     end
 
-    aget '/client/:id' do |client|
+    aget '/client/:name' do |client|
       conn.redis.get('client:' + client).callback do |client_json|
         status 404 if client_json.nil?
         body client_json
+      end
+    end
+
+    adelete '/client/:name' do |client|
+      conn.redis.sismember('clients', client).callback do |client_exists|
+        unless client_exists == 0
+          conn.redis.exists('events:' + client).callback do |events_exist|
+            unless events_exist == 0
+              conn.redis.hgetall('events:' + client).callback do |events|
+                Hash[*events].keys.each do |check_name|
+                  check = {'name' => check_name, 'issued' => Time.now.to_i, 'status' => 0, 'output' => 'Client is being removed'}
+                  conn.amq.queue('results').publish({'client' => client, 'check' => check}.to_json)
+                end
+                EM.add_timer(5) do
+                  conn.redis.srem('clients', client)
+                  conn.redis.del('events:' + client)
+                  conn.redis.del('client:' + client)
+                end
+              end
+            else
+              conn.redis.srem('clients', client)
+              conn.redis.del('events:' + client)
+              conn.redis.del('client:' + client)
+            end
+            status 204
+            body nil
+          end
+        else
+          status 404
+          body nil
+        end
+      end
+    end
+
+    aget '/event/:client/:check' do |client, check|
+      conn.redis.hgetall('events:' + client).callback do |events|
+        client_events = Hash[*events]
+        event = client_events[check]
+        status 404 if event.nil?
+        body event
       end
     end
 
@@ -81,37 +121,6 @@ module Sensu
       end
     end
 
-    adelete '/client/:id' do |client|
-      conn.redis.sismember('clients', client).callback do |client_exists|
-        unless client_exists == 0
-          conn.redis.exists('events:' + client).callback do |events_exist|
-            unless events_exist == 0
-              conn.redis.hgetall('events:' + client).callback do |events|
-                Hash[*events].keys.each do |check_name|
-                  check = {'name' => check_name, 'issued' => Time.now.to_i, 'status' => 0, 'output' => 'client is being removed...'}
-                  conn.amq.queue('results').publish({'client' => client, 'check' => check}.to_json)
-                end
-                EM.add_timer(5) do
-                  conn.redis.srem('clients', client)
-                  conn.redis.del('events:' + client)
-                  conn.redis.del('client:' + client)
-                end
-              end
-            else
-              conn.redis.srem('clients', client)
-              conn.redis.del('events:' + client)
-              conn.redis.del('client:' + client)
-            end
-            status 204
-            body ''
-          end
-        else
-          status 404
-          body ''
-        end
-      end
-    end
-
     apost '/stash/*' do |path|
       conn.redis.set('stash:' + path, params[:data]).callback do
         status 201
@@ -126,8 +135,22 @@ module Sensu
       end
     end
 
-    apost '/test/client' do
-      attributes = '{
+    adelete '/stash/*' do |path|
+      conn.redis.exists('stash:' + path).callback do |stash_exist|
+        unless stash_exist == 0
+          conn.redis.del('stash:' + path).callback do
+            status 204
+            body nil
+          end
+        else
+          status 404
+          body nil
+        end
+      end
+    end
+
+    apost '/test' do
+      client = '{
         "name": "test",
         "address": "localhost",
         "subscriptions": [
@@ -135,17 +158,15 @@ module Sensu
           "bar"
         ]
       }'
-      conn.redis.set('client:test', attributes).callback do
-        conn.redis.sadd('clients', 'test')
-        status 201
-        body ''
-      end
-    end
-
-    apost '/test/event' do
-      conn.redis.hset('events:test', 'test', {'status' => 2, 'output' => 'CRITICAL :: test', 'occurrences' => 1}.to_json).callback do
-        status 201
-        body ''
+      conn.redis.set('client:test', client).callback do
+        conn.redis.sadd('clients', 'test').callback do
+          conn.redis.hset('events:test', 'test', {'status' => 2, 'output' => 'CRITICAL', 'occurrences' => 1}.to_json).callback do
+            conn.redis.set('stash:test/test', '{"key": "value"}').callback do
+              status 201
+              body nil
+            end
+          end
+        end
       end
     end
   end
