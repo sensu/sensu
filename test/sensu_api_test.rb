@@ -11,8 +11,7 @@ end
 
 class TestSensuAPI < MiniTest::Unit::TestCase
   def setup
-    RestClient.post 'localhost:4567/test/client', nil
-    RestClient.post 'localhost:4567/test/event', nil
+    RestClient.post 'localhost:4567/test', nil
   end
 
   def test_get_clients
@@ -49,6 +48,11 @@ class TestSensuAPI < MiniTest::Unit::TestCase
     assert_equal(200, response.code.to_i)
   end
 
+  def test_get_event
+    response = RestClient.get 'localhost:4567/event/test/test'
+    assert_equal(200, response.code.to_i)
+  end
+
   def test_get_client
     response = RestClient.get 'localhost:4567/client/test'
     assert_equal(200, response.code.to_i)
@@ -77,6 +81,21 @@ class TestSensuAPI < MiniTest::Unit::TestCase
       code = error.response.code.to_i
     end
     assert_equal(404, code)
+  end
+
+  def test_create_stash
+    response = RestClient.post 'localhost:4567/stash/tester', :data => '{"key": "value"}'
+    assert_equal(201, response.code.to_i)
+  end
+
+  def test_get_stash
+    response = RestClient.get 'localhost:4567/stash/test/test'
+    assert_equal(200, response.code.to_i)
+  end
+
+  def test_delete_stash
+    response = RestClient.delete 'localhost:4567/stash/test/test'
+    assert_equal(204, response.code.to_i)
   end
 end
 
