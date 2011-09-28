@@ -91,7 +91,7 @@ module Sensu
                   check = {'name' => check_name, 'issued' => Time.now.to_i, 'status' => 0, 'output' => 'client is being removed...'}
                   conn.amq.queue('results').publish({'client' => client, 'check' => check}.to_json)
                 end
-                EM.add_timer(8) do
+                EM.add_timer(5) do
                   conn.redis.srem('clients', client)
                   conn.redis.del('events:' + client)
                   conn.redis.del('client:' + client)
@@ -109,6 +109,20 @@ module Sensu
           status 404
           body ''
         end
+      end
+    end
+
+    apost '/stash/*' do |path|
+      conn.redis.set('stash:' + path, params[:data]).callback do
+        status 201
+        body nil
+      end
+    end
+
+    aget '/stash/*' do |path|
+      conn.redis.get('stash:' + path).callback do |stash|
+        status 404 if stash.nil?
+        body stash
       end
     end
 
