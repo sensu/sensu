@@ -30,5 +30,5 @@ end
 service "sensu-api" do
   provider Chef::Provider::Service::Upstart
   action [:enable, :start]
-  subscribes :restart, resources(:file => "/etc/sensu/config.json", :gem_package => "sensu"), :delayed
+  subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
 end

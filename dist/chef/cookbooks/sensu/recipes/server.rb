@@ -24,11 +24,11 @@ directory "/etc/rabbitmq/ssl"
 
 ssl = data_bag_item("sensu", "ssl")
 
-%w{
+%w[
   cacert
   cert
   key
-}.each do |file|
+].each do |file|
   file "/etc/rabbitmq/ssl/#{file}.pem" do
     content ssl["server"][file]
     mode 0644
@@ -52,7 +52,7 @@ end
 
 include_recipe "sensu::default"
 
-remote_directory "/etc/sensu/handlers" do
+remote_directory File.join(node.sensu.directory, "handlers") do
   files_mode 0755
 end
 
@@ -65,5 +65,5 @@ end
 service "sensu-server" do
   provider Chef::Provider::Service::Upstart
   action [:enable, :start]
-  subscribes :restart, resources(:file => "/etc/sensu/config.json", :gem_package => "sensu"), :delayed
+  subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
 end

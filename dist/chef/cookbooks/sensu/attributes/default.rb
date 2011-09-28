@@ -1,10 +1,10 @@
 # most of these values can be replaced with your method of discovery
-default.sensu.version = "0.2.0"
+default.sensu.version = "0.6.5"
+default.sensu.directory = "/etc/sensu"
 default.sensu.user = "sensu"
 default.sensu.rabbitmq.host = "localhost"
 default.sensu.rabbitmq.port = 5671
-default.sensu.rabbitmq.ssl.cert_chain_file = "/etc/sensu/ssl/cert.pem"
-default.sensu.rabbitmq.ssl.private_key_file = "/etc/sensu/ssl/key.pem"
+default.sensu.rabbitmq.ssl = Mash.new
 default.sensu.rabbitmq.vhost = "/sensu"
 default.sensu.rabbitmq.user = "sensu"
 default.sensu.rabbitmq.password = "password"

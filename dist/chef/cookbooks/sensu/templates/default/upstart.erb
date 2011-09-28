@@ -1,7 +1,7 @@
-# Upstart: /etc/init/sensu-<%= @service %>.conf
+# Upstart: /etc/init/sensu-<%= @name || @service %>.conf
 # Managed by OpsChef
 
-description "sensu <%= @service %>"
+description "sensu <%= @name || @service %>"
 
 start on (local-filesystems and net-device-up IFACE=eth0)
 stop on [!12345]
@@ -12,4 +12,4 @@ pre-start script
   test -x /usr/bin/sensu-<%= @service %> || { stop; exit 0; }
 end script
 
-exec sudo -u <%= node.sensu.user %> sh -c "/usr/bin/sensu-<%= @service %>"
+exec sudo -u <%= node.sensu.user %> sh -c "/usr/bin/sensu-<%= @service %><% if @options %> <%= @options %><% end %>"
