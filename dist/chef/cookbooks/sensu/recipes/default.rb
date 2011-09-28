@@ -17,26 +17,41 @@
 # limitations under the License.
 #
 
-package "libssl-dev"
+node.sensu.rabbitmq.ssl.cert_chain_file = File.join(node.sensu.directory, "ssl", "cert.pem")
+node.sensu.rabbitmq.ssl.private_key_file = File.join(node.sensu.directory, "ssl", "key.pem")
+
+include_recipe "sensu::dependencies"
+
+unless Sensu.is_windows(node)
+  package "libssl-dev"
+end
 
 gem_package "sensu" do
   version node.sensu.version
 end
 
-directory "/etc/sensu"
+directory node.sensu.directory do
+  recursive true
+end
 
 user node.sensu.user do
   comment "monitoring user"
   system true
-  home "/etc/sensu"
+  home node.sensu.directory
 end
 
-template "/etc/sudoers.d/sensu" do
-  source "sudoers.erb"
-  mode 0440
+unless Sensu.is_windows(node)
+  template "/etc/sudoers.d/sensu" do
+    source "sudoers.erb"
+    mode 0440
+  end
 end
 
-directory "/etc/sensu/ssl"
+remote_directory File.join(node.sensu.directory, "plugins") do
+  files_mode 0755
+end
+
+directory File.join(node.sensu.directory, "ssl")
 
 ssl = data_bag_item("sensu", "ssl")
 
@@ -50,15 +65,17 @@ file node.sensu.rabbitmq.ssl.private_key_file do
   mode 0644
 end
 
-file "/etc/sensu/config.json" do
+file File.join(node.sensu.directory, "config.json") do
   content Sensu.generate_config(node, data_bag_item("sensu", "config"))
   mode 0644
 end
 
-%w{
-  nagios-plugins
-  nagios-plugins-basic
-  nagios-plugins-standard
-}.each do |pkg|
-  package pkg
+unless Sensu.is_windows(node)
+  %w[
+    nagios-plugins
+    nagios-plugins-basic
+    nagios-plugins-standard
+  ].each do |pkg|
+    package pkg
+  end
 end
