@@ -1,6 +1,6 @@
 #
 # Cookbook Name:: sensu
-# Recipe:: client
+# Recipe:: worker
 #
 # Copyright 2011, Sonian Inc.
 #
@@ -19,16 +19,18 @@
 
 include_recipe "sensu::default"
 
-unless Sensu.is_windows(node)
-  template "/etc/init/sensu-client.conf" do
-    source "upstart.erb"
-    variables :service => "client"
-    mode 0644
-  end
+remote_directory "/etc/sensu/handlers" do
+  files_mode 0755
+end
 
-  service "sensu-client" do
-    provider Chef::Provider::Service::Upstart
-    action [:enable, :start]
-    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
-  end
+template "/etc/init/sensu-worker.conf" do
+  source "upstart.erb"
+  variables :name => "worker", :service => "server", :options => "-w"
+  mode 0644
+end
+
+service "sensu-worker" do
+  provider Chef::Provider::Service::Upstart
+  action [:enable, :start]
+  subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
 end

@@ -18,4 +18,8 @@ module Sensu
     JSON.pretty_generate(config)
   end
 
+  def self.is_windows(node)
+    node.platform == "windows" ? true : false
+  end
+
 end

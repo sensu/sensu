@@ -1,6 +1,6 @@
 #
 # Cookbook Name:: sensu
-# Recipe:: client
+# Recipe:: dependencies
 #
 # Copyright 2011, Sonian Inc.
 #
@@ -17,18 +17,6 @@
 # limitations under the License.
 #
 
-include_recipe "sensu::default"
-
-unless Sensu.is_windows(node)
-  template "/etc/init/sensu-client.conf" do
-    source "upstart.erb"
-    variables :service => "client"
-    mode 0644
-  end
-
-  service "sensu-client" do
-    provider Chef::Provider::Service::Upstart
-    action [:enable, :start]
-    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
-  end
-end
+# plugin dependencies
+# eg. node.sensu.client.foo = "bar"
+# eg. gem_package "spice"
