@@ -64,7 +64,7 @@ module Sensu
       handler = proc do
         output = ''
         IO.popen(@settings['handlers'][event['check']['handler']] + ' 2>&1', 'r+') do |io|
-          io.write(JSON.pretty_generate(event))
+          io.write(event.to_json)
           io.close_write
           output = io.read
         end
