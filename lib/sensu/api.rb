@@ -122,7 +122,7 @@ module Sensu
     end
 
     apost '/stash/*' do |path|
-      conn.redis.set('stash:' + path, params[:data]).callback do
+      conn.redis.set('stash:' + path, request.body.read).callback do
         status 201
         body nil
       end
