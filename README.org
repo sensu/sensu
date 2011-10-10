@@ -1,61 +1,25 @@
 * Welcome to Sensu
-  Sensu is a monitoring system framework, handling the remote execution of checks.
+  Sensu is a monitoring system framework.
+
+  [[https://github.com/sonian/sensu/raw/docs/sensu-logo.png]]
 
   Checks can utilize user created plugins, returning an exit status code and outputting to STDOUT.
 
   Check results are handled by user created handlers.
 
   Documentation can be found [[https://github.com/sonian/sensu/wiki][here]].
-
 * License
   Sensu is released under the [[https://github.com/sonian/sensu/blob/master/MIT-LICENSE.txt][MIT license]].
-
 * Contributing
   - [[http://help.github.com/fork-a-repo/][Fork]] [[https://github.com/sonian/sensu][Sensu]]
   - Use a [[https://github.com/dchelimsky/rspec/wiki/Topic-Branches][topic branch]]
   - Create a [[http://help.github.com/send-pull-requests/][pull request]]
 
   Keep it simple.
-
-** Readme Driven Development
-*** A Client Will
-  - Have a set of attributes to describe it, including its responsibilities
-  - Send keep-alives to a server
-  - Subscribe to a queue bound to a set of fanout exchanges, determined by its responsibilities
-  - Substitute tokens in check commands with their matching client attribute
-  - Report when it does not have a client attribute for token substitution
-  - Receive checks from subscriptions, execute them, and publish the results to a queue with its client name
-  - Not allow overlapping check executions of the same name
-  - Report when it is unaware of a check it received from a subscription
-
-*** A Server Will
-  - Subscribe to a queue for check results, another for keep-alives
-  - Pull keep-alives, storing client details
-  - Publish checks on defined intervals to their associated fanout exchanges
-  - Pull check results, storing the latest events for clients, a good result will flush a previous event for that client
-  - Create an event when it stops receiving keep-alives from a client, a new keep-alive for the client will clear the event
-  - Trigger a event handler, either the default handler or one specified for the check, providing it with a JSON event file
-
-*** An API Will
-  - List all current events
-  - List all clients and their attributes
-  - Show a client and its attributes
-  - Remove a client and resolve associated events
-
-*** A Plugin Will
-  - Output to STDOUT
-  - Return a valid exit status code
-
-*** A Handler Will
-  - Accept a command line argument "-f", for an event file path
-  - Parse the JSON event file
-  - Handle the event as it wishes
-
 ** Testing
 *** Requirements
-  - RabbitMQ (default configuration)
-  - Redis (default configuration)
-
-*** MiniTest
-
+  - RabbitMQ
+  - Redis
+*** Running
+  : bundle install
   : rake test

@@ -3,3 +3,4 @@ pkg/*
 \#*
 dump.rdb
 .DS_Store
+*.png
