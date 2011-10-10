@@ -5,7 +5,7 @@
 
   Checks can utilize user created plugins, returning an exit status code and outputting to STDOUT.
 
-  Check results are handled by user created handlers, that receive JSON formatted event data from STDIN.
+  Check results are handled by user created handlers, receiving JSON formatted event data from STDIN.
 * Documentation
   Documentation can be found [[https://github.com/sonian/sensu/wiki][HERE]].
 * License
