@@ -23,3 +23,6 @@
 *** Running
   : bundle install
   : rake test
+* Contributors
+  - Sean Porter ([[https://twitter.com/#!/portertech][@portertech]])
+  - Justin Kolberg ([[https://twitter.com/#!/amdprophet][@amdprophet]])
