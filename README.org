@@ -1,7 +1,7 @@
 * Welcome to Sensu
   Sensu is a monitoring system framework.
 
-  [[https://github.com/sonian/sensu/raw/docs/sensu-logo.png]]
+  [[https://github.com/sonian/sensu/raw/master/sensu-logo.png]]
 
   Checks can utilize user created plugins, returning an exit status code and outputting to STDOUT.
 
