@@ -46,7 +46,7 @@ module Sensu
     end
 
     def setup_amqp
-      connection = AMQP.connect(symbolize_keys(@settings['rabbitmq']))
+      connection = AMQP.connect(@settings['rabbitmq'].symbolize_keys)
       @amq = MQ.new(connection)
     end
 
