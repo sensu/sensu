@@ -56,7 +56,8 @@ class TestSensu < MiniTest::Unit::TestCase
         'handler' => 'default',
         'issued' => Time.now.to_i,
         'status' => 1,
-        'output' => 'WARNING\n'
+        'output' => 'WARNING\n',
+        'flapping' => false
       },
       'occurrences' => 1,
       'action' => 'create'
@@ -91,7 +92,13 @@ class TestSensu < MiniTest::Unit::TestCase
     end
     parallel do
       @settings['checks'].each_with_index do |(name, details), index|
-        eventually({'status' => index + 1, 'output' => @settings['client']['name'] + "\n", "occurrences" => 1}, :total => 1.5) do
+        expected_result = {
+          'status' => index + 1,
+          'output' => @settings['client']['name'] + "\n",
+          'flapping' => false,
+          'occurrences' => 1
+        }
+        eventually(expected_result, :total => 1.5) do
           client_events[name]
         end
       end
