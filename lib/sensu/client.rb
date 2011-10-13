@@ -23,69 +23,76 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(:config_file => options[:config_file])
       @settings = config.settings
-      @checks_in_progress = Array.new
     end
 
     def setup_amqp
-      connection = AMQP.connect(@settings['rabbitmq'].symbolize_keys)
+      connection = AMQP.connect(@settings.rabbitmq.symbolize_keys)
       @amq = MQ.new(connection)
-      @keepalive_queue = @amq.queue('keepalives')
-      @result_queue = @amq.queue('results')
     end
 
     def setup_keepalives
-      @keepalive_queue.publish(@settings['client'].merge({'timestamp' => Time.now.to_i}).to_json)
+      keepalive_queue = @amq.queue('keepalives')
+      @settings.client.timestamp = Time.now.to_i
+      keepalive_queue.publish(@settings.client.to_json)
       EM.add_periodic_timer(30) do
-        @keepalive_queue.publish(@settings['client'].merge({'timestamp' => Time.now.to_i}).to_json)
+        @settings.client.timestamp = Time.now.to_i
+        keepalive_queue.publish(@settings.client.to_json)
       end
     end
 
+    def publish_result(check)
+      @result_queue ||= @amq.queue('results')
+      @result_queue.publish({
+        :client => @settings.client.name,
+        :check => check.to_hash
+      }.to_json)
+    end
+
     def execute_check(check)
-      result = {'client' => @settings['client']['name'], 'check' => check}
-      if @settings['checks'].has_key?(check['name'])
-        unless @checks_in_progress.include?(check['name'])
-          @checks_in_progress.push(check['name'])
+      @checks_in_progress ||= Array.new
+      if @settings.checks.key?(check.name)
+        unless @checks_in_progress.include?(check.name)
+          @checks_in_progress.push(check.name)
           unmatched_tokens = Array.new
-          command = @settings['checks'][check['name']]['command'].gsub(/:::(.*?):::/) do
+          command = @settings.checks[check.name].command.gsub(/:::(.*?):::/) do
             key = $1.to_s
-            unmatched_tokens.push(key) unless @settings['client'].has_key?(key)
-            @settings['client'][key].to_s
+            unmatched_tokens.push(key) unless @settings.client.key?(key)
+            @settings.client[key].to_s
           end
           if unmatched_tokens.empty?
             execute = proc do
               IO.popen(command + ' 2>&1') do |io|
-                result['check']['output'] = io.read
+                check.output = io.read
               end
-              result['check']['status'] = $?.exitstatus
-              result
+              check.status = $?.exitstatus
             end
             publish = proc do |result|
-              @result_queue.publish(result.to_json)
-              @checks_in_progress.delete(result['check']['name'])
+              publish_result(check)
+              @checks_in_progress.delete(check.name)
             end
             EM.defer(execute, publish)
           else
-            result['check']['status'] = 3
-            result['check']['output'] = 'Missing client attributes: ' + unmatched_tokens.join(', ')
-            @result_queue.publish(result.to_json)
-            @checks_in_progress.delete(check['name'])
+            check.status = 3
+            check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
+            publish_result(check)
+            @checks_in_progress.delete(check.name)
           end
         end
       else
-        result['check']['status'] = 3
-        result['check']['output'] = 'Unknown check'
-        @result_queue.publish(result.to_json)
-        @checks_in_progress.delete(check['name'])
+        check.status = 3
+        check.output = 'Unknown check'
+        publish_result(check)
+        @checks_in_progress.delete(check.name)
       end
     end
 
     def setup_subscriptions
       @check_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
-      @settings['client']['subscriptions'].each do |exchange|
+      @settings.client.subscriptions.each do |exchange|
         @check_queue.bind(@amq.fanout(exchange))
       end
       @check_queue.subscribe do |check_json|
-        check = JSON.parse(check_json)
+        check = Hashie::Mash.new(JSON.parse(check_json))
         execute_check(check)
       end
     end
