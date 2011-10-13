@@ -19,7 +19,7 @@ module Sensu
           server.setup_publisher
           server.setup_keepalive_monitor
         end
-        server.monitor_queues
+        server.setup_queue_monitor
 
         Signal.trap('INT') do
           EM.stop
@@ -212,7 +212,7 @@ module Sensu
       end
     end
 
-    def monitor_queues
+    def setup_queue_monitor
       EM.add_periodic_timer(5) do
         unless @keepalive_queue.subscribed?
           setup_keepalives
