@@ -1,25 +1,4 @@
-class Object
-  def to_obj
-    self
-  end
-end
-
 class Hash
-  def to_mod
-    hash = self
-    Module.new do
-      hash.each_pair do |key, value|
-        define_method key do
-          value.to_obj
-        end
-      end
-    end
-  end
-
-  def to_obj
-    Object.new.extend self.to_mod
-  end
-
   def symbolize_keys(item = self)
     case item
     when Array

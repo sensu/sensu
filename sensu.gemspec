@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency("amqp", "0.7.4")
   s.add_dependency("json")
+  s.add_dependency("hashie")
   s.add_dependency("uuidtools")
   s.add_dependency("em-syslog")
   s.add_dependency("em-hiredis")
