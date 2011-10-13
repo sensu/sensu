@@ -19,7 +19,7 @@ module Sensu
           server.setup_publisher
           server.setup_keepalive_monitor
         end
-        server.monitor_queues
+        server.setup_queue_monitor
 
         Signal.trap('INT') do
           EM.stop
@@ -83,29 +83,68 @@ module Sensu
         unless client_json.nil?
           client = JSON.parse(client_json)
           check = result['check']
-          check.merge!(@settings['checks'][check['name']]) if @settings['checks'].has_key?(check['name'])
+          if @settings['checks'][check['name']]
+            check.merge!(@settings['checks'][check['name']])
+          end
           check['handler'] ||= 'default'
           event = {'client' => client, 'check' => check, 'occurrences' => 1}
           if check['type'] == 'metric'
             handle_event(event)
           else
-            @redis.hget('events:' + client['name'], check['name']).callback do |event_json|
-              previous_event = event_json ? JSON.parse(event_json) : nil
-              if previous_event && check['status'] == 0
-                @redis.hdel('events:' + client['name'], check['name'])
-                event['action'] = 'resolve'
-                handle_event(event)
-              elsif check['status'] > 0
-                if previous_event && check['status'] == previous_event['status']
-                  event['occurrences'] = previous_event['occurrences'] += 1
+            history_key = 'history:' + client['name'] + ':' + check['name']
+            @redis.rpush(history_key, check['status']).callback do
+              @redis.lrange(history_key, -21, -1).callback do |history|
+                total_state_change = 0
+                unless history.count < 21
+                  state_changes = 0
+                  change_weight = 0.8
+                  history.each do |status|
+                    previous_status ||= status
+                    unless status == previous_status
+                      state_changes += change_weight
+                    end
+                    change_weight += 0.02
+                    previous_status = status
+                  end
+                  total_state_change = (state_changes.fdiv(20) * 100).to_i
+                  @redis.lpop(history_key)
                 end
-                @redis.hset('events:' + client['name'], check['name'], {
-                  'status' => check['status'],
-                  'output' => check['output'],
-                  'occurrences' => event['occurrences']
-                }.to_json).callback do
-                  event['action'] = 'create'
-                  handle_event(event)
+                high_flap_threshold = check['high_flap_threshold'] || 50
+                low_flap_threshold = check['low_flap_threshold'] || 40
+                @redis.hget('events:' + client['name'], check['name']).callback do |event_json|
+                  previous_event = event_json ? JSON.parse(event_json) : false
+                  flapping = previous_event ? previous_event['flapping'] : false
+                  check['flapping'] = case
+                  when total_state_change >= high_flap_threshold
+                    true
+                  when flapping && total_state_change <= low_flap_threshold
+                    false
+                  else
+                    flapping
+                  end
+                  if previous_event && check['status'] == 0
+                    unless check['flapping']
+                      @redis.hdel('events:' + client['name'], check['name']).callback do
+                        event['action'] = 'resolve'
+                        handle_event(event)
+                      end
+                    else
+                      @redis.hset('events:' + client['name'], check['name'], previous_event.merge({'flapping' => true}).to_json)
+                    end
+                  elsif check['status'] != 0
+                    if previous_event && check['status'] == previous_event['status']
+                      event['occurrences'] = previous_event['occurrences'] += 1
+                    end
+                    @redis.hset('events:' + client['name'], check['name'], {
+                      'status' => check['status'],
+                      'output' => check['output'],
+                      'flapping' => check['flapping'],
+                      'occurrences' => event['occurrences']
+                    }.to_json).callback do
+                      event['action'] = 'create'
+                      handle_event(event)
+                    end
+                  end
                 end
               end
             end
@@ -153,17 +192,17 @@ module Sensu
               when time_since_last_check >= 180
                 result['check']['status'] = 2
                 result['check']['output'] = 'No keep-alive sent from host in over 180 seconds'
-                @result_queue.publish(result.to_json)
+                process_result(result)
               when time_since_last_check >= 120
                 result['check']['status'] = 1
                 result['check']['output'] = 'No keep-alive sent from host in over 120 seconds'
-                @result_queue.publish(result.to_json)
+                process_result(result)
               else
                 @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
                   if exists == 1
                     result['check']['status'] = 0
                     result['check']['output'] = 'Keep-alive sent from host'
-                    @result_queue.publish(result.to_json)
+                    process_result(result)
                   end
                 end
               end
@@ -173,7 +212,7 @@ module Sensu
       end
     end
 
-    def monitor_queues
+    def setup_queue_monitor
       EM.add_periodic_timer(5) do
         unless @keepalive_queue.subscribed?
           setup_keepalives

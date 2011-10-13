@@ -8,7 +8,7 @@ module Sensu
         client.setup_amqp
         client.setup_keepalives
         client.setup_subscriptions
-        client.monitor_queues
+        client.setup_queue_monitor
 
         Signal.trap('INT') do
           EM.stop
@@ -90,7 +90,7 @@ module Sensu
       end
     end
 
-    def monitor_queues
+    def setup_queue_monitor
       EM.add_periodic_timer(5) do
         unless @check_queue.subscribed?
           @check_queue.delete
