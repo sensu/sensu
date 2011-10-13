@@ -113,7 +113,7 @@ module Sensu
                 low_flap_threshold = check['low_flap_threshold'] || 40
                 @redis.hget('events:' + client['name'], check['name']).callback do |event_json|
                   previous_event = event_json ? JSON.parse(event_json) : false
-                  flapping = previous_event ? previous_event['check']['flapping'] : false
+                  flapping = previous_event ? previous_event['flapping'] : false
                   check['flapping'] = case
                   when total_state_change >= high_flap_threshold
                     true
