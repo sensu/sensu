@@ -26,7 +26,7 @@ module Sensu
     end
 
     def setup_amqp
-      connection = AMQP.connect(@settings.rabbitmq.symbolize_keys)
+      connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       @amq = MQ.new(connection)
     end
 
@@ -74,6 +74,7 @@ module Sensu
           else
             check.status = 3
             check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
+            check.internal = true
             publish_result(check)
             @checks_in_progress.delete(check.name)
           end
@@ -81,6 +82,7 @@ module Sensu
       else
         check.status = 3
         check.output = 'Unknown check'
+        check.internal = true
         publish_result(check)
         @checks_in_progress.delete(check.name)
       end
