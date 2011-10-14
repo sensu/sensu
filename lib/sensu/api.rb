@@ -9,7 +9,7 @@ module Sensu
     def self.run(options={})
       EM.run do
         self.setup(options)
-        self.run!(:port => @settings['api']['port'])
+        self.run!(:port => @settings.api.port)
 
         Signal.trap('INT') do
           EM.stop
@@ -24,8 +24,8 @@ module Sensu
     def self.setup(options={})
       config = Sensu::Config.new(options)
       @settings = config.settings
-      set :redis, EM::Hiredis.connect('redis://' + @settings['redis']['host'] + ':' + @settings['redis']['port'].to_s)
-      connection = AMQP.connect(symbolize_keys(@settings['rabbitmq']))
+      set :redis, EM::Hiredis.connect('redis://' + @settings.redis.host + ':' + @settings.redis.port.to_s)
+      connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       set :amq, MQ.new(connection)
     end
 
@@ -68,8 +68,8 @@ module Sensu
             unless events_exist == 0
               conn.redis.hgetall('events:' + client).callback do |events|
                 Hash[*events].keys.each do |check_name|
-                  check = {'name' => check_name, 'issued' => Time.now.to_i, 'status' => 0, 'output' => 'Client is being removed'}
-                  conn.amq.queue('results').publish({'client' => client, 'check' => check}.to_json)
+                  check = {'name' => check_name, :issued => Time.now.to_i, :status => 0, :output => 'Client is being removed'}
+                  conn.amq.queue('results').publish({:client => client, :check => check}.to_json)
                 end
                 EM.add_timer(5) do
                   conn.redis.srem('clients', client)
@@ -160,7 +160,12 @@ module Sensu
       }'
       conn.redis.set('client:test', client).callback do
         conn.redis.sadd('clients', 'test').callback do
-          conn.redis.hset('events:test', 'test', {'status' => 2, 'output' => 'CRITICAL', 'occurrences' => 1}.to_json).callback do
+          conn.redis.hset('events:test', 'test', {
+            :status => 2,
+            :output => 'CRITICAL',
+            :flapping => false,
+            :occurrences => 1
+          }.to_json).callback do
             conn.redis.set('stash:test/test', '{"key": "value"}').callback do
               status 201
               body nil
