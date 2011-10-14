@@ -23,9 +23,9 @@ class TestSensu < MiniTest::Unit::TestCase
     eventually(true) { settings.key?('client') }
   end
 
-  def test_cli_argument
-    options = Sensu::Config.read_arguments(['-c', @options[:config_file]])
-    eventually({:config_file => @options[:config_file]}) { options }
+  def test_cli_arguments
+    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file]])
+    eventually({:worker => true, :config_file => @options[:config_file]}) { options }
   end
 
   def test_keepalives
