@@ -26,7 +26,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency('em-ventually')
   s.add_development_dependency('rest-client')
 
-  s.files         = `git ls-files`.split("\n").reject {|f| f =~ /(dist|test)/}
+  s.files         = `git ls-files`.split("\n").reject {|f| f =~ /(dist|test|png)/}
   s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
   s.require_paths = ["lib"]
 end
