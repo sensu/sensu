@@ -68,7 +68,7 @@ module Sensu
             unless events_exist == 0
               conn.redis.hgetall('events:' + client).callback do |events|
                 Hash[*events].keys.each do |check_name|
-                  check = {'name' => check_name, :issued => Time.now.to_i, :status => 0, :output => 'Client is being removed'}
+                  check = {:name => check_name, :issued => Time.now.to_i, :status => 0, :output => 'Client is being removed'}
                   conn.amq.queue('results').publish({:client => client, :check => check}.to_json)
                 end
                 EM.add_timer(5) do
