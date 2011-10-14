@@ -204,17 +204,17 @@ module Sensu
               when time_since_last_check >= 180
                 result.check.status = 2
                 result.check.output = 'No keep-alive sent from host in over 180 seconds'
-                process_result(result)
+                @result_queue.publish(result.to_json)
               when time_since_last_check >= 120
                 result.check.status = 1
                 result.check.output = 'No keep-alive sent from host in over 120 seconds'
-                process_result(result)
+                @result_queue.publish(result.to_json)
               else
                 @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
                   if exists == 1
                     result.check.status = 0
                     result.check.output = 'Keep-alive sent from host'
-                    process_result(result)
+                    @result_queue.publish(result.to_json)
                   end
                 end
               end
