@@ -171,15 +171,17 @@ module Sensu
       exchanges = Hash.new
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
-        EM.add_timer(stagger*index) do
-          details.subscribers.each do |exchange|
-            if exchanges[exchange].nil?
-              exchanges[exchange] = @amq.fanout(exchange)
-            end
-            interval = options[:test] ? 0.5 : details.interval
-            EM.add_periodic_timer(interval) do
-              exchanges[exchange].publish({'name' => name, 'issued' => Time.now.to_i}.to_json)
-              EM.debug('name="Published Check" event_id=server action="Published check ' + name + ' to the ' + exchange + ' exchange"')
+        unless details.enabled == false
+          EM.add_timer(stagger*index) do
+            details.subscribers.each do |exchange|
+              if exchanges[exchange].nil?
+                exchanges[exchange] = @amq.fanout(exchange)
+              end
+              interval = options[:test] ? 0.5 : details.interval
+              EM.add_periodic_timer(interval) do
+                exchanges[exchange].publish({'name' => name, 'issued' => Time.now.to_i}.to_json)
+                EM.debug('name="Published Check" event_id=server action="Published check ' + name + ' to the ' + exchange + ' exchange"')
+              end
             end
           end
         end
