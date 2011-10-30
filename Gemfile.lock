@@ -8,7 +8,7 @@ PATH
       em-syslog
       hashie
       json
-      rack (>= 1.3.4)
+      rack (~> 1.3.4)
       thin
       uuidtools
 

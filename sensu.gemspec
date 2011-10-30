@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   s.add_dependency("uuidtools")
   s.add_dependency("em-syslog")
   s.add_dependency("em-hiredis")
-  s.add_dependency("rack", ">= 1.3.4")
+  s.add_dependency("rack", "~> 1.3.4")
   s.add_dependency("async_sinatra")
   s.add_dependency("thin")
 
