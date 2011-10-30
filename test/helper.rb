@@ -1,6 +1,7 @@
 require 'rubygems' if RUBY_VERSION < '1.9.0'
 gem 'minitest'
 require 'minitest/autorun'
+require 'minitest/pride'
 require 'em-ventually'
 require 'rest_client'
 Dir.glob(File.dirname(__FILE__) + '/../lib/sensu/*', &method(:require))
