@@ -18,13 +18,14 @@ Gem::Specification.new do |s|
   s.add_dependency("uuidtools")
   s.add_dependency("em-syslog")
   s.add_dependency("em-hiredis")
+  s.add_dependency("rack", ">= 1.3.4")
   s.add_dependency("async_sinatra")
   s.add_dependency("thin")
 
-  s.add_development_dependency('rake')
-  s.add_development_dependency('minitest')
-  s.add_development_dependency('em-ventually')
-  s.add_development_dependency('rest-client')
+  s.add_development_dependency("rake")
+  s.add_development_dependency("minitest", "~> 2.7.0")
+  s.add_development_dependency("em-ventually")
+  s.add_development_dependency("rest-client")
 
   s.files         = `git ls-files`.split("\n").reject {|f| f =~ /(dist|test|png)/}
   s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
