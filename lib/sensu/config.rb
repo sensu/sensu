@@ -48,7 +48,7 @@ module Sensu
           exit
         end
         current_process = $0.split('/').last
-        if current_process == 'sensu-server' || current_process == 'rake_test_loader.rb'
+        if current_process == 'sensu-server' || current_process == 'rake'
           options[:worker] = false
           opts.on('-w', '--worker', 'Only consume jobs, no check publishing (default: false)') do
             options[:worker] = true
