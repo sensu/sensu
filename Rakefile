@@ -1,10 +1,13 @@
 require 'bundler/gem_tasks'
-require 'rake/testtask'
 
 task :default => 'test'
 
-Rake::TestTask.new do |test|
-  test.pattern = 'test/*_test.rb'
+desc "Run tests"
+task :test do
+  require File.join(File.dirname(__FILE__), 'test', 'helper')
+  Dir['test/*_test.rb'].each do |test|
+    require File.join(File.dirname(__FILE__), test)
+  end
 end
 
 desc "Build Sensu for Windows"

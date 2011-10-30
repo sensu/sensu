@@ -45,7 +45,7 @@ module Sensu
           clients.each_with_index do |client, index|
             conn.redis.get('client:' + client).callback do |client_json|
               current_clients.push(JSON.parse(client_json))
-              body current_clients.to_json if index == clients.size-1
+              body current_clients.to_json if index == clients.size - 1
             end
           end
         else
@@ -92,15 +92,6 @@ module Sensu
       end
     end
 
-    aget '/event/:client/:check' do |client, check|
-      conn.redis.hgetall('events:' + client).callback do |events|
-        client_events = Hash[*events]
-        event = client_events[check]
-        status 404 if event.nil?
-        body event
-      end
-    end
-
     aget '/events' do
       current_events = Hash.new
       conn.redis.smembers('clients').callback do |clients|
@@ -112,7 +103,7 @@ module Sensu
                 client_events[key] = JSON.parse(value)
               end
               current_events[client] = client_events unless client_events.empty?
-              body current_events.to_json if index == clients.size-1
+              body current_events.to_json if index == clients.size - 1
             end
           end
         else
@@ -121,9 +112,45 @@ module Sensu
       end
     end
 
+    aget '/event/:client/:check' do |client, check|
+      conn.redis.hgetall('events:' + client).callback do |events|
+        client_events = Hash[*events]
+        event = client_events[check]
+        status 404 if event.nil?
+        body event
+      end
+    end
+
     apost '/stash/*' do |path|
-      conn.redis.set('stash:' + path, request.body.read).callback do
+      begin
+        stash = JSON.parse(request.body.read)
+      rescue JSON::ParserError => e
+        status 400
+        body nil
+      end
+      conn.redis.set('stash:' + path, stash.to_json).callback do
         status 201
+        body nil
+      end
+    end
+
+    apost '/stashes' do
+      begin
+        paths = JSON.parse(request.body.read)
+      rescue JSON::ParserError => e
+        status 400
+        body nil
+      end
+      stashes = Hash.new
+      if paths.is_a?(Array)
+        paths.each_with_index do |path, index|
+          conn.redis.get('stash:' + path).callback do |stash|
+            stashes[path] = JSON.parse(stash) unless stash.nil?
+            body stashes.to_json if index == paths.size - 1
+          end
+        end
+      else
+        status 400
         body nil
       end
     end
