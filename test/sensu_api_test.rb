@@ -90,6 +90,7 @@ class TestSensuAPI < MiniTest::Unit::TestCase
       JSON.parse(response.body).each do |path, stash|
         contains_test_stash = true if ['test/test', 'tester'].include?(path)
       end
+      contains_test_stash
     end
   end
 
