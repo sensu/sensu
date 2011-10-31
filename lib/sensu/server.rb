@@ -75,7 +75,7 @@ module Sensu
         end
       end
       if @settings.handlers.key?(event.check.handler)
-        EM.debug('[event] -- handling event -- ' + event.client.name + ' -- ' + event.check.name)
+        EM.debug('[event] -- handling event -- ' + [event.check.handler, event.client.name, event.check.name].join(' -- '))
         EM.defer(handler, report)
       else
         EM.warning('[event] -- handler does not exist -- ' + event.check.handler)
@@ -136,6 +136,7 @@ module Sensu
                         end
                       end
                     else
+                      EM.debug('[result] -- check is flapping -- ' + client.name + ' -- ' + check.name)
                       @redis.hset('events:' + client.name, check.name, previous_event.merge({'flapping' => true}).to_json)
                     end
                   elsif check['status'] != 0
@@ -184,8 +185,8 @@ module Sensu
               end
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
+                EM.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
                 exchanges[exchange].publish({'name' => name, 'issued' => Time.now.to_i}.to_json)
-                EM.debug('[publisher] -- published check ' + name + ' to the ' + exchange + ' exchange"')
               end
             end
           end
@@ -195,6 +196,7 @@ module Sensu
 
     def setup_keepalive_monitor
       EM.add_periodic_timer(30) do
+        EM.debug('[keepalive] -- checking for stale clients')
         @redis.smembers('clients').callback do |clients|
           clients.each do |client_id|
             @redis.get('client:' + client_id).callback do |client_json|
@@ -234,9 +236,11 @@ module Sensu
     def setup_queue_monitor
       EM.add_periodic_timer(5) do
         unless @keepalive_queue.subscribed?
+          EM.warning('[monitor] -- reconnecting to rabbitmq')
           setup_keepalives
         end
         unless @result_queue.subscribed?
+          EM.warning('[monitor] -- reconnecting to rabbitmq')
           setup_results
         end
       end
