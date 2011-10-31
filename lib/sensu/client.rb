@@ -9,7 +9,7 @@ module Sensu
         client.setup_keepalives
         client.setup_subscriptions
         client.setup_queue_monitor
-        client.setup_client_socket
+        client.setup_socket
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -103,8 +103,8 @@ module Sensu
     def setup_subscriptions
       @check_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
       @settings.client.subscriptions.each do |exchange|
+        EM.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
         @check_queue.bind(@amq.fanout(exchange))
-        EM.debug('[subscribe] -- queue bound to exchange -- ' + exchange)
       end
       @check_queue.subscribe do |check_json|
         check = Hashie::Mash.new(JSON.parse(check_json))
@@ -125,7 +125,7 @@ module Sensu
       end
     end
 
-    def setup_client_socket
+    def setup_socket
       EM.debug('[socket] -- starting up socket server')
       EM.start_server('127.0.0.1', 3030, ClientSocket) do |socket|
         socket.client_name = @settings.client.name
