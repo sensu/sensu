@@ -22,7 +22,6 @@ class TestSensu < MiniTest::Unit::TestCase
   def test_keepalives
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
-    server.setup_logging
     server.setup_redis
     server.setup_amqp
     server.setup_keepalives
@@ -30,7 +29,7 @@ class TestSensu < MiniTest::Unit::TestCase
     client.setup_keepalives
     test_client = ''
     EM.add_timer(1) do
-      server.redis_connection.get('client:' + @settings.client.name).callback do |client_json|
+      server.redis.get('client:' + @settings.client.name).callback do |client_json|
         test_client = JSON.parse(client_json).reject { |key, value| key == 'timestamp' }
       end
     end
@@ -39,7 +38,6 @@ class TestSensu < MiniTest::Unit::TestCase
 
   def test_handlers
     server = Sensu::Server.new(@options)
-    server.setup_logging
     event = Hashie::Mash.new({
       :client => @settings.client,
       :check => {
@@ -62,19 +60,18 @@ class TestSensu < MiniTest::Unit::TestCase
   def test_publish_subscribe
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
-    server.setup_logging
     server.setup_redis
     server.setup_amqp
     server.setup_keepalives
     server.setup_results
-    server.redis_connection.flushall
+    server.redis.flushall
     client.setup_amqp
     client.setup_keepalives
     client.setup_subscriptions
     server.setup_publisher(:test => true)
     client_events = Hash.new
     EM.add_timer(1) do
-      server.redis_connection.hgetall('events:' + @settings.client.name).callback do |events|
+      server.redis.hgetall('events:' + @settings.client.name).callback do |events|
         client_events = Hash[*events]
         client_events.each do |key, value|
           client_events[key] = JSON.parse(value).symbolize_keys
