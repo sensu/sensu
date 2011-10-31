@@ -4,13 +4,11 @@ require 'em-hiredis'
 module Sensu
   class Server
     attr_accessor :redis, :is_worker
-    alias :redis_connection :redis
 
     def self.run(options={})
-      EM.threadpool_size = 15
+      EM.threadpool_size = 16
       EM.run do
         server = self.new(options)
-        server.setup_logging
         server.setup_redis
         server.setup_amqp
         server.setup_keepalives
@@ -21,12 +19,13 @@ module Sensu
         end
         server.setup_queue_monitor
 
-        Signal.trap('INT') do
-          EM.stop
-        end
-
-        Signal.trap('TERM') do
-          EM.stop
+        %w[INT TERM].each do |signal|
+          Signal.trap(signal) do
+            EM.warning('[process] -- ' + signal + ' -- stopping sensu server')
+            EM.add_timer(1) do
+              EM.stop
+            end
+          end
         end
       end
     end
@@ -35,17 +34,16 @@ module Sensu
       config = Sensu::Config.new(:config_file => options[:config_file])
       @settings = config.settings
       @is_worker = options[:worker]
-    end
-
-    def setup_logging
       EM.syslog_setup(@settings.syslog.host, @settings.syslog.port)
     end
 
     def setup_redis
+      EM.debug('[redis] -- connecting to redis')
       @redis = EM::Hiredis.connect('redis://' + @settings.redis.host + ':' + @settings.redis.port.to_s)
     end
 
     def setup_amqp
+      EM.debug('[amqp] -- connecting to rabbitmq')
       connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       @amq = MQ.new(connection)
     end
@@ -53,9 +51,10 @@ module Sensu
     def setup_keepalives
       @keepalive_queue = @amq.queue('keepalives')
       @keepalive_queue.subscribe do |keepalive_json|
-        client_id = JSON.parse(keepalive_json)['name']
-        @redis.set('client:' + client_id, keepalive_json).callback do
-          @redis.sadd('clients', client_id)
+        client = Hashie::Mash.new(JSON.parse(keepalive_json))
+        EM.debug('[keepalive] -- received keepalive -- ' + client.name)
+        @redis.set('client:' + client.name, keepalive_json).callback do
+          @redis.sadd('clients', client.name)
         end
       end
     end
@@ -72,10 +71,15 @@ module Sensu
       end
       report = proc do |output|
         output.split(/\n+/).each do |line|
-          EM.debug(line)
+          EM.info('[handler] -- ' + line)
         end
       end
-      EM.defer(handler, report)
+      if @settings.handlers.key?(event.check.handler)
+        EM.debug('[event] -- handling event -- ' + event.client.name + ' -- ' + event.check.name)
+        EM.defer(handler, report)
+      else
+        EM.warning('[event] -- handler does not exist -- ' + event.check.handler)
+      end
     end
 
     def process_result(result)
@@ -163,6 +167,7 @@ module Sensu
       @result_queue = @amq.queue('results')
       @result_queue.subscribe do |result_json|
         result = Hashie::Mash.new(JSON.parse(result_json))
+        EM.info('[result] -- received result -- ' + result.client + ' -- ' + result.check.name)
         process_result(result)
       end
     end
@@ -180,7 +185,7 @@ module Sensu
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
                 exchanges[exchange].publish({'name' => name, 'issued' => Time.now.to_i}.to_json)
-                EM.debug('name="Published Check" event_id=server action="Published check ' + name + ' to the ' + exchange + ' exchange"')
+                EM.debug('[publisher] -- published check ' + name + ' to the ' + exchange + ' exchange"')
               end
             end
           end
