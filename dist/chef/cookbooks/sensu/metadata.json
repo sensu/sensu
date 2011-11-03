@@ -1,0 +1,31 @@
+{
+  "name": "sensu",
+  "description": "Installs/Configures Sensu",
+  "long_description": "= DESCRIPTION:\n\n= REQUIREMENTS:\n\n= ATTRIBUTES:\n\n= USAGE:\n\n",
+  "maintainer": "Sonian, Inc.",
+  "maintainer_email": "chefs@sonian.net",
+  "license": "Apache 2.0",
+  "platforms": {
+  },
+  "dependencies": {
+    "rabbitmq": ">= 0.0.0",
+    "redis": ">= 0.0.0"
+  },
+  "recommendations": {
+  },
+  "suggestions": {
+  },
+  "conflicting": {
+  },
+  "providing": {
+  },
+  "replacing": {
+  },
+  "attributes": {
+  },
+  "groupings": {
+  },
+  "recipes": {
+  },
+  "version": "0.0.1"
+}
