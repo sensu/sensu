@@ -1,5 +1,5 @@
 # most of these values can be replaced with your method of discovery
-default.sensu.version = "0.6.5"
+default.sensu.version = "0.8.0"
 default.sensu.directory = "/etc/sensu"
 default.sensu.user = "sensu"
 default.sensu.rabbitmq.host = "localhost"
@@ -11,7 +11,12 @@ default.sensu.rabbitmq.password = "password"
 default.sensu.redis.host = "localhost"
 default.sensu.redis.port = 6379
 default.sensu.api.host = "localhost"
-default.sensu.api.port = 8080
+default.sensu.api.port = 4567
 default.sensu.syslog.host = "localhost"
 default.sensu.syslog.port = "514"
 default.sensu.client = Hash.new
+default.sensu.dashboard.version = "0.5.5"
+default.sensu.dashboard.host = "localhost"
+default.sensu.dashboard.port = 8080
+default.sensu.dashboard.user = "admin"
+default.sensu.dashboard.password = "secret"
