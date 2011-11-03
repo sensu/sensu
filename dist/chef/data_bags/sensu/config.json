@@ -1,0 +1,18 @@
+{
+  "id": "config",
+  "handlers": {
+    "default": "/etc/sensu/handlers/default"
+  },
+  "checks": {
+    "chef_client": {
+      "notification": "Chef client daemon is not running.",
+      "command": "/etc/sensu/plugins/chef_client.rb",
+      "subscribers": [
+        "sensu_client",
+        "chef_role_here"
+      ],
+      "interval": 60,
+      "custom_attribute_here": "value"
+    }
+  }
+}
