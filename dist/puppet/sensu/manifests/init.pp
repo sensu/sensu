@@ -1,7 +1,7 @@
 class sensu {
 
   include sensu::params
-  $packages = $sensu::params::packages
+  $packages = $sensu::params::sensu_packages
   $sensu_version = $sensu::params::sensu_version
   $sensu_user = $sensu::params::sensu_user
 
