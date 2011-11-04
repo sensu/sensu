@@ -14,5 +14,22 @@
   "api": {
     "host": "localhost",
     "port": 4567
+  },
+  "id": "config",
+  "handlers": {
+    "default": "/etc/sensu/handlers/default"
+  },
+  "checks": {
+    "puppet_agent": {
+      "notification": "Puppet agent daemon is not running.",
+      "command": "/etc/sensu/plugins/puppet_agent.rb",
+      "subscribers": [ "puppet_agent" ],
+      "interval": 60
+    }
+  },
+  "client": {
+    "name": "<%= hostname %>",
+    "address": "<%= ipaddress %>",
+    "subscriptions": [ "puppet_agent" ]
   }
 }

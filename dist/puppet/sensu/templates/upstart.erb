@@ -11,4 +11,4 @@ pre-start script
   test -x /usr/bin/sensu-<%= service %> || { stop; exit 0; }
 end script
 
-exec sudo -u <%= sensu_user %> sh -c "/usr/bin/sensu-<%= service %>"
+exec sudo -u <%= sensu_user %> sh -c "/usr/bin/sensu-<%= service %> <%= options %>"
