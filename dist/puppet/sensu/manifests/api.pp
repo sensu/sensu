@@ -3,7 +3,7 @@ class sensu::api {
   require sensu
   include sensu::params
 
-  $sensu_user = sensu::params::sensu_user
+  $sensu_user = $sensu::params::sensu_user
   $service = "api"
 
   package { "thin":
