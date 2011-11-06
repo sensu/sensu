@@ -1,6 +1,5 @@
-class TestSensu < MiniTest::Unit::TestCase
-  include EM::Ventually
-  EM::Ventually.total_default = 1.5
+class TestSensu < Test::Unit::TestCase
+  include EventMachine::Test
 
   def setup
     @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json')}
@@ -11,12 +10,14 @@ class TestSensu < MiniTest::Unit::TestCase
   def test_read_config_file
     config = Sensu::Config.new(@options)
     settings = config.settings
-    eventually(true, :total => 0.5) { settings.key?('client') }
+    assert(settings.key?('client'))
+    done
   end
 
   def test_cli_arguments
     options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file]])
-    eventually({:worker => true, :config_file => @options[:config_file]}, :total => 0.5) { options }
+    assert_equal({:worker => true, :config_file => @options[:config_file]}, options)
+    done
   end
 
   def test_keepalives
@@ -27,13 +28,12 @@ class TestSensu < MiniTest::Unit::TestCase
     server.setup_keepalives
     client.setup_amqp
     client.setup_keepalives
-    test_client = ''
     EM.add_timer(1) do
       server.redis.get('client:' + @settings.client.name).callback do |client_json|
-        test_client = JSON.parse(client_json).reject { |key, value| key == 'timestamp' }
+        assert_equal(@settings.client, JSON.parse(client_json).reject { |key, value| key == 'timestamp' })
+        done
       end
     end
-    eventually(@settings['client']) { test_client }
   end
 
   def test_handlers
@@ -52,8 +52,9 @@ class TestSensu < MiniTest::Unit::TestCase
       :action => 'create'
     })
     server.handle_event(event)
-    eventually(true) do
-      JSON.parse(File.open('/tmp/sensu_test_handlers', 'rb').read) == event.to_hash
+    EM.add_timer(1) do
+      assert_equal(event.to_hash, JSON.parse(File.open('/tmp/sensu_test_handlers', 'rb').read))
+      done
     end
   end
 
@@ -69,24 +70,19 @@ class TestSensu < MiniTest::Unit::TestCase
     client.setup_keepalives
     client.setup_subscriptions
     server.setup_publisher(:test => true)
-    client_events = Hash.new
     EM.add_timer(1) do
       server.redis.hgetall('events:' + @settings.client.name).callback do |events|
-        client_events = Hash[*events]
-        client_events.each do |key, value|
-          client_events[key] = JSON.parse(value).symbolize_keys
+        client_events = Hash[*events].sort_by { |status, value| value }
+        client_events.each_with_index do |(key, value), index|
+          expected = {
+            :status => index + 1,
+            :output => @settings.client.name + "\n",
+            :flapping => false,
+            :occurrences => 1
+          }
+          assert_equal(expected, JSON.parse(value).symbolize_keys)
         end
-      end
-    end
-    parallel do
-      @settings.checks.each_with_index do |(name, details), index|
-        expected_result = {
-          :status => index + 1,
-          :output => @settings.client.name + "\n",
-          :flapping => false,
-          :occurrences => 1
-        }
-        eventually(expected_result) { client_events[name] }
+        done
       end
     end
   end
@@ -107,12 +103,11 @@ class TestSensu < MiniTest::Unit::TestCase
       socket.write('{"name": "external", "status": 1, "output": "test"}')
     end
     EM.defer(external_source)
-    client_events = Hash.new
     EM.add_timer(1) do
       server.redis.hgetall('events:' + @settings.client.name).callback do |events|
-        client_events = Hash[*events]
+        assert(Hash[*events].include?('external'))
+        done
       end
     end
-    eventually(true) { client_events.include?('external') }
   end
 end
