@@ -2,8 +2,8 @@ branches:
   except:
     - hacking
 notifications:
-  email:
-    - portertech@gmail.com
+  irc:
+    - "irc.freenode.net#sensu"
 env:
   - RACK_ENV=development
 rvm:
