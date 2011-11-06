@@ -10,8 +10,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_get_clients
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :request => '/clients'
     )
     http.callback do |response|
@@ -31,8 +31,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_get_events
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :request => '/events'
     )
     http.callback do |response|
@@ -56,8 +56,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_get_event
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :request => '/event/' + @settings.client.name + '/test'
     )
     http.callback do |response|
@@ -75,8 +75,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_get_client
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :request => '/client/' + @settings.client.name
     )
     http.callback do |response|
@@ -88,8 +88,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_get_nonexistent_client
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :request => '/client/nonexistent'
     )
     http.callback do |response|
@@ -100,8 +100,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_delete_client
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :verb => 'DELETE',
       :request => '/client/' + @settings.client.name
     )
@@ -113,8 +113,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_delete_nonexistent_client
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :verb => 'DELETE',
       :request => '/client/nonexistent'
     )
@@ -126,8 +126,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_create_stash
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :verb => 'POST',
       :request => '/stash/tester',
       :content => '{"key": "value"}'
@@ -140,8 +140,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_get_stash
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :request => '/stash/test/test'
     )
     http.callback do |response|
@@ -152,8 +152,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_get_stashes
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :verb => 'POST',
       :request => '/stashes',
       :content => '["test/test", "tester"]'
@@ -174,8 +174,8 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_delete_stash
     http = EventMachine::Protocols::HttpClient.request(
-      :host => 'localhost',
-      :port => 4567,
+      :host => @settings.api.host,
+      :port => @settings.api.port,
       :verb => 'DELETE',
       :request => '/stash/test/test'
     )
