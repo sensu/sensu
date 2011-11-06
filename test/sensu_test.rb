@@ -30,7 +30,7 @@ class TestSensu < Test::Unit::TestCase
     client.setup_keepalives
     EM.add_timer(1) do
       server.redis.get('client:' + @settings.client.name).callback do |client_json|
-        assert_equal(@settings['client'], JSON.parse(client_json).reject { |key, value| key == 'timestamp' })
+        assert_equal(@settings.client, JSON.parse(client_json).reject { |key, value| key == 'timestamp' })
         done
       end
     end
@@ -74,13 +74,13 @@ class TestSensu < Test::Unit::TestCase
       server.redis.hgetall('events:' + @settings.client.name).callback do |events|
         client_events = Hash[*events].sort_by { |status, value| value }
         client_events.each_with_index do |(key, value), index|
-          expected_result = {
+          expected = {
             :status => index + 1,
             :output => @settings.client.name + "\n",
             :flapping => false,
             :occurrences => 1
           }
-          assert_equal(expected_result, JSON.parse(value).symbolize_keys)
+          assert_equal(expected, JSON.parse(value).symbolize_keys)
         end
         done
       end

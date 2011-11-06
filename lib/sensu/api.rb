@@ -186,17 +186,9 @@ module Sensu
 
     def self.test(options={})
       self.setup(options)
-      client = '{
-        "name": "test",
-        "address": "localhost",
-        "subscriptions": [
-          "foo",
-          "bar"
-        ]
-      }'
-      settings.redis.set('client:test', client).callback do
-        settings.redis.sadd('clients', 'test').callback do
-          settings.redis.hset('events:test', 'test', {
+      settings.redis.set('client:test', @settings.client).callback do
+        settings.redis.sadd('clients', @settings.client.name).callback do
+          settings.redis.hset('events:' + @settings.client.name, 'test', {
             :status => 2,
             :output => 'CRITICAL',
             :flapping => false,

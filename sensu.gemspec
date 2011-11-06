@@ -7,8 +7,8 @@ Gem::Specification.new do |s|
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sensu"
-  s.summary     = %q{A server monitoring framework}
-  s.description = %q{A server monitoring framework using the publish-subscribe model}
+  s.summary     = %q{A monitoring framework}
+  s.description = %q{A monitoring framework that aims to be simple, malleable, and scalable. Uses the publish/subscribe model.}
   s.license     = "MIT"
   s.has_rdoc    = false
 

@@ -2,7 +2,10 @@ class TestSensuAPI < Test::Unit::TestCase
   include EventMachine::Test
 
   def setup
-    Sensu::API.test({:config_file => File.join(File.dirname(__FILE__), 'config.json')})
+    @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json')}
+    config = Sensu::Config.new(@options)
+    @settings = config.settings
+    Sensu::API.test(@options)
   end
 
   def test_get_clients
@@ -18,7 +21,7 @@ class TestSensuAPI < Test::Unit::TestCase
       contains_test_client = false
       assert_block "Response didn't contain the test client" do
         clients.each do |client|
-          contains_test_client = true if client['name'] == 'test'
+          contains_test_client = true if client['name'] == @settings.client.name
         end
         contains_test_client
       end
@@ -39,7 +42,7 @@ class TestSensuAPI < Test::Unit::TestCase
       contains_test_event = false
       assert_block "Response didn't contain the test event" do
         events.each do |client, events|
-          if client == 'test'
+          if client == @settings.client.name
             events.each do |check, event|
               contains_test_event = true if check == 'test'
             end
@@ -55,10 +58,17 @@ class TestSensuAPI < Test::Unit::TestCase
     http = EventMachine::Protocols::HttpClient.request(
       :host => 'localhost',
       :port => 4567,
-      :request => '/event/test/test'
+      :request => '/event/' + @settings.client.name + '/test'
     )
     http.callback do |response|
       assert_equal(200, response[:status])
+      expected = {
+        :status => 2,
+        :output => 'CRITICAL',
+        :flapping => false,
+        :occurrences => 1
+      }
+      assert_equal(expected, JSON.parse(response[:content]).symbolize_keys)
       done
     end
   end
@@ -67,10 +77,11 @@ class TestSensuAPI < Test::Unit::TestCase
     http = EventMachine::Protocols::HttpClient.request(
       :host => 'localhost',
       :port => 4567,
-      :request => '/client/test'
+      :request => '/client/' + @settings.client.name
     )
     http.callback do |response|
       assert_equal(200, response[:status])
+      assert_equal(@settings.client, JSON.parse(response[:content]).reject { |key, value| key == 'timestamp' })
       done
     end
   end
@@ -92,7 +103,7 @@ class TestSensuAPI < Test::Unit::TestCase
       :host => 'localhost',
       :port => 4567,
       :verb => 'DELETE',
-      :request => '/client/test'
+      :request => '/client/' + @settings.client.name
     )
     http.callback do |response|
       assert_equal(204, response[:status])
