@@ -23,9 +23,7 @@ Gem::Specification.new do |s|
   s.add_dependency("thin")
 
   s.add_development_dependency("rake")
-  s.add_development_dependency("minitest", "~> 2.7.0")
-  s.add_development_dependency("em-ventually")
-  s.add_development_dependency("rest-client")
+  s.add_development_dependency("em-spec")
 
   s.files         = `git ls-files`.split("\n").reject {|f| f =~ /(dist|test|png)/}
   s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
