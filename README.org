@@ -21,7 +21,7 @@
   Keep it simple.
 ** Testing
 *** Travis CI
-  [[http://travis-ci.org/sonian/sensu][https://secure.travis-ci.org/sonian/sensu.png]]
+  [[https://secure.travis-ci.org/sonian/sensu.png]]
 *** System Dependencies
   - Ruby (MRI) & Rubygems
   - RabbitMQ
