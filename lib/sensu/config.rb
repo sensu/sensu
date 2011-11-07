@@ -26,19 +26,14 @@ module Sensu
     end
 
     def validate_config(type)
-      if type == 'server' || type == 'client'
-        %w[checks handlers rabbitmq].each do |key|
-          unless @settings.key?(key)
-            invalid_config('missing the following key: ' + key)
-          end
-        end
-      end
-      if type == 'server' || type == 'api'
-        %w[redis api].each do |key|
-          unless @settings.key?(key)
-            invalid_config('missing the following key: ' + key)
-          end
-        end
+      has_keys(%w[rabbitmq])
+      case type
+      when 'server'
+        has_keys(%w[redis handlers checks])
+      when 'api'
+        has_keys(%w[redis api])
+      when 'client'
+        has_keys(%w[client checks])
       end
       @settings.checks.each do |name, details|
         unless details.interval.is_a?(Integer) && details.interval > 0
@@ -60,8 +55,17 @@ module Sensu
       unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
         invalid_config('client must have subscriptions')
       end
+      if type
+        puts 'configuration valid -- running ' + type
+      end
+    end
 
-      puts 'configuration valid -- running ' + type if type
+    def has_keys(keys)
+      keys.each do |key|
+        unless @settings.key?(key)
+          invalid_config('missing the following key: ' + key)
+        end
+      end
     end
 
     def invalid_config(message)
