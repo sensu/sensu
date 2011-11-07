@@ -31,7 +31,7 @@ module Sensu
     end
 
     def initialize(options={})
-      config = Sensu::Config.new(:config_file => options[:config_file])
+      config = Sensu::Config.new(options)
       @settings = config.settings
       @is_worker = options[:worker]
       EM.syslog_setup(@settings.syslog.host, @settings.syslog.port)
