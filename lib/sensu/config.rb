@@ -13,31 +13,63 @@ module Sensu
 
     def initialize(options={})
       config_file = options[:config_file] || '/etc/sensu/config.json'
-      @settings = Hashie::Mash.new(JSON.parse(File.open(config_file, 'r').read))
-      validate_config
+      if File.readable?(config_file)
+        begin
+          @settings = Hashie::Mash.new(JSON.parse(File.open(config_file, 'r').read))
+        rescue JSON::ParserError => e
+          invalid_config('configuration file must be valid JSON: ' + e)
+        end
+      else
+        invalid_config('configuration file does not exist or is not readable: ' + config_file)
+      end
+      validate_config(options['type'])
     end
 
-    def validate_config
+    def validate_config(type)
+      has_keys(%w[rabbitmq])
+      case type
+      when 'server'
+        has_keys(%w[redis handlers checks])
+      when 'api'
+        has_keys(%w[redis api])
+      when 'client'
+        has_keys(%w[client checks])
+      end
       @settings.checks.each do |name, details|
         unless details.interval.is_a?(Integer) && details.interval > 0
-          raise 'configuration invalid, missing interval for check ' + name
+          invalid_config('missing interval for check ' + name)
         end
         unless details.command.is_a?(String)
-          raise 'configuration invalid, missing command for check ' + name
+          invalid_config('missing command for check ' + name)
         end
         unless details.subscribers.is_a?(Array) && details.subscribers.count > 0
-          raise 'configuration invalid, missing subscribers for check ' + name
+          invalid_config('missing subscribers for check ' + name)
         end
       end
       unless @settings.client.name.is_a?(String)
-        raise 'configuration invalid, client must have a name'
+        invalid_config('client must have a name')
       end
       unless @settings.client.address.is_a?(String)
-        raise 'configuration invalid, client must have an address (ip or hostname)'
+        invalid_config('client must have an address (ip or hostname)')
       end
       unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
-        raise 'configuration invalid, client must have subscriptions'
+        invalid_config('client must have subscriptions')
       end
+      if type
+        puts 'configuration valid -- running ' + type
+      end
+    end
+
+    def has_keys(keys)
+      keys.each do |key|
+        unless @settings.key?(key)
+          invalid_config('missing the following key: ' + key)
+        end
+      end
+    end
+
+    def invalid_config(message)
+      raise 'configuration invalid, ' + message
     end
 
     def self.read_arguments(arguments)
