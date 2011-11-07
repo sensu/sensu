@@ -9,9 +9,8 @@
 * Documentation
   Find it [[https://github.com/sonian/sensu/wiki][HERE]].
 * Other Projects
-  [[https://github.com/sonian/sensu-plugins][Sensu Community Plugins]]
-
-  [[https://github.com/sonian/sensu-dashboard][Sensu Dashboard]]
+  - [[https://github.com/sonian/sensu-plugins][Sensu Community Plugins]]
+  - [[https://github.com/sonian/sensu-dashboard][Sensu Dashboard]]
 * License
   Sensu is released under the [[https://github.com/sonian/sensu/blob/master/MIT-LICENSE.txt][MIT license]].
 * Contributing
@@ -22,7 +21,7 @@
   Keep it simple.
 ** Testing
 *** Travis CI
-  [[https://secure.travis-ci.org/sonian/sensu.png]]
+  [[http://travis-ci.org/sonian/sensu][https://secure.travis-ci.org/sonian/sensu.png]]
 *** System Dependencies
   - Ruby (MRI) & Rubygems
   - RabbitMQ
