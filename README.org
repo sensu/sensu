@@ -21,13 +21,15 @@
 
   Keep it simple.
 ** Testing
-*** System dependencies
+*** Travis CI
+  [[https://secure.travis-ci.org/sonian/sensu.png]]
+*** System Dependencies
   - Ruby (MRI) & Rubygems
   - RabbitMQ
   - Redis
 *** Running
   : bundle install
-  : rake test
+  : rake
 * Contributors
   - [[http://twitter.com/portertech][Sean Porter]]
   - [[http://twitter.com/amdprophet][Justin Kolberg]]
