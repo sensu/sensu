@@ -103,7 +103,7 @@ class TestSensu < Test::Unit::TestCase
       socket.write('{"name": "external", "status": 1, "output": "test"}')
     end
     callback = proc do
-      EM.add_timer(1) do
+      EM.add_timer(1.5) do
         server.redis.hgetall('events:' + @settings.client.name).callback do |events|
           assert(Hash[*events].include?('external'))
           done
