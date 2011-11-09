@@ -1,0 +1,1 @@
+Vagrant - The provided Vagrant file is meant to allow testing of the entire sensu stack (client|server|api) in a Vagrant environment. It provisions the systems via chef.

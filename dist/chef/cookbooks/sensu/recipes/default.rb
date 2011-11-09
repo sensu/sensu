@@ -20,10 +20,15 @@
 node.sensu.rabbitmq.ssl.cert_chain_file = File.join(node.sensu.directory, "ssl", "cert.pem")
 node.sensu.rabbitmq.ssl.private_key_file = File.join(node.sensu.directory, "ssl", "key.pem")
 
+include_recipe "apt"
 include_recipe "sensu::dependencies"
 
 unless Sensu.is_windows(node)
   package "libssl-dev"
+end
+
+unless Sensu.is_windows(node)
+  package "build-essential"
 end
 
 gem_package "sensu" do
@@ -79,3 +84,4 @@ unless Sensu.is_windows(node)
     package pkg
   end
 end
+

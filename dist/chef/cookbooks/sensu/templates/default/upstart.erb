@@ -9,7 +9,7 @@ stop on [!12345]
 respawn
 
 pre-start script
-  test -x /usr/bin/sensu-<%= @service %> || { stop; exit 0; }
+  test -x <%= node.languages.ruby.bin_dir %>/sensu-<%= @service %> || { stop; exit 0; }
 end script
 
-exec sudo -u <%= node.sensu.user %> sh -c "/usr/bin/sensu-<%= @service %><% if @options %> <%= @options %><% end %>"
+exec sudo -u <%= node.sensu.user %> sh -c "<%= node.languages.ruby.bin_dir %>/sensu-<%= @service %><% if @options %> <%= @options %><% end %>"

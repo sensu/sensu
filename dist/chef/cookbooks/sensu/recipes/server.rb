@@ -41,13 +41,18 @@ template "/etc/rabbitmq/rabbitmq.config" do
 end
 
 rabbitmq_vhost node.sensu.rabbitmq.vhost do
-  action :create
+  action :add
 end
 
 rabbitmq_user node.sensu.rabbitmq.user do
-  action :create
   password node.sensu.rabbitmq.password
-  permissions({node.sensu.rabbitmq.vhost => [".*", ".*", ".*"]})
+  action :add
+end
+
+rabbitmq_user node.sensu.rabbitmq.user do
+  vhost node.sensu.rabbitmq.vhost
+  permissions "\".*\" \".*\" \".*\""
+  action :set_permissions
 end
 
 include_recipe "sensu::default"
