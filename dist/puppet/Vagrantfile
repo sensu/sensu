@@ -1,0 +1,12 @@
+Vagrant::Config.run do |config|
+  config.vm.box = "1104"
+  config.vm.provision :shell, :inline => "gem install puppet"
+  config.vm.forward_port("sensu-dashboard", 8080, 8080)
+  config.vm.forward_port("sensu-dashboard1", 9000, 9000)
+  config.vm.provision :puppet do |puppet|
+    # This path will be expanded relative to the project directory
+    puppet.module_path = "modules"
+    puppet.manifests_path = "manifests"
+    puppet.manifest_file = "sensu.pp"
+  end
+end
