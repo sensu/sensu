@@ -6,6 +6,7 @@ module Sensu
     attr_accessor :redis, :is_worker
 
     def self.run(options={})
+      @logger.debug('[process] -- running server')
       EM.threadpool_size = 16
       EM.run do
         server = self.new(options)
@@ -53,6 +54,7 @@ module Sensu
     end
 
     def setup_keepalives
+      @logger.debug('[keepalive] -- setup keepalive')
       @keepalive_queue = @amq.queue('keepalives')
       @keepalive_queue.subscribe do |keepalive_json|
         client = Hashie::Mash.new(JSON.parse(keepalive_json))
@@ -87,6 +89,7 @@ module Sensu
     end
 
     def process_result(result)
+      @logger.debug('[result] -- processing result')
       @redis.get('client:' + result.client).callback do |client_json|
         unless client_json.nil?
           client = Hashie::Mash.new(JSON.parse(client_json))
@@ -169,6 +172,7 @@ module Sensu
     end
 
     def setup_results
+      @logger.debug('[result] -- setup results')
       @result_queue = @amq.queue('results')
       @result_queue.subscribe do |result_json|
         result = Hashie::Mash.new(JSON.parse(result_json))
@@ -178,6 +182,7 @@ module Sensu
     end
 
     def setup_publisher(options={})
+      @logger.debug('[publisher] -- setup publisher')
       exchanges = Hash.new
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
@@ -199,6 +204,7 @@ module Sensu
     end
 
     def setup_keepalive_monitor
+      @logger.debug('[keepalive] -- setup keepalive monitor')
       EM.add_periodic_timer(30) do
         @logger.debug('[keepalive] -- checking for stale clients')
         @redis.smembers('clients').callback do |clients|
@@ -238,6 +244,7 @@ module Sensu
     end
 
     def setup_queue_monitor
+      @logger.debug('[monitor] -- setup queue monitor')
       EM.add_periodic_timer(5) do
         unless @keepalive_queue.subscribed?
           @logger.warn('[monitor] -- reconnecting to rabbitmq')

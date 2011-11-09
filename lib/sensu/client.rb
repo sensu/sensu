@@ -45,6 +45,7 @@ module Sensu
     end
 
     def setup_keepalives
+      @logger.debug('[keepalive] -- setup keepalive')
       @settings.client.timestamp = Time.now.to_i
       publish_keepalive
       EM.add_periodic_timer(30) do
@@ -63,6 +64,7 @@ module Sensu
     end
 
     def execute_check(check)
+      @logger.debug('[execute] -- executing check -- ' + check.name)
       @checks_in_progress ||= Array.new
       if @settings.checks.key?(check.name)
         unless @checks_in_progress.include?(check.name)
@@ -105,6 +107,7 @@ module Sensu
     end
 
     def setup_subscriptions
+      @logger.debug('[subscribe] -- setup subscriptions')
       @check_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
       @settings.client.subscriptions.each do |exchange|
         @logger.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
@@ -118,6 +121,7 @@ module Sensu
     end
 
     def setup_queue_monitor
+      @logger.debug('[monitor] -- setup queue monitor')
       EM.add_periodic_timer(5) do
         unless @check_queue.subscribed?
           @logger.warn('[monitor] -- reconnecting to rabbitmq')
