@@ -10,7 +10,3 @@ depends "rabbitmq"
 
 # available @ http://community.opscode.com/cookbooks/redis-package
 depends "redis"
-
-# available @ http://community.opscode.com/cookbooks/apt
-depends "apt"
-
