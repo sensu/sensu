@@ -45,7 +45,7 @@ module Sensu
     end
 
     def setup_keepalives
-      @logger.debug('[keepalive] -- setup keepalive')
+      @logger.debug('[keepalive] -- setup keepalives')
       @settings.client.timestamp = Time.now.to_i
       publish_keepalive
       EM.add_periodic_timer(30) do
