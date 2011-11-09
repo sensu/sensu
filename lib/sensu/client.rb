@@ -33,7 +33,7 @@ module Sensu
     end
 
     def setup_amqp
-      @logger.debug("[amqp] -- connecting to rabbitmq")
+      @logger.debug('[amqp] -- connecting to rabbitmq')
       connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       @amq = MQ.new(connection)
     end

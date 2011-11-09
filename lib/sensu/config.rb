@@ -32,7 +32,7 @@ module Sensu
     end
 
     def validate_config(type)
-      @logger.debug("[config] -- validating configuration")
+      @logger.debug('[config] -- validating configuration')
       has_keys(%w[rabbitmq])
       case type
       when 'server'
@@ -63,7 +63,7 @@ module Sensu
         invalid_config('client must have subscriptions')
       end
       if type
-        @logger.debug("[config] -- configuration valid -- running #{type}")
+        @logger.debug('[config] -- configuration valid -- running ' + type)
         puts 'configuration valid -- running ' + type
       end
     end
@@ -77,7 +77,7 @@ module Sensu
     end
 
     def invalid_config(message)
-      @logger.error("[config] -- configuration invalid: #{message}")
+      @logger.error('[config] -- configuration invalid: ' + message)
       raise 'configuration invalid, ' + message
     end
 
