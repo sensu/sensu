@@ -4,8 +4,8 @@ PATH
     sensu (0.8.0)
       amqp (= 0.7.4)
       async_sinatra
+      cabin (= 0.1.7)
       em-hiredis
-      em-syslog
       hashie
       json
       rack (~> 1.3.4)
@@ -21,6 +21,8 @@ GEM
       rack (>= 1.2.1)
       sinatra (>= 1.0)
     bacon (1.1.0)
+    cabin (0.1.7)
+      json
     daemons (1.1.4)
     diff-lcs (1.1.3)
     em-hiredis (0.1.0)
@@ -30,8 +32,6 @@ GEM
       eventmachine
       rspec (~> 2.6.0)
       test-unit
-    em-syslog (0.0.2)
-      eventmachine
     eventmachine (0.12.10)
     hashie (1.2.0)
     hiredis (0.3.2)

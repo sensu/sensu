@@ -21,10 +21,7 @@ module Sensu
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
-            EM.warning('[process] -- ' + signal + ' -- stopping sensu server')
-            EM.add_timer(1) do
-              EM.stop
-            end
+            server.stop(signal)
           end
         end
       end
@@ -33,17 +30,24 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(options)
       @settings = config.settings
+      @logger = config.logger
       @is_worker = options[:worker]
-      EM.syslog_setup(@settings.syslog.host, @settings.syslog.port)
+    end
+
+    def stop(signal)
+      @logger.warn('[process] -- ' + signal + ' -- stopping sensu server')
+      EM.add_timer(1) do
+        EM.stop
+      end
     end
 
     def setup_redis
-      EM.debug('[redis] -- connecting to redis')
+      @logger.debug('[redis] -- connecting to redis')
       @redis = EM::Hiredis.connect('redis://' + @settings.redis.host + ':' + @settings.redis.port.to_s)
     end
 
     def setup_amqp
-      EM.debug('[amqp] -- connecting to rabbitmq')
+      @logger.debug('[amqp] -- connecting to rabbitmq')
       connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       @amq = MQ.new(connection)
     end
@@ -52,7 +56,7 @@ module Sensu
       @keepalive_queue = @amq.queue('keepalives')
       @keepalive_queue.subscribe do |keepalive_json|
         client = Hashie::Mash.new(JSON.parse(keepalive_json))
-        EM.debug('[keepalive] -- received keepalive -- ' + client.name)
+        @logger.debug('[keepalive] -- received keepalive -- ' + client.name)
         @redis.set('client:' + client.name, keepalive_json).callback do
           @redis.sadd('clients', client.name)
         end
@@ -71,14 +75,14 @@ module Sensu
       end
       report = proc do |output|
         output.split(/\n+/).each do |line|
-          EM.info('[handler] -- ' + line)
+          @logger.info('[handler] -- ' + line)
         end
       end
       if @settings.handlers.key?(event.check.handler)
-        EM.debug('[event] -- handling event -- ' + [event.check.handler, event.client.name, event.check.name].join(' -- '))
+        @logger.debug('[event] -- handling event -- ' + [event.check.handler, event.client.name, event.check.name].join(' -- '))
         EM.defer(handler, report)
       else
-        EM.warning('[event] -- handler does not exist -- ' + event.check.handler)
+        @logger.warn('[event] -- handler does not exist -- ' + event.check.handler)
       end
     end
 
@@ -136,7 +140,7 @@ module Sensu
                         end
                       end
                     else
-                      EM.debug('[result] -- check is flapping -- ' + client.name + ' -- ' + check.name)
+                      @logger.debug('[result] -- check is flapping -- ' + client.name + ' -- ' + check.name)
                       @redis.hset('events:' + client.name, check.name, previous_event.merge({'flapping' => true}).to_json)
                     end
                   elsif check['status'] != 0
@@ -168,7 +172,7 @@ module Sensu
       @result_queue = @amq.queue('results')
       @result_queue.subscribe do |result_json|
         result = Hashie::Mash.new(JSON.parse(result_json))
-        EM.info('[result] -- received result -- ' + result.client + ' -- ' + result.check.name)
+        @logger.info('[result] -- received result -- ' + result.client + ' -- ' + result.check.name)
         process_result(result)
       end
     end
@@ -185,7 +189,7 @@ module Sensu
               end
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
-                EM.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
+                @logger.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
                 exchanges[exchange].publish({'name' => name, 'issued' => Time.now.to_i}.to_json)
               end
             end
@@ -196,7 +200,7 @@ module Sensu
 
     def setup_keepalive_monitor
       EM.add_periodic_timer(30) do
-        EM.debug('[keepalive] -- checking for stale clients')
+        @logger.debug('[keepalive] -- checking for stale clients')
         @redis.smembers('clients').callback do |clients|
           clients.each do |client_id|
             @redis.get('client:' + client_id).callback do |client_json|
@@ -236,11 +240,11 @@ module Sensu
     def setup_queue_monitor
       EM.add_periodic_timer(5) do
         unless @keepalive_queue.subscribed?
-          EM.warning('[monitor] -- reconnecting to rabbitmq')
+          @logger.warn('[monitor] -- reconnecting to rabbitmq')
           setup_keepalives
         end
         unless @result_queue.subscribed?
-          EM.warning('[monitor] -- reconnecting to rabbitmq')
+          @logger.warn('[monitor] -- reconnecting to rabbitmq')
           setup_results
         end
       end

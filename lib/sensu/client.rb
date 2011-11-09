@@ -13,10 +13,7 @@ module Sensu
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
-            EM.warning('[process] -- ' + signal + ' -- stopping sensu client')
-            EM.add_timer(1) do
-              EM.stop
-            end
+            client.stop(signal)
           end
         end
       end
@@ -25,17 +22,24 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(options)
       @settings = config.settings
-      EM.syslog_setup(@settings.syslog.host, @settings.syslog.port)
+      @logger = config.logger
+    end
+
+    def stop(signal)
+      @logger.warn('[process] -- ' + signal + ' -- stopping sensu client')
+      EM.add_timer(1) do
+        EM.stop
+      end
     end
 
     def setup_amqp
-      EM.debug("[amqp] -- connecting to rabbitmq")
+      @logger.debug("[amqp] -- connecting to rabbitmq")
       connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       @amq = MQ.new(connection)
     end
 
     def publish_keepalive
-      EM.debug('[keepalive] -- publishing keepalive -- ' + @settings.client.timestamp.to_s)
+      @logger.debug('[keepalive] -- publishing keepalive -- ' + @settings.client.timestamp.to_s)
       @keepalive_queue ||= @amq.queue('keepalives')
       @keepalive_queue.publish(@settings.client.to_json)
     end
@@ -50,7 +54,7 @@ module Sensu
     end
 
     def publish_result(check)
-      EM.info('[result] -- publishing check result -- ' + check.name)
+      @logger.info('[result] -- publishing check result -- ' + check.name)
       @result_queue ||= @amq.queue('results')
       @result_queue.publish({
         :client => @settings.client.name,
@@ -82,7 +86,7 @@ module Sensu
             end
             EM.defer(execute, publish)
           else
-            EM.warning('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
+            @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
             check.status = 3
             check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
             check.internal = true
@@ -91,7 +95,7 @@ module Sensu
           end
         end
       else
-        EM.warning('[execute] -- unkown check -- ' + check.name)
+        @logger.warn('[execute] -- unkown check -- ' + check.name)
         check.status = 3
         check.output = 'Unknown check'
         check.internal = true
@@ -103,12 +107,12 @@ module Sensu
     def setup_subscriptions
       @check_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
       @settings.client.subscriptions.each do |exchange|
-        EM.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
+        @logger.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
         @check_queue.bind(@amq.fanout(exchange))
       end
       @check_queue.subscribe do |check_json|
         check = Hashie::Mash.new(JSON.parse(check_json))
-        EM.info('[subscribe] -- received check -- ' + check.name)
+        @logger.info('[subscribe] -- received check -- ' + check.name)
         execute_check(check)
       end
     end
@@ -116,7 +120,7 @@ module Sensu
     def setup_queue_monitor
       EM.add_periodic_timer(5) do
         unless @check_queue.subscribed?
-          EM.warning('[monitor] -- reconnecting to rabbitmq')
+          @logger.warn('[monitor] -- reconnecting to rabbitmq')
           @check_queue.delete
           EM.add_timer(1) do
             setup_subscriptions
@@ -126,8 +130,9 @@ module Sensu
     end
 
     def setup_socket
-      EM.debug('[socket] -- starting up socket server')
+      @logger.debug('[socket] -- starting up socket server')
       EM.start_server('127.0.0.1', 3030, ClientSocket) do |socket|
+        socket.logger = @logger
         socket.client_name = @settings.client.name
         socket.result_queue = @amq.queue('results')
       end
@@ -135,35 +140,32 @@ module Sensu
   end
 
   class ClientSocket < EM::Connection
-    attr_accessor :client_name, :result_queue
-
-    def post_init
-      EM.debug('[socket] -- client connected')
-    end
+    attr_accessor :logger, :client_name, :result_queue
 
     def receive_data(data)
+      @logger.debug('[socket] -- client connected')
       begin
         check = Hashie::Mash.new(JSON.parse(data))
         validates = %w[name status output].all? do |key|
           check.key?(key)
         end
         if validates
-          EM.info('[socket] -- publishing check result -- ' + check.name)
+          @logger.info('[socket] -- publishing check result -- ' + check.name)
           @result_queue.publish({
             :client => @client_name,
             :check => check.to_hash
           }.to_json)
         else
-          EM.warning('[socket] -- a check name, exit status, and output are required -- e.g. {name: x, status: 0, output: "y"}')
+          @logger.warn('[socket] -- a check name, exit status, and output are required -- e.g. {name: x, status: 0, output: "y"}')
         end
       rescue JSON::ParserError
-        EM.warning('[socket] -- could not parse check result -- expecting JSON')
+        @logger.warn('[socket] -- could not parse check result -- expecting JSON')
       end
       close_connection
     end
 
     def unbind
-      EM.debug('[socket] -- client disconnected')
+      @logger.debug('[socket] -- client disconnected')
     end
   end
 end
