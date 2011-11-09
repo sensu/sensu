@@ -1,5 +1,6 @@
 pkg/*
 *~
+*.vagrant
 \#*
 dump.rdb
 .DS_Store
