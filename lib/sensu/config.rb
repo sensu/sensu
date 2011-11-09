@@ -4,12 +4,13 @@ require 'json'
 require 'hashie'
 require 'uuidtools'
 require 'amqp'
-require 'em/syslog'
+require 'cabin'
+require 'cabin/outputs/em-stdlib-logger'
 require File.join(File.dirname(__FILE__), 'helpers')
 
 module Sensu
   class Config
-    attr_accessor :settings
+    attr_accessor :settings, :logger
 
     def initialize(options={})
       config_file = options[:config_file] || '/etc/sensu/config.json'
@@ -23,6 +24,11 @@ module Sensu
         invalid_config('configuration file does not exist or is not readable: ' + config_file)
       end
       validate_config(options['type'])
+      @logger = Cabin::Channel.new
+      log_dir = File.writable?('/var/log') ? '/var/log' : '/tmp'
+      ruby_logger = Logger.new(File.join(log_dir, 'sensu.log'))
+      @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
+      @logger.level = options[:verbose] ? 'debug' : 'info'
     end
 
     def validate_config(type)
@@ -86,9 +92,11 @@ module Sensu
             options[:worker] = true
           end
         end
-        options[:config_file] = nil
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE (default: /etc/sensu/config.json)') do |file|
           options[:config_file] = file
+        end
+        opts.on('-v', '--verbose', 'Enable verbose logging') do
+          options[:verbose] = true
         end
       end
       optparse.parse!(arguments)

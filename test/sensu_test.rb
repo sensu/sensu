@@ -15,8 +15,8 @@ class TestSensu < Test::Unit::TestCase
   end
 
   def test_cli_arguments
-    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file]])
-    assert_equal({:worker => true, :config_file => @options[:config_file]}, options)
+    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file], '-v'])
+    assert_equal({:worker => true, :config_file => @options[:config_file], :verbose => true}, options)
     done
   end
 
@@ -102,12 +102,14 @@ class TestSensu < Test::Unit::TestCase
       socket = TCPSocket.open('127.0.0.1', 3030)
       socket.write('{"name": "external", "status": 1, "output": "test"}')
     end
-    EM.defer(external_source)
-    EM.add_timer(1) do
-      server.redis.hgetall('events:' + @settings.client.name).callback do |events|
-        assert(Hash[*events].include?('external'))
-        done
+    callback = proc do
+      EM.add_timer(1) do
+        server.redis.hgetall('events:' + @settings.client.name).callback do |events|
+          assert(Hash[*events].include?('external'))
+          done
+        end
       end
     end
+    EM.defer(external_source, callback)
   end
 end
