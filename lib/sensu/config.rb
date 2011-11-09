@@ -28,7 +28,7 @@ module Sensu
       log_dir = File.writable?('/var/log') ? '/var/log' : '/tmp'
       ruby_logger = Logger.new(File.join(log_dir, 'sensu.log'))
       @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
-      @logger.level = options[:log_level] || 'debug'
+      @logger.level = options[:verbose] ? 'debug' : 'info'
     end
 
     def validate_config(type)
@@ -92,9 +92,11 @@ module Sensu
             options[:worker] = true
           end
         end
-        options[:config_file] = nil
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE (default: /etc/sensu/config.json)') do |file|
           options[:config_file] = file
+        end
+        opts.on('-v', '--verbose', 'Enable verbose logging') do
+          options[:verbose] = true
         end
       end
       optparse.parse!(arguments)
