@@ -21,7 +21,7 @@ class sensu::api {
     ensure    => running,
     enable    => true,
     subscribe => File["/etc/sensu/config.json"],
-    require   => File["/etc/init/sensu-server.conf"],
+    require   => File["/etc/init/sensu-api.conf"],
   }
 }
 
