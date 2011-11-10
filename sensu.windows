@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
   s.add_dependency("json")
   s.add_dependency("hashie")
   s.add_dependency("uuidtools")
-  s.add_dependency("em-syslog")
+  s.add_dependency("cabin", "0.1.7")
 
   s.files         = `git ls-files`.split("\n").reject {|f| f =~ /(dist|test|server|api|png)/}
   s.executables   = "sensu-client"
