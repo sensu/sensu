@@ -6,7 +6,6 @@ module Sensu
     attr_accessor :redis, :is_worker
 
     def self.run(options={})
-      @logger.debug('[process] -- running server')
       EM.threadpool_size = 16
       EM.run do
         server = self.new(options)
