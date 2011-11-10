@@ -25,3 +25,6 @@
   sensu-api receives API queries from sensu-dashboard and the rest of the system, it is the exchange agent for sensu's internal system
   sensu-dashboard is the WebUI for administering sensu, It needs port 8080 and 9000 open by default.
 
+
+= HELP:
+  Please come to #sensu on irc.freenode.net and we will be more than happy to help.

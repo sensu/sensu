@@ -9,7 +9,7 @@ stop on [!12345]
 respawn
 
 pre-start script
-  test -x <%= node.languages.ruby.bin_dir %>/sensu-<%= @service %> || { stop; exit 0; }
+test -x <%= GemBinPath.path(@service) %>/sensu-<%= @service %> || { stop; exit 0; }
 end script
 
-exec sudo -u <%= node.sensu.user %> sh -c "<%= node.languages.ruby.bin_dir %>/sensu-<%= @service %><% if @options %> <%= @options %><% end %>"
+exec sudo -u <%= node.sensu.user %> sh -c "<%= GemBinPath.path(@service) %>/sensu-<%= @service %><% if @options %> <%= @options %><% end %>"
