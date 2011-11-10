@@ -47,21 +47,16 @@ class sensu::server {
     notify  => Service["rabbitmq-server"],
   }
 
-  file { [ "/etc/sensu/handlers", "/etc/sensu/plugins"]:
+  file { "/etc/sensu/handlers":
     ensure => directory,
     mode   => 0755,
   }
 
   file { "/etc/sensu/handlers/default":
     ensure  => file,
+    mode    => 0755,
     source  => "puppet:///modules/sensu/handlers/default",
     require => File["/etc/sensu/handlers"],
-  }
-
-  file { "/etc/sensu/plugins/puppet_agent.rb":
-    ensure  => file,
-    source  => "puppet:///modules/sensu/plugins/puppet_agent.rb",
-    require => File["/etc/sensu/plugins"],
   }
 
   file { "/etc/init/sensu-server.conf":

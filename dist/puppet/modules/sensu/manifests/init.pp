@@ -17,6 +17,18 @@ class sensu {
     ensure  => directory,
   }
 
+  file { "/etc/sensu/plugins":
+    ensure => directory,
+    mode   => 0755,
+  }
+
+  file { "/etc/sensu/plugins/puppet_agent.rb":
+    ensure  => file,
+    mode    => 0755,
+    source  => "puppet:///modules/sensu/plugins/puppet_agent.rb",
+    require => File["/etc/sensu/plugins"],
+  }
+
   file { "/etc/sensu/ssl":
     ensure  => directory,
     require => File["/etc/sensu"],
