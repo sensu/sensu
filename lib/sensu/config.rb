@@ -23,12 +23,12 @@ module Sensu
       else
         invalid_config('configuration file does not exist or is not readable: ' + config_file)
       end
-      validate_config(options['type'])
       @logger = Cabin::Channel.new
       log_dir = File.writable?('/var/log') ? '/var/log' : '/tmp'
       ruby_logger = Logger.new(File.join(log_dir, 'sensu.log'))
       @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
       @logger.level = options[:verbose] ? 'debug' : 'info'
+      validate_config(options['type'])
     end
 
     def validate_config(type)
