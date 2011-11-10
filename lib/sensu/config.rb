@@ -77,7 +77,6 @@ module Sensu
     end
 
     def invalid_config(message)
-      @logger.error('[config] -- configuration invalid -- ' + message)
       raise 'configuration invalid, ' + message
     end
 
