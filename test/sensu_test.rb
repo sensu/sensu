@@ -15,8 +15,14 @@ class TestSensu < Test::Unit::TestCase
   end
 
   def test_cli_arguments
-    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file], '-v'])
-    assert_equal({:worker => true, :config_file => @options[:config_file], :verbose => true}, options)
+    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file], '-v', '-l', '/tmp/sensu_test.log'])
+    expected = {
+      :worker => true,
+      :config_file => @options[:config_file],
+      :verbose => true,
+      :log_file => '/tmp/sensu_test.log'
+    }
+    assert_equal(expected, options)
     done
   end
 
