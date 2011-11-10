@@ -41,6 +41,15 @@ module Sensu
         has_keys(%w[redis api])
       when 'client'
         has_keys(%w[client checks])
+        unless @settings.client.name.is_a?(String)
+          invalid_config('client must have a name')
+        end
+        unless @settings.client.address.is_a?(String)
+          invalid_config('client must have an address (ip or hostname)')
+        end
+        unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
+          invalid_config('client must have subscriptions')
+        end
       end
       @settings.checks.each do |name, details|
         unless details.interval.is_a?(Integer) && details.interval > 0
@@ -52,15 +61,6 @@ module Sensu
         unless details.subscribers.is_a?(Array) && details.subscribers.count > 0
           invalid_config('missing subscribers for check ' + name)
         end
-      end
-      unless @settings.client.name.is_a?(String)
-        invalid_config('client must have a name')
-      end
-      unless @settings.client.address.is_a?(String)
-        invalid_config('client must have an address (ip or hostname)')
-      end
-      unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
-        invalid_config('client must have subscriptions')
       end
       if type
         @logger.debug('[config] -- configuration valid -- running ' + type)
