@@ -2,7 +2,6 @@ class sensu {
 
   include sensu::params
   $packages = $sensu::params::sensu_packages
-  $sensu_version = $sensu::params::sensu_version
   $sensu_user = $sensu::params::sensu_user
 
   package { $packages:
@@ -11,7 +10,7 @@ class sensu {
 
   package { "sensu":
     provider => gem,
-    ensure   => $sensu_version,
+    ensure   => latest,
   }
 
   file { "/etc/sensu":
