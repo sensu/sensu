@@ -7,17 +7,9 @@ start on (local-filesystems and net-device-up IFACE=eth0)
 stop on [!12345]
 
 respawn
-<% gems_path = "/usr/bin" %>
-<% unless File.readable?("#{gems_path}/sensu-#{@service}") %>
-  <% Gem.path.each do |path| %>
-    <% if File.readable?("#{path}/bin/sensu-#{@service}") %>
-      <% gems_path = path + "/bin" %>
-    <% end %> 
-  <% end %>
-<% end %>
 
 pre-start script
-test -x <%= gems_path %>/sensu-<%= @service %> || { stop; exit 0; }
+test -x <%= GemBinPath.path(@service) %>/sensu-<%= @service %> || { stop; exit 0; }
 end script
 
-exec sudo -u <%= node.sensu.user %> sh -c "<%= gems_path %>/sensu-<%= @service %><% if @options %> <%= @options %><% end %>"
+exec sudo -u <%= node.sensu.user %> sh -c "<%= GemBinPath.path(@service) %>/sensu-<%= @service %><% if @options %> <%= @options %><% end %>"
