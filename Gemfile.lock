@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    sensu (0.8.3)
+    sensu (0.8.5)
       amqp (= 0.7.4)
       async_sinatra
       cabin (= 0.1.7)
