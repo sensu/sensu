@@ -4,20 +4,20 @@ class sensu::worker {
   include sensu::params
 
   $sensu_user = sensu::params::sensu_user
-  $service = "server"
-  $options = "-w"
+  $service = 'server'
+  $options = '-w'
 
-  file { "/etc/init/sensu-worker.conf":
+  file { '/etc/init/sensu-worker.conf':
     ensure  => file,
-    content => template("sensu/upstart.erb"),
-    mode    => 0644,
+    content => template('sensu/upstart.erb'),
+    mode    => '0644',
   }
 
-  service { "sensu-worker":
+  service { 'sensu-worker':
     ensure    => running,
     enable    => true,
-    subscribe => File["/etc/sensu/config.json"],
-    require   => File["/etc/init/sensu-worker.conf"],
+    subscribe => File['/etc/sensu/config.json'],
+    require   => File['/etc/init/sensu-worker.conf'],
   }
 }
 
