@@ -1,6 +1,7 @@
 # most of these values can be replaced with your method of discovery
 default.sensu.version = "0.8.0"
 default.sensu.directory = "/etc/sensu"
+default.sensu.log.directory = "/var/log/sensu"
 default.sensu.user = "sensu"
 default.sensu.rabbitmq.host = "localhost"
 default.sensu.rabbitmq.port = 5671

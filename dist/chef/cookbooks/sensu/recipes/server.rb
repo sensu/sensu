@@ -63,7 +63,7 @@ end
 
 template "/etc/init/sensu-server.conf" do
   source "upstart.erb"
-  variables :service => "server"
+  variables :service => "server", :options => "-l #{node.sensu.log.directory}/sensu.log"
   mode 0644
 end
 

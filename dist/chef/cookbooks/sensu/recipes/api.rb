@@ -23,7 +23,7 @@ gem_package "thin"
 
 template "/etc/init/sensu-api.conf" do
   source "upstart.erb"
-  variables :service => "api"
+  variables :service => "api", :options => "-l #{node.sensu.log.directory}/sensu.log"
   mode 0644
 end
 

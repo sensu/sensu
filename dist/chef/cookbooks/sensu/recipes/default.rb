@@ -45,6 +45,12 @@ user node.sensu.user do
   home node.sensu.directory
 end
 
+directory node.sensu.log.directory do
+  recursive true
+  owner node.sensu.user
+  mode 0755
+end
+
 unless Sensu.is_windows(node)
   template "/etc/sudoers.d/sensu" do
     source "sudoers.erb"
