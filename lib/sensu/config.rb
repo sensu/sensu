@@ -15,7 +15,7 @@ module Sensu
     def initialize(options={})
       @logger = Cabin::Channel.new
       log_file = options[:log_file] || '/tmp/sensu.log'
-      if File.writable?(log_file) || File.writable?(File.dirname(log_file))
+      if File.writable?(log_file) || !File.exist?(log_file) && File.writable?(File.dirname(log_file))
         ruby_logger = Logger.new(log_file)
       else
         invalid_config('log file is not writable: ' + log_file)
