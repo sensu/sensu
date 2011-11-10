@@ -5,7 +5,7 @@ Vagrant - The provided Vagrant file is meant to allow testing of the entire sens
 This Vagrantfile assumes you have done the following 2 commands:
 
 gem install vagrant
-vagrant box add base http://files.vagrantup.com/lucid32.box
+vagrant box add ubuntu-1104-server-i386 http://dl.dropbox.com/u/7490647/talifun-ubuntu-11.04-server-i386.box
 
 
 If you have your base system labeled other than base, please edit the Vagrantfile accordingly then run vagrant up.
