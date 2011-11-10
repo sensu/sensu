@@ -25,7 +25,7 @@ end
 
 template "/etc/init/sensu-worker.conf" do
   source "upstart.erb"
-  variables :name => "worker", :service => "server", :options => "-w"
+  variables :name => "worker", :service => "server", :options => "-w -l #{node.sensu.log.directory}/sensu.log"
   mode 0644
 end
 

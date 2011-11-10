@@ -22,7 +22,7 @@ include_recipe "sensu::default"
 unless Sensu.is_windows(node)
   template "/etc/init/sensu-client.conf" do
     source "upstart.erb"
-    variables :service => "client"
+    variables :service => "client", :options => "-l #{node.sensu.log.directory}/sensu.log"
     mode 0644
   end
 
