@@ -14,8 +14,12 @@ module Sensu
 
     def initialize(options={})
       @logger = Cabin::Channel.new
-      log_dir = File.writable?('/var/log') ? '/var/log' : '/tmp'
-      ruby_logger = Logger.new(File.join(log_dir, 'sensu.log'))
+      log_file = options[:log_file] || '/tmp/sensu.log'
+      if File.writable?(log_file) || !File.exist?(log_file) && File.writable?(File.dirname(log_file))
+        ruby_logger = Logger.new(log_file)
+      else
+        invalid_config('log file is not writable: ' + log_file)
+      end
       @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
       @logger.level = options[:verbose] ? 'debug' : 'info'
       config_file = options[:config_file] || '/etc/sensu/config.json'
@@ -96,6 +100,9 @@ module Sensu
         end
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE (default: /etc/sensu/config.json)') do |file|
           options[:config_file] = file
+        end
+        opts.on('-l', '--log FILE', 'Sensu log FILE (default: /tmp/sensu.log)') do |file|
+          options[:log_file] = file
         end
         opts.on('-v', '--verbose', 'Enable verbose logging (default: false)') do
           options[:verbose] = true
