@@ -3,13 +3,10 @@ class sensu::client {
     require sensu
     include sensu::params
 
-    $service = 'client'
-    $sensu_user = $sensu::params::sensu_user
-
-    file { '/etc/sensu/plugins':
-      ensure => directory,
-      mode   => '0755',
-    }
+    $service       = 'client'
+    $user          = $sensu::params::user
+    $log_directory = $sensu::params::log_directory
+    $options       = "-l $log_directory/sensu.log"
 
     file { '/etc/init/sensu-client.conf':
       ensure  => file,
@@ -17,10 +14,17 @@ class sensu::client {
       mode    => '0644',
     }
 
+    exec { "link ${service}":
+      command => "/bin/ln -s /var/lib/gems/1.8/bin/sensu-${service} /usr/bin/sensu-${service}",
+      creates => "/usr/bin/sensu-${service}",
+      require => Package['sensu'],
+    }
+
     service { 'sensu-client':
       ensure    => running,
       enable    => true,
+      provider  => upstart,
       subscribe => File['/etc/sensu/config.json'],
-      require   => File['/etc/init/sensu-client.conf'],
+      require   => [ Exec["link ${service}"], File['/etc/init/sensu-client.conf'] ],
     }
 }

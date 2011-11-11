@@ -4,9 +4,10 @@ class sensu::dashboard {
     include sensu::params
 
     $service = 'dashboard'
-    $sensu_user = $sensu::params::sensu_user
+    $user    = $sensu::params::user
+    $options = ''
 
-    package { [ 'thin', 'sensu-dashboard' ]:
+    package { 'sensu-dashboard':
       ensure   => latest,
       provider => gem,
     }
@@ -17,10 +18,17 @@ class sensu::dashboard {
       mode    => '0644',
     }
 
+    exec { "link ${service}":
+      command => "/bin/ln -s /var/lib/gems/1.8/bin/sensu-${service} /usr/bin/sensu-${service}",
+      creates => "/usr/bin/sensu-${service}",
+      require => Package['sensu'],
+    }
+
     service { 'sensu-dashboard':
       ensure    => running,
       enable    => true,
+      provider  => upstart,
       subscribe => File['/etc/sensu/config.json'],
-      require   => File['/etc/init/sensu-dashboard.conf'],
+      require   => [ Exec["link ${service}"], File['/etc/init/sensu-dashboard.conf'] ],
     }
 }

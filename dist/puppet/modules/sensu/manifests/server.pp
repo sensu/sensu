@@ -3,10 +3,10 @@ class sensu::server {
   require sensu
   include sensu::params
 
-  $sensu_rabbitmq_port = $sensu::params::sensu_rabbitmq_port
-  $sensu_user = $sensu::params::sensu_user
-
-  $service = 'server'
+  $user          = $sensu::params::user
+  $log_directory = $sensu::params::log_directory
+  $options       = "-l $log_directory/sensu.log"
+  $service       = 'server'
 
   package { [ 'rabbitmq-server', 'redis-server' ]:
     ensure => latest,
@@ -39,14 +39,6 @@ class sensu::server {
     require => File['/etc/rabbitmq/ssl'],
   }
 
-  file { '/etc/rabbitmq/rabbitmq.config':
-    ensure  => file,
-    content => template('sensu/rabbitmq.config.erb'),
-    mode    => '0644',
-    require => Package['rabbitmq-server'],
-    notify  => Service['rabbitmq-server'],
-  }
-
   file { '/etc/sensu/handlers':
     ensure => directory,
     mode   => '0755',
@@ -65,11 +57,18 @@ class sensu::server {
     mode    => '0644',
   }
 
+  exec { "link ${service}":
+    command => "/bin/ln -s /var/lib/gems/1.8/bin/sensu-${service} /usr/bin/sensu-${service}",
+    creates => "/usr/bin/sensu-${service}",
+    require => Package['sensu'],
+  }
+
   service { 'sensu-server':
     ensure    => running,
     enable    => true,
+    provider  => upstart,
     subscribe => File['/etc/sensu/config.json'],
-    require   => File['/etc/init/sensu-server.conf'],
+    require   => [ Service['rabbitmq-server'], Service['redis-server'], File['/etc/init/sensu-server.conf'], Exec["link ${service}"] ],
   }
 
   service { [ 'rabbitmq-server', 'redis-server' ]:
