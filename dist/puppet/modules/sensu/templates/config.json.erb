@@ -1,21 +1,16 @@
 {
   "rabbitmq": {
-    "host": "localhost",
-    "port": 5672
+    "host": "<%= rabbitmq_host %>",
+    "port": <%= rabbitmq_port %>
   },
   "redis": {
-    "host": "localhost",
-    "port": 6379
-  },
-  "syslog": {
-    "host": "localhost",
-    "port": 514
+    "host": "<%= redis_host %>",
+    "port": <%= redis_port %>
   },
   "api": {
-    "host": "localhost",
-    "port": 4567
+    "host": "<%= api_host %>",
+    "port": <%= api_port %>
   },
-  "id": "config",
   "handlers": {
     "default": "/etc/sensu/handlers/default"
   },
