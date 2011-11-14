@@ -73,6 +73,34 @@ class TestSensuAPI < Test::Unit::TestCase
     end
   end
 
+  def test_resolve_event
+    http = EventMachine::Protocols::HttpClient.request(
+      :host => @settings.api.host,
+      :port => @settings.api.port,
+      :verb => 'POST',
+      :request => '/event/resolve',
+      :content => '{"client": "' + @settings.client.name + '", "check": "test"}'
+    )
+    http.callback do |response|
+      assert_equal(201, response[:status])
+      done
+    end
+  end
+
+  def test_resolve_nonexistent_event
+    http = EventMachine::Protocols::HttpClient.request(
+      :host => @settings.api.host,
+      :port => @settings.api.port,
+      :verb => 'POST',
+      :request => '/event/resolve',
+      :content => '{"client": "' + @settings.client.name + '", "check": "nonexistent"}'
+    )
+    http.callback do |response|
+      assert_equal(404, response[:status])
+      done
+    end
+  end
+
   def test_get_client
     http = EventMachine::Protocols::HttpClient.request(
       :host => @settings.api.host,
