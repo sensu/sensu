@@ -3,83 +3,77 @@ class sensu::server {
   require sensu
   include sensu::params
 
-  $sensu_rabbitmq_port = $sensu::params::sensu_rabbitmq_port
-  $sensu_user = $sensu::params::sensu_user
+  $user          = $sensu::params::user
+  $log_directory = $sensu::params::log_directory
+  $options       = "-l $log_directory/sensu.log"
+  $service       = 'server'
 
-  $service = "server"
-
-  package { [ "rabbitmq-server", "redis-server" ]:
+  package { [ 'rabbitmq-server', 'redis-server' ]:
     ensure => latest,
   }
 
-  file { "/etc/rabbitmq/ssl":
+  file { '/etc/rabbitmq/ssl':
     ensure  => directory,
-    mode    => 0755,
-    require => Package["rabbitmq-server"],
+    mode    => '0755',
+    require => Package['rabbitmq-server'],
   }
 
-  file { "/etc/rabbitmq/ssl/cacert.pem":
+  file { '/etc/rabbitmq/ssl/cacert.pem':
     ensure  => file,
-    source  => "puppet:///modules/sensu/cacert.pem",
-    mode    => 0644,
-    require => File["/etc/rabbitmq/ssl"],
+    source  => 'puppet:///modules/sensu/cacert.pem',
+    mode    => '0644',
+    require => File['/etc/rabbitmq/ssl'],
   }
 
-  file { "/etc/rabbitmq/ssl/cert.pem":
+  file { '/etc/rabbitmq/ssl/cert.pem':
     ensure  => file,
-    source  => "puppet:///modules/sensu/cert.pem",
-    mode    => 0644,
-    require => File["/etc/rabbitmq/ssl"],
+    source  => 'puppet:///modules/sensu/cert.pem',
+    mode    => '0644',
+    require => File['/etc/rabbitmq/ssl'],
   }
 
-  file { "/etc/rabbitmq/ssl/key.pem":
+  file { '/etc/rabbitmq/ssl/key.pem':
     ensure  => file,
-    source  => "puppet:///modules/sensu/key.pem",
-    mode    => 0644,
-    require => File["/etc/rabbitmq/ssl"],
+    source  => 'puppet:///modules/sensu/key.pem',
+    mode    => '0644',
+    require => File['/etc/rabbitmq/ssl'],
   }
 
-  file { "/etc/rabbitmq/rabbitmq.config":
-    ensure  => file,
-    content => template("sensu/rabbitmq.config.erb"),
-    mode    => 0644,
-    require => Package["rabbitmq-server"],
-    notify  => Service["rabbitmq-server"],
-  }
-
-  file { [ "/etc/sensu/handlers", "/etc/sensu/plugins"]:
+  file { '/etc/sensu/handlers':
     ensure => directory,
-    mode   => 0755,
+    mode   => '0755',
   }
 
-  file { "/etc/sensu/handlers/default":
+  file { '/etc/sensu/handlers/default':
     ensure  => file,
-    source  => "puppet:///modules/sensu/handlers/default",
-    require => File["/etc/sensu/handlers"],
+    mode    => '0755',
+    source  => 'puppet:///modules/sensu/handlers/default',
+    require => File['/etc/sensu/handlers'],
   }
 
-  file { "/etc/sensu/plugins/puppet_agent.rb":
+  file { '/etc/init/sensu-server.conf':
     ensure  => file,
-    source  => "puppet:///modules/sensu/plugins/puppet_agent.rb",
-    require => File["/etc/sensu/plugins"],
+    content => template('sensu/upstart.erb'),
+    mode    => '0644',
   }
 
-  file { "/etc/init/sensu-server.conf":
-    ensure  => file,
-    content => template("sensu/upstart.erb"),
-    mode    => 0644,
+  exec { "link ${service}":
+    command => "/bin/ln -s /var/lib/gems/1.8/bin/sensu-${service} /usr/bin/sensu-${service}",
+    creates => "/usr/bin/sensu-${service}",
+    require => Package['sensu'],
   }
 
-  service { "sensu-server":
+  service { 'sensu-server':
     ensure    => running,
     enable    => true,
-    subscribe => File["/etc/sensu/config.json"],
-    require   => File["/etc/init/sensu-server.conf"],
+    provider  => upstart,
+    subscribe => File['/etc/sensu/config.json'],
+    require   => [ Service['rabbitmq-server'], Service['redis-server'], File['/etc/init/sensu-server.conf'], Exec["link ${service}"] ],
   }
 
-  service { [ "rabbitmq-server", "redis-server" ]:
+  service { [ 'rabbitmq-server', 'redis-server' ]:
     ensure  => running,
     enable  => true,
-    require => [ Package["rabbitmq-server"], Package["redis-server"] ],
+    require => [ Package['rabbitmq-server'], Package['redis-server'] ],
   }
 }

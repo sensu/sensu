@@ -3,24 +3,32 @@ class sensu::dashboard {
     require sensu
     include sensu::params
 
-    $service = "dashboard"
-    $sensu_user = $sensu::params::sensu_user
+    $service = 'dashboard'
+    $user    = $sensu::params::user
+    $options = ''
 
-    package { [ "thin", "sensu-dashboard":
+    package { 'sensu-dashboard':
       ensure   => latest,
       provider => gem,
     }
 
-    file { "/etc/init/sensu-dashboard.conf":
+    file { '/etc/init/sensu-dashboard.conf':
       ensure  => file,
-      content => template("sensu/upstart.erb"),
-      mode    => 0644,
+      content => template('sensu/upstart.erb'),
+      mode    => '0644',
     }
 
-    service { "sensu-dashboard":
+    exec { "link ${service}":
+      command => "/bin/ln -s /var/lib/gems/1.8/bin/sensu-${service} /usr/bin/sensu-${service}",
+      creates => "/usr/bin/sensu-${service}",
+      require => Package['sensu'],
+    }
+
+    service { 'sensu-dashboard':
       ensure    => running,
       enable    => true,
-      subscribe => File["/etc/sensu/config.json"],
-      require   => File["/etc/init/sensu-dashboard.conf"],
+      provider  => upstart,
+      subscribe => File['/etc/sensu/config.json'],
+      require   => [ Exec["link ${service}"], File['/etc/init/sensu-dashboard.conf'] ],
     }
 }

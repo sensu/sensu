@@ -28,7 +28,7 @@ else
 end
 running = false
 procs.each_line do |proc|
-  running = true if proc.grep(/puppetd|puppet agent/)
+  running = true if proc.find { |p| /puppetd|puppet agent/ =~ p }
 end
 if running
   puts 'PUPPET AGENT - OK - Puppet agent is running'
