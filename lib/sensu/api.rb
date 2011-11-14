@@ -129,6 +129,31 @@ module Sensu
       end
     end
 
+    apost '/event/resolve' do
+      $logger.debug('[event] -- ' + request.ip + ' -- POST -- request to resolve event')
+      begin
+        event = JSON.parse(request.body.read)
+      rescue JSON::ParserError
+        status 400
+        body nil
+      end
+      if event.has_key?('client') && event.has_key?('check')
+        $redis.hgetall('events:' + event['client']).callback do |events|
+          if Hash[*events][event['check']]
+            check = {:name => event['check'], :issued => Time.now.to_i, :status => 0, :output => 'Resolving on request of the API'}
+            $amq.queue('results').publish({:client => event['client'], :check => check}.to_json)
+            status 201
+          else
+            status 404
+          end
+          body nil
+        end
+      else
+        status 400
+        body nil
+      end
+    end
+
     apost '/stash/*' do |path|
       $logger.debug('[stash] -- ' + request.ip + ' -- POST -- request for stash -- ' + path)
       begin
