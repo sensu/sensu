@@ -101,6 +101,20 @@ class TestSensuAPI < Test::Unit::TestCase
     end
   end
 
+  def test_resolve_event_malformed
+    http = EventMachine::Protocols::HttpClient.request(
+      :host => @settings.api.host,
+      :port => @settings.api.port,
+      :verb => 'POST',
+      :request => '/event/resolve',
+      :content => 'malformed'
+    )
+    http.callback do |response|
+      assert_equal(400, response[:status])
+      done
+    end
+  end
+
   def test_get_client
     http = EventMachine::Protocols::HttpClient.request(
       :host => @settings.api.host,
