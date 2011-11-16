@@ -78,7 +78,7 @@ class TestSensu < Test::Unit::TestCase
     server.setup_publisher(:test => true)
     EM.add_timer(1) do
       server.redis.hgetall('events:' + @settings.client.name).callback do |events|
-        client_events = Hash[*events].sort_by { |status, value| value }
+        client_events = events.sort_by { |status, value| value }
         client_events.each_with_index do |(key, value), index|
           expected = {
             :status => index + 1,
@@ -111,7 +111,7 @@ class TestSensu < Test::Unit::TestCase
     callback = proc do
       EM.add_timer(1.5) do
         server.redis.hgetall('events:' + @settings.client.name).callback do |events|
-          assert(Hash[*events].include?('external'))
+          assert(events.include?('external'))
           done
         end
       end

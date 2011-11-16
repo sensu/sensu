@@ -9,221 +9,249 @@ class TestSensuAPI < Test::Unit::TestCase
   end
 
   def test_get_clients
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :request => '/clients'
-    )
-    http.callback do |response|
-      assert_equal(200, response[:status])
-      clients = JSON.parse(response[:content])
-      assert(clients.is_a?(Array))
-      contains_test_client = false
-      assert_block "Response didn't contain the test client" do
-        clients.each do |client|
-          contains_test_client = true if client['name'] == @settings.client.name
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :request => '/clients'
+      )
+      http.callback do |response|
+        assert_equal(200, response[:status])
+        clients = JSON.parse(response[:content])
+        assert(clients.is_a?(Array))
+        contains_test_client = false
+        assert_block "Response didn't contain the test client" do
+          clients.each do |client|
+            contains_test_client = true if client['name'] == @settings.client.name
+          end
+          contains_test_client
         end
-        contains_test_client
+        done
       end
-      done
     end
   end
 
   def test_get_events
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :request => '/events'
-    )
-    http.callback do |response|
-      assert_equal(200, response[:status])
-      events = JSON.parse(response[:content])
-      assert(events.is_a?(Hash))
-      contains_test_event = false
-      assert_block "Response didn't contain the test event" do
-        events.each do |client, events|
-          if client == @settings.client.name
-            events.each do |check, event|
-              contains_test_event = true if check == 'test'
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :request => '/events'
+      )
+      http.callback do |response|
+        assert_equal(200, response[:status])
+        events = JSON.parse(response[:content])
+        assert(events.is_a?(Hash))
+        contains_test_event = false
+        assert_block "Response didn't contain the test event" do
+          events.each do |client, events|
+            if client == @settings.client.name
+              events.each do |check, event|
+                contains_test_event = true if check == 'test'
+              end
             end
           end
+          contains_test_event
         end
-        contains_test_event
+        done
       end
-      done
     end
   end
 
   def test_get_event
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :request => '/event/' + @settings.client.name + '/test'
-    )
-    http.callback do |response|
-      assert_equal(200, response[:status])
-      expected = {
-        :status => 2,
-        :output => 'CRITICAL',
-        :flapping => false,
-        :occurrences => 1
-      }
-      assert_equal(expected, JSON.parse(response[:content]).symbolize_keys)
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :request => '/event/' + @settings.client.name + '/test'
+      )
+      http.callback do |response|
+        assert_equal(200, response[:status])
+        expected = {
+          :status => 2,
+          :output => 'CRITICAL',
+          :flapping => false,
+          :occurrences => 1
+        }
+        assert_equal(expected, JSON.parse(response[:content]).symbolize_keys)
+        done
+      end
     end
   end
 
   def test_resolve_event
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :verb => 'POST',
-      :request => '/event/resolve',
-      :content => '{"client": "' + @settings.client.name + '", "check": "test"}'
-    )
-    http.callback do |response|
-      assert_equal(201, response[:status])
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :verb => 'POST',
+        :request => '/event/resolve',
+        :content => '{"client": "' + @settings.client.name + '", "check": "test"}'
+      )
+      http.callback do |response|
+        assert_equal(201, response[:status])
+        done
+      end
     end
   end
 
   def test_resolve_nonexistent_event
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :verb => 'POST',
-      :request => '/event/resolve',
-      :content => '{"client": "' + @settings.client.name + '", "check": "nonexistent"}'
-    )
-    http.callback do |response|
-      assert_equal(404, response[:status])
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :verb => 'POST',
+        :request => '/event/resolve',
+        :content => '{"client": "' + @settings.client.name + '", "check": "nonexistent"}'
+      )
+      http.callback do |response|
+        assert_equal(404, response[:status])
+        done
+      end
     end
   end
 
   def test_resolve_event_malformed
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :verb => 'POST',
-      :request => '/event/resolve',
-      :content => 'malformed'
-    )
-    http.callback do |response|
-      assert_equal(400, response[:status])
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :verb => 'POST',
+        :request => '/event/resolve',
+        :content => 'malformed'
+      )
+      http.callback do |response|
+        assert_equal(400, response[:status])
+        done
+      end
     end
   end
 
   def test_get_client
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :request => '/client/' + @settings.client.name
-    )
-    http.callback do |response|
-      assert_equal(200, response[:status])
-      assert_equal(@settings.client, JSON.parse(response[:content]).reject { |key, value| key == 'timestamp' })
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :request => '/client/' + @settings.client.name
+      )
+      http.callback do |response|
+        assert_equal(200, response[:status])
+        assert_equal(@settings.client, JSON.parse(response[:content]).reject { |key, value| key == 'timestamp' })
+        done
+      end
     end
   end
 
   def test_get_nonexistent_client
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :request => '/client/nonexistent'
-    )
-    http.callback do |response|
-      assert_equal(404, response[:status])
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :request => '/client/nonexistent'
+      )
+      http.callback do |response|
+        assert_equal(404, response[:status])
+        done
+      end
     end
   end
 
   def test_delete_client
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :verb => 'DELETE',
-      :request => '/client/' + @settings.client.name
-    )
-    http.callback do |response|
-      assert_equal(204, response[:status])
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :verb => 'DELETE',
+        :request => '/client/' + @settings.client.name
+      )
+      http.callback do |response|
+        assert_equal(204, response[:status])
+        done
+      end
     end
   end
 
   def test_delete_nonexistent_client
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :verb => 'DELETE',
-      :request => '/client/nonexistent'
-    )
-    http.callback do |response|
-      assert_equal(404, response[:status])
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :verb => 'DELETE',
+        :request => '/client/nonexistent'
+      )
+      http.callback do |response|
+        assert_equal(404, response[:status])
+        done
+      end
     end
   end
 
   def test_create_stash
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :verb => 'POST',
-      :request => '/stash/tester',
-      :content => '{"key": "value"}'
-    )
-    http.callback do |response|
-      assert_equal(201, response[:status])
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :verb => 'POST',
+        :request => '/stash/tester',
+        :content => '{"key": "value"}'
+      )
+      http.callback do |response|
+        assert_equal(201, response[:status])
+        done
+      end
     end
   end
 
   def test_get_stash
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :request => '/stash/test/test'
-    )
-    http.callback do |response|
-      assert_equal(200, response[:status])
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :request => '/stash/test/test'
+      )
+      http.callback do |response|
+        assert_equal(200, response[:status])
+        done
+      end
     end
   end
 
   def test_get_stashes
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :verb => 'POST',
-      :request => '/stashes',
-      :content => '["test/test", "tester"]'
-    )
-    http.callback do |response|
-      stashes = JSON.parse(response[:content])
-      assert(stashes.is_a?(Hash))
-      contains_test_stash = false
-      assert_block "Response didn't contain a test stash" do
-        stashes.each do |path, stash|
-          contains_test_stash = true if ['test/test', 'tester'].include?(path)
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :verb => 'POST',
+        :request => '/stashes',
+        :content => '["test/test", "tester"]'
+      )
+      http.callback do |response|
+        stashes = JSON.parse(response[:content])
+        assert(stashes.is_a?(Hash))
+        contains_test_stash = false
+        assert_block "Response didn't contain a test stash" do
+          stashes.each do |path, stash|
+            contains_test_stash = true if ['test/test', 'tester'].include?(path)
+          end
+          contains_test_stash
         end
-        contains_test_stash
+        done
       end
-      done
     end
   end
 
   def test_delete_stash
-    http = EventMachine::Protocols::HttpClient.request(
-      :host => @settings.api.host,
-      :port => @settings.api.port,
-      :verb => 'DELETE',
-      :request => '/stash/test/test'
-    )
-    http.callback do |response|
-      assert_equal(204, response[:status])
-      done
+    EM.add_timer(1) do
+      http = EventMachine::Protocols::HttpClient.request(
+        :host => @settings.api.host,
+        :port => @settings.api.port,
+        :verb => 'DELETE',
+        :request => '/stash/test/test'
+      )
+      http.callback do |response|
+        assert_equal(204, response[:status])
+        done
+      end
     end
   end
 end

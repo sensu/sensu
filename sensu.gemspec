@@ -7,8 +7,8 @@ Gem::Specification.new do |s|
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]
   s.homepage    = "https://github.com/sonian/sensu"
-  s.summary     = %q{A monitoring framework}
-  s.description = %q{A monitoring framework that aims to be simple, malleable, and scalable. Uses the publish/subscribe model.}
+  s.summary     = "A monitoring framework"
+  s.description = "A monitoring framework that aims to be simple, malleable, and scalable. Uses the publish/subscribe model."
   s.license     = "MIT"
   s.has_rdoc    = false
 
@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
   s.add_dependency("hashie")
   s.add_dependency("uuidtools")
   s.add_dependency("cabin", "0.1.7")
-  s.add_dependency("em-hiredis")
+  s.add_dependency("ruby-redis")
   s.add_dependency("rack", "~> 1.3.4")
   s.add_dependency("async_sinatra")
   s.add_dependency("thin")
