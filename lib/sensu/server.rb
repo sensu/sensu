@@ -1,5 +1,5 @@
 require File.join(File.dirname(__FILE__), 'config')
-require 'em-hiredis'
+require 'redis'
 
 module Sensu
   class Server
@@ -43,7 +43,7 @@ module Sensu
 
     def setup_redis
       @logger.debug('[redis] -- connecting to redis')
-      @redis = EM::Hiredis.connect('redis://' + @settings.redis.host + ':' + @settings.redis.port.to_s)
+      @redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Client)
     end
 
     def setup_amqp
@@ -229,7 +229,7 @@ module Sensu
                 @result_queue.publish(result.to_json)
               else
                 @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
-                  if exists == 1
+                  if exists
                     result.check.status = 0
                     result.check.output = 'Keep-alive sent from host'
                     @result_queue.publish(result.to_json)

@@ -1,7 +1,5 @@
 #!/usr/bin/env ruby
 
-raise "The Sensu API does not run on Windows" if RUBY_PLATFORM.downcase =~ /mswin|mingw32|windows/
-
 $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
 require 'sensu/api'
 
