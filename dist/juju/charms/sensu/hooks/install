@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 [[ ! `which ruby` ]] && apt-get -y install ruby
-"$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/install.rb
+`dirname $0`/install.rb
