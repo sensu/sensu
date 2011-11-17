@@ -1,5 +1,5 @@
 require 'rubygems' if RUBY_VERSION < '1.9.0'
-gem 'eventmachine', '1.0.0.beta.4'
+gem 'eventmachine', '~> 1.0.0.beta.4'
 require 'optparse'
 require 'json'
 require 'hashie'
