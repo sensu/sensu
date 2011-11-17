@@ -1,7 +1,7 @@
 {
   "name": "sensu",
   "description": "Installs/Configures Sensu",
-  "long_description": "= DESCRIPTION:\n\n= REQUIREMENTS:\n\n= ATTRIBUTES:\n\n= USAGE:\n\n",
+  "long_description": "= DESCRIPTION:\n  Sensu is a monitoring framework that aims to be simple, malleable, and scalable.\n\n  It takes inspiration from the success and failure of other monitoring frameworks, and uses a publish/subscribe model that leads to\n  true scalability. The configuration file is simple JSON and system is light weight. It aim's to be as flexible as today's infrastructures without\n  undue complication to the administrator. \n\n= REQUIREMENTS:\n  Redis\n  RabbitMQ\n\n= ATTRIBUTES:\n  Sensu, Sensu dashboard versions are configured here.\n  rabbitmq user, password, host\n  redis host\n  Dashboard login credentials\n\n= USAGE:\n  All sensu daemons should run via upstart which should be handled by chef, all daemons take -c as an option with a filename passed in if\n  you move the default /etc/sensu/config.json file from that location. Otherwise no options should be required.\n\n  sensu-server needs to run on a single node\n  sensu-worker can run on multiple nodes and process's additional checks if the server cannot handle it (Only needed on large infrastructure)\n  sensu-client runs on all nodes to be monitored by sensu\n  sensu-api receives API queries from sensu-dashboard and the rest of the system, it is the exchange agent for sensu's internal system\n  sensu-dashboard is the WebUI for administering sensu, It needs port 8080 and 9000 open by default.\n\n\n= HELP:\n  Please come to #sensu on irc.freenode.net and we will be more than happy to help.\n",
   "maintainer": "Sonian, Inc.",
   "maintainer_email": "chefs@sonian.net",
   "license": "Apache 2.0",
@@ -28,5 +28,5 @@
   },
   "recipes": {
   },
-  "version": "0.0.2"
+  "version": "0.0.3"
 }
