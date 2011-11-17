@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 [[ ! `which ruby` ]] && apt-get -y install ruby
-`dirname $0`/install.rb
+./install.rb
