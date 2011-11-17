@@ -1,6 +1,6 @@
 require File.join(File.dirname(__FILE__), 'config')
 require 'sinatra/async'
-require 'em-hiredis'
+require 'redis'
 
 module Sensu
   class API < Sinatra::Base
@@ -24,7 +24,7 @@ module Sensu
       @settings = config.settings
       $logger = config.logger
       $logger.debug('[setup] -- connecting to redis')
-      $redis = EM::Hiredis.connect('redis://' + @settings.redis.host + ':' + @settings.redis.port.to_s)
+      $redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Client)
       $logger.debug('[setup] -- connecting to rabbitmq')
       connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       $amq = MQ.new(connection)
@@ -69,21 +69,13 @@ module Sensu
     adelete '/client/:name' do |client|
       $logger.debug('[client] -- ' + request.ip + ' -- DELETE -- request for client -- ' + client)
       $redis.sismember('clients', client).callback do |client_exists|
-        unless client_exists == 0
-          $redis.exists('events:' + client).callback do |events_exist|
-            unless events_exist == 0
-              $redis.hgetall('events:' + client).callback do |events|
-                Hash[*events].keys.each do |check_name|
-                  check = {:name => check_name, :issued => Time.now.to_i, :status => 0, :output => 'Client is being removed'}
-                  $amq.queue('results').publish({:client => client, :check => check}.to_json)
-                end
-                EM.add_timer(5) do
-                  $redis.srem('clients', client)
-                  $redis.del('events:' + client)
-                  $redis.del('client:' + client)
-                end
-              end
-            else
+        if client_exists
+          $redis.hgetall('events:' + client).callback do |events|
+            events.keys.each do |check_name|
+              check = {:name => check_name, :issued => Time.now.to_i, :status => 0, :output => 'Client is being removed'}
+              $amq.queue('results').publish({:client => client, :check => check}.to_json)
+            end
+            EM.add_timer(5) do
               $redis.srem('clients', client)
               $redis.del('events:' + client)
               $redis.del('client:' + client)
@@ -105,7 +97,7 @@ module Sensu
         unless clients.empty?
           clients.each_with_index do |client, index|
             $redis.hgetall('events:' + client).callback do |events|
-              client_events = Hash[*events]
+              client_events = events
               client_events.each do |key, value|
                 client_events[key] = JSON.parse(value)
               end
@@ -122,7 +114,7 @@ module Sensu
     aget '/event/:client/:check' do |client, check|
       $logger.debug('[event] -- ' + request.ip + ' -- GET -- request for event -- ' + client + ' -- ' + check)
       $redis.hgetall('events:' + client).callback do |events|
-        client_events = Hash[*events]
+        client_events = events
         event = client_events[check]
         status 404 if event.nil?
         body event
@@ -139,7 +131,7 @@ module Sensu
       end
       if event.has_key?('client') && event.has_key?('check')
         $redis.hgetall('events:' + event['client']).callback do |events|
-          if Hash[*events][event['check']]
+          if events.has_key?(event['check'])
             check = {:name => event['check'], :issued => Time.now.to_i, :status => 0, :output => 'Resolving on request of the API'}
             $amq.queue('results').publish({:client => event['client'], :check => check}.to_json)
             status 201
@@ -177,7 +169,7 @@ module Sensu
         body nil
       end
       stashes = Hash.new
-      if paths.is_a?(Array)
+      if paths.is_a?(Array) && paths.size > 0
         paths.each_with_index do |path, index|
           $redis.get('stash:' + path).callback do |stash|
             stashes[path] = JSON.parse(stash) unless stash.nil?
@@ -201,7 +193,7 @@ module Sensu
     adelete '/stash/*' do |path|
       $logger.debug('[stash] -- ' + request.ip + ' -- DELETE -- request for stash -- ' + path)
       $redis.exists('stash:' + path).callback do |stash_exist|
-        unless stash_exist == 0
+        if stash_exist
           $redis.del('stash:' + path).callback do
             status 204
             body nil
@@ -215,7 +207,7 @@ module Sensu
 
     def self.test(options={})
       self.setup(options)
-      $redis.set('client:test', @settings.client).callback do
+      $redis.set('client:' + @settings.client.name, @settings.client.to_json).callback do
         $redis.sadd('clients', @settings.client.name).callback do
           $redis.hset('events:' + @settings.client.name, 'test', {
             :status => 2,
@@ -223,11 +215,12 @@ module Sensu
             :flapping => false,
             :occurrences => 1
           }.to_json).callback do
-            $redis.set('stash:test/test', '{"key": "value"}')
+            $redis.set('stash:test/test', '{"key": "value"}').callback do
+              self.run!(:port => @settings.api.port)
+            end
           end
         end
       end
-      self.run!(:port => @settings.api.port)
     end
   end
 end
