@@ -12,8 +12,13 @@ class sensu {
   $api_host             = $sensu::params::api_host
   $api_port             = $sensu::params::api_port
 
+  exec { '/usr/bin/apt-get update':
+    alias => "aptgetupdate",
+  }
+
   package { $packages:
     ensure   => latest,
+    require => Exec['aptgetupdate'],
   }
 
   package { [ 'sensu', 'thin' ]:
