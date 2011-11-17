@@ -20,16 +20,20 @@
 node.sensu.rabbitmq.ssl.cert_chain_file = File.join(node.sensu.directory, "ssl", "cert.pem")
 node.sensu.rabbitmq.ssl.private_key_file = File.join(node.sensu.directory, "ssl", "key.pem")
 
-include_recipe "apt"
+unless Sensu.is_windows(node)
+  include_recipe "apt"
+  %w[
+    libssl-dev
+    build-essential
+    nagios-plugins
+    nagios-plugins-basic
+    nagios-plugins-standard
+  ].each do |pkg|
+    package pkg
+  end
+end
+
 include_recipe "sensu::dependencies"
-
-unless Sensu.is_windows(node)
-  package "libssl-dev"
-end
-
-unless Sensu.is_windows(node)
-  package "build-essential"
-end
 
 gem_package "sensu" do
   version node.sensu.version
@@ -45,17 +49,17 @@ user node.sensu.user do
   home node.sensu.directory
 end
 
-directory node.sensu.log.directory do
-  recursive true
-  owner node.sensu.user
-  mode 0755
-end
-
 unless Sensu.is_windows(node)
   template "/etc/sudoers.d/sensu" do
     source "sudoers.erb"
     mode 0440
   end
+end
+
+directory node.sensu.log.directory do
+  recursive true
+  owner node.sensu.user
+  mode 0755
 end
 
 remote_directory File.join(node.sensu.directory, "plugins") do
@@ -80,14 +84,3 @@ file File.join(node.sensu.directory, "config.json") do
   content Sensu.generate_config(node, data_bag_item("sensu", "config"))
   mode 0644
 end
-
-unless Sensu.is_windows(node)
-  %w[
-    nagios-plugins
-    nagios-plugins-basic
-    nagios-plugins-standard
-  ].each do |pkg|
-    package pkg
-  end
-end
-
