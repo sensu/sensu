@@ -1,8 +1,8 @@
 class sensu {
 
+  require sensu::dependencies
   include sensu::params
 
-  $packages             = $sensu::params::packages
   $user                 = $sensu::params::user
   $log_directory        = $sensu::params::log_directory
   $rabbitmq_host        = $sensu::params::rabbitmq_host
@@ -16,11 +16,7 @@ class sensu {
   $dashboard_user       = $sensu::params::dashboard_user
   $dashboard_password   = $sensu::params::dashboard_password
 
-  package { $packages:
-    ensure   => latest,
-  }
-
-  package { [ 'sensu', 'thin' ]:
+  package { 'sensu':
     ensure   => latest,
     provider => gem,
   }
@@ -35,11 +31,11 @@ class sensu {
     require => File['/etc/sensu'],
   }
 
-  file { "$log_directory":
+  file { $log_directory:
     ensure  => directory,
     mode    => '0755',
     owner   => $user,
-    require => User["$user"],
+    require => User[$user],
   }
 
   file { '/etc/sensu/ssl':
@@ -54,7 +50,7 @@ class sensu {
     require => File['/etc/sensu/plugins'],
   }
 
-  user { "$user":
+  user { $user:
     ensure  => present,
     require => File['/etc/sensu'],
   }
