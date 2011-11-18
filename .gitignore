@@ -1,7 +1,9 @@
+.bundle
+.vagrant
+.DS_Store
+vendor
+dump.rdb
+*.png
 pkg/*
 *~
-*.vagrant
 \#*
-dump.rdb
-.DS_Store
-*.png
