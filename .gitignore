@@ -1,6 +1,7 @@
 .bundle
 .vagrant
 .DS_Store
+vendor
 dump.rdb
 *.png
 pkg/*
