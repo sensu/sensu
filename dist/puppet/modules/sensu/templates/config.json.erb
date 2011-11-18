@@ -14,6 +14,12 @@
   "handlers": {
     "default": "/etc/sensu/handlers/default"
   },
+  "dashboard": {
+    "host": "<%= dashboard_host %>",
+    "port": <%= dashboard_port %>,
+    "user": "<%= dashboard_user %>",
+    "password": "<%= dashboard_password %>"
+  },
   "checks": {
     "puppet_agent": {
       "notification": "Puppet agent daemon is not running.",

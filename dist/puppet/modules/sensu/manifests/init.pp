@@ -11,6 +11,10 @@ class sensu {
   $redis_port           = $sensu::params::redis_port
   $api_host             = $sensu::params::api_host
   $api_port             = $sensu::params::api_port
+  $dashboard_host       = $sensu::params::dashboard_host
+  $dashboard_port       = $sensu::params::dashboard_port
+  $dashboard_user       = $sensu::params::dashboard_user
+  $dashboard_password   = $sensu::params::dashboard_password
 
   package { $packages:
     ensure   => latest,
