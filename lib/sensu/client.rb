@@ -77,8 +77,10 @@ module Sensu
           end
           if unmatched_tokens.empty?
             execute = proc do
-              IO.popen(command + ' 2>&1') do |io|
-                check.output = io.read
+              Bundler.with_clean_env do
+                IO.popen(command + ' 2>&1') do |io|
+                  check.output = io.read
+                end
               end
               check.status = $?.exitstatus
             end

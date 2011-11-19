@@ -1,4 +1,5 @@
 require File.join(File.dirname(__FILE__), 'config')
+
 require 'redis'
 
 module Sensu
@@ -67,10 +68,12 @@ module Sensu
     def handle_event(event)
       handler = proc do
         output = ''
-        IO.popen(@settings.handlers[event.check.handler] + ' 2>&1', 'r+') do |io|
-          io.write(event.to_json)
-          io.close_write
-          output = io.read
+        Bundler.with_clean_env do
+          IO.popen(@settings.handlers[event.check.handler] + ' 2>&1', 'r+') do |io|
+            io.write(event.to_json)
+            io.close_write
+            output = io.read
+          end
         end
         output
       end
