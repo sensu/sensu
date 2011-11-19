@@ -1,4 +1,5 @@
 require File.join(File.dirname(__FILE__), 'config')
+
 require 'sinatra/async'
 require 'redis'
 
