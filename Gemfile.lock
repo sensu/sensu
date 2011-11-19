@@ -4,6 +4,7 @@ PATH
     sensu (0.8.9)
       amqp (= 0.7.4)
       async_sinatra
+      bundler
       cabin (= 0.1.7)
       eventmachine (~> 1.0.0.beta.4)
       hashie
@@ -27,18 +28,21 @@ GEM
       json
     daemons (1.1.4)
     diff-lcs (1.1.3)
-    em-http-request (0.3.0)
-      addressable (>= 2.0.0)
-      escape_utils
-      eventmachine (>= 0.12.9)
+    em-http-request (1.0.0)
+      addressable (>= 2.2.3)
+      em-socksify
+      eventmachine (>= 1.0.0.beta.3)
+      http_parser.rb (>= 0.5.2)
+    em-socksify (0.1.0)
+      eventmachine
     em-spec (0.2.5)
       bacon
       eventmachine
       rspec (~> 2.6.0)
       test-unit
-    escape_utils (0.2.4)
     eventmachine (1.0.0.beta.4)
     hashie (1.2.0)
+    http_parser.rb (0.5.3)
     json (1.6.1)
     rack (1.3.5)
     rack-protection (1.1.4)
