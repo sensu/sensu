@@ -36,6 +36,7 @@
       "interval": 1
     },
     "c": {
+      "handler": "default",
       "command": "ruby -e \"puts ':::name:::'; exit 3\"",
       "subscribers": [
         {
@@ -46,6 +47,9 @@
       "interval": 1
     },
     "d": {
+      "handlers": [
+        "default"
+      ],
       "command": "ruby -e \"puts ':::name:::'; exit 4\"",
       "subscribers": [
         "a",
