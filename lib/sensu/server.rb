@@ -66,27 +66,35 @@ module Sensu
     end
 
     def handle_event(event)
-      handler = proc do
-        output = ''
-        Bundler.with_clean_env do
-          IO.popen(@settings.handlers[event.check.handler] + ' 2>&1', 'r+') do |io|
-            io.write(event.to_json)
-            io.close_write
-            output = io.read
-          end
-        end
-        output
+      handlers = case
+      when event.check.key?('handler')
+        [event.check.handler]
+      when event.check.key?('handlers')
+        event.check.handlers
       end
       report = proc do |output|
         output.split(/\n+/).each do |line|
           @logger.info('[handler] -- ' + line)
         end
       end
-      if @settings.handlers.key?(event.check.handler)
-        @logger.debug('[event] -- handling event -- ' + [event.check.handler, event.client.name, event.check.name].join(' -- '))
-        EM.defer(handler, report)
-      else
-        @logger.warn('[event] -- handler does not exist -- ' + event.check.handler)
+      handlers.each do |handler|
+        if @settings.handlers.key?(handler)
+          @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
+          handle = proc do
+            output = ''
+            Bundler.with_clean_env do
+              IO.popen(@settings.handlers[handler] + ' 2>&1', 'r+') do |io|
+                io.write(event.to_json)
+                io.close_write
+                output = io.read
+              end
+            end
+            output
+          end
+          EM.defer(handle, report)
+        else
+          @logger.warn('[event] -- handler does not exist -- ' + handler)
+        end
       end
     end
 
