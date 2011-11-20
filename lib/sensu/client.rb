@@ -111,6 +111,7 @@ module Sensu
     def setup_subscriptions
       @logger.debug('[subscribe] -- setup subscriptions')
       @check_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
+      @settings.client.subscriptions.push('uchiwa')
       @settings.client.subscriptions.each do |exchange|
         @logger.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
         @check_queue.bind(@amq.fanout(exchange))
@@ -118,7 +119,20 @@ module Sensu
       @check_queue.subscribe do |check_json|
         check = Hashie::Mash.new(JSON.parse(check_json))
         @logger.info('[subscribe] -- received check -- ' + check.name)
-        execute_check(check)
+        if check.key?('matching')
+          matches = check.matching.all? do |key, value|
+            if key == 'subscribes'
+              @settings.client.subscriptions.include?(value)
+            else
+              @settings.client[key] == value
+            end
+          end
+          if matches
+            execute_check(check)
+          end
+        else
+          execute_check(check)
+        end
       end
     end
 
