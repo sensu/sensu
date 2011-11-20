@@ -46,6 +46,9 @@ module Sensu
       case type
       when 'server'
         has_keys(%w[redis handlers checks])
+        unless @settings.handlers.include?('default')
+          invalid_config('missing default handler')
+        end
       when 'api'
         has_keys(%w[redis api])
       when 'client'
