@@ -70,6 +70,16 @@ module Sensu
         unless details.subscribers.is_a?(Array) && details.subscribers.count > 0
           invalid_config('missing subscribers for check ' + name)
         end
+        if details.key?('handler')
+          unless details.handler.is_a?(String)
+            invalid_config('handler must be a string for check ' + name)
+          end
+        end
+        if details.key?('handlers')
+          unless details.handlers.is_a?(Array)
+            invalid_config('handlers must be an array for check ' + name)
+          end
+        end
       end
       if type
         @logger.debug('[config] -- configuration valid -- running ' + type)

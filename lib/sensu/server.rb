@@ -71,6 +71,8 @@ module Sensu
         [event.check.handler]
       when event.check.key?('handlers')
         event.check.handlers
+      else
+        ['default']
       end
       report = proc do |output|
         output.split(/\n+/).each do |line|
@@ -104,7 +106,6 @@ module Sensu
         unless client_json.nil?
           client = Hashie::Mash.new(JSON.parse(client_json))
           check = @settings.checks.key?(result.check.name) ? result.check.merge(@settings.checks[result.check.name]) : result.check
-          check.handler ||= 'default'
           event = Hashie::Mash.new({
             :client => client,
             :check => check,
