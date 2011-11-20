@@ -38,6 +38,16 @@
     "c": {
       "command": "ruby -e \"puts ':::name:::'; exit 3\"",
       "subscribers": [
+        {
+          "name": "i-424242",
+          "subscribes": "a"
+        }
+      ],
+      "interval": 1
+    },
+    "d": {
+      "command": "ruby -e \"puts ':::name:::'; exit 4\"",
+      "subscribers": [
         "a",
         "b",
         "c"
