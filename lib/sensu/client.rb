@@ -167,7 +167,7 @@ module Sensu
     attr_accessor :logger, :client_name, :result_queue
 
     def receive_data(data)
-      @logger.debug('[socket] -- client connected')
+      @logger.debug('[socket] -- received data from client')
       begin
         check = Hashie::Mash.new(JSON.parse(data))
         validates = %w[name status output].all? do |key|
