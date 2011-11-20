@@ -194,7 +194,7 @@ module Sensu
           EM.add_timer(stagger*index) do
             details.subscribers.each do |subscriber|
               if subscriber.is_a?(Hash)
-                @logger.debug('[publisher] -- check requires matching -- ' + subscriber.to_s + ' -- ' + name)
+                @logger.debug('[publisher] -- check requires matching -- ' + subscriber.to_hash.to_s + ' -- ' + name)
                 check.matching = subscriber
                 exchange = 'uchiwa'
               else
