@@ -188,16 +188,24 @@ module Sensu
       exchanges = Hash.new
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
+        check = Hashie::Mash.new
+        check.name = name
         unless details.enabled == false
           EM.add_timer(stagger*index) do
-            details.subscribers.each do |exchange|
-              if exchanges[exchange].nil?
-                exchanges[exchange] = @amq.fanout(exchange)
+            details.subscribers.each do |subscriber|
+              if subscriber.is_a?(Hash)
+                @logger.debug('[publisher] -- check requires matching -- ' + subscriber.to_hash.to_s + ' -- ' + name)
+                check.matching = subscriber
+                exchange = 'uchiwa'
+              else
+                exchange = subscriber
               end
+              exchanges[exchange] ||= @amq.fanout(exchange)
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
+                check.issued = Time.now.to_i
                 @logger.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
-                exchanges[exchange].publish({'name' => name, 'issued' => Time.now.to_i}.to_json)
+                exchanges[exchange].publish(check.to_json)
               end
             end
           end
