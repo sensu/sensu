@@ -120,6 +120,7 @@ module Sensu
         check = Hashie::Mash.new(JSON.parse(check_json))
         @logger.info('[subscribe] -- received check -- ' + check.name)
         if check.key?('matching')
+          @logger.info('[subscribe] -- check requires matching -- ' + check.name)
           matches = check.matching.all? do |key, value|
             if key == 'subscribes'
               @settings.client.subscriptions.include?(value)
@@ -128,7 +129,10 @@ module Sensu
             end
           end
           if matches
+            @logger.info('[subscribe] -- client matches -- ' + check.name)
             execute_check(check)
+          else
+            @logger.info('[subscribe] -- client does not match -- ' + check.name)
           end
         else
           execute_check(check)
