@@ -147,10 +147,12 @@ module Sensu
                   end
                   if previous_event && check.status == 0
                     unless is_flapping
-                      @redis.hdel('events:' + client.name, check.name).callback do
-                        unless check.internal
-                          event.action = 'resolve'
-                          handle_event(event)
+                      unless check.auto_resolve == false && !check.force_resolve
+                        @redis.hdel('events:' + client.name, check.name).callback do
+                          unless check.internal
+                            event.action = 'resolve'
+                            handle_event(event)
+                          end
                         end
                       end
                     else

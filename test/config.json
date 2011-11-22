@@ -33,7 +33,8 @@
       "subscribers": [
         "b"
       ],
-      "interval": 1
+      "interval": 1,
+      "auto_resolve": false
     },
     "c": {
       "handler": "default",
