@@ -45,6 +45,15 @@ module Sensu
     def setup_redis
       @logger.debug('[redis] -- connecting to redis')
       @redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Client)
+      EM.add_periodic_timer(5) do
+        if @redis.error?
+          @logger.warn('[redis] -- reconnecting to redis')
+          @redis.reconnect(@settings.redis.host, @settings.redis.port)
+        else
+          @logger.debug('[redis] -- sending redis connection keepalive')
+          @redis.ping
+        end
+      end
     end
 
     def setup_amqp
