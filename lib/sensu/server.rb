@@ -46,11 +46,12 @@ module Sensu
       @logger.debug('[redis] -- connecting to redis')
       @redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Client)
       EM.add_periodic_timer(5) do
-        @logger.debug('[redis] -- sending redis connection keepalive')
-        @redis.ping
         if @redis.error?
           @logger.warn('[redis] -- reconnecting to redis')
           @redis.reconnect(@settings.redis.host, @settings.redis.port)
+        else
+          @logger.debug('[redis] -- sending redis connection keepalive')
+          @redis.ping
         end
       end
     end
