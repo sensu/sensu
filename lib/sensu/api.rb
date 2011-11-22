@@ -133,7 +133,13 @@ module Sensu
       if event.has_key?('client') && event.has_key?('check')
         $redis.hgetall('events:' + event['client']).callback do |events|
           if events.has_key?(event['check'])
-            check = {:name => event['check'], :issued => Time.now.to_i, :status => 0, :output => 'Resolving on request of the API'}
+            check = {
+              :name => event['check'],
+              :issued => Time.now.to_i,
+              :status => 0,
+              :output => 'Resolving on request of the API',
+              :force_resolve => true
+            }
             $amq.queue('results').publish({:client => event['client'], :check => check}.to_json)
             status 201
           else
