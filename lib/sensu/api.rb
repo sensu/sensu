@@ -26,6 +26,14 @@ module Sensu
       $logger = config.logger
       $logger.debug('[setup] -- connecting to redis')
       $redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Client)
+      EM.add_periodic_timer(5) do
+        $logger.debug('[setup] -- sending redis connection keepalive')
+        $redis.ping
+        if $redis.error?
+          $logger.warn('[setup] -- reconnecting to redis')
+          $redis.reconnect(@settings.redis.host, @settings.redis.port)
+        end
+      end
       $logger.debug('[setup] -- connecting to rabbitmq')
       connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       $amq = MQ.new(connection)
