@@ -1,2 +1,19 @@
 source "http://rubygems.org"
-gemspec
+
+gem("bundler")
+gem("eventmachine", "~> 1.0.0.beta.4")
+gem("amqp", "0.7.4")
+gem("json")
+gem("hashie")
+gem("uuidtools")
+gem("cabin", "0.1.7")
+gem("ruby-redis-portertech")
+gem("rack", "~> 1.3.4")
+gem("async_sinatra")
+gem("thin")
+
+group :development do
+  gem("rake")
+  gem("em-spec")
+  gem("em-http-request")
+end
