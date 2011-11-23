@@ -173,6 +173,25 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_get_stashes
     EM.add_timer(1) do
+      http = EM::HttpRequest.new(@api + '/stashes').get
+      http.callback do
+        assert_equal(200, http.response_header.status)
+        stashes = JSON.parse(http.response)
+        assert(stashes.is_a?(Array))
+        assert_block "Response didn't contain a test stash" do
+          contains_test_stash = false
+          stashes.each do |path, stash|
+            contains_test_stash = true if ['test/test', 'tester'].include?(path)
+          end
+          contains_test_stash
+        end
+        done
+      end
+    end
+  end
+
+  def test_multi_get_stashes
+    EM.add_timer(1) do
       options = {
         :body => '["test/test", "tester"]'
       }
