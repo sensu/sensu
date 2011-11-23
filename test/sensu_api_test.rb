@@ -17,11 +17,9 @@ class TestSensuAPI < Test::Unit::TestCase
         clients = JSON.parse(http.response)
         assert(clients.is_a?(Array))
         assert_block "Response didn't contain the test client" do
-          contains_test_client = false
-          clients.each do |client|
-            contains_test_client = true if client['name'] == @settings.client.name
+          clients.any? do |client|
+            client['name'] == @settings.client.name
           end
-          contains_test_client
         end
         done
       end
@@ -179,11 +177,9 @@ class TestSensuAPI < Test::Unit::TestCase
         stashes = JSON.parse(http.response)
         assert(stashes.is_a?(Array))
         assert_block "Response didn't contain a test stash" do
-          contains_test_stash = false
-          stashes.each do |path, stash|
-            contains_test_stash = true if ['test/test', 'tester'].include?(path)
+          stashes.any? do |path, stash|
+            ['test/test', 'tester'].include?(path)
           end
-          contains_test_stash
         end
         done
       end
@@ -201,11 +197,9 @@ class TestSensuAPI < Test::Unit::TestCase
         stashes = JSON.parse(http.response)
         assert(stashes.is_a?(Hash))
         assert_block "Response didn't contain a test stash" do
-          contains_test_stash = false
-          stashes.each do |path, stash|
-            contains_test_stash = true if ['test/test', 'tester'].include?(path)
+          stashes.any? do |path, stash|
+            ['test/test', 'tester'].include?(path)
           end
-          contains_test_stash
         end
         done
       end
