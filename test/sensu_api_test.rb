@@ -17,11 +17,9 @@ class TestSensuAPI < Test::Unit::TestCase
         clients = JSON.parse(http.response)
         assert(clients.is_a?(Array))
         assert_block "Response didn't contain the test client" do
-          contains_test_client = false
-          clients.each do |client|
-            contains_test_client = true if client['name'] == @settings.client.name
+          clients.any? do |client|
+            client['name'] == @settings.client.name
           end
-          contains_test_client
         end
         done
       end
@@ -173,6 +171,23 @@ class TestSensuAPI < Test::Unit::TestCase
 
   def test_get_stashes
     EM.add_timer(1) do
+      http = EM::HttpRequest.new(@api + '/stashes').get
+      http.callback do
+        assert_equal(200, http.response_header.status)
+        stashes = JSON.parse(http.response)
+        assert(stashes.is_a?(Array))
+        assert_block "Response didn't contain a test stash" do
+          stashes.any? do |path, stash|
+            ['test/test', 'tester'].include?(path)
+          end
+        end
+        done
+      end
+    end
+  end
+
+  def test_multi_get_stashes
+    EM.add_timer(1) do
       options = {
         :body => '["test/test", "tester"]'
       }
@@ -182,11 +197,9 @@ class TestSensuAPI < Test::Unit::TestCase
         stashes = JSON.parse(http.response)
         assert(stashes.is_a?(Hash))
         assert_block "Response didn't contain a test stash" do
-          contains_test_stash = false
-          stashes.each do |path, stash|
-            contains_test_stash = true if ['test/test', 'tester'].include?(path)
+          stashes.any? do |path, stash|
+            ['test/test', 'tester'].include?(path)
           end
-          contains_test_stash
         end
         done
       end
