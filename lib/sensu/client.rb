@@ -55,7 +55,7 @@ module Sensu
     end
 
     def publish_result(check)
-      @logger.info('[result] -- publishing check result -- ' + check.name)
+      @logger.info('[result] -- publishing check result -- ' + check.status.to_s + ' -- ' + check.name)
       @result_queue ||= @amq.queue('results')
       @result_queue.publish({
         :client => @settings.client.name,
