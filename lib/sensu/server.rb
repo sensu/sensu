@@ -201,7 +201,7 @@ module Sensu
       @settings.checks.each_with_index do |(name, details), index|
         check = Hashie::Mash.new
         check.name = name
-        unless details.enabled == false
+        unless details.publish == false
           EM.add_timer(stagger*index) do
             details.subscribers.each do |subscriber|
               if subscriber.is_a?(Hash)
