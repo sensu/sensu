@@ -55,7 +55,7 @@ module Sensu
     end
 
     def publish_result(check)
-      @logger.info('[result] -- publishing check result -- ' + check.status.to_s + ' -- ' + check.name)
+      @logger.info('[result] -- publishing check result -- ' + [check.status.to_s, check.name].join(' -- '))
       @result_queue ||= @amq.queue('results')
       @result_queue.publish({
         :client => @settings.client.name,
@@ -90,7 +90,7 @@ module Sensu
             end
             EM.defer(execute, publish)
           else
-            @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
+            @logger.warn('[execute] -- missing client attributes -- ' + [unmatched_tokens.join(', '), check.name].join(' -- '))
             check.status = 3
             check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
             check.internal = true
