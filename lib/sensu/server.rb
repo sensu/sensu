@@ -132,20 +132,21 @@ module Sensu
                   total_state_change = (state_changes.fdiv(20) * 100).to_i
                   @redis.lpop(history_key)
                 end
-                high_flap_threshold = check.high_flap_threshold || 50
-                low_flap_threshold = check.low_flap_threshold || 40
                 @redis.hget('events:' + client.name, check.name).callback do |event_json|
-                  previous_event = event_json ? Hashie::Mash.new(JSON.parse(event_json)) : false
-                  is_flapping = previous_event ? previous_event.flapping : false
-                  is_flapping = case
-                  when total_state_change >= high_flap_threshold
-                    true
-                  when is_flapping && total_state_change <= low_flap_threshold
-                    false
-                  else
-                    is_flapping
+                  previous_occurrence = event_json ? Hashie::Mash.new(JSON.parse(event_json)) : false
+                  is_flapping = false
+                  if check.key?('low_flap_threshold') && check.key?('high_flap_threshold')
+                    was_flapping = previous_occurrence ? previous_occurrence.flapping : false
+                    is_flapping = case
+                    when total_state_change >= check.high_flap_threshold
+                      true
+                    when was_flapping && total_state_change <= check.low_flap_threshold
+                      false
+                    else
+                      was_flapping
+                    end
                   end
-                  if previous_event && check.status == 0
+                  if previous_occurrence && check.status == 0
                     unless is_flapping
                       unless check.auto_resolve == false && !check.force_resolve
                         @redis.hdel('events:' + client.name, check.name).callback do
@@ -157,11 +158,11 @@ module Sensu
                       end
                     else
                       @logger.debug('[result] -- check is flapping -- ' + client.name + ' -- ' + check.name)
-                      @redis.hset('events:' + client.name, check.name, previous_event.merge({'flapping' => true}).to_json)
+                      @redis.hset('events:' + client.name, check.name, previous_occurrence.merge({'flapping' => true}).to_json)
                     end
                   elsif check['status'] != 0
-                    if previous_event && check.status == previous_event.status
-                      event.occurrences = previous_event.occurrences += 1
+                    if previous_occurrence && check.status == previous_occurrence.status
+                      event.occurrences = previous_occurrence.occurrences += 1
                     end
                     @redis.hset('events:' + client.name, check.name, {
                       :status => check.status,
