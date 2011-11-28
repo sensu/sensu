@@ -101,7 +101,7 @@ module Sensu
     end
 
     def process_result(result)
-      @logger.debug('[result] -- processing result for ' + [result.client, result.check.name].join(' -- '))
+      @logger.debug('[result] -- processing result -- ' + result.client + ' -- ' + result.check.name)
       @redis.get('client:' + result.client).callback do |client_json|
         unless client_json.nil?
           client = Hashie::Mash.new(JSON.parse(client_json))
