@@ -12,10 +12,6 @@ module Sensu
         self.setup(options)
         self.run!(:port => @settings.api.port)
 
-        Signal.trap('USR1') do
-          @config.toggle_log_level
-        end
-
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
             self.stop(signal)
@@ -25,9 +21,9 @@ module Sensu
     end
 
     def self.setup(options={})
-      @config = Sensu::Config.new(options)
-      @settings = @config.settings
-      $logger = @config.logger
+      config = Sensu::Config.new(options)
+      @settings = config.settings
+      $logger = config.logger
       $logger.debug('[setup] -- connecting to redis')
       $redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Client)
       $logger.debug('[setup] -- connecting to rabbitmq')
