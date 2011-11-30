@@ -20,6 +20,10 @@ module Sensu
         end
         server.setup_queue_monitor
 
+        Signal.trap('USR1') do
+          @config.toggle_log_level
+        end
+
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
             server.stop(signal)
@@ -29,14 +33,10 @@ module Sensu
     end
 
     def initialize(options={})
-      config = Sensu::Config.new(options)
-      @settings = config.settings
-      @logger = config.logger
+      @config = Sensu::Config.new(options)
+      @settings = @config.settings
+      @logger = @config.logger
       @is_worker = options[:worker]
-
-      Signal.trap('USR1') do
-        config.toggle_log_level
-      end
     end
 
     def stop(signal)
