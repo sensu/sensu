@@ -33,6 +33,10 @@ module Sensu
       @settings = config.settings
       @logger = config.logger
       @is_worker = options[:worker]
+
+      Signal.trap('USR1') do
+        config.toggle_log_level
+      end
     end
 
     def stop(signal)

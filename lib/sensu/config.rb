@@ -26,7 +26,7 @@ module Sensu
         invalid_config('log file is not writable: ' + log_file)
       end
       @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
-      @logger.level = options[:verbose] ? 'debug' : 'info'
+      @logger.level = options[:verbose] ? :debug : :info
       config_file = options[:config_file] || '/etc/sensu/config.json'
       if File.readable?(config_file)
         begin
@@ -38,6 +38,10 @@ module Sensu
         invalid_config('configuration file does not exist or is not readable: ' + config_file)
       end
       validate_config(options['type'])
+    end
+
+    def toggle_log_level
+      @logger.level = @logger.level == :info ? :debug : :info
     end
 
     def validate_config(type)

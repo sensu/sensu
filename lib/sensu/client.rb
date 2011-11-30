@@ -23,6 +23,10 @@ module Sensu
       config = Sensu::Config.new(options)
       @settings = config.settings
       @logger = config.logger
+
+      Signal.trap('USR1') do
+        config.toggle_log_level
+      end
     end
 
     def stop(signal)

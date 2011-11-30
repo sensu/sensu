@@ -29,6 +29,10 @@ module Sensu
       $logger.debug('[setup] -- connecting to rabbitmq')
       connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       $amq = MQ.new(connection)
+
+      Signal.trap('USR1') do
+        config.toggle_log_level
+      end
     end
 
     def self.stop(signal)
