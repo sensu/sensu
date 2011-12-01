@@ -13,8 +13,7 @@ Vagrant::Config.run do |config|
     chef.add_recipe("sensu")
     chef.roles_path = "roles/"
     chef.add_role("sensu")
-    chef.add_role("sensu_client")
     chef.add_role("sensu_server")
-    chef.add_role("sensu_worker")
+    chef.add_role("sensu_client")
   end
 end
