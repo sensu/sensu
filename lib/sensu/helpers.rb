@@ -1,5 +1,5 @@
 class Hash
-  def symbolize_keys(item = self)
+  def symbolize_keys(item=self)
     case item
     when Array
       item.map do |i|
@@ -16,5 +16,11 @@ class Hash
     else
       item
     end
+  end
+end
+
+class String
+  def self.unique(chars=32)
+    rand(36**chars).to_s(36)
   end
 end
