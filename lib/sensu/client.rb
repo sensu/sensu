@@ -110,7 +110,7 @@ module Sensu
 
     def setup_subscriptions
       @logger.debug('[subscribe] -- setup subscriptions')
-      @check_queue = @amq.queue(UUIDTools::UUID.random_create.to_s, :exclusive => true)
+      @check_queue = @amq.queue(String.unique, :exclusive => true)
       @settings.client.subscriptions.push('uchiwa')
       @settings.client.subscriptions.each do |exchange|
         @logger.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
