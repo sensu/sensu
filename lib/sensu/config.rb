@@ -1,6 +1,6 @@
 require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'bundler'
-Bundler.setup(:default)
+Bundler.setup
 
 require File.join(File.dirname(__FILE__), 'helpers')
 
