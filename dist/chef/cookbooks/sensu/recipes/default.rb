@@ -51,6 +51,7 @@ unless Sensu.is_windows(node)
 	kernel-devel
 	nagios-nrpe
 	nagios-plugins
+	nagios-plugins-nrpe
       ].each do |pkg|
       package pkg
       end
