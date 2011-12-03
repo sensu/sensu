@@ -17,7 +17,7 @@
 # limitations under the License.
 #
 
-include_recipe "rabbitmq"
+include_recipe "rabbitmq_sensu"
 include_recipe "redis::server"
 
 directory "/etc/rabbitmq/ssl"
@@ -40,16 +40,16 @@ template "/etc/rabbitmq/rabbitmq.config" do
   notifies :restart, resources(:service => "rabbitmq-server")
 end
 
-rabbitmq_vhost node.sensu.rabbitmq.vhost do
+rabbitmq_sensu_vhost node.sensu.rabbitmq.vhost do
   action :add
 end
 
-rabbitmq_user node.sensu.rabbitmq.user do
+rabbitmq_sensu_user node.sensu.rabbitmq.user do
   password node.sensu.rabbitmq.password
   action :add
 end
 
-rabbitmq_user node.sensu.rabbitmq.user do
+rabbitmq_sensu_user node.sensu.rabbitmq.user do
   vhost node.sensu.rabbitmq.vhost
   permissions "\".*\" \".*\" \".*\""
   action :set_permissions
@@ -61,14 +61,28 @@ remote_directory File.join(node.sensu.directory, "handlers") do
   files_mode 0755
 end
 
-template "/etc/init/sensu-server.conf" do
-  source "upstart.erb"
-  variables :service => "server", :options => "-l #{node.sensu.log.directory}/sensu.log"
-  mode 0644
-end
-
-service "sensu-server" do
-  provider Chef::Provider::Service::Upstart
-  action [:enable, :start]
-  subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+case node[:platform]
+when "ubuntu", "debian"
+  template "/etc/init/sensu-server.conf" do
+    source "upstart.erb"
+    variables :service => "server", :options => "-l #{node.sensu.log.directory}/sensu.log"
+    mode 0644
+  end
+  service "sensu-server" do
+    provider Chef::Provider::Service::Upstart
+    action [:enable, :start]
+    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+  end
+when "centos", "redhat"
+  if node[:platform_version].to_i <= 5
+    template "/etc/init.d/sensu-server" do
+      source "sensu-init.erb"
+      variables :service => "server", :options => "-l #{node.sensu.log.directory}/sensu.log"
+      mode 0755
+    end
+    service "sensu-server" do
+      action [:enable, :start]
+      subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+    end
+  end
 end

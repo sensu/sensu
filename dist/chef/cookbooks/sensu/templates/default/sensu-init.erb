@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+ 
+# chkconfig: 345 90 90
+# description: Sensu <%= service %> Startup Script
+
+# Source function library.
+. /etc/init.d/functions
+
+exec="<%= GemBinPath.path(@service) %>/sensu-<%= @service %>"
+prog="sensu-<%= @service %>"
+
+[ -f /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+ 
+user=${SENSU_USER-<%= node.sensu.user %>}
+pidfile=${PIDFILE-/var/run/sensu/sensu-<%= @service %>.pid}
+config=${CONFIG-/etc/sensu/config.json}
+lockfile=${LOCKFILE-/var/lock/subsys/$prog}
+group=${SENSU_GROUP-sensu}
+options=${OPTIONS-<% if @options %> <%= @options %><% end %>}
+
+start() {
+    [ -x $exec ] || exit 5
+    [ -f $config ] || exit 6
+    echo -n $"Starting $prog: "
+    daemon --user "$user" $prog -c "$config" \
+                 "$options" "&>/dev/null" &
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop() {
+        echo "Shutting Down $prog: "
+          for x in `ps -ef | grep $prog | grep -v grep | grep $prog | awk '{print $2}'`; do echo "Killing $prog PID:" ${x}; kill ${x}; done
+        echo "done."
+}
+
+rh_status() {
+    # run checks to determine if the service is running or use generic status
+    status -p $pidfile $prog
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+ 
+case "$1" in
+  start)
+        rh_status_q && exit 0
+	$1
+        ;;
+  stop)
+        stop
+        ;;
+  restart)
+        stop
+        sleep 10
+        start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+	exit 2
+esac
+ 
+exit $?
