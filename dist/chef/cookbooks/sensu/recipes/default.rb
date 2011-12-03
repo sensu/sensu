@@ -49,11 +49,8 @@ unless Sensu.is_windows(node)
 	gcc 
 	gcc-c++
 	kernel-devel
-	nagios
 	nagios-nrpe
-	nagios-plugins-nrpe
-	nagios-nsca-client
-	nagios-nsca
+	nagios-plugins
       ].each do |pkg|
       package pkg
       end
