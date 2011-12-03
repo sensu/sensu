@@ -1,5 +1,4 @@
 #!/bin/bash
-#
  
 # chkconfig: 345 90 90
 # description: Sensu <%= service %> Startup Script
@@ -31,6 +30,9 @@ start() {
     return $retval
 }
 
+#############################
+### This needs to be redone at some point
+#############################
 stop() {
         echo "Shutting Down $prog: "
           for x in `ps -ef | grep $prog | grep -v grep | grep $prog | awk '{print $2}'`; do echo "Killing $prog PID:" ${x}; kill ${x}; done
