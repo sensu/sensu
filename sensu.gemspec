@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   s.add_dependency("json")
   s.add_dependency("hashie")
   s.add_dependency("cabin", "0.1.7")
-  s.add_dependency("ruby-redis-portertech")
+  s.add_dependency("ruby-redis")
   s.add_dependency("rack", "~> 1.3.4")
   s.add_dependency("async_sinatra")
   s.add_dependency("thin")

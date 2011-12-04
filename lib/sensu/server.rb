@@ -1,6 +1,6 @@
-require File.join(File.dirname(__FILE__), 'config')
-
 require 'redis'
+
+require File.join(File.dirname(__FILE__), 'config')
 
 module Sensu
   class Server
@@ -44,7 +44,7 @@ module Sensu
 
     def setup_redis
       @logger.debug('[redis] -- connecting to redis')
-      @redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Client)
+      @redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Reconnect)
     end
 
     def setup_amqp

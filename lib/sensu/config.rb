@@ -2,8 +2,6 @@ require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'bundler'
 require 'bundler/setup'
 
-require File.join(File.dirname(__FILE__), 'helpers')
-
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
 require 'optparse'
@@ -12,6 +10,8 @@ require 'hashie'
 require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em-stdlib-logger'
+
+require File.join(File.dirname(__FILE__), 'helpers')
 
 module Sensu
   class Config
