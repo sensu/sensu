@@ -6,4 +6,4 @@ require 'test/unit'
 require 'em-spec/test'
 require 'em-http-request'
 require 'socket'
-Dir.glob(File.dirname(__FILE__) + '/../lib/sensu/*', &method(:require))
+Dir.glob(File.dirname(__FILE__) + '/../lib/sensu/*.rb', &method(:require))
