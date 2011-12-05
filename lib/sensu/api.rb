@@ -10,7 +10,7 @@ module Sensu
     def self.run(options={})
       EM.run do
         self.setup(options)
-        self.run!(:port => @settings.api.port)
+        self.run!(:port => $settings.api.port)
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -22,12 +22,12 @@ module Sensu
 
     def self.setup(options={})
       config = Sensu::Config.new(options)
-      @settings = config.settings
+      $settings = config.settings
       $logger = config.logger
       $logger.debug('[setup] -- connecting to redis')
-      $redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Client)
+      $redis = EM.connect($settings.redis.host, $settings.redis.port, Redis::Client)
       $logger.debug('[setup] -- connecting to rabbitmq')
-      connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      connection = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
       $amq = MQ.new(connection)
     end
 
@@ -86,6 +86,9 @@ module Sensu
               $redis.srem('clients', client)
               $redis.del('events:' + client)
               $redis.del('client:' + client)
+              $settings.checks.each_key do |check_name|
+                $redis.del('history:' + client + ':' + check_name)
+              end
             end
             status 204
             body nil
@@ -229,16 +232,16 @@ module Sensu
 
     def self.test(options={})
       self.setup(options)
-      $redis.set('client:' + @settings.client.name, @settings.client.to_json).callback do
-        $redis.sadd('clients', @settings.client.name).callback do
-          $redis.hset('events:' + @settings.client.name, 'test', {
+      $redis.set('client:' + $settings.client.name, $settings.client.to_json).callback do
+        $redis.sadd('clients', $settings.client.name).callback do
+          $redis.hset('events:' + $settings.client.name, 'test', {
             :status => 2,
             :output => 'CRITICAL',
             :flapping => false,
             :occurrences => 1
           }.to_json).callback do
             $redis.set('stash:test/test', '{"key": "value"}').callback do
-              self.run!(:port => @settings.api.port)
+              self.run!(:port => $settings.api.port)
             end
           end
         end
