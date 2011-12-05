@@ -11,7 +11,8 @@ require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em-stdlib-logger'
 
-require File.join(File.dirname(__FILE__), 'helpers')
+require File.join(File.dirname(__FILE__), 'helpers', 'string')
+require File.join(File.dirname(__FILE__), 'helpers', 'hash')
 
 module Sensu
   class Config
