@@ -14,9 +14,6 @@ depends "redis"
 # available @ http://community.opscode.com/cookbooks/apt
 depends "apt"
 
-#
-depends "yum"
-
 %w{ubuntu debian redhat centos}.each do |os|
   supports os
 end
