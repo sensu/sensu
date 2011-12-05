@@ -2,7 +2,7 @@ require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'bundler'
 require 'bundler/setup'
 
-require File.join(File.dirname(__FILE__), 'helpers')
+require File.join(File.dirname(__FILE__), 'helpers', 'ruby')
 
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
