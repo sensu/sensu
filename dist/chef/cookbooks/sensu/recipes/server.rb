@@ -17,7 +17,7 @@
 # limitations under the License.
 #
 
-include_recipe "rabbitmq_sensu"
+include_recipe "rabbitmq"
 include_recipe "redis::server"
 
 directory "/etc/rabbitmq/ssl"
@@ -40,16 +40,16 @@ template "/etc/rabbitmq/rabbitmq.config" do
   notifies :restart, resources(:service => "rabbitmq-server")
 end
 
-rabbitmq_sensu_vhost node.sensu.rabbitmq.vhost do
+rabbitmq_vhost node.sensu.rabbitmq.vhost do
   action :add
 end
 
-rabbitmq_sensu_user node.sensu.rabbitmq.user do
+rabbitmq_user node.sensu.rabbitmq.user do
   password node.sensu.rabbitmq.password
   action :add
 end
 
-rabbitmq_sensu_user node.sensu.rabbitmq.user do
+rabbitmq_user node.sensu.rabbitmq.user do
   vhost node.sensu.rabbitmq.vhost
   permissions "\".*\" \".*\" \".*\""
   action :set_permissions
