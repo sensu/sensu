@@ -19,30 +19,28 @@
 
 include_recipe "sensu::default"
 
-unless Sensu.is_windows(node)
-  case node[:platform]
-  when "ubuntu", "debian"
-    template "/etc/init/sensu-client.conf" do
-      source "upstart.erb"
+case node[:platform]
+when "ubuntu", "debian"
+  template "/etc/init/sensu-client.conf" do
+    source "upstart.erb"
+    variables :service => "client", :options => "-l #{node.sensu.log.directory}/sensu.log"
+    mode 0644
+  end
+  service "sensu-client" do
+    provider Chef::Provider::Service::Upstart
+    action [:enable, :start]
+    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+  end
+when "centos", "redhat"
+  if node[:platform_version].to_i <= 5
+    template "/etc/init.d/sensu-client" do
+      source "sensu-init.erb"
       variables :service => "client", :options => "-l #{node.sensu.log.directory}/sensu.log"
-      mode 0644
+      mode 0755
     end
     service "sensu-client" do
-      provider Chef::Provider::Service::Upstart
       action [:enable, :start]
       subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
-    end
-  when "centos", "redhat"
-    if node[:platform_version].to_i <= 5
-      template "/etc/init.d/sensu-client" do
-        source "sensu-init.erb"
-        variables :service => "client", :options => "-l #{node.sensu.log.directory}/sensu.log"
-        mode 0755
-      end
-      service "sensu-client" do
-        action [:enable, :start]
-        subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
-      end
     end
   end
 end
