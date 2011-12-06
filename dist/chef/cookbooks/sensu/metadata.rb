@@ -6,7 +6,7 @@ long_description IO.read(File.join(File.dirname(__FILE__), 'README.rdoc'))
 version          "0.0.4"
 
 # available @ http://community.opscode.com/cookbooks/rabbitmq
-depends "rabbitmq_sensu"
+depends "rabbitmq"
 
 # available @ http://community.opscode.com/cookbooks/redis-package
 depends "redis"
