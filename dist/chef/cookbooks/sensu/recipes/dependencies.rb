@@ -17,6 +17,6 @@
 # limitations under the License.
 #
 
-# plugin dependencies
+# handler & plugin dependencies
 # eg. node.sensu.client.foo = "bar"
 # eg. gem_package "spice"

@@ -68,6 +68,7 @@ when "ubuntu", "debian"
     variables :service => "server", :options => "-l #{node.sensu.log.directory}/sensu.log"
     mode 0644
   end
+
   service "sensu-server" do
     provider Chef::Provider::Service::Upstart
     action [:enable, :start]
@@ -80,6 +81,7 @@ when "centos", "redhat"
       variables :service => "server", :options => "-l #{node.sensu.log.directory}/sensu.log"
       mode 0755
     end
+
     service "sensu-server" do
       action [:enable, :start]
       subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
