@@ -22,8 +22,8 @@ node.sensu.rabbitmq.ssl.private_key_file = File.join(node.sensu.directory, "ssl"
 
 case node['platform']
 when "debian", "ubuntu"
-
   include_recipe "apt"
+
   %w[
     libssl-dev
     build-essential
@@ -31,26 +31,24 @@ when "debian", "ubuntu"
     nagios-plugins-basic
     nagios-plugins-standard
   ].each do |pkg|
-  package pkg
+    package pkg
   end
 
   template "/etc/sudoers.d/sensu" do
     source "sudoers.erb"
     mode 0440
   end
-
 when "centos", "redhat"
-
   %w[
     openssl-devel
-    gcc 
+    gcc
     gcc-c++
     kernel-devel
     nagios-nrpe
     nagios-plugins
     nagios-plugins-nrpe
   ].each do |pkg|
-  package pkg
+    package pkg
   end
 
   if node[:platform_version].to_i >= 6
