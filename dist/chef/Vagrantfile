@@ -1,17 +1,14 @@
 Vagrant::Config.run do |config|
-  #Installed via vagrant box add ubuntu-1104-server-i386 http://dl.dropbox.com/u/7490647/talifun-ubuntu-11.04-server-i386.box
+  # `vagrant box add ubuntu-1104-server-i386 http://dl.dropbox.com/u/7490647/talifun-ubuntu-11.04-server-i386.box`
   config.vm.box = "ubuntu-1104-server-i386"
   config.vm.provision :shell, :inline => "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
-  config.vm.provision :shell, :inline => "gem install chef -v '0.10.4'"
-  config.vm.forward_port("sensu-dashboard", 8080, 8080)
-  config.vm.forward_port("sensu-dashboard1", 9000, 9000)
+  config.vm.provision :shell, :inline => "gem install chef --no-rdoc --no-ri"
+  config.vm.forward_port("sensu-dashboard-http", 8080, 8080)
+  config.vm.forward_port("sensu-dashboard-websocket", 9000, 9000)
   config.vm.provision :chef_solo do |chef|
-    # This path will be expanded relative to the project directory
-    chef.json = {:ip_address => "127.0.0.1"}
-    chef.data_bags_path = "data_bags/"
     chef.cookbooks_path = "cookbooks"
-    chef.add_recipe("sensu")
-    chef.roles_path = "roles/"
+    chef.data_bags_path = "data_bags"
+    chef.roles_path = "roles"
     chef.add_role("sensu")
     chef.add_role("sensu_server")
     chef.add_role("sensu_client")
