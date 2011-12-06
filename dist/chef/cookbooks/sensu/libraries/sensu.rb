@@ -5,7 +5,7 @@ module Sensu
 
     config.merge!(node.sensu.to_hash.reject {|key,value| %w[user version].include? key})
 
-    address = (node.has_key? :ec2) ? node.ec2.public_ipv4 : node.ip_address
+    address = (node.has_key? :ec2) ? node.ec2.public_ipv4 : node.ipaddress
 
     config['client'].merge!({
       :name => node.name,

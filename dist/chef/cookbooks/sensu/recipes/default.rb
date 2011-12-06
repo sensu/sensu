@@ -20,7 +20,9 @@
 node.sensu.rabbitmq.ssl.cert_chain_file = File.join(node.sensu.directory, "ssl", "cert.pem")
 node.sensu.rabbitmq.ssl.private_key_file = File.join(node.sensu.directory, "ssl", "key.pem")
 
-unless Sensu.is_windows(node)
+case node['platform']
+when "debian", "ubuntu"
+
   include_recipe "apt"
   %w[
     libssl-dev
@@ -29,7 +31,33 @@ unless Sensu.is_windows(node)
     nagios-plugins-basic
     nagios-plugins-standard
   ].each do |pkg|
-    package pkg
+  package pkg
+  end
+
+  template "/etc/sudoers.d/sensu" do
+    source "sudoers.erb"
+    mode 0440
+  end
+
+when "centos", "redhat"
+
+  %w[
+    openssl-devel
+    gcc 
+    gcc-c++
+    kernel-devel
+    nagios-nrpe
+    nagios-plugins
+    nagios-plugins-nrpe
+  ].each do |pkg|
+  package pkg
+  end
+
+  if node[:platform_version].to_i >= 6
+    template "/etc/sudoers.d/sensu" do
+      source "sudoers.erb"
+      mode 0440
+    end
   end
 end
 
@@ -47,13 +75,6 @@ user node.sensu.user do
   comment "monitoring user"
   system true
   home node.sensu.directory
-end
-
-unless Sensu.is_windows(node)
-  template "/etc/sudoers.d/sensu" do
-    source "sudoers.erb"
-    mode 0440
-  end
 end
 
 directory node.sensu.log.directory do

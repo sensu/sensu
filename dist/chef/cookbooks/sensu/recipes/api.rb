@@ -21,14 +21,29 @@ include_recipe "sensu::default"
 
 gem_package "thin"
 
-template "/etc/init/sensu-api.conf" do
-  source "upstart.erb"
-  variables :service => "api", :options => "-l #{node.sensu.log.directory}/sensu.log"
-  mode 0644
-end
+case node[:platform]
+when "ubuntu", "debian"
+  template "/etc/init/sensu-api.conf" do
+    source "upstart.erb"
+    variables :service => "api", :options => "-l #{node.sensu.log.directory}/sensu.log"
+    mode 0644
+  end
+  service "sensu-api" do
+    provider Chef::Provider::Service::Upstart
+    action [:enable, :start]
+    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+  end
 
-service "sensu-api" do
-  provider Chef::Provider::Service::Upstart
-  action [:enable, :start]
-  subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+when "centos", "redhat"
+  if node[:platform_version].to_i <= 5
+    template "/etc/init.d/sensu-api" do
+      source "sensu-init.erb"
+      variables :service => "api", :options => "-l #{node.sensu.log.directory}/sensu.log"
+      mode 0755
+    end
+    service "sensu-api" do
+      action [:enable, :start]
+      subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+    end
+  end
 end
