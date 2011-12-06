@@ -3,6 +3,8 @@ require File.join(File.dirname(__FILE__), 'config')
 require 'sinatra/async'
 require 'redis'
 
+require File.join(File.dirname(__FILE__), 'helpers', 'redis')
+
 module Sensu
   class API < Sinatra::Base
     register Sinatra::Async
@@ -25,7 +27,7 @@ module Sensu
       $settings = config.settings
       $logger = config.logger
       $logger.debug('[setup] -- connecting to redis')
-      $redis = EM.connect($settings.redis.host, $settings.redis.port, Redis::Client)
+      $redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Reconnect)
       $logger.debug('[setup] -- connecting to rabbitmq')
       connection = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
       $amq = MQ.new(connection)
