@@ -2,11 +2,21 @@ class TestSensu < Test::Unit::TestCase
   include EventMachine::Test
 
   def setup
-    @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json')}
+    @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json'),
+                :config_dir  => File.dirname(__FILE__)}
     config = Sensu::Config.new(@options)
     @settings = config.settings
   end
-
+  
+  def test_config_dir_snippets
+    config = Sensu::Config.new(@options)
+    settings = config.settings
+    assert_equal(settings['checks']['a']['command'], "/bin/true")
+    assert(settings['checks']['b'].key?('auto_resolve') == false)
+    assert(settings['handlers'].key?('new_handler'))
+    done
+  end
+  
   def test_read_config_file
     config = Sensu::Config.new(@options)
     settings = config.settings
@@ -15,10 +25,11 @@ class TestSensu < Test::Unit::TestCase
   end
 
   def test_cli_arguments
-    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file], '-v', '-l', '/tmp/sensu_test.log'])
+    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file], '-d', @options[:config_dir], '-v', '-l', '/tmp/sensu_test.log'])
     expected = {
       :worker => true,
       :config_file => @options[:config_file],
+      :config_dir => @options[:config_dir],
       :verbose => true,
       :log_file => '/tmp/sensu_test.log'
     }
