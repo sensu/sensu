@@ -62,6 +62,7 @@ module Sensu
         end
       end
       %w[handlers checks].each do |section|
+        @settings[section] = {} unless @settings.key?(section)
         if new_settings.key?(section)
           new_settings[section].each_pair do |k,val|
             @logger.warn("duplicate config key '#{section}/#{k}")
