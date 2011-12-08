@@ -29,12 +29,12 @@
       "interval": 1
     },
     "b": {
-      "command": "ruby -e \"puts ':::name:::'; exit 2\"",
+      "command": "will be overridden by a config snippet",
       "subscribers": [
-        "b"
+        "a"
       ],
-      "interval": 1,
-      "auto_resolve": false
+      "interval": 60,
+      "auto_resolve": true
     },
     "c": {
       "handler": "default",
