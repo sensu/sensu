@@ -2,25 +2,28 @@ class TestSensu < Test::Unit::TestCase
   include EventMachine::Test
 
   def setup
-    @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json'),
-                :config_dir  => File.dirname(__FILE__)}
+    @options = {
+      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
+      :config_dir  => File.join(File.dirname(__FILE__), 'conf.d')
+    }
     config = Sensu::Config.new(@options)
     @settings = config.settings
   end
-  
-  def test_config_dir_snippets
-    config = Sensu::Config.new(@options)
-    settings = config.settings
-    assert_equal(settings['checks']['a']['command'], "/bin/true")
-    assert(settings['checks']['b'].key?('auto_resolve') == false)
-    assert(settings['handlers'].key?('new_handler'))
-    done
-  end
-  
+
   def test_read_config_file
     config = Sensu::Config.new(@options)
     settings = config.settings
     assert(settings.key?('client'))
+    done
+  end
+
+  def test_config_dir_snippets
+    config = Sensu::Config.new(@options)
+    settings = config.settings
+    assert(settings.handlers.key?('new_handler'))
+    assert(settings.checks.b.subscribers == ['b'])
+    assert(settings.checks.b.interval == 1)
+    assert(settings.checks.b.auto_resolve == false)
     done
   end
 

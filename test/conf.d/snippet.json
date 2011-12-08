@@ -1,0 +1,13 @@
+{
+  "handlers": { "new_handler": "this won't override the default handler" },
+  "checks": {
+    "b": {
+      "command": "ruby -e \"puts ':::name:::'; exit 2\"",
+      "subscribers": [
+        "b"
+      ],
+      "interval": 1,
+      "auto_resolve": false
+    }
+  }
+}
