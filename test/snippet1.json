@@ -1,0 +1,11 @@
+{
+  "checks": {
+    "a": {
+      "command": "/bin/true",
+      "subscribers": [
+        "a"
+      ],
+      "interval": 60
+    }
+  }
+}

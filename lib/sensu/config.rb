@@ -40,7 +40,36 @@ module Sensu
       else
         invalid_config('configuration file does not exist or is not readable: ' + config_file)
       end
+      config_dir = options[:config_dir] || '/etc/sensu/conf.d'
+      if File.exists?(config_dir)
+        Dir["#{config_dir}/**/*.json"].each do |snippet|
+          begin
+            snippet_hash = Hashie::Mash.new(JSON.parse(File.open(snippet, 'r').read))
+          rescue JSON::ParserError => e
+            invalid_config("configuration snippet file (#{snippet}) must be valid JSON: " + e)
+          end
+          merge_settings(snippet_hash)
+        end
+      end
       validate_config(options['type'])
+    end
+    
+    def merge_settings(new_settings)
+      %w[rabbitmq redis api dashboard client].each do |k|
+        if new_settings.key?(k)
+          @logger.warn("duplicate config key '#{k}'")
+          @settings[k] = new_settings[k]
+        end
+      end
+      %w[handlers checks].each do |section|
+        @settings[section] = Hashie::Mash.new() unless @settings.key?(section)
+        if new_settings.key?(section)
+          new_settings[section].each_pair do |k,val|
+            @logger.warn("duplicate config key '#{section}/#{k}")
+            @settings[section][k] = val
+          end
+        end
+      end
     end
 
     def validate_config(type)
@@ -121,6 +150,9 @@ module Sensu
         end
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE (default: /etc/sensu/config.json)') do |file|
           options[:config_file] = file
+        end
+        opts.on('-d', '--config_dir DIR', 'Directory for supplemental Sensu JSON config files (default: /etc/sensu/conf.d/)') do |dir|
+          options[:config_dir] = dir
         end
         opts.on('-l', '--log FILE', 'Sensu log FILE (default: /tmp/sensu.log)') do |file|
           options[:log_file] = file

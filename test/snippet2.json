@@ -1,0 +1,12 @@
+{
+  "handlers": { "new_handler": "/some/path/script.rb" },
+  "checks": {
+    "b": {
+      "command": "/bin/false",
+      "subscribers": [
+        "b"
+      ],
+      "interval": 45
+    }
+  }
+}
