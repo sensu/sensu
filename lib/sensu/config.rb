@@ -1,8 +1,8 @@
+require File.join(File.dirname(__FILE__), 'helpers', 'ruby')
+
 require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'bundler'
 require 'bundler/setup'
-
-require File.join(File.dirname(__FILE__), 'helpers', 'ruby')
 
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
@@ -35,41 +35,25 @@ module Sensu
         begin
           @settings = Hashie::Mash.new(JSON.parse(File.open(config_file, 'r').read))
         rescue JSON::ParserError => e
-          invalid_config('configuration file must be valid JSON: ' + e)
+          invalid_config('configuration file (' + config_file + ') must be valid JSON: ' + e)
         end
       else
         invalid_config('configuration file does not exist or is not readable: ' + config_file)
       end
       config_dir = options[:config_dir] || '/etc/sensu/conf.d'
       if File.exists?(config_dir)
-        Dir["#{config_dir}/**/*.json"].each do |snippet|
+        Dir["#{config_dir}/**/*.json"].each do |snippet_file|
           begin
-            snippet_hash = Hashie::Mash.new(JSON.parse(File.open(snippet, 'r').read))
+            snippet_hash = JSON.parse(File.open(snippet_file, 'r').read)
           rescue JSON::ParserError => e
-            invalid_config("configuration snippet file (#{snippet}) must be valid JSON: " + e)
+            invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + e)
           end
-          merge_settings(snippet_hash)
+          merged_settings = @settings.to_hash.deep_merge(snippet_hash)
+          @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
+          @settings = Hashie::Mash.new(merged_settings)
         end
       end
       validate_config(options['type'])
-    end
-    
-    def merge_settings(new_settings)
-      %w[rabbitmq redis api dashboard client].each do |k|
-        if new_settings.key?(k)
-          @logger.warn("duplicate config key '#{k}'")
-          @settings[k] = new_settings[k]
-        end
-      end
-      %w[handlers checks].each do |section|
-        @settings[section] = Hashie::Mash.new() unless @settings.key?(section)
-        if new_settings.key?(section)
-          new_settings[section].each_pair do |k,val|
-            @logger.warn("duplicate config key '#{section}/#{k}")
-            @settings[section][k] = val
-          end
-        end
-      end
     end
 
     def validate_config(type)
