@@ -42,7 +42,7 @@ module Sensu
       end
       config_dir = options[:config_dir] || '/etc/sensu/conf.d'
       if File.exists?(config_dir)
-        Dir["#{config_dir}/**/*.json"].each do |snippet_file|
+        Dir[config_dir + '/**/*.json'].each do |snippet_file|
           begin
             snippet_hash = JSON.parse(File.open(snippet_file, 'r').read)
           rescue JSON::ParserError => e
