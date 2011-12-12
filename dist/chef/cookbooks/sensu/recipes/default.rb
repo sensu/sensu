@@ -44,18 +44,10 @@ when "centos", "redhat"
     gcc
     gcc-c++
     kernel-devel
-    nagios-nrpe
     nagios-plugins
     nagios-plugins-nrpe
   ].each do |pkg|
     package pkg
-  end
-
-  if node[:platform_version].to_i >= 6
-    template "/etc/sudoers.d/sensu" do
-      source "sudoers.erb"
-      mode 0440
-    end
   end
 end
 

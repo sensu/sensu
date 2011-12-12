@@ -39,16 +39,14 @@ when "ubuntu", "debian"
     subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
   end
 when "centos", "redhat"
-  if node[:platform_version].to_i <= 5
-    template "/etc/init.d/sensu-dashboard" do
-      source "sensu-init.erb"
-      variables :service => "dashboard", :options => "-l #{node.sensu.log.directory}/sensu.log"
-      mode 0755
-    end
+  template "/etc/init.d/sensu-dashboard" do
+    source "init.erb"
+    variables :service => "dashboard", :options => "-l #{node.sensu.log.directory}/sensu.log"
+    mode 0755
+  end
 
-    service "sensu-dashboard" do
-      action [:enable, :start]
-      subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
-    end
+  service "sensu-dashboard" do
+    action [:enable, :start]
+    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
   end
 end
