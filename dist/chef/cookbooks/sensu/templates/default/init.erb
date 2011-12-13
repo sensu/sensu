@@ -13,7 +13,7 @@ prog="sensu-<%= @service %>"
 user=${SENSU_USER-<%= node.sensu.user %>}
 config=${CONFIG-<%= node.sensu.directory %>/config.json}
 options=${OPTIONS--l <%= node.sensu.log.directory %>/$prog.log}
-exec=${EXEC-<%= GemBinPath.path(@service) %>/sensu-<%= @service %>}
+exec=${EXEC-<%= Sensu.find_bin(@service) %>}
 
 pidfile=${PIDFILE-/var/run/$prog.pid}
 lockfile=${LOCKFILE-/var/lock/subsys/$prog}
