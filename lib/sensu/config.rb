@@ -34,8 +34,8 @@ module Sensu
       if File.readable?(config_file)
         begin
           @settings = Hashie::Mash.new(JSON.parse(File.open(config_file, 'r').read))
-        rescue JSON::ParserError => e
-          invalid_config('configuration file (' + config_file + ') must be valid JSON: ' + e)
+        rescue JSON::ParserError => error
+          invalid_config('configuration file (' + config_file + ') must be valid JSON: ' + error)
         end
       else
         invalid_config('configuration file does not exist or is not readable: ' + config_file)
@@ -45,8 +45,8 @@ module Sensu
         Dir[config_dir + '/**/*.json'].each do |snippet_file|
           begin
             snippet_hash = JSON.parse(File.open(snippet_file, 'r').read)
-          rescue JSON::ParserError => e
-            invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + e)
+          rescue JSON::ParserError => error
+            invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + error)
           end
           merged_settings = @settings.to_hash.deep_merge(snippet_hash)
           @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
