@@ -87,10 +87,14 @@ module Sensu
           handle = proc do
             output = ''
             Bundler.with_clean_env do
-              IO.popen(@settings.handlers[handler] + ' 2>&1', 'r+') do |io|
-                io.write(event.to_json)
-                io.close_write
-                output = io.read
+              begin
+                IO.popen(@settings.handlers[handler] + ' 2>&1', 'r+') do |io|
+                  io.write(event.to_json)
+                  io.close_write
+                  output = io.read
+                end
+              rescue Errno::EPIPE
+                output = 'broken pipe -- ' + handler
               end
             end
             output
