@@ -186,8 +186,8 @@ module Sensu
         else
           @logger.warn('[socket] -- a check name, exit status, and output are required -- e.g. {name: x, status: 0, output: "y"}')
         end
-      rescue JSON::ParserError
-        @logger.warn('[socket] -- could not parse check result -- expecting JSON')
+      rescue JSON::ParserError => error
+        @logger.warn('[socket] -- check result must be valid JSON: ' + error)
       end
       close_connection
     end
