@@ -1,6 +1,12 @@
 Vagrant::Config.run do |config|
   # `vagrant box add ubuntu-1104-server-i386 http://dl.dropbox.com/u/7490647/talifun-ubuntu-11.04-server-i386.box`
   config.vm.box = "ubuntu-1104-server-i386"
+  # `vagrant box add centos-57-x86-64 http://dl.dropbox.com/u/8072848/centos-5.7-x86_64.box`
+  #config.vm.box = "centos-57-x86-64"
+  config.vm.customize do |vm|
+    vm.memory_size = 1024
+    vm.name = "Sensu Stack"
+  end
   config.vm.provision :shell, :inline => "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
   config.vm.provision :shell, :inline => "gem install chef --no-rdoc --no-ri"
   config.vm.forward_port("sensu-dashboard-http", 8080, 8080)

@@ -37,8 +37,6 @@ template "/etc/rabbitmq/rabbitmq-env.conf" do
   mode 0644
 end
 
-service "rabbitmq-server"
-
 case node[:platform]
 when "debian", "ubuntu"
   # use the RabbitMQ repository instead of Ubuntu or Debian's
@@ -59,4 +57,8 @@ when "redhat", "centos", "scientific"
   rpm_package "/tmp/rabbitmq-server-2.6.1-1.noarch.rpm" do
     action :install
   end
+end
+
+service "rabbitmq-server" do
+  action [:start, :enable]
 end

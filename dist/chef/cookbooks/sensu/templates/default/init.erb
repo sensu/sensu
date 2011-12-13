@@ -1,0 +1,130 @@
+#!/bin/bash
+
+# chkconfig: 345 90 90
+# description: Sensu <%= @service.capitalize %> Service Script
+
+# Source function library.
+. /etc/init.d/functions
+
+prog="sensu-<%= @service %>"
+
+[ -f /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+
+user=${SENSU_USER-<%= node.sensu.user %>}
+config=${CONFIG-<%= node.sensu.directory %>/config.json}
+options=${OPTIONS--l <%= node.sensu.log.directory %>/$prog.log}
+exec=${EXEC-<%= Sensu.find_bin(@service) %>}
+
+pidfile=${PIDFILE-/var/run/$prog.pid}
+lockfile=${LOCKFILE-/var/lock/subsys/$prog}
+
+start() {
+    STRING=$"Starting $prog: "
+    echo $STRING
+
+    [ -x $exec ] || exit 5
+    [ -f $config ] || exit 6
+
+    status &> /dev/null
+
+    if [ $? -eq 0 ]; then
+        failure "$prog is running."
+        echo
+        exit 1
+    fi
+
+    su $user -c "$exec -c $config $options >/dev/null 2>&1 &"
+    RETVAL=$?
+    sleep 1
+
+    if [ $RETVAL -eq 0 ]; then
+        touch $lockfile
+        pid=$(pgrep -fl $prog | grep -v grep | grep -v bash | cut -f1 -d" ")
+        echo $pid > $pidfile
+    fi
+    echo
+    return $RETVAL
+}
+
+stop() {
+    STRING=$"Stopping $prog: "
+    echo -n $STRING
+
+    if [ -f $pidfile ]; then
+        killproc -p $pidfile $prog
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            rm -f $pidfile
+            rm -f $lockfile
+            success $STRING
+        else
+            failure $STRING
+        fi
+        echo
+        return $RETVAL
+    else
+        pid=$(pgrep -fl $prog | grep -v grep | grep -v bash | cut -f1 -d" ")
+        if [ ! "$pid" == "" ]; then
+            kill $pid
+            RETVAL=$?
+            if [ $RETVAL -eq 0 ]; then
+                rm -f $pidfile
+                rm -f $lockfile
+                success $STRING
+            fi
+        else
+            failure $STRING
+        fi
+        echo
+    fi
+}
+
+status() {
+    local pid
+
+    # First try "ps"
+    pid=$(pgrep -fl $prog | grep -v grep | grep -v bash | cut -f1 -d" ")
+    if [ -n "$pid" ]; then
+            echo $"${prog} (pid $pid) is running..."
+                return 0
+                fi
+
+    # Next try "/var/run/*.pid" files
+    if [ -f /var/run/${prog}.pid ] ; then
+            read pid < /var/run/${prog}.pid
+                if [ -n "$pid" ]; then
+                            echo $"${prog} dead but pid file exists"
+        return 1
+    fi
+fi
+
+# See if /var/lock/subsys/${prog} exists
+    if [ -f /var/lock/subsys/${prog} ]; then
+        echo $"${prog} dead but subsys locked"
+return 2
+fi
+
+echo $"${prog} is stopped"
+return 3
+}
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        status
+        ;;
+  restart)
+        stop
+        start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|status|restart}"
+exit 2
+esac
+
+exit $?

@@ -1,5 +1,4 @@
 module Sensu
-
   def self.generate_config(node, databag)
     config = Hash.new
 
@@ -18,8 +17,14 @@ module Sensu
     JSON.pretty_generate(config)
   end
 
-  def self.is_windows(node)
-    node.platform == "windows" ? true : false
+  def self.find_bin(service)
+    bin_path = "/usr/bin/sensu-#{service}"
+    ENV['PATH'].split(':').each do |path|
+      test_path = File.join(path, "sensu-#{service}")
+      if File.exists?(test_path)
+        bin_path = test_path
+      end
+    end
+    bin_path
   end
-
 end
