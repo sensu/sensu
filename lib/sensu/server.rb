@@ -93,8 +93,8 @@ module Sensu
                   io.close_write
                   output = io.read
                 end
-              rescue Errno::EPIPE
-                output = 'broken pipe -- ' + handler
+              rescue Errno::EPIPE => error
+                output = handler + ' -- broken pipe: ' + error
               end
             end
             output
