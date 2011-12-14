@@ -156,7 +156,7 @@ module Sensu
                     unless is_flapping
                       unless check.auto_resolve == false && !check.force_resolve
                         @redis.hdel('events:' + client.name, check.name).callback do
-                          unless check.internal
+                          unless check.internal || check.aggregated
                             event.action = 'resolve'
                             handle_event(event)
                           end
@@ -166,7 +166,7 @@ module Sensu
                       @logger.debug('[result] -- check is flapping -- ' + client.name + ' -- ' + check.name)
                       @redis.hset('events:' + client.name, check.name, previous_occurrence.merge({'flapping' => true}).to_json)
                     end
-                  elsif check['status'] != 0
+                  elsif check.status != 0
                     if previous_occurrence && check.status == previous_occurrence.status
                       event.occurrences = previous_occurrence.occurrences += 1
                     end
@@ -176,7 +176,7 @@ module Sensu
                       :flapping => is_flapping,
                       :occurrences => event.occurrences
                     }.to_json).callback do
-                      unless check.internal
+                      unless check.internal || check.aggregated
                         event.check.flapping = is_flapping
                         event.action = 'create'
                         handle_event(event)
