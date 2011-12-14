@@ -87,10 +87,10 @@ module Sensu
             publish = proc do
               unless check.status.nil?
                 publish_result(check)
-                @checks_in_progress.delete(check.name)
               else
                 @logger.warn('[execute] -- nil exit status code -- ' + check.name)
               end
+              @checks_in_progress.delete(check.name)
             end
             EM.defer(execute, publish)
           else
