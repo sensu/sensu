@@ -239,7 +239,7 @@ module Sensu
           clients.each do |client_id|
             @redis.get('client:' + client_id).callback do |client_json|
               client = Hashie::Mash.new(JSON.parse(client_json))
-              time_since_last_check = Time.now.to_i - client.timestamp
+              time_since_last_keepalive = Time.now.to_i - client.timestamp
               result = Hashie::Mash.new({
                 :client => client.name,
                 :check => {
@@ -248,11 +248,11 @@ module Sensu
                 }
               })
               case
-              when time_since_last_check >= 180
+              when time_since_last_keepalive >= 180
                 result.check.status = 2
                 result.check.output = 'No keep-alive sent from host in over 180 seconds'
                 @result_queue.publish(result.to_json)
-              when time_since_last_check >= 120
+              when time_since_last_keepalive >= 120
                 result.check.status = 1
                 result.check.output = 'No keep-alive sent from host in over 120 seconds'
                 @result_queue.publish(result.to_json)
