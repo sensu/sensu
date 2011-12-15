@@ -126,8 +126,11 @@ module Sensu
         if check.key?('matching')
           @logger.info('[subscribe] -- check requires matching -- ' + check.name)
           matches = check.matching.all? do |key, value|
-            if key == 'subscribes'
-              @settings.client.subscriptions.include?(value)
+            (/^!/ === key && key.slice!(0) ? false : true) == case key
+            when 'subscribes'
+              value.all? do |subscription|
+                @settings.client.subscriptions.include?(subscription)
+              end
             else
               @settings.client[key] == value
             end
