@@ -128,8 +128,7 @@ module Sensu
           matches = check.matching.all? do |key, value|
             desired = case key
             when /^!/
-              key = key.dup
-              key.slice!(0)
+              key = key.slice(1..-1)
               false
             else
               true
