@@ -83,7 +83,7 @@ module Sensu
       end
       handlers.each do |handler|
         if @settings.handlers.key?(handler)
-          @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
+          @logger.debug('[event] -- handling event -- ' + [handler, (event.client.name || 'aggregated'), event.check.name].join(' -- '))
           handle = proc do
             output = ''
             Bundler.with_clean_env do
@@ -156,7 +156,7 @@ module Sensu
                     unless is_flapping
                       unless check.auto_resolve == false && !check.force_resolve
                         @redis.hdel('events:' + client.name, check.name).callback do
-                          unless check.internal
+                          unless check.internal || check.aggregated
                             event.action = 'resolve'
                             handle_event(event)
                           end
@@ -166,7 +166,7 @@ module Sensu
                       @logger.debug('[result] -- check is flapping -- ' + client.name + ' -- ' + check.name)
                       @redis.hset('events:' + client.name, check.name, previous_occurrence.merge({'flapping' => true}).to_json)
                     end
-                  elsif check['status'] != 0
+                  elsif check.status != 0
                     if previous_occurrence && check.status == previous_occurrence.status
                       event.occurrences = previous_occurrence.occurrences += 1
                     end
@@ -176,10 +176,18 @@ module Sensu
                       :flapping => is_flapping,
                       :occurrences => event.occurrences
                     }.to_json).callback do
-                      unless check.internal
+                      unless check.internal || check.aggregated
                         event.check.flapping = is_flapping
                         event.action = 'create'
                         handle_event(event)
+                      end
+                    end
+                  end
+                  if check.aggregated
+                    aggregation_key = 'aggregation:' + check.name + ':' + check.issued
+                    @redis.hincrby(aggregation_key, (%w[ok warning critical][check.status] || 'unknown'), 1).callback do
+                      @redis.hincrby(aggregation_key, 'number_of_results', 1).callback do
+                        @logger.debug('[result] -- incremented aggregation counters -- ' + client.name + ' -- ' + check.name)
                       end
                     end
                   end
@@ -206,24 +214,46 @@ module Sensu
       exchanges = Hash.new
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
-        check = Hashie::Mash.new
-        check.name = name
+        check_request = Hashie::Mash.new({:name => name})
         unless details.publish == false
           EM.add_timer(stagger*index) do
-            details.subscribers.each do |subscriber|
-              if subscriber.is_a?(Hash)
-                @logger.debug('[publisher] -- check requires matching -- ' + subscriber.to_hash.to_s + ' -- ' + name)
-                check.matching = subscriber
+            details.subscribers.each do |target|
+              if target.is_a?(Hash)
+                @logger.debug('[publisher] -- check requires matching -- ' + target.to_hash.to_s + ' -- ' + name)
+                check_request.matching = target
                 exchange = 'uchiwa'
               else
-                exchange = subscriber
+                exchange = target
               end
               exchanges[exchange] ||= @amq.fanout(exchange)
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
-                check.issued = Time.now.to_i
-                @logger.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
-                exchanges[exchange].publish(check.to_json)
+                @logger.info('[publisher] -- publishing check request -- ' + name + ' -- ' + exchange)
+                check_request.issued = Time.now.to_i
+                if details.aggregated
+                  @logger.debug('[publisher] -- check request requires aggregation setup -- ' + name + ' -- ' + exchange)
+                  aggregation_key = 'aggregation:' + name + ':' + check_request.issued
+                  @redis.smembers('clients').callback do |clients|
+                    clients.each_with_index do |client_id, index|
+                      @redis.get('client:' + client_id).callback do |client_json|
+                        client = Hashie::Mash.new(JSON.parse(client_json))
+                        subscribed = client.subscriptions.any? do |subscription|
+                          details.subscriptions.include?(subscription)
+                        end
+                        if subscribed
+                          @redis.hincrby(aggregation_key, 'number_of_clients', 1)
+                        end
+                        if index == clients.size - 1
+                          @redis.sadd('aggregations', aggregation_key).callback do
+                            exchanges[exchange].publish(check_request.to_json)
+                          end
+                        end
+                      end
+                    end
+                  end
+                else
+                  exchanges[exchange].publish(check_request.to_json)
+                end
               end
             end
           end
@@ -239,7 +269,7 @@ module Sensu
           clients.each do |client_id|
             @redis.get('client:' + client_id).callback do |client_json|
               client = Hashie::Mash.new(JSON.parse(client_json))
-              time_since_last_check = Time.now.to_i - client.timestamp
+              time_since_last_keepalive = Time.now.to_i - client.timestamp
               result = Hashie::Mash.new({
                 :client => client.name,
                 :check => {
@@ -248,11 +278,11 @@ module Sensu
                 }
               })
               case
-              when time_since_last_check >= 180
+              when time_since_last_keepalive >= 180
                 result.check.status = 2
                 result.check.output = 'No keep-alive sent from host in over 180 seconds'
                 @result_queue.publish(result.to_json)
-              when time_since_last_check >= 120
+              when time_since_last_keepalive >= 120
                 result.check.status = 1
                 result.check.output = 'No keep-alive sent from host in over 120 seconds'
                 @result_queue.publish(result.to_json)
