@@ -183,6 +183,14 @@ module Sensu
                       end
                     end
                   end
+                  if check.aggregated
+                    aggregation_key = 'aggregation:' + check.name + ':' + check.issued
+                    @redis.hincrby(aggregation_key, (%w[ok warning critical][check.status] || 'unknown'), 1).callback do
+                      @redis.hincrby(aggregation_key, 'number_of_results', 1).callback do
+                        @logger.debug('[result] -- incremented aggregation counters -- ' + client.name + ' -- ' + check.name)
+                      end
+                    end
+                  end
                 end
               end
             end
@@ -220,9 +228,32 @@ module Sensu
               exchanges[exchange] ||= @amq.fanout(exchange)
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
+                @logger.info('[publisher] -- publishing check request -- ' + name + ' -- ' + exchange)
                 check_request.issued = Time.now.to_i
-                @logger.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
-                exchanges[exchange].publish(check_request.to_json)
+                if details.aggregated
+                  @logger.debug('[publisher] -- check request requires aggregation setup -- ' + name + ' -- ' + exchange)
+                  aggregation_key = 'aggregation:' + name + ':' + check_request.issued
+                  @redis.smembers('clients').callback do |clients|
+                    clients.each_with_index do |client_id, index|
+                      @redis.get('client:' + client_id).callback do |client_json|
+                        client = Hashie::Mash.new(JSON.parse(client_json))
+                        subscribed = client.subscriptions.any? do |subscription|
+                          details.subscriptions.include?(subscription)
+                        end
+                        if subscribed
+                          @redis.hincrby(aggregation_key, 'number_of_clients', 1)
+                        end
+                        if index == clients.size - 1
+                          @redis.sadd('aggregations', aggregation_key).callback do
+                            exchanges[exchange].publish(check_request.to_json)
+                          end
+                        end
+                      end
+                    end
+                  end
+                else
+                  exchanges[exchange].publish(check_request.to_json)
+                end
               end
             end
           end
@@ -238,7 +269,7 @@ module Sensu
           clients.each do |client_id|
             @redis.get('client:' + client_id).callback do |client_json|
               client = Hashie::Mash.new(JSON.parse(client_json))
-              time_since_last_check = Time.now.to_i - client.timestamp
+              time_since_last_keepalive = Time.now.to_i - client.timestamp
               result = Hashie::Mash.new({
                 :client => client.name,
                 :check => {
@@ -247,11 +278,11 @@ module Sensu
                 }
               })
               case
-              when time_since_last_check >= 180
+              when time_since_last_keepalive >= 180
                 result.check.status = 2
                 result.check.output = 'No keep-alive sent from host in over 180 seconds'
                 @result_queue.publish(result.to_json)
-              when time_since_last_check >= 120
+              when time_since_last_keepalive >= 120
                 result.check.status = 1
                 result.check.output = 'No keep-alive sent from host in over 120 seconds'
                 @result_queue.publish(result.to_json)
