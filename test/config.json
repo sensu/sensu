@@ -42,7 +42,14 @@
       "subscribers": [
         {
           "name": "i-424242",
-          "subscribes": "a"
+          "!nonexistent": "test",
+          "subscribes": [
+            "a",
+            "c"
+          ],
+          "!subscribes": [
+            "d"
+          ]
         }
       ],
       "interval": 1
