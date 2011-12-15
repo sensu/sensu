@@ -83,7 +83,7 @@ module Sensu
       end
       handlers.each do |handler|
         if @settings.handlers.key?(handler)
-          @logger.debug('[event] -- handling event -- ' + [handler, event.client.name || 'aggregated', event.check.name].join(' -- '))
+          @logger.debug('[event] -- handling event -- ' + [handler, (event.client.name || 'aggregated'), event.check.name].join(' -- '))
           handle = proc do
             output = ''
             Bundler.with_clean_env do
