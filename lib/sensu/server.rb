@@ -166,7 +166,7 @@ module Sensu
                       @logger.debug('[result] -- check is flapping -- ' + client.name + ' -- ' + check.name)
                       @redis.hset('events:' + client.name, check.name, previous_occurrence.merge({'flapping' => true}).to_json)
                     end
-                  elsif check['status'] != 0
+                  elsif check.status != 0
                     if previous_occurrence && check.status == previous_occurrence.status
                       event.occurrences = previous_occurrence.occurrences += 1
                     end
@@ -206,24 +206,23 @@ module Sensu
       exchanges = Hash.new
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
-        check = Hashie::Mash.new
-        check.name = name
+        check_request = Hashie::Mash.new({:name => name})
         unless details.publish == false
           EM.add_timer(stagger*index) do
-            details.subscribers.each do |subscriber|
-              if subscriber.is_a?(Hash)
-                @logger.debug('[publisher] -- check requires matching -- ' + subscriber.to_hash.to_s + ' -- ' + name)
-                check.matching = subscriber
+            details.subscribers.each do |target|
+              if target.is_a?(Hash)
+                @logger.debug('[publisher] -- check requires matching -- ' + target.to_hash.to_s + ' -- ' + name)
+                check_request.matching = target
                 exchange = 'uchiwa'
               else
-                exchange = subscriber
+                exchange = target
               end
               exchanges[exchange] ||= @amq.fanout(exchange)
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
-                check.issued = Time.now.to_i
+                check_request.issued = Time.now.to_i
                 @logger.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
-                exchanges[exchange].publish(check.to_json)
+                exchanges[exchange].publish(check_request.to_json)
               end
             end
           end
@@ -239,7 +238,7 @@ module Sensu
           clients.each do |client_id|
             @redis.get('client:' + client_id).callback do |client_json|
               client = Hashie::Mash.new(JSON.parse(client_json))
-              time_since_last_check = Time.now.to_i - client.timestamp
+              time_since_last_keepalive = Time.now.to_i - client.timestamp
               result = Hashie::Mash.new({
                 :client => client.name,
                 :check => {
@@ -248,11 +247,11 @@ module Sensu
                 }
               })
               case
-              when time_since_last_check >= 180
+              when time_since_last_keepalive >= 180
                 result.check.status = 2
                 result.check.output = 'No keep-alive sent from host in over 180 seconds'
                 @result_queue.publish(result.to_json)
-              when time_since_last_check >= 120
+              when time_since_last_keepalive >= 120
                 result.check.status = 1
                 result.check.output = 'No keep-alive sent from host in over 120 seconds'
                 @result_queue.publish(result.to_json)
