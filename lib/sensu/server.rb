@@ -90,7 +90,8 @@ module Sensu
             when "amqp"
               exchange = details.exchange || 'events'
               @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
-              @amq.direct(exchange).publish(event.to_json)
+              message = details.only_check_output ? event.check.output : event.to_json
+              @amq.direct(exchange).publish(message)
             end
           else
             handle = proc do

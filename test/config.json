@@ -19,9 +19,10 @@
   },
   "handlers": {
     "default": "ruby ./test/handler.rb",
-    "metric": {
+    "graphite": {
       "type": "amqp",
-      "exchange": "metrics"
+      "exchange": "graphite",
+      "only_check_output": true
     }
   },
   "checks": {
@@ -72,8 +73,8 @@
     },
     "e": {
       "type": "metric",
-      "handler": "metric",
-      "command": "ruby -e \"puts '<metric path> <metric value> <metric timestamp>'\"",
+      "handler": "graphite",
+      "command": "echo sensu.:::name:::.diceroll 4 `date +%s`",
       "subscribers": [
         "c"
       ],
