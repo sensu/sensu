@@ -18,7 +18,11 @@
     "password": "secret"
   },
   "handlers": {
-    "default": "ruby ./test/handler.rb"
+    "default": "ruby ./test/handler.rb",
+    "metric": {
+      "type": "amqp",
+      "exchange": "metrics"
+    }
   },
   "checks": {
     "a": {
@@ -62,6 +66,15 @@
       "subscribers": [
         "a",
         "b",
+        "c"
+      ],
+      "interval": 1
+    },
+    "e": {
+      "type": "metric",
+      "handler": "metric",
+      "command": "ruby -e \"puts '<metric path> <metric value> <metric timestamp>'\"",
+      "subscribers": [
         "c"
       ],
       "interval": 1

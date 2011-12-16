@@ -6,7 +6,7 @@ require File.join(File.dirname(__FILE__), 'helpers', 'redis')
 
 module Sensu
   class Server
-    attr_accessor :redis, :is_worker
+    attr_accessor :redis, :amq, :is_worker
 
     def self.run(options={})
       EM.threadpool_size = 16
@@ -84,22 +84,32 @@ module Sensu
       handlers.each do |handler|
         if @settings.handlers.key?(handler)
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
-          handle = proc do
-            output = ''
-            Bundler.with_clean_env do
-              begin
-                IO.popen(@settings.handlers[handler] + ' 2>&1', 'r+') do |io|
-                  io.write(event.to_json)
-                  io.close_write
-                  output = io.read
-                end
-              rescue Errno::EPIPE => error
-                output = handler + ' -- broken pipe: ' + error
-              end
+          if @settings.handlers[handler].is_a?(Hash)
+            details = @settings.handlers[handler]
+            case details.type
+            when "amqp"
+              exchange = details.exchange || 'events'
+              @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
+              @amq.direct(exchange).publish(event.to_json)
             end
-            output
+          else
+            handle = proc do
+              output = ''
+              Bundler.with_clean_env do
+                begin
+                  IO.popen(@settings.handlers[handler] + ' 2>&1', 'r+') do |io|
+                    io.write(event.to_json)
+                    io.close_write
+                    output = io.read
+                  end
+                rescue Errno::EPIPE => error
+                  output = handler + ' -- broken pipe: ' + error
+                end
+              end
+              output
+            end
+            EM.defer(handle, report)
           end
-          EM.defer(handle, report)
         else
           @logger.warn('[event] -- handler does not exist -- ' + handler)
         end

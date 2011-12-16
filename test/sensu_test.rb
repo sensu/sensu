@@ -102,7 +102,10 @@ class TestSensu < Test::Unit::TestCase
           }
           assert_equal(expected, JSON.parse(value).symbolize_keys)
         end
-        done
+        server.amq.queue('test').bind('metrics').subscribe do |metric|
+          assert(JSON.parse(metric))
+          done
+        end
       end
     end
   end
