@@ -17,19 +17,25 @@ module Sensu
   class Config
     attr_accessor :settings, :logger
 
+    DEFAULT_OPTIONS = {
+      :log_file => '/tmp/sensu.log',
+      :config_file => '/etc/sensu/config.json',
+      :config_dir => '/etc/sensu/conf.d',
+      :validate => true,
+    }
+
     def initialize(options={})
-      @options = options
+      @options = DEFAULT_OPTIONS.merge(options)
       read_config
-      validate_config
+      validate_config if @options[:validate]
     end
 
     def open_log
       @logger = Cabin::Channel.new
-      log_file = @options[:log_file] || '/tmp/sensu.log'
-      if File.writable?(log_file) || !File.exist?(log_file) && File.writable?(File.dirname(log_file))
-        ruby_logger = Logger.new(log_file)
+      if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
+        ruby_logger = Logger.new(@options[:log_file])
       else
-        invalid_config('log file is not writable: ' + log_file)
+        invalid_config('log file is not writable: ' + @options[:log_file])
       end
       @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
       @logger.level = @options[:verbose] ? :debug : :info
@@ -40,19 +46,17 @@ module Sensu
     end
 
     def read_config
-      config_file = @options[:config_file] || '/etc/sensu/config.json'
-      config_dir = @options[:config_dir] || '/etc/sensu/conf.d'
-      if File.readable?(config_file)
+      if File.readable?(@options[:config_file])
         begin
-          @settings = Hashie::Mash.new(JSON.parse(File.open(config_file, 'r').read))
+          @settings = Hashie::Mash.new(JSON.parse(File.open(@options[:config_file], 'r').read))
         rescue JSON::ParserError => error
-          invalid_config('configuration file (' + config_file + ') must be valid JSON: ' + error)
+          invalid_config('configuration file (' + @options[:config_file] + ') must be valid JSON: ' + error)
         end
       else
-        invalid_config('configuration file does not exist or is not readable: ' + config_file)
+        invalid_config('configuration file does not exist or is not readable: ' + @options[:config_file])
       end
-      if File.exists?(config_dir)
-        Dir[config_dir + '/**/*.json'].each do |snippet_file|
+      if File.exists?(@options[:config_dir])
+        Dir[@options[:config_dir] + '/**/*.json'].each do |snippet_file|
           begin
             snippet_hash = JSON.parse(File.open(snippet_file, 'r').read)
           rescue JSON::ParserError => error
