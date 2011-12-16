@@ -90,7 +90,7 @@ module Sensu
             when "amqp"
               exchange = details.exchange || 'events'
               @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
-              message = details.only_check_output ? event.check.output : event.to_json
+              message = details.send_only_check_output ? event.check.output : event.to_json
               @amq.direct(exchange).publish(message)
             else
               @logger.warn('[event] -- unknown handler type -- ' + details.type)

@@ -22,7 +22,7 @@
     "graphite": {
       "type": "amqp",
       "exchange": "graphite",
-      "only_check_output": true
+      "send_only_check_output": true
     }
   },
   "checks": {
