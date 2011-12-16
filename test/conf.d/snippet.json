@@ -1,5 +1,5 @@
 {
-  "handlers": { "new_handler": "this won't override the default handler" },
+  "handlers": { "new_handler": "this won't override the other handlers" },
   "checks": {
     "b": {
       "command": "ruby -e \"puts ':::name:::'; exit 2\"",

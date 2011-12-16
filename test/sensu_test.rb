@@ -69,6 +69,7 @@ class TestSensu < Test::Unit::TestCase
         :flapping => false
       },
       :occurrences => 1,
+      :history => [1],
       :action => 'create'
     })
     server.handle_event(event)
