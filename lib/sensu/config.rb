@@ -18,19 +18,30 @@ module Sensu
     attr_accessor :settings, :logger
 
     def initialize(options={})
+      @options = options
+      read_config
+      open_log
+      validate_config
+    end
+
+    def open_log
       @logger = Cabin::Channel.new
-      log_file = options[:log_file] || '/tmp/sensu.log'
+      log_file = @options[:log_file] || '/tmp/sensu.log'
       if File.writable?(log_file) || !File.exist?(log_file) && File.writable?(File.dirname(log_file))
         ruby_logger = Logger.new(log_file)
       else
         invalid_config('log file is not writable: ' + log_file)
       end
       @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
-      @logger.level = options[:verbose] ? :debug : :info
+      @logger.level = @options[:verbose] ? :debug : :info
       Signal.trap('USR1') do
         @logger.level = @logger.level == :info ? :debug : :info
       end
-      config_file = options[:config_file] || '/etc/sensu/config.json'
+    end
+
+    def read_config
+      config_file = @options[:config_file] || '/etc/sensu/config.json'
+      config_dir = @options[:config_dir] || '/etc/sensu/conf.d'
       if File.readable?(config_file)
         begin
           @settings = Hashie::Mash.new(JSON.parse(File.open(config_file, 'r').read))
@@ -40,7 +51,6 @@ module Sensu
       else
         invalid_config('configuration file does not exist or is not readable: ' + config_file)
       end
-      config_dir = options[:config_dir] || '/etc/sensu/conf.d'
       if File.exists?(config_dir)
         Dir[config_dir + '/**/*.json'].each do |snippet_file|
           begin
@@ -53,13 +63,12 @@ module Sensu
           @settings = Hashie::Mash.new(merged_settings)
         end
       end
-      validate_config(options['type'])
     end
 
-    def validate_config(type)
+    def validate_config
       @logger.debug('[config] -- validating configuration')
       has_keys(%w[rabbitmq])
-      case type
+      case @options['type']
       when 'server'
         has_keys(%w[redis handlers checks])
         unless @settings.handlers.include?('default')
@@ -100,8 +109,8 @@ module Sensu
           end
         end
       end
-      if type
-        @logger.debug('[config] -- configuration valid -- running ' + type)
+      if @options['type']
+        @logger.debug('[config] -- configuration valid -- running ' + @options['type'])
         puts 'configuration valid -- running ' + type
       end
     end
