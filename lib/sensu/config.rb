@@ -20,7 +20,6 @@ module Sensu
     def initialize(options={})
       @options = options
       read_config
-      open_log
       validate_config
     end
 
@@ -37,6 +36,7 @@ module Sensu
       Signal.trap('USR1') do
         @logger.level = @logger.level == :info ? :debug : :info
       end
+      @logger
     end
 
     def read_config
@@ -59,14 +59,14 @@ module Sensu
             invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + error)
           end
           merged_settings = @settings.to_hash.deep_merge(snippet_hash)
-          @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
+          @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json) if @logger
           @settings = Hashie::Mash.new(merged_settings)
         end
       end
     end
 
     def validate_config
-      @logger.debug('[config] -- validating configuration')
+      @logger.debug('[config] -- validating configuration') if @logger
       has_keys(%w[rabbitmq])
       case @options['type']
       when 'server'
@@ -110,7 +110,7 @@ module Sensu
         end
       end
       if @options['type']
-        @logger.debug('[config] -- configuration valid -- running ' + @options['type'])
+        @logger.debug('[config] -- configuration valid -- running ' + @options['type']) if @logger
         puts 'configuration valid -- running ' + type
       end
     end
@@ -124,7 +124,7 @@ module Sensu
     end
 
     def invalid_config(message)
-      @logger.error('[config] -- configuration invalid -- ' + message)
+      @logger.error('[config] -- configuration invalid -- ' + message) if @logger
       raise 'configuration invalid, ' + message
     end
 

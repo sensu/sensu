@@ -33,7 +33,7 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(options)
       @settings = config.settings
-      @logger = config.logger
+      @logger = config.open_log
       @is_worker = options[:worker]
     end
 

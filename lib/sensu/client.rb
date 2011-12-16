@@ -22,7 +22,7 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(options)
       @settings = config.settings
-      @logger = config.logger
+      @logger = config.open_log
     end
 
     def stop(signal)

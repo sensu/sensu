@@ -25,7 +25,7 @@ module Sensu
     def self.setup(options={})
       config = Sensu::Config.new(options)
       $settings = config.settings
-      $logger = config.logger
+      $logger = config.open_log
       $logger.debug('[setup] -- connecting to redis')
       $redis = EM.connect($settings.redis.host, $settings.redis.port, Redis::Reconnect)
       $logger.debug('[setup] -- connecting to rabbitmq')
