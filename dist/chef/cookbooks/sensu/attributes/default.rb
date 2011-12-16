@@ -1,5 +1,5 @@
 # most of these values can be replaced with your method of discovery
-default.sensu.version = "0.8.18"
+default.sensu.version = "0.8.19"
 default.sensu.directory = "/etc/sensu"
 default.sensu.log.directory = "/var/log/sensu"
 default.sensu.user = "sensu"
@@ -14,7 +14,7 @@ default.sensu.redis.port = 6379
 default.sensu.api.host = "localhost"
 default.sensu.api.port = 4567
 default.sensu.client = Hash.new
-default.sensu.dashboard.version = "0.8.1"
+default.sensu.dashboard.version = "0.9.0"
 default.sensu.dashboard.host = "localhost"
 default.sensu.dashboard.port = 8080
 default.sensu.dashboard.user = "admin"
