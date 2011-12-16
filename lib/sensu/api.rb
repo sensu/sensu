@@ -102,6 +102,21 @@ module Sensu
       end
     end
 
+    aget '/checks' do
+      $logger.debug('[checks] -- ' + request.ip + ' -- GET -- request for check list')
+      body $settings.checks.to_json
+    end
+
+    aget '/check/:name' do |check|
+      $logger.debug('[check] -- ' + request.ip + ' -- GET -- request for check -- ' + check)
+      if $settings.checks.key?(check)
+        body $settings.checks[check].to_json
+      else
+        status 404
+        body nil
+      end
+    end
+
     aget '/events' do
       $logger.debug('[events] -- ' + request.ip + ' -- GET -- request for event list')
       response = Hash.new
