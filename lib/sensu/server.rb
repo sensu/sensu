@@ -136,7 +136,7 @@ module Sensu
             history_key = 'history:' + client.name + ':' + check.name
             @redis.rpush(history_key, check.status).callback do
               @redis.lrange(history_key, -21, -1).callback do |history|
-                event.history = history
+                event.check.history = history
                 total_state_change = 0
                 unless history.count < 21
                   state_changes = 0

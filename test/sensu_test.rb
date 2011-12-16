@@ -66,10 +66,9 @@ class TestSensu < Test::Unit::TestCase
         :issued => Time.now.to_i,
         :status => 1,
         :output => 'WARNING\n',
-        :flapping => false
+        :history => [1]
       },
       :occurrences => 1,
-      :history => [1],
       :action => 'create'
     })
     server.handle_event(event)
