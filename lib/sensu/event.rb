@@ -8,7 +8,11 @@ module Sensu
 
       if metrics.is_a?(String)
         metric = metrics.split(' ')
-        metric[0] = ['sensu', event.client.name, event.check.name, metric[0]].join('.')
+        if metric.count == 3
+          metric[0] = ['sensu', event.client.name, event.check.name, metric[0]].join('.')
+          metric.join(' ')
+        else
+        end
       elsif metrics.is_a?(Array)
       end
     end
