@@ -18,7 +18,12 @@
     "password": "secret"
   },
   "handlers": {
-    "default": "ruby ./test/handler.rb"
+    "default": "ruby ./test/handler.rb",
+    "graphite": {
+      "type": "amqp",
+      "exchange": "graphite",
+      "send_only_check_output": true
+    }
   },
   "checks": {
     "a": {
@@ -62,6 +67,15 @@
       "subscribers": [
         "a",
         "b",
+        "c"
+      ],
+      "interval": 1
+    },
+    "e": {
+      "type": "metric",
+      "handler": "graphite",
+      "command": "echo sensu.:::name:::.diceroll 4 `date +%s`",
+      "subscribers": [
         "c"
       ],
       "interval": 1

@@ -66,7 +66,7 @@ class TestSensu < Test::Unit::TestCase
         :issued => Time.now.to_i,
         :status => 1,
         :output => 'WARNING\n',
-        :flapping => false
+        :history => [1]
       },
       :occurrences => 1,
       :action => 'create'
@@ -102,7 +102,11 @@ class TestSensu < Test::Unit::TestCase
           }
           assert_equal(expected, JSON.parse(value).symbolize_keys)
         end
-        done
+        server.amq.queue(String.unique, :exclusive => true).bind('graphite').subscribe do |metric|
+          assert(metric.is_a?(String))
+          assert_equal(metric.split(' ').first, ['sensu', @settings.client.name, 'diceroll'].join('.'))
+          done
+        end
       end
     end
   end
