@@ -97,7 +97,7 @@ module Sensu
             @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
             check.status = 3
             check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
-            check.internal = true
+            check.handle = false
             publish_result(check)
             @checks_in_progress.delete(check.name)
           end
@@ -106,7 +106,7 @@ module Sensu
         @logger.warn('[execute] -- unkown check -- ' + check.name)
         check.status = 3
         check.output = 'Unknown check'
-        check.internal = true
+        check.handle = false
         publish_result(check)
         @checks_in_progress.delete(check.name)
       end

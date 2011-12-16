@@ -92,6 +92,8 @@ module Sensu
               @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
               message = details.only_check_output ? event.check.output : event.to_json
               @amq.direct(exchange).publish(message)
+            else
+              @logger.warn('[event] -- unknown handler type -- ' + details.type)
             end
           else
             handle = proc do
@@ -134,6 +136,7 @@ module Sensu
             history_key = 'history:' + client.name + ':' + check.name
             @redis.rpush(history_key, check.status).callback do
               @redis.lrange(history_key, -21, -1).callback do |history|
+                event.history = history
                 total_state_change = 0
                 unless history.count < 21
                   state_changes = 0
@@ -167,7 +170,7 @@ module Sensu
                     unless is_flapping
                       unless check.auto_resolve == false && !check.force_resolve
                         @redis.hdel('events:' + client.name, check.name).callback do
-                          unless check.internal
+                          unless check.handle == false
                             event.action = 'resolve'
                             handle_event(event)
                           end
@@ -187,7 +190,7 @@ module Sensu
                       :flapping => is_flapping,
                       :occurrences => event.occurrences
                     }.to_json).callback do
-                      unless check.internal
+                      unless check.handle == false
                         event.check.flapping = is_flapping
                         event.action = 'create'
                         handle_event(event)
