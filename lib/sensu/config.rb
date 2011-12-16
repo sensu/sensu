@@ -115,7 +115,7 @@ module Sensu
       end
       if @options['type']
         @logger.debug('[config] -- configuration valid -- running ' + @options['type']) if @logger
-        puts 'configuration valid -- running ' + type
+        puts 'configuration valid -- running ' + @options['type']
       end
     end
 
