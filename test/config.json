@@ -24,7 +24,9 @@
     },
     "graphite": {
       "type": "amqp",
-      "exchange": "graphite",
+      "exchange": {
+        "name": "graphite"
+      },
       "send_only_check_output": true
     }
   },

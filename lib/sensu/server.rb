@@ -104,10 +104,16 @@ module Sensu
             end
             EM.defer(handle, report)
           when "amqp"
-            exchange = details.exchange || 'events'
+            @exchanges ||= Hash.new
+            exchange = details.exchange.name || 'events'
+            unless @exchanges[exchange]
+              exchange_type = details.exchange.type || 'direct'
+              exchange_options = details.exchange.reject {|key, value| %w[name type].include?(key) }
+              @exchanges[exchange] = @amq.method(exchange_type).call(exchange, exchange_options)
+            end
             @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
-            message = details.send_only_check_output ? event.check.output : event.to_json
-            @amq.direct(exchange).publish(message)
+            payload = details.send_only_check_output ? event.check.output : event.to_json
+            @exchanges[exchange].publish(payload)
           else
             @logger.warn('[event] -- unknown handler type -- ' + details.type)
           end
@@ -215,7 +221,7 @@ module Sensu
 
     def setup_publisher(options={})
       @logger.debug('[publisher] -- setup publisher')
-      exchanges = Hash.new
+      @exchanges ||= Hash.new
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
         check_request = Hashie::Mash.new({:name => name})
@@ -229,12 +235,12 @@ module Sensu
               else
                 exchange = target
               end
-              exchanges[exchange] ||= @amq.fanout(exchange)
+              @exchanges[exchange] ||= @amq.fanout(exchange)
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
                 check_request.issued = Time.now.to_i
                 @logger.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
-                exchanges[exchange].publish(check_request.to_json)
+                @exchanges[exchange].publish(check_request.to_json)
               end
             end
           end
