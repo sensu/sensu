@@ -105,7 +105,7 @@ module Sensu
             EM.defer(handle, report)
           when "amqp"
             @exchanges ||= Hash.new
-            exchange = details.exchange.name || 'events'
+            exchange = details.exchange.name
             unless @exchanges[exchange]
               exchange_type = details.exchange.type || 'direct'
               exchange_options = details.exchange.reject {|key, value| %w[name type].include?(key) }
@@ -114,8 +114,6 @@ module Sensu
             @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
             payload = details.send_only_check_output ? event.check.output : event.to_json
             @exchanges[exchange].publish(payload)
-          else
-            @logger.warn('[event] -- unknown handler type -- ' + details.type)
           end
         else
           @logger.warn('[event] -- unknown handler -- ' + handler)
