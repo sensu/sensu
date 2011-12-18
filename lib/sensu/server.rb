@@ -84,37 +84,35 @@ module Sensu
       handlers.each do |handler|
         if @settings.handlers.key?(handler)
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
-          if @settings.handlers[handler].is_a?(Hash)
-            details = @settings.handlers[handler]
-            case details.type
-            when "amqp"
-              exchange = details.exchange || 'events'
-              @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
-              message = details.send_only_check_output ? event.check.output : event.to_json
-              @amq.direct(exchange).publish(message)
-            else
-              @logger.warn('[event] -- unknown handler type -- ' + details.type)
-            end
-          else
+          details = @settings.handlers[handler]
+          case details.type
+          when "pipe"
             handle = proc do
               output = ''
               Bundler.with_clean_env do
                 begin
-                  IO.popen(@settings.handlers[handler] + ' 2>&1', 'r+') do |io|
+                  IO.popen(details.command + ' 2>&1', 'r+') do |io|
                     io.write(event.to_json)
                     io.close_write
                     output = io.read
                   end
                 rescue Errno::EPIPE => error
-                  output = handler + ' -- broken pipe: ' + error
+                  output = handler + ' -- broken pipe: ' + error.to_s
                 end
               end
               output
             end
             EM.defer(handle, report)
+          when "amqp"
+            exchange = details.exchange || 'events'
+            @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
+            message = details.send_only_check_output ? event.check.output : event.to_json
+            @amq.direct(exchange).publish(message)
+          else
+            @logger.warn('[event] -- unknown handler type -- ' + details.type)
           end
         else
-          @logger.warn('[event] -- handler does not exist -- ' + handler)
+          @logger.warn('[event] -- unknown handler -- ' + handler)
         end
       end
     end

@@ -18,7 +18,10 @@
     "password": "secret"
   },
   "handlers": {
-    "default": "ruby ./test/handler.rb",
+    "default": {
+      "type": "pipe",
+      "command": "./test/handler.rb"
+    },
     "graphite": {
       "type": "amqp",
       "exchange": "graphite",
