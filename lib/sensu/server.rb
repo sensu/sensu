@@ -281,7 +281,7 @@ module Sensu
       setup_keepalive_monitor
     end
 
-    def is_master?
+    def request_master_election
       @is_master ||= false
       @redis.setnx('lock:master', Time.now.to_i).callback do |created|
         if created
@@ -305,7 +305,7 @@ module Sensu
     end
 
     def setup_master_monitor
-      is_master?
+      request_master_election
       EM.add_periodic_timer(20) do
         if @is_master
           timestamp = Time.now.to_i
@@ -313,7 +313,7 @@ module Sensu
             @logger.debug('[master] -- updated master lock timestamp -- ' + timestamp.to_s)
           end
         else
-          is_master?
+          request_master_election
         end
       end
     end
