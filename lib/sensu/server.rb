@@ -46,13 +46,13 @@ module Sensu
 
     def setup_redis
       @logger.debug('[redis] -- connecting to redis')
-      @redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Reconnect)
+      @redis = Redis.connect(@settings.redis.to_hash.symbolize_keys)
     end
 
     def setup_amqp
       @logger.debug('[amqp] -- connecting to rabbitmq')
-      connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
-      @amq = MQ.new(connection)
+      rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      @amq = AMQP::Channel.new(rabbitmq)
     end
 
     def setup_keepalives
@@ -104,16 +104,12 @@ module Sensu
             end
             EM.defer(handle, report)
           when "amqp"
-            @exchanges ||= Hash.new
             exchange = details.exchange.name
-            unless @exchanges[exchange]
-              exchange_type = details.exchange.type || 'direct'
-              exchange_options = details.exchange.reject {|key, value| %w[name type].include?(key) }
-              @exchanges[exchange] = @amq.method(exchange_type).call(exchange, exchange_options)
-            end
+            exchange_type = details.exchange.type || 'direct'
+            exchange_options = details.exchange.reject { |key, value| %w[name type].include?(key) }
             @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
             payload = details.send_only_check_output ? event.check.output : event.to_json
-            @exchanges[exchange].publish(payload)
+            @amq.method(exchange_type).call(exchange, exchange_options).publish(payload)
           end
         else
           @logger.warn('[event] -- unknown handler -- ' + handler)
@@ -219,7 +215,6 @@ module Sensu
 
     def setup_publisher(options={})
       @logger.debug('[publisher] -- setup publisher')
-      @exchanges ||= Hash.new
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
         check_request = Hashie::Mash.new({:name => name})
@@ -233,12 +228,11 @@ module Sensu
               else
                 exchange = target
               end
-              @exchanges[exchange] ||= @amq.fanout(exchange)
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
                 check_request.issued = Time.now.to_i
                 @logger.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
-                @exchanges[exchange].publish(check_request.to_json)
+                @amq.fanout(exchange).publish(check_request.to_json)
               end
             end
           end

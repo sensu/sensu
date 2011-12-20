@@ -27,10 +27,10 @@ module Sensu
       $settings = config.settings
       $logger = config.open_log
       $logger.debug('[setup] -- connecting to redis')
-      $redis = EM.connect($settings.redis.host, $settings.redis.port, Redis::Reconnect)
+      $redis = Redis.connect($settings.redis.to_hash.symbolize_keys)
       $logger.debug('[setup] -- connecting to rabbitmq')
-      connection = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
-      $amq = MQ.new(connection)
+      rabbitmq = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
+      $amq = AMQP::Channel.new(rabbitmq)
     end
 
     def self.stop(signal)
