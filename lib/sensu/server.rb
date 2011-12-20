@@ -6,7 +6,7 @@ require File.join(File.dirname(__FILE__), 'helpers', 'redis')
 
 module Sensu
   class Server
-    attr_accessor :redis, :amq
+    attr_accessor :redis, :amq, :is_master
 
     def self.run(options={})
       EM.threadpool_size = 16
@@ -307,12 +307,13 @@ module Sensu
     def setup_master_monitor
       is_master?
       EM.add_periodic_timer(20) do
-        is_master?
         if @is_master
           timestamp = Time.now.to_i
           @redis.set('lock:master', timestamp).callback do
             @logger.debug('[master] -- updated master lock timestamp -- ' + timestamp.to_s)
           end
+        else
+          is_master?
         end
       end
     end
