@@ -210,7 +210,7 @@ module Sensu
       @result_queue = @amq.queue('results')
       @result_queue.subscribe do |result_json|
         result = Hashie::Mash.new(JSON.parse(result_json))
-        @logger.info('[result] -- received result -- ' + result.client + ' -- ' + result.check.name)
+        @logger.info('[result] -- received result -- ' + [result.check.name, result.client, result.check.status, result.check.output].join(' -- '))
         process_result(result)
       end
     end
