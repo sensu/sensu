@@ -260,17 +260,17 @@ module Sensu
               when time_since_last_keepalive >= 180
                 result.check.status = 2
                 result.check.output = 'No keep-alive sent from host in over 180 seconds'
-                @result_queue.publish(result.to_json)
+                @amq.queue('results').publish(result.to_json)
               when time_since_last_keepalive >= 120
                 result.check.status = 1
                 result.check.output = 'No keep-alive sent from host in over 120 seconds'
-                @result_queue.publish(result.to_json)
+                @amq.queue('results').publish(result.to_json)
               else
                 @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
                   if exists
                     result.check.status = 0
                     result.check.output = 'Keep-alive sent from host'
-                    @result_queue.publish(result.to_json)
+                    @amq.queue('results').publish(result.to_json)
                   end
                 end
               end
@@ -284,11 +284,11 @@ module Sensu
       @logger.debug('[monitor] -- setup queue monitor')
       EM.add_periodic_timer(5) do
         unless @keepalive_queue.subscribed?
-          @logger.warn('[monitor] -- reconnecting to rabbitmq')
+          @logger.warn('[monitor] -- reconnecting to rabbitmq -- keepalives')
           setup_keepalives
         end
         unless @result_queue.subscribed?
-          @logger.warn('[monitor] -- reconnecting to rabbitmq')
+          @logger.warn('[monitor] -- reconnecting to rabbitmq -- results')
           setup_results
         end
       end
