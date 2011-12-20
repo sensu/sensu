@@ -28,9 +28,8 @@ class TestSensu < Test::Unit::TestCase
   end
 
   def test_cli_arguments
-    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file], '-d', @options[:config_dir], '-v', '-l', '/tmp/sensu_test.log'])
+    options = Sensu::Config.read_arguments(['-c', @options[:config_file], '-d', @options[:config_dir], '-v', '-l', '/tmp/sensu_test.log'])
     expected = {
-      :worker => true,
       :config_file => @options[:config_file],
       :config_dir => @options[:config_dir],
       :verbose => true,

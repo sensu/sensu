@@ -6,7 +6,7 @@ require File.join(File.dirname(__FILE__), 'helpers', 'redis')
 
 module Sensu
   class Server
-    attr_accessor :redis, :amq, :is_worker
+    attr_accessor :redis, :amq
 
     def self.run(options={})
       EM.threadpool_size = 16
@@ -16,10 +16,7 @@ module Sensu
         server.setup_amqp
         server.setup_keepalives
         server.setup_results
-        unless server.is_worker
-          server.setup_publisher
-          server.setup_keepalive_monitor
-        end
+        server.setup_master_monitor
         server.setup_queue_monitor
 
         %w[INT TERM].each do |signal|
@@ -34,7 +31,6 @@ module Sensu
       config = Sensu::Config.new(options)
       @settings = config.settings
       @logger = config.open_log
-      @is_worker = options[:worker]
     end
 
     def stop(signal)
@@ -275,6 +271,47 @@ module Sensu
                 end
               end
             end
+          end
+        end
+      end
+    end
+
+    def master_duties
+      setup_publisher
+      setup_keepalive_monitor
+    end
+
+    def is_master?
+      @is_master ||= false
+      @redis.setnx('lock:master', Time.now.to_i).callback do |created|
+        if created
+          @logger.info('[master] -- i am the master')
+          @is_master = true
+          master_duties
+        else
+          @redis.get('lock:master') do |timestamp|
+            if Time.now.to_i - timestamp.to_i >= 60
+              @redis.getset('lock:master', Time.now.to_i).callback do |previous|
+                if previous == timestamp
+                  @logger.info('[master] -- i am now the master')
+                  @is_master = true
+                  master_duties
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    def setup_master_monitor
+      is_master?
+      EM.add_periodic_timer(20) do
+        is_master?
+        if @is_master
+          timestamp = Time.now.to_i
+          @redis.set('lock:master', timestamp).callback do
+            @logger.debug('[master] -- updated master lock timestamp -- ' + timestamp.to_s)
           end
         end
       end
