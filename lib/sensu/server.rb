@@ -105,7 +105,7 @@ module Sensu
             EM.defer(handle, report)
           when "amqp"
             exchange = details.exchange.name
-            exchange_type = details.exchange.type || 'direct'
+            exchange_type = details.exchange.key?('type') ? details.exchange.type.to_sym : :direct
             exchange_options = details.exchange.reject { |key, value| %w[name type].include?(key) }
             @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
             payload = details.send_only_check_output ? event.check.output : event.to_json
