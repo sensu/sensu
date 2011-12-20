@@ -115,7 +115,7 @@ module Sensu
     def setup_subscriptions
       @logger.debug('[subscribe] -- setup subscriptions')
       @check_queue = @amq.queue(String.unique, :exclusive => true)
-      @settings.client.subscriptions.push('uchiwa')
+      @settings.client.subscriptions.push('uchiwa').uniq!
       @settings.client.subscriptions.each do |exchange|
         @logger.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
         @check_queue.bind(@amq.fanout(exchange))
