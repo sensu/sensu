@@ -46,13 +46,13 @@ module Sensu
 
     def setup_redis
       @logger.debug('[redis] -- connecting to redis')
-      @redis = EM.connect(@settings.redis.host, @settings.redis.port, Redis::Reconnect)
+      @redis = Redis.connect(@settings.redis.to_hash.symbolize_keys)
     end
 
     def setup_amqp
       @logger.debug('[amqp] -- connecting to rabbitmq')
-      connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
-      @amq = MQ.new(connection)
+      rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      @amq = AMQP::Channel.new(rabbitmq)
     end
 
     def setup_keepalives
@@ -84,37 +84,35 @@ module Sensu
       handlers.each do |handler|
         if @settings.handlers.key?(handler)
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
-          if @settings.handlers[handler].is_a?(Hash)
-            details = @settings.handlers[handler]
-            case details.type
-            when "amqp"
-              exchange = details.exchange || 'events'
-              @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
-              message = details.send_only_check_output ? event.check.output : event.to_json
-              @amq.direct(exchange).publish(message)
-            else
-              @logger.warn('[event] -- unknown handler type -- ' + details.type)
-            end
-          else
+          details = @settings.handlers[handler]
+          case details.type
+          when "pipe"
             handle = proc do
               output = ''
               Bundler.with_clean_env do
                 begin
-                  IO.popen(@settings.handlers[handler] + ' 2>&1', 'r+') do |io|
+                  IO.popen(details.command + ' 2>&1', 'r+') do |io|
                     io.write(event.to_json)
                     io.close_write
                     output = io.read
                   end
                 rescue Errno::EPIPE => error
-                  output = handler + ' -- broken pipe: ' + error
+                  output = handler + ' -- broken pipe: ' + error.to_s
                 end
               end
               output
             end
             EM.defer(handle, report)
+          when "amqp"
+            exchange = details.exchange.name
+            exchange_type = details.exchange.type || 'direct'
+            exchange_options = details.exchange.reject { |key, value| %w[name type].include?(key) }
+            @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
+            payload = details.send_only_check_output ? event.check.output : event.to_json
+            @amq.method(exchange_type).call(exchange, exchange_options).publish(payload)
           end
         else
-          @logger.warn('[event] -- handler does not exist -- ' + handler)
+          @logger.warn('[event] -- unknown handler -- ' + handler)
         end
       end
     end
@@ -217,7 +215,6 @@ module Sensu
 
     def setup_publisher(options={})
       @logger.debug('[publisher] -- setup publisher')
-      exchanges = Hash.new
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
         check_request = Hashie::Mash.new({:name => name})
@@ -231,12 +228,11 @@ module Sensu
               else
                 exchange = target
               end
-              exchanges[exchange] ||= @amq.fanout(exchange)
               interval = options[:test] ? 0.5 : details.interval
               EM.add_periodic_timer(interval) do
                 check_request.issued = Time.now.to_i
                 @logger.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
-                exchanges[exchange].publish(check_request.to_json)
+                @amq.fanout(exchange).publish(check_request.to_json)
               end
             end
           end
