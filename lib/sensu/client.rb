@@ -40,24 +40,21 @@ module Sensu
 
     def publish_keepalive
       @logger.debug('[keepalive] -- publishing keepalive -- ' + @settings.client.timestamp.to_s)
-      @keepalive_queue ||= @amq.queue('keepalives')
-      @keepalive_queue.publish(@settings.client.to_json)
+      @settings.client.timestamp = Time.now.to_i
+      @amq.queue('keepalives').publish(@settings.client.to_json)
     end
 
     def setup_keepalives
       @logger.debug('[keepalive] -- setup keepalives')
-      @settings.client.timestamp = Time.now.to_i
       publish_keepalive
       EM.add_periodic_timer(30) do
-        @settings.client.timestamp = Time.now.to_i
         publish_keepalive
       end
     end
 
     def publish_result(check)
       @logger.info('[result] -- publishing check result -- ' + check.status.to_s + ' -- ' + check.name)
-      @result_queue ||= @amq.queue('results')
-      @result_queue.publish({
+      @amq.queue('results').publish({
         :client => @settings.client.name,
         :check => check.to_hash
       }.to_json)
@@ -171,18 +168,18 @@ module Sensu
     def setup_socket
       @logger.debug('[socket] -- starting up socket server')
       EM.start_server('127.0.0.1', 3030, ClientSocket) do |socket|
+        socket.settings = @settings
         socket.logger = @logger
-        socket.client_name = @settings.client.name
-        socket.result_queue = @amq.queue('results')
+        socket.amq = @amq
       end
     end
   end
 
   class ClientSocket < EM::Connection
-    attr_accessor :logger, :client_name, :result_queue
+    attr_accessor :settings, :logger, :amq
 
     def receive_data(data)
-      @logger.debug('[socket] -- received data from client')
+      @logger.debug('[socket] -- new connection -- received data from external source')
       begin
         check = Hashie::Mash.new(JSON.parse(data))
         validates = %w[name status output].all? do |key|
@@ -190,21 +187,21 @@ module Sensu
         end
         if validates
           @logger.info('[socket] -- publishing check result -- ' + check.name)
-          @result_queue.publish({
-            :client => @client_name,
+          @amq.queue('results').publish({
+            :client => @settings.client.name,
             :check => check.to_hash
           }.to_json)
         else
           @logger.warn('[socket] -- a check name, exit status, and output are required -- e.g. {name: x, status: 0, output: "y"}')
         end
       rescue JSON::ParserError => error
-        @logger.warn('[socket] -- check result must be valid JSON: ' + error)
+        @logger.warn('[socket] -- check result must be valid JSON: ' + error.to_s)
       end
       close_connection
     end
 
     def unbind
-      @logger.debug('[socket] -- client disconnected')
+      @logger.debug('[socket] -- connection closed')
     end
   end
 end
