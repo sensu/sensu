@@ -78,6 +78,26 @@ module Sensu
         unless @settings.handlers.include?('default')
           invalid_config('missing default handler')
         end
+        @settings.handlers.each do |name, details|
+          unless details.key?('type')
+            invalid_config('missing type for handler ' + name)
+          end
+          case details.type
+          when 'pipe'
+            unless details.key?('command')
+              invalid_config('missing command for pipe handler ' + name)
+            end
+          when 'amqp'
+            unless details.key?('exchange')
+              invalid_config('missing exchange details for amqp handler ' + name)
+            end
+            unless details.exchange.key?('name')
+              invalid_config('missing exchange name for amqp handler ' + name)
+            end
+          else
+            invalid_config('unknown type for handler ' + name)
+          end
+        end
       when 'api'
         has_keys(%w[redis api])
       when 'client'

@@ -34,8 +34,8 @@ module Sensu
 
     def setup_amqp
       @logger.debug('[amqp] -- connecting to rabbitmq')
-      connection = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
-      @amq = MQ.new(connection)
+      rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      @amq = AMQP::Channel.new(rabbitmq)
     end
 
     def publish_keepalive
