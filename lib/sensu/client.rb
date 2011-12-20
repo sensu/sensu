@@ -39,8 +39,8 @@ module Sensu
     end
 
     def publish_keepalive
-      @logger.debug('[keepalive] -- publishing keepalive -- ' + @settings.client.timestamp.to_s)
       @settings.client.timestamp = Time.now.to_i
+      @logger.debug('[keepalive] -- publishing keepalive -- ' + @settings.client.timestamp.to_s)
       @amq.queue('keepalives').publish(@settings.client.to_json)
     end
 
