@@ -33,7 +33,7 @@ module Sensu
       read_config
       validate_config if @options[:validate]
     end
-    
+
     def open_log      
       @logger = Cabin::Channel.new
       if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
