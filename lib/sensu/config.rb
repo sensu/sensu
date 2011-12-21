@@ -1,4 +1,5 @@
 require File.join(File.dirname(__FILE__), 'helpers', 'ruby')
+require File.join(File.dirname(__FILE__), '..', 'sensu')
 
 require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'bundler'
@@ -15,13 +16,15 @@ require 'cabin/outputs/em-stdlib-logger'
 
 module Sensu
   class Config
-    attr_accessor :settings, :logger
+    attr_accessor :settings, :logger, :options
 
     DEFAULT_OPTIONS = {
       :log_file => '/tmp/sensu.log',
       :config_file => '/etc/sensu/config.json',
       :config_dir => '/etc/sensu/conf.d',
       :validate => true,
+      :pid_file => '/tmp/' + File.basename($0) + '.pid',
+      :daemonize => false
     }
 
     def initialize(options={})
@@ -33,7 +36,10 @@ module Sensu
     def open_log
       @logger = Cabin::Channel.new
       if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
-        ruby_logger = Logger.new(@options[:log_file])
+        STDOUT.reopen(@options[:log_file], 'a')
+        STDERR.reopen(STDOUT)
+        STDOUT.sync = true ; STDERR.sync = true
+        ruby_logger = Logger.new(STDOUT)
       else
         invalid_config('log file is not writable: ' + @options[:log_file])
       end
@@ -159,6 +165,7 @@ module Sensu
           puts opts
           exit
         end
+        current_process = File.basename($0)
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE (default: /etc/sensu/config.json)') do |file|
           options[:config_file] = file
         end
@@ -170,6 +177,12 @@ module Sensu
         end
         opts.on('-v', '--verbose', 'Enable verbose logging (default: false)') do
           options[:verbose] = true
+        end
+        opts.on('-b', '--background', 'Fork into backgaround (daemon mode) (default: false)') do
+          options[:daemonize] = true
+        end
+        opts.on('-p', '--pid_file FILE', 'Sensu PID FILE (default: ' + DEFAULT_OPTIONS[:pid_file] + ')') do |file|
+          options[:pid_file] = file
         end
       end
       optparse.parse!(arguments)
