@@ -35,9 +35,14 @@ module Sensu
     def open_log
       @logger = Cabin::Channel.new
       if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
-        STDOUT.reopen(@options[:log_file], 'a')
-        STDERR.reopen(STDOUT)
-        ruby_logger = Logger.new(STDOUT)
+        ruby_logger = case
+        when @options[:daemonize]
+          STDOUT.reopen(@options[:log_file], 'a')
+          STDERR.reopen(STDOUT)
+          Logger.new(STDOUT)
+        else
+          Logger.new(@options[:log_file])
+        end
       else
         invalid_config('log file is not writable: ' + @options[:log_file])
       end
