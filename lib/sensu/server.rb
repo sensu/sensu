@@ -2,16 +2,22 @@ require File.join(File.dirname(__FILE__), 'config')
 
 require 'redis'
 
+require File.join(File.dirname(__FILE__), '..', 'sensu')
+
 require File.join(File.dirname(__FILE__), 'helpers', 'redis')
 
 module Sensu
   class Server
-    attr_accessor :redis, :amq, :is_worker
+    attr_accessor :redis, :amq, :is_worker, :options
 
     def self.run(options={})
+      server = self.new(options)
+      if server.options[:daemonize]
+        Sensu.daemonize()
+      end
+      Sensu.write_pid(server.options[:pid_file])
       EM.threadpool_size = 16
       EM.run do
-        server = self.new(options)
         server.setup_redis
         server.setup_amqp
         server.setup_keepalives
@@ -21,7 +27,7 @@ module Sensu
           server.setup_keepalive_monitor
         end
         server.setup_queue_monitor
-
+        
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
             server.stop(signal)
@@ -33,8 +39,9 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(options)
       @settings = config.settings
+      @options = config.options
       @logger = config.open_log
-      @is_worker = options[:worker]
+      @is_worker = options[:worker]    
     end
 
     def stop(signal)

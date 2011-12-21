@@ -1,5 +1,7 @@
 require File.join(File.dirname(__FILE__), 'config')
 
+require File.join(File.dirname(__FILE__), '..', 'sensu')
+
 require 'sinatra/async'
 require 'redis'
 
@@ -25,7 +27,12 @@ module Sensu
     def self.setup(options={})
       config = Sensu::Config.new(options)
       $settings = config.settings
+      $options = config.options
       $logger = config.open_log
+      if $options[:daemonize]
+        Sensu.daemonize()
+      end
+      Sensu.write_pid($options[:pid_file])
       $logger.debug('[setup] -- connecting to redis')
       $redis = EM.connect($settings.redis.host, $settings.redis.port, Redis::Reconnect)
       $logger.debug('[setup] -- connecting to rabbitmq')

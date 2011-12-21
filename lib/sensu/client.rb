@@ -1,10 +1,18 @@
 require File.join(File.dirname(__FILE__), 'config')
 
+require File.join(File.dirname(__FILE__), '..', 'sensu')
+
 module Sensu
   class Client
+    attr_accessor :options
+    
     def self.run(options={})
+      client = self.new(options)
+      if client.options[:daemonize]
+        Sensu.daemonize()
+      end
+      Sensu.write_pid(client.options[:pid_file])
       EM.run do
-        client = self.new(options)
         client.setup_amqp
         client.setup_keepalives
         client.setup_subscriptions
@@ -22,6 +30,7 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(options)
       @settings = config.settings
+      @options = config.options
       @logger = config.open_log
     end
 
