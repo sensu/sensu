@@ -44,3 +44,37 @@ class String
     rand(36**chars).to_s(36)
   end
 end
+
+module Process
+  def self.write_pid(pid_file)
+    begin
+      File.open(pid_file, 'w') do |file|
+        file.write(self.pid.to_s + "\n")
+      end
+    rescue
+      raise 'could not write to pid file: ' + pid_file
+    end
+  end
+
+  def self.daemonize
+    srand
+    fork and exit
+    unless session_id = self.setsid
+      raise 'cannot detach from controlling terminal'
+    end
+    trap 'SIGHUP', 'IGNORE'
+    exit if pid = fork
+    Dir.chdir "/"
+    ObjectSpace.each_object(IO) do |io|
+      unless [STDIN, STDOUT, STDERR].include?(io)
+        begin
+          unless io.closed?
+            io.close
+          end
+        rescue
+        end
+      end
+    end
+    return session_id
+  end
+end
