@@ -9,8 +9,9 @@
 * Documentation
   Find it [[https://github.com/sonian/sensu/wiki][HERE]].
 * Other Projects
-  - [[https://github.com/sonian/sensu-plugin][Sensu Community Plugins]]
+  - [[https://github.com/sonian/sensu-community-plugins][Sensu Community Plugins]]
   - [[https://github.com/sonian/sensu-dashboard][Sensu Dashboard]]
+  - [[https://github.com/sonian/sensu-plugin][Sensu Plugin & Handler Helper]]
 * License
   Sensu is released under the [[https://github.com/sonian/sensu/blob/master/MIT-LICENSE.txt][MIT license]].
 * Contributing
