@@ -16,7 +16,7 @@ require 'cabin/outputs/em-stdlib-logger'
 
 module Sensu
   class Config
-    attr_accessor :settings, :logger, :options
+    attr_accessor :settings, :logger
 
     DEFAULT_OPTIONS = {
       :log_file => '/tmp/sensu.log',
@@ -38,7 +38,6 @@ module Sensu
       if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
         STDOUT.reopen(@options[:log_file], 'a')
         STDERR.reopen(STDOUT)
-        STDOUT.sync = true ; STDERR.sync = true
         ruby_logger = Logger.new(STDOUT)
       else
         invalid_config('log file is not writable: ' + @options[:log_file])
@@ -186,7 +185,7 @@ module Sensu
         end
       end
       optparse.parse!(arguments)
-      options
+      DEFAULT_OPTIONS.merge(options)
     end
   end
 end
