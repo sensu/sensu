@@ -24,13 +24,12 @@ module Sensu
 
     def self.setup(options={})
       config = Sensu::Config.new(options)
-      $options = config.options
       $settings = config.settings
       $logger = config.open_log
-      if $options[:daemonize]
+      if options[:daemonize]
         Sensu.daemonize()
       end
-      Sensu.write_pid($options[:pid_file])
+      Sensu.write_pid(options[:pid_file])
       $logger.debug('[setup] -- connecting to redis')
       $redis = Redis.connect($settings.redis.to_hash.symbolize_keys)
       $logger.debug('[setup] -- connecting to rabbitmq')
