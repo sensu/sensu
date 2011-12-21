@@ -25,7 +25,7 @@ module Sensu
           server.setup_keepalive_monitor
         end
         server.setup_queue_monitor
-        
+
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
             server.stop(signal)
@@ -39,7 +39,7 @@ module Sensu
       @settings = config.settings
       @options = config.options
       @logger = config.open_log
-      @is_worker = options[:worker]    
+      @is_worker = options[:worker] 
     end
 
     def stop(signal)
