@@ -1,4 +1,9 @@
 Vagrant::Config.run do |config|
+  config.ssh.max_tries = 333
+  config.vm.boot_mode = :gui
+ config.vm.share_folder("sensu", "/sensu", "../..")
+
+
   # `vagrant box add ubuntu-1104-server-i386 http://dl.dropbox.com/u/7490647/talifun-ubuntu-11.04-server-i386.box`
   config.vm.box = "ubuntu-1104-server-i386"
   # `vagrant box add centos-57-x86-64 http://dl.dropbox.com/u/8072848/centos-5.7-x86_64.box`

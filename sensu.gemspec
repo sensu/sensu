@@ -2,7 +2,8 @@ require File.expand_path("../lib/sensu", __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = "sensu"
-  s.version     = Sensu::VERSION + ".copia1"
+#  s.version     = Sensu::VERSION + ".copia1"
+  s.version     = Sensu::VERSION
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["sean.porter@sonian.net", "justin.kolberg@sonian.net"]

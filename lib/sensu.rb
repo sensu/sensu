@@ -1,5 +1,3 @@
-# require 'daemons/daemonize'
-
 module Sensu
   VERSION = "0.8.19"
   
