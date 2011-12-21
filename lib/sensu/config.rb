@@ -1,3 +1,5 @@
+require File.join(File.dirname(__FILE__), '..', 'sensu')
+
 require File.join(File.dirname(__FILE__), 'helpers', 'ruby')
 
 require 'rubygems' if RUBY_VERSION < '1.9.0'
@@ -9,8 +11,6 @@ gem 'eventmachine', '~> 1.0.0.beta.4'
 require 'optparse'
 require 'json'
 require 'hashie'
-require File.join(File.dirname(__FILE__), '..', 'sensu')
-
 require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em-stdlib-logger'
