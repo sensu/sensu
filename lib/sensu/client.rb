@@ -4,10 +4,10 @@ module Sensu
   class Client
     def self.run(options={})
       client = self.new(options)
-      if @options[:daemonize]
+      if options[:daemonize]
         Sensu.daemonize()
       end
-      Sensu.write_pid(@options[:pid_file])
+      Sensu.write_pid(options[:pid_file])
       EM.run do
         client.setup_amqp
         client.setup_keepalives
@@ -25,7 +25,6 @@ module Sensu
 
     def initialize(options={})
       config = Sensu::Config.new(options)
-      @options = config.options
       @settings = config.settings
       @logger = config.open_log
     end

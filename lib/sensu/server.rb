@@ -10,10 +10,10 @@ module Sensu
 
     def self.run(options={})
       server = self.new(options)
-      if @options[:daemonize]
+      if options[:daemonize]
         Sensu.daemonize()
       end
-      Sensu.write_pid(@options[:pid_file])
+      Sensu.write_pid(options[:pid_file])
       EM.threadpool_size = 16
       EM.run do
         server.setup_redis
@@ -33,7 +33,6 @@ module Sensu
 
     def initialize(options={})
       config = Sensu::Config.new(options)
-      @options = config.options
       @settings = config.settings
       @logger = config.open_log
     end
