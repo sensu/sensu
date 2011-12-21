@@ -66,8 +66,10 @@ module Process
       raise 'cannot detach from controlling terminal'
     end
     trap 'SIGHUP', 'IGNORE'
-    exit if pid = fork
-    Dir.chdir "/"
+    if pid = fork
+      exit
+    end
+    Dir.chdir('/')
     ObjectSpace.each_object(IO) do |io|
       unless [STDIN, STDOUT, STDERR].include?(io)
         begin
