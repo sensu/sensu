@@ -28,9 +28,8 @@ class TestSensu < Test::Unit::TestCase
   end
 
   def test_cli_arguments
-    options = Sensu::Config.read_arguments(['-w', '-c', @options[:config_file], '-d', @options[:config_dir], '-v', '-l', '/tmp/sensu_test.log'])
+    options = Sensu::Config.read_arguments(['-c', @options[:config_file], '-d', @options[:config_dir], '-v', '-l', '/tmp/sensu_test.log'])
     expected = {
-      :worker => true,
       :config_file => @options[:config_file],
       :config_dir => @options[:config_dir],
       :verbose => true,
@@ -135,5 +134,39 @@ class TestSensu < Test::Unit::TestCase
       end
     end
     EM.defer(external_source, callback)
+  end
+
+  def test_first_master_election
+    server1 = Sensu::Server.new(@options)
+    server2 = Sensu::Server.new(@options)
+    server1.setup_redis
+    server2.setup_redis
+    server1.setup_amqp
+    server2.setup_amqp
+    server1.redis.flushall
+    server1.setup_master_monitor
+    server2.setup_master_monitor
+    EM.add_timer(1) do
+      assert([server1.is_master, server2.is_master].uniq.count == 2)
+      done
+    end
+  end
+
+  def test_failover_master_election
+    server1 = Sensu::Server.new(@options)
+    server2 = Sensu::Server.new(@options)
+    server1.setup_redis
+    server2.setup_redis
+    server1.setup_amqp
+    server2.setup_amqp
+    server1.redis.flushall
+    server1.redis.set('lock:master', Time.now.to_i - 60).callback do
+      server1.setup_master_monitor
+      server2.setup_master_monitor
+      EM.add_timer(1) do
+        assert([server1.is_master, server2.is_master].uniq.count == 2)
+        done
+      end
+    end
   end
 end

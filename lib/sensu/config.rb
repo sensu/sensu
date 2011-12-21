@@ -159,12 +159,6 @@ module Sensu
           puts opts
           exit
         end
-        current_process = $0.split('/').last
-        if current_process == 'sensu-server' || current_process == 'rake'
-          opts.on('-w', '--worker', 'Only consume jobs, no check publishing (default: false)') do
-            options[:worker] = true
-          end
-        end
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE (default: /etc/sensu/config.json)') do |file|
           options[:config_file] = file
         end
