@@ -9,6 +9,8 @@ gem 'eventmachine', '~> 1.0.0.beta.4'
 require 'optparse'
 require 'json'
 require 'hashie'
+require File.join(File.dirname(__FILE__), '..', 'sensu')
+
 require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em-stdlib-logger'

@@ -2,7 +2,11 @@ module Sensu
   VERSION = "0.8.19"
   
   def self.write_pid(pid_file)
-    File.open(pid_file, 'w') { |f| f.write(Process.pid.to_s + "\n") }
+    begin
+      File.open(pid_file, 'w') { |f| f.write(Process.pid.to_s + "\n") }
+    rescue ::Exception => e
+      raise 'could not write to pid file: ' + pid_file + ': ' + e
+    end
   end
     
   def self.daemonize

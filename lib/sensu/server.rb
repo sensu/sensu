@@ -2,8 +2,6 @@ require File.join(File.dirname(__FILE__), 'config')
 
 require 'redis'
 
-require File.join(File.dirname(__FILE__), '..', 'sensu')
-
 require File.join(File.dirname(__FILE__), 'helpers', 'redis')
 
 module Sensu

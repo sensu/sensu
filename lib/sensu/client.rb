@@ -1,7 +1,5 @@
 require File.join(File.dirname(__FILE__), 'config')
 
-require File.join(File.dirname(__FILE__), '..', 'sensu')
-
 module Sensu
   class Client
     attr_accessor :options
