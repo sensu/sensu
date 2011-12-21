@@ -47,6 +47,9 @@ end
 
 module Process
   def self.write_pid(pid_file)
+    if pid_file.nil?
+      raise 'a pid file path must be provided'
+    end
     begin
       File.open(pid_file, 'w') do |file|
         file.write(self.pid.to_s + "\n")

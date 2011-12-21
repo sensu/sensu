@@ -2,7 +2,10 @@ class TestSensuAPI < Test::Unit::TestCase
   include EventMachine::Test
 
   def setup
-    @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json')}
+    @options = {
+      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
+      :pid_file => '/tmp/sensu-api.pid'
+    }
     config = Sensu::Config.new(@options)
     @settings = config.settings
     @api = 'http://' + @settings.api.host + ':' + @settings.api.port.to_s
