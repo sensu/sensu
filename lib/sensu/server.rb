@@ -9,9 +9,13 @@ module Sensu
     attr_accessor :redis, :amq, :is_master
 
     def self.run(options={})
+      server = self.new(options)
+      if @options[:daemonize]
+        Sensu.daemonize()
+      end
+      Sensu.write_pid(@options[:pid_file])
       EM.threadpool_size = 16
       EM.run do
-        server = self.new(options)
         server.setup_redis
         server.setup_amqp
         server.setup_keepalives
@@ -29,6 +33,7 @@ module Sensu
 
     def initialize(options={})
       config = Sensu::Config.new(options)
+      @options = config.options
       @settings = config.settings
       @logger = config.open_log
     end
