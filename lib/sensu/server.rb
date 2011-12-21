@@ -11,9 +11,9 @@ module Sensu
     def self.run(options={})
       server = self.new(options)
       if options[:daemonize]
-        Sensu.daemonize()
+        Process.daemonize
       end
-      Sensu.write_pid(options[:pid_file])
+      Process.write_pid(options[:pid_file])
       EM.threadpool_size = 16
       EM.run do
         server.setup_redis
