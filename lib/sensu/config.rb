@@ -197,7 +197,7 @@ module Sensu
         opts.on('-b', '--background', 'Fork into backgaround (daemon mode) (default: false)') do
           options[:daemonize] = true
         end
-        opts.on('-p', '--pid_file FILE', 'Sensu PID FILE (default: ' + DEFAULT_OPTIONS[:pid_file] + ')') do |file|
+        opts.on('-p', '--pid_file FILE', 'Sensu PID FILE (default: /tmp/' + File.basename($0) + '.pid)') do |file|
           options[:pid_file] = file
         end
       end
