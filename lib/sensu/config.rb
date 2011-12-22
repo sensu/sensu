@@ -27,7 +27,7 @@ module Sensu
 
     def initialize(options={})
       runtime_options = {
-        :service => File.basename($0).split('-').last,
+        :service => File.basename($0),
         :pid_file => '/tmp/' + File.basename($0) + '.pid',
       }
       @options = DEFAULT_OPTIONS.merge(runtime_options).merge(options)
@@ -95,7 +95,9 @@ module Sensu
       end
       has_keys(%w[rabbitmq])
       case @options[:service]
-      when 'server', 'rake'
+      when 'rake'
+        # XXX: what do?
+      when 'sensu-server'
         has_keys(%w[redis handlers checks])
         unless @settings.handlers.include?('default')
           invalid_config('missing default handler')
@@ -123,9 +125,9 @@ module Sensu
             invalid_config('unknown type for handler ' + name)
           end
         end
-      when 'api', 'rake'
+      when 'sensu-api'
         has_keys(%w[redis api])
-      when 'client', 'rake'
+      when 'sensu-client'
         has_keys(%w[client checks])
         unless @settings.client.name.is_a?(String)
           invalid_config('client must have a name')
