@@ -43,7 +43,8 @@ class TestSensu < Test::Unit::TestCase
       :verbose => true,
       :log_file => '/tmp/sensu_test.log',
       :pid_file => '/tmp/sensu_test.pid',
-      :daemonize => true
+      :daemonize => true,
+      :service => 'rake'
     }
     assert_equal(expected, options)
     done

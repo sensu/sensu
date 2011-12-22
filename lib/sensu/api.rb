@@ -253,6 +253,7 @@ module Sensu
 
     def self.test(options={})
       self.setup(options)
+      $settings.client.timestamp = Time.now.to_i
       $redis.set('client:' + $settings.client.name, $settings.client.to_json).callback do
         $redis.sadd('clients', $settings.client.name).callback do
           $redis.hset('events:' + $settings.client.name, 'test', {
