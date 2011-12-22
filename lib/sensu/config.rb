@@ -17,14 +17,11 @@ module Sensu
   class Config
     attr_accessor :settings, :logger
 
-    SERVICE = File.basename($0).split('-').last
-
     DEFAULT_OPTIONS = {
       :log_file => '/tmp/sensu.log',
       :config_file => '/etc/sensu/config.json',
       :config_dir => '/etc/sensu/conf.d',
       :validate => true,
-      :pid_file => '/tmp/' + File.basename($0) + '.pid',
       :daemonize => false
     }
 
@@ -42,7 +39,7 @@ module Sensu
     def open_log
       @logger = Cabin::Channel.new
       if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
-        ruby_logger = case SERVICE
+        ruby_logger = case @options[:service]
         when 'rake'
           Logger.new(@options[:log_file])
         else
@@ -93,7 +90,7 @@ module Sensu
         @logger.debug('[config] -- validating configuration')
       end
       has_keys(%w[rabbitmq])
-      case SERVICE
+      case @options[:service]
       when 'server', 'rake'
         has_keys(%w[redis handlers checks])
         unless @settings.handlers.include?('default')
@@ -158,7 +155,7 @@ module Sensu
         end
       end
       if @logger
-        @logger.debug('[config] -- configuration valid -- running ' + SERVICE)
+        @logger.debug('[config] -- configuration valid -- running ' + @options[:service])
       end
     end
 
@@ -175,7 +172,10 @@ module Sensu
     end
 
     def self.read_arguments(arguments)
-      options = Hash.new
+      options = {
+        :service => File.basename($0).split('-').last,
+        :pid_file => '/tmp/' + File.basename($0) + '.pid',
+      }
       optparse = OptionParser.new do |opts|
         opts.on('-h', '--help', 'Display this screen') do
           puts opts
