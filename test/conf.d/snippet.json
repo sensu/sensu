@@ -1,5 +1,10 @@
 {
-  "handlers": { "new_handler": "this won't override the other handlers" },
+  "handlers": {
+    "new_handler": {
+      "type": "pipe",
+      "command": "this won't override the other handlers"
+    }
+  },
   "checks": {
     "b": {
       "command": "ruby -e \"puts ':::name:::'; exit 2\"",

@@ -4,5 +4,4 @@ $: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE_
 require 'sensu/api'
 
 options = Sensu::Config.read_arguments(ARGV)
-options['type'] = 'api'
 Sensu::API.run(options)
