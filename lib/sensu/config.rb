@@ -17,6 +17,8 @@ module Sensu
   class Config
     attr_accessor :settings, :logger
 
+    SERVICE = File.basename($0).split('-').last
+
     DEFAULT_OPTIONS = {
       :log_file => '/tmp/sensu.log',
       :config_file => '/etc/sensu/config.json',
@@ -28,20 +30,26 @@ module Sensu
 
     def initialize(options={})
       @options = DEFAULT_OPTIONS.merge(options)
+      if options[:log_file]
+        open_log
+      end
       read_config
-      validate_config if @options[:validate]
+      if @options[:validate]
+        validate_config
+      end
     end
 
     def open_log
       @logger = Cabin::Channel.new
       if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
-        ruby_logger = case
-        when @options[:daemonize]
+        ruby_logger = case SERVICE
+        when 'rake'
+          Logger.new(@options[:log_file])
+        else
           STDOUT.reopen(@options[:log_file], 'a')
           STDERR.reopen(STDOUT)
+          STDOUT.sync = true
           Logger.new(STDOUT)
-        else
-          Logger.new(@options[:log_file])
         end
       else
         invalid_config('log file is not writable: ' + @options[:log_file])
@@ -72,22 +80,29 @@ module Sensu
             invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + error.to_s)
           end
           merged_settings = @settings.to_hash.deep_merge(snippet_hash)
-          @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json) if @logger
+          if @logger
+            @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
+          end
           @settings = Hashie::Mash.new(merged_settings)
         end
       end
     end
 
     def validate_config
-      @logger.debug('[config] -- validating configuration') if @logger
+      if @logger
+        @logger.debug('[config] -- validating configuration')
+      end
       has_keys(%w[rabbitmq])
-      case @options['type']
-      when 'server'
+      case SERVICE
+      when 'server', 'rake'
         has_keys(%w[redis handlers checks])
         unless @settings.handlers.include?('default')
           invalid_config('missing default handler')
         end
         @settings.handlers.each do |name, details|
+          unless details.is_a?(Hash)
+            invalid_config('hander details must be a hash ' + name)
+          end
           unless details.key?('type')
             invalid_config('missing type for handler ' + name)
           end
@@ -107,9 +122,9 @@ module Sensu
             invalid_config('unknown type for handler ' + name)
           end
         end
-      when 'api'
+      when 'api', 'rake'
         has_keys(%w[redis api])
-      when 'client'
+      when 'client', 'rake'
         has_keys(%w[client checks])
         unless @settings.client.name.is_a?(String)
           invalid_config('client must have a name')
@@ -142,9 +157,8 @@ module Sensu
           end
         end
       end
-      if @options['type']
-        @logger.debug('[config] -- configuration valid -- running ' + @options['type']) if @logger
-        puts 'configuration valid -- running ' + @options['type']
+      if @logger
+        @logger.debug('[config] -- configuration valid -- running ' + SERVICE)
       end
     end
 
@@ -157,7 +171,6 @@ module Sensu
     end
 
     def invalid_config(message)
-      @logger.error('[config] -- configuration invalid -- ' + message) if @logger
       raise 'configuration invalid, ' + message
     end
 
@@ -168,7 +181,6 @@ module Sensu
           puts opts
           exit
         end
-        current_process = File.basename($0)
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE (default: /etc/sensu/config.json)') do |file|
           options[:config_file] = file
         end

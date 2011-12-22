@@ -34,7 +34,7 @@ module Sensu
     def initialize(options={})
       config = Sensu::Config.new(options)
       @settings = config.settings
-      @logger = config.open_log
+      @logger = config.logger || config.open_log
     end
 
     def stop(signal)
