@@ -9,7 +9,7 @@
   },
   "api": {
     "host": "localhost",
-    "port": 7070
+    "port": 4567
   },
   "dashboard": {
     "host": "localhost",
