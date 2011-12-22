@@ -22,15 +22,13 @@ module Sensu
       :config_file => '/etc/sensu/config.json',
       :config_dir => '/etc/sensu/conf.d',
       :validate => true,
-      :daemonize => false
+      :daemonize => false,
+      :pid_file => '/tmp/' + File.basename($0) + '.pid',
+      :service => File.basename($0)
     }
 
     def initialize(options={})
-      runtime_options = {
-        :service => File.basename($0),
-        :pid_file => '/tmp/' + File.basename($0) + '.pid',
-      }
-      @options = DEFAULT_OPTIONS.merge(runtime_options).merge(options)
+      @options = DEFAULT_OPTIONS.merge(options)
       if options[:log_file]
         open_log
       end
@@ -213,7 +211,7 @@ module Sensu
         opts.on('-b', '--background', 'Fork into backgaround (daemon mode) (default: false)') do
           options[:daemonize] = true
         end
-        opts.on('-p', '--pid_file FILE', 'Sensu PID FILE (default: /tmp/' + File.basename($0) + '.pid)') do |file|
+        opts.on('-p', '--pid_file FILE', 'Sensu PID FILE (default: ' + DEFAULT_OPTIONS[:pid_file] + ')') do |file|
           options[:pid_file] = file
         end
       end
