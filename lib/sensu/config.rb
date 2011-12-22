@@ -26,7 +26,11 @@ module Sensu
     }
 
     def initialize(options={})
-      @options = DEFAULT_OPTIONS.merge(options)
+      runtime_options = {
+        :service => File.basename($0).split('-').last,
+        :pid_file => '/tmp/' + File.basename($0) + '.pid',
+      }
+      @options = DEFAULT_OPTIONS.merge(runtime_options).merge(options)
       if options[:log_file]
         open_log
       end
@@ -172,10 +176,7 @@ module Sensu
     end
 
     def self.read_arguments(arguments)
-      options = {
-        :service => File.basename($0).split('-').last,
-        :pid_file => '/tmp/' + File.basename($0) + '.pid',
-      }
+      options = Hash.new
       optparse = OptionParser.new do |opts|
         opts.on('-h', '--help', 'Display this screen') do
           puts opts
