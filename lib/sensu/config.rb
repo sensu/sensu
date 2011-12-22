@@ -95,7 +95,7 @@ module Sensu
       validate_common_config
       case @options[:service]
       when 'rake'
-        has_keys(%w[redis api dashboard handlers checks client])
+        has_keys(%w[redis api handlers checks client])
         validate_server_config
         validate_client_config
       when 'sensu-server'
