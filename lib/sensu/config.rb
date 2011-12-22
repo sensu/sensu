@@ -27,7 +27,7 @@ module Sensu
 
     def initialize(options={})
       runtime_options = {
-        :service => File.basename($0).split('-').last,
+        :service => File.basename($0),
         :pid_file => '/tmp/' + File.basename($0) + '.pid',
       }
       @options = DEFAULT_OPTIONS.merge(runtime_options).merge(options)
@@ -94,49 +94,27 @@ module Sensu
         @logger.debug('[config] -- validating configuration')
       end
       has_keys(%w[rabbitmq])
+      validate_common_config
       case @options[:service]
-      when 'server', 'rake'
+      when 'rake'
+        has_keys(%w[redis api dashboard handlers checks client])
+        validate_server_config
+        validate_client_config
+      when 'sensu-server'
         has_keys(%w[redis handlers checks])
-        unless @settings.handlers.include?('default')
-          invalid_config('missing default handler')
-        end
-        @settings.handlers.each do |name, details|
-          unless details.is_a?(Hash)
-            invalid_config('hander details must be a hash ' + name)
-          end
-          unless details.key?('type')
-            invalid_config('missing type for handler ' + name)
-          end
-          case details.type
-          when 'pipe'
-            unless details.key?('command')
-              invalid_config('missing command for pipe handler ' + name)
-            end
-          when 'amqp'
-            unless details.key?('exchange')
-              invalid_config('missing exchange details for amqp handler ' + name)
-            end
-            unless details.exchange.key?('name')
-              invalid_config('missing exchange name for amqp handler ' + name)
-            end
-          else
-            invalid_config('unknown type for handler ' + name)
-          end
-        end
-      when 'api', 'rake'
+        validate_server_config
+      when 'sensu-api'
         has_keys(%w[redis api])
-      when 'client', 'rake'
+      when 'sensu-client'
         has_keys(%w[client checks])
-        unless @settings.client.name.is_a?(String)
-          invalid_config('client must have a name')
-        end
-        unless @settings.client.address.is_a?(String)
-          invalid_config('client must have an address (ip or hostname)')
-        end
-        unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
-          invalid_config('client must have subscriptions')
-        end
+        validate_client_config
       end
+      if @logger
+        @logger.debug('[config] -- configuration valid -- running ' + @options[:service])
+      end
+    end
+
+    def validate_common_config
       @settings.checks.each do |name, details|
         unless details.interval.is_a?(Integer) && details.interval > 0
           invalid_config('missing interval for check ' + name)
@@ -158,8 +136,46 @@ module Sensu
           end
         end
       end
-      if @logger
-        @logger.debug('[config] -- configuration valid -- running ' + @options[:service])
+    end
+
+    def validate_server_config
+      unless @settings.handlers.include?('default')
+        invalid_config('missing default handler')
+      end
+      @settings.handlers.each do |name, details|
+        unless details.is_a?(Hash)
+          invalid_config('hander details must be a hash ' + name)
+        end
+        unless details.key?('type')
+          invalid_config('missing type for handler ' + name)
+        end
+        case details.type
+        when 'pipe'
+          unless details.key?('command')
+            invalid_config('missing command for pipe handler ' + name)
+          end
+        when 'amqp'
+          unless details.key?('exchange')
+            invalid_config('missing exchange details for amqp handler ' + name)
+          end
+          unless details.exchange.key?('name')
+            invalid_config('missing exchange name for amqp handler ' + name)
+          end
+        else
+          invalid_config('unknown type for handler ' + name)
+        end
+      end
+    end
+
+    def validate_client_config
+      unless @settings.client.name.is_a?(String)
+        invalid_config('client must have a name')
+      end
+      unless @settings.client.address.is_a?(String)
+        invalid_config('client must have an address (ip or hostname)')
+      end
+      unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
+        invalid_config('client must have subscriptions')
       end
     end
 
