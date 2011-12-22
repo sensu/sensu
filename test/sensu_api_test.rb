@@ -12,23 +12,6 @@ class TestSensuAPI < Test::Unit::TestCase
     Sensu::API.test(@options)
   end
 
-  def test_get_clients
-    EM.add_timer(1) do
-      http = EM::HttpRequest.new(@api + '/clients').get
-      http.callback do
-        assert_equal(200, http.response_header.status)
-        clients = JSON.parse(http.response)
-        assert(clients.is_a?(Array))
-        assert_block "Response didn't contain the test client" do
-          clients.any? do |client|
-            client['name'] == @settings.client.name
-          end
-        end
-        done
-      end
-    end
-  end
-
   def test_get_events
     EM.add_timer(1) do
       http = EM::HttpRequest.new(@api + '/events').get
@@ -47,6 +30,36 @@ class TestSensuAPI < Test::Unit::TestCase
           end
           contains_test_event
         end
+        done
+      end
+    end
+  end
+
+  def test_get_clients
+    EM.add_timer(1) do
+      http = EM::HttpRequest.new(@api + '/clients').get
+      http.callback do
+        assert_equal(200, http.response_header.status)
+        clients = JSON.parse(http.response)
+        assert(clients.is_a?(Array))
+        assert_block "Response didn't contain the test client" do
+          clients.any? do |client|
+            client['name'] == @settings.client.name
+          end
+        end
+        done
+      end
+    end
+  end
+
+  def test_get_checks
+    EM.add_timer(1) do
+      http = EM::HttpRequest.new(@api + '/checks').get
+      http.callback do
+        assert_equal(200, http.response_header.status)
+        checks = JSON.parse(http.response)
+        assert(checks.is_a?(Hash))
+        assert_equal(checks, @settings.checks.to_hash)
         done
       end
     end
@@ -142,6 +155,27 @@ class TestSensuAPI < Test::Unit::TestCase
   def test_delete_nonexistent_client
     EM.add_timer(1) do
       http = EM::HttpRequest.new(@api + '/client/nonexistent').delete
+      http.callback do
+        assert_equal(404, http.response_header.status)
+        done
+      end
+    end
+  end
+
+  def test_get_check
+    EM.add_timer(1) do
+      http = EM::HttpRequest.new(@api + '/check/a').get
+      http.callback do
+        assert_equal(200, http.response_header.status)
+        assert_equal(@settings.checks.a.to_hash, JSON.parse(http.response))
+        done
+      end
+    end
+  end
+
+  def test_get_nonexistent_check
+    EM.add_timer(1) do
+      http = EM::HttpRequest.new(@api + '/check/nonexistent').get
       http.callback do
         assert_equal(404, http.response_header.status)
         done
