@@ -96,7 +96,7 @@ module Sensu
       has_keys(%w[rabbitmq])
       case @options[:service]
       when 'rake'
-        # XXX: what do?
+        has_keys(%w[rabbitmq redis api dashboard handlers checks client])
       when 'sensu-server'
         has_keys(%w[redis handlers checks])
         unless @settings.handlers.include?('default')
