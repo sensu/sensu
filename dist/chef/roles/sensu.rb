@@ -1,5 +1,5 @@
 name "sensu"
-description "base sensu role"
+description "base sensu role for attribute overrides"
 
 override_attributes :sensu => {
   :rabbitmq => {

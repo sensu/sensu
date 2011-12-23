@@ -19,8 +19,6 @@
 
 include_recipe "sensu::default"
 
-gem_package "thin"
-
 case node[:platform]
 when "ubuntu", "debian"
   template "/etc/init/sensu-api.conf" do
