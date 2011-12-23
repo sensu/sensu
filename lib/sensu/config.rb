@@ -91,20 +91,20 @@ module Sensu
       if @logger
         @logger.debug('[config] -- validating configuration')
       end
-      has_keys(%w[rabbitmq])
+      has_keys(%w[rabbitmq checks])
       validate_common_config
       case @options[:service]
       when 'rake'
-        has_keys(%w[redis api handlers checks client])
+        has_keys(%w[redis api handlers client])
         validate_server_config
         validate_client_config
       when 'sensu-server'
-        has_keys(%w[redis handlers checks])
+        has_keys(%w[redis handlers])
         validate_server_config
       when 'sensu-api'
         has_keys(%w[redis api])
       when 'sensu-client'
-        has_keys(%w[client checks])
+        has_keys(%w[client])
         validate_client_config
       end
       if @logger
