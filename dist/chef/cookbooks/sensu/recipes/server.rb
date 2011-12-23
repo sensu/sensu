@@ -17,45 +17,6 @@
 # limitations under the License.
 #
 
-include_recipe "erlang"
-include_recipe "rabbitmq"
-include_recipe "redis::server"
-
-directory "/etc/rabbitmq/ssl"
-
-ssl = data_bag_item("sensu", "ssl")
-
-%w[
-  cacert
-  cert
-  key
-].each do |file|
-  file "/etc/rabbitmq/ssl/#{file}.pem" do
-    content ssl["server"][file]
-    mode 0644
-  end
-end
-
-template "/etc/rabbitmq/rabbitmq.config" do
-  mode 0644
-  notifies :restart, resources(:service => "rabbitmq-server")
-end
-
-rabbitmq_vhost node.sensu.rabbitmq.vhost do
-  action :add
-end
-
-rabbitmq_user node.sensu.rabbitmq.user do
-  password node.sensu.rabbitmq.password
-  action :add
-end
-
-rabbitmq_user node.sensu.rabbitmq.user do
-  vhost node.sensu.rabbitmq.vhost
-  permissions "\".*\" \".*\" \".*\""
-  action :set_permissions
-end
-
 include_recipe "sensu::default"
 
 remote_directory File.join(node.sensu.directory, "handlers") do

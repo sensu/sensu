@@ -1,7 +1,10 @@
 {
   "id": "config",
   "handlers": {
-    "default": "/etc/sensu/handlers/default"
+    "default": {
+      "type": "pipe",
+      "command": "/etc/sensu/handlers/default"
+    }
   },
   "checks": {
     "chef_client": {

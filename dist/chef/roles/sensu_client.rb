@@ -1,5 +1,5 @@
 name "sensu_client"
-description "monitoring client"
+description "sensu role for the monitoring client"
 run_list(
   "recipe[sensu::client]",
   "role[sensu]"

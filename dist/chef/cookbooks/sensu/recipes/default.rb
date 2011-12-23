@@ -51,8 +51,6 @@ when "centos", "redhat"
   end
 end
 
-include_recipe "sensu::dependencies"
-
 gem_package "sensu" do
   version node.sensu.version
 end
@@ -66,6 +64,8 @@ user node.sensu.user do
   system true
   home node.sensu.directory
 end
+
+include_recipe "sensu::dependencies"
 
 directory node.sensu.log.directory do
   recursive true
