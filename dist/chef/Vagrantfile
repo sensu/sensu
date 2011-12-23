@@ -16,7 +16,11 @@ Vagrant::Config.run do |config|
     chef.data_bags_path = "data_bags"
     chef.roles_path = "roles"
     chef.add_role("sensu")
+    chef.add_recipe("sensu::redis")
+    chef.add_recipe("sensu::rabbitmq")
     chef.add_role("sensu_server")
+    chef.add_role("sensu_api")
+    chef.add_role("sensu_dashboard")
     chef.add_role("sensu_client")
   end
 end
