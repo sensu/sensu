@@ -27,7 +27,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency("em-spec")
   s.add_development_dependency("em-http-request")
 
-  s.files         = `git ls-files`.split("\n").reject {|f| f =~ /(dist|test|png)/}
-  s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  s.files         = Dir.glob("{bin,lib}/**/*") + %w[sensu.gemspec README.org MIT-LICENSE.txt]
+  s.executables   = Dir.glob("bin/**/*").map { |file| File.basename(file) }
   s.require_paths = ["lib"]
 end
