@@ -29,7 +29,9 @@ module Sensu
       if options[:daemonize]
         Process.daemonize
       end
-      Process.write_pid(options[:pid_file])
+      if options[:pid_file]
+        Process.write_pid(options[:pid_file])
+      end
       $logger.debug('[setup] -- connecting to redis')
       $redis = Redis.connect($settings.redis.to_hash.symbolize_keys)
       $logger.debug('[setup] -- connecting to rabbitmq')
