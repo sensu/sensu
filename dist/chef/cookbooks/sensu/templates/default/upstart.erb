@@ -1,7 +1,7 @@
-# Upstart: /etc/init/sensu-<%= @name || @service %>.conf
+# Upstart: /etc/init/sensu-<%= @service %>.conf
 # Managed by OpsChef
 
-description "sensu <%= @name || @service %>"
+description "sensu <%= @service %>"
 
 start on (local-filesystems and net-device-up IFACE=eth0)
 stop on [!12345]
