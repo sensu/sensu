@@ -30,7 +30,7 @@ module Sensu
     end
 
     def stop(signal)
-      @logger.warn('[process] -- ' + signal + ' -- stopping sensu client')
+      @logger.warn('[stop] -- stopping sensu client -- ' + signal)
       EM.add_timer(1) do
         EM.stop
       end
@@ -160,7 +160,7 @@ module Sensu
       @logger.debug('[monitor] -- setup queue monitor')
       EM.add_periodic_timer(5) do
         unless @check_queue.subscribed?
-          @logger.warn('[monitor] -- reconnecting to rabbitmq')
+          @logger.warn('[monitor] -- re-subscribing to subscriptions')
           @check_queue.delete
           EM.add_timer(1) do
             setup_subscriptions
