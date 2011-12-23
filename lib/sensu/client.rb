@@ -172,7 +172,7 @@ module Sensu
     end
 
     def setup_socket
-      @logger.debug('[socket] -- starting up socket server')
+      @logger.debug('[socket] -- starting up socket')
       EM.start_server('127.0.0.1', 3030, ClientSocket) do |socket|
         socket.settings = @settings
         socket.logger = @logger
@@ -198,7 +198,7 @@ module Sensu
             :check => check.to_hash
           }.to_json)
         else
-          @logger.warn('[socket] -- a check name, exit status, and output are required -- e.g. {name: x, status: 0, output: "y"}')
+          @logger.warn('[socket] -- a check name, exit status, and output are required -- e.g. {"name": "x", "status": 0, output: "y"}')
         end
       rescue JSON::ParserError => error
         @logger.warn('[socket] -- check result must be valid JSON: ' + error.to_s)
