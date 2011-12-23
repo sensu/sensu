@@ -335,13 +335,15 @@ module Sensu
     def setup_queue_monitor
       @logger.debug('[monitor] -- setup queue monitor')
       EM.add_periodic_timer(5) do
-        unless @keepalive_queue.subscribed? || stopping?
-          @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- keepalives')
-          setup_keepalives
-        end
-        unless @result_queue.subscribed? || stopping?
-          @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- results')
-          setup_results
+        unless stopping?
+          unless @keepalive_queue.subscribed?
+            @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- keepalives')
+            setup_keepalives
+          end
+          unless @result_queue.subscribed?
+            @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- results')
+            setup_results
+          end
         end
       end
     end
