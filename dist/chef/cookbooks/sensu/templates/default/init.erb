@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # chkconfig: 345 90 90
-# description: Sensu <%= (@name || @service).capitalize %> Service Script
+# description: Sensu <%= @service.capitalize %> Service Script
 
 # Source function library.
 . /etc/init.d/functions
 
-prog="sensu-<%= @name || @service %>"
+prog="sensu-<%= @service %>"
 
 [ -f /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
