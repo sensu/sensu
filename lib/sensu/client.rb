@@ -7,7 +7,9 @@ module Sensu
       if options[:daemonize]
         Process.daemonize
       end
-      Process.write_pid(options[:pid_file])
+      if options[:pid_file]
+        Process.write_pid(options[:pid_file])
+      end
       EM.run do
         client.setup_amqp
         client.setup_keepalives
