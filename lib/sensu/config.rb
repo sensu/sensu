@@ -55,8 +55,10 @@ module Sensu
       end
       @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
       @logger.level = @options[:verbose] ? :debug : :info
-      Signal.trap('USR1') do
-        @logger.level = @logger.level == :info ? :debug : :info
+      if Signal.list.include?('USR1')
+        Signal.trap('USR1') do
+          @logger.level = @logger.level == :info ? :debug : :info
+        end
       end
       @logger
     end
