@@ -90,7 +90,7 @@ module Sensu
               }
               $amq.queue('results').publish({:client => client, :check => check}.to_json)
             end
-            EM::Timer.new(8) do
+            EM::Timer.new(5) do
               $redis.srem('clients', client)
               $redis.del('events:' + client)
               $redis.del('client:' + client)
