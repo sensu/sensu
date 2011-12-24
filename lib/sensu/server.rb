@@ -113,7 +113,7 @@ module Sensu
             exchange = details.exchange.name
             exchange_type = details.exchange.key?('type') ? details.exchange.type.to_sym : :direct
             exchange_options = details.exchange.reject { |key, value| %w[name type].include?(key) }
-            @logger.debug('[event] -- publishing event to amqp exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
+            @logger.debug('[event] -- publishing event to rabbitmq exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
             payload = details.send_only_check_output ? event.check.output : event.to_json
             @amq.method(exchange_type).call(exchange, exchange_options).publish(payload)
           end
@@ -214,7 +214,7 @@ module Sensu
       @result_queue = @amq.queue('results')
       @result_queue.subscribe do |result_json|
         result = Hashie::Mash.new(JSON.parse(result_json))
-        @logger.info('[result] -- received result -- ' + [result.check.name, result.client, result.check.status, result.check.output].join(' -- '))
+        @logger.info('[result] -- received result -- ' + [result.client, result.check.name, result.check.status, result.check.output].join(' -- '))
         process_result(result)
       end
     end
@@ -238,7 +238,7 @@ module Sensu
               EM.add_periodic_timer(interval) do
                 unless stopping?
                   check_request.issued = Time.now.to_i
-                  @logger.info('[publisher] -- publishing check -- ' + name + ' -- ' + exchange)
+                  @logger.info('[publisher] -- publishing check request -- ' + name + ' -- ' + exchange)
                   @amq.fanout(exchange).publish(check_request.to_json)
                 end
               end
