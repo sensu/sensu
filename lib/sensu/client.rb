@@ -10,7 +10,7 @@ module Sensu
       if options[:pid_file]
         Process.write_pid(options[:pid_file])
       end
-      EM.run do
+      EM::run do
         client.setup_amqp
         client.setup_keepalives
         client.setup_subscriptions
@@ -33,8 +33,8 @@ module Sensu
 
     def stop(signal)
       @logger.warn('[stop] -- stopping sensu client -- ' + signal)
-      EM.add_timer(1) do
-        EM.stop
+      EM::Timer.new(1) do
+        EM::stop_event_loop
       end
     end
 
@@ -53,7 +53,7 @@ module Sensu
     def setup_keepalives
       @logger.debug('[keepalive] -- setup keepalives')
       publish_keepalive
-      EM.add_periodic_timer(30) do
+      EM::PeriodicTimer.new(30) do
         publish_keepalive
       end
     end
@@ -95,7 +95,7 @@ module Sensu
               end
               @checks_in_progress.delete(check.name)
             end
-            EM.defer(execute, publish)
+            EM::defer(execute, publish)
           else
             @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
             check.status = 3
@@ -160,11 +160,11 @@ module Sensu
 
     def setup_queue_monitor
       @logger.debug('[monitor] -- setup queue monitor')
-      EM.add_periodic_timer(5) do
+      EM::PeriodicTimer.new(5) do
         unless @check_queue.subscribed?
           @logger.warn('[monitor] -- re-subscribing to subscriptions')
           @check_queue.delete
-          EM.add_timer(1) do
+          EM::Timer.new(1) do
             setup_subscriptions
           end
         end
@@ -173,7 +173,7 @@ module Sensu
 
     def setup_socket
       @logger.debug('[socket] -- starting up socket')
-      EM.start_server('127.0.0.1', 3030, ClientSocket) do |socket|
+      EM::start_server('127.0.0.1', 3030, ClientSocket) do |socket|
         socket.settings = @settings
         socket.logger = @logger
         socket.amq = @amq

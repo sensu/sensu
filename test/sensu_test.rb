@@ -58,7 +58,7 @@ class TestSensu < Test::Unit::TestCase
     server.setup_keepalives
     client.setup_amqp
     client.setup_keepalives
-    EM.add_timer(1) do
+    EM::Timer.new(1) do
       server.redis.get('client:' + @settings.client.name).callback do |client_json|
         assert_equal(@settings.client, JSON.parse(client_json).reject { |key, value| key == 'timestamp' })
         done
@@ -82,7 +82,7 @@ class TestSensu < Test::Unit::TestCase
       :action => 'create'
     })
     server.handle_event(event)
-    EM.add_timer(1) do
+    EM::Timer.new(1) do
       assert_equal(event.to_hash, JSON.parse(File.open('/tmp/sensu_test_handlers', 'rb').read))
       done
     end
@@ -100,7 +100,7 @@ class TestSensu < Test::Unit::TestCase
     client.setup_keepalives
     client.setup_subscriptions
     server.setup_publisher(:test => true)
-    EM.add_timer(1) do
+    EM::Timer.new(1) do
       server.redis.hgetall('events:' + @settings.client.name).callback do |events|
         sorted_events = events.sort_by { |status, value| value }
         sorted_events.each_with_index do |(key, value), index|
@@ -137,14 +137,14 @@ class TestSensu < Test::Unit::TestCase
       socket.write('{"name": "external", "status": 1, "output": "test"}')
     end
     callback = proc do
-      EM.add_timer(1.5) do
+      EM::Timer.new(1.5) do
         server.redis.hgetall('events:' + @settings.client.name).callback do |events|
           assert(events.include?('external'))
           done
         end
       end
     end
-    EM.defer(external_source, callback)
+    EM::defer(external_source, callback)
   end
 
   def test_first_master_election
@@ -157,7 +157,7 @@ class TestSensu < Test::Unit::TestCase
     server1.redis.flushall
     server1.setup_master_monitor
     server2.setup_master_monitor
-    EM.add_timer(1) do
+    EM::Timer.new(1) do
       assert([server1.is_master, server2.is_master].uniq.count == 2)
       done
     end
@@ -174,7 +174,7 @@ class TestSensu < Test::Unit::TestCase
     server1.redis.set('lock:master', Time.now.to_i - 60).callback do
       server1.setup_master_monitor
       server2.setup_master_monitor
-      EM.add_timer(1) do
+      EM::Timer.new(1) do
         assert([server1.is_master, server2.is_master].uniq.count == 2)
         done
       end

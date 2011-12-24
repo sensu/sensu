@@ -10,7 +10,7 @@ module Sensu
     register Sinatra::Async
 
     def self.run(options={})
-      EM.run do
+      EM::run do
         self.setup(options)
         self.run!(:port => $settings.api.port)
 
@@ -40,9 +40,9 @@ module Sensu
     end
 
     def self.stop(signal)
-      $logger.warn('[process] -- ' + signal + ' -- stopping sensu api')
-      EM.add_timer(1) do
-        EM.stop
+      $logger.warn('[stop] -- stopping sensu api -- ' + signal)
+      EM::Timer.new(1) do
+        EM::stop_event_loop
       end
     end
 
@@ -90,7 +90,7 @@ module Sensu
               }
               $amq.queue('results').publish({:client => client, :check => check}.to_json)
             end
-            EM.add_timer(8) do
+            EM::Timer.new(8) do
               $redis.srem('clients', client)
               $redis.del('events:' + client)
               $redis.del('client:' + client)
