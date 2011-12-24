@@ -31,13 +31,6 @@ module Sensu
       @logger = config.logger || config.open_log
     end
 
-    def stop(signal)
-      @logger.warn('[stop] -- stopping sensu client -- ' + signal)
-      EM::Timer.new(1) do
-        EM::stop_event_loop
-      end
-    end
-
     def setup_amqp
       @logger.debug('[amqp] -- connecting to rabbitmq')
       rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
@@ -177,6 +170,13 @@ module Sensu
         socket.settings = @settings
         socket.logger = @logger
         socket.amq = @amq
+      end
+    end
+
+    def stop(signal)
+      @logger.warn('[stop] -- stopping sensu client -- ' + signal)
+      EM::Timer.new(1) do
+        EM::stop_event_loop
       end
     end
   end
