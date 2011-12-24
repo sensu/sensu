@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'helpers', 'ruby')
+require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 
 require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'bundler'
