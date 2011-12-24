@@ -39,13 +39,6 @@ module Sensu
       $amq = AMQP::Channel.new(rabbitmq)
     end
 
-    def self.stop(signal)
-      $logger.warn('[stop] -- stopping sensu api -- ' + signal)
-      EM::Timer.new(1) do
-        EM::stop_event_loop
-      end
-    end
-
     before do
       content_type 'application/json'
     end
@@ -269,6 +262,13 @@ module Sensu
             end
           end
         end
+      end
+    end
+
+    def self.stop(signal)
+      $logger.warn('[stop] -- stopping sensu api -- ' + signal)
+      EM::Timer.new(1) do
+        EM::stop_event_loop
       end
     end
   end
