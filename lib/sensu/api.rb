@@ -246,7 +246,7 @@ module Sensu
       end
     end
 
-    def self.test_scaffolding(options={})
+    def self.create_test_scaffolding(options={})
       self.setup(options)
       $settings.client.timestamp = Time.now.to_i
       $redis.set('client:' + $settings.client.name, $settings.client.to_json).callback do
