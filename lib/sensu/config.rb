@@ -38,6 +38,10 @@ module Sensu
       end
     end
 
+    def invalid_config(message)
+      raise 'configuration invalid, ' + message
+    end
+
     def open_log
       @logger = Cabin::Channel.new
       if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
@@ -86,31 +90,6 @@ module Sensu
           end
           @settings = Hashie::Mash.new(merged_settings)
         end
-      end
-    end
-
-    def validate_config
-      if @logger
-        @logger.debug('[config] -- validating configuration')
-      end
-      has_keys(%w[rabbitmq checks])
-      validate_common_config
-      case @options[:service]
-      when 'rake'
-        has_keys(%w[redis api handlers client])
-        validate_server_config
-        validate_client_config
-      when 'sensu-server'
-        has_keys(%w[redis handlers])
-        validate_server_config
-      when 'sensu-api'
-        has_keys(%w[redis api])
-      when 'sensu-client'
-        has_keys(%w[client])
-        validate_client_config
-      end
-      if @logger
-        @logger.debug('[config] -- configuration valid -- running ' + @options[:service])
       end
     end
 
@@ -187,8 +166,29 @@ module Sensu
       end
     end
 
-    def invalid_config(message)
-      raise 'configuration invalid, ' + message
+    def validate_config
+      if @logger
+        @logger.debug('[config] -- validating configuration')
+      end
+      has_keys(%w[rabbitmq checks])
+      validate_common_config
+      case @options[:service]
+      when 'rake'
+        has_keys(%w[redis api handlers client])
+        validate_server_config
+        validate_client_config
+      when 'sensu-server'
+        has_keys(%w[redis handlers])
+        validate_server_config
+      when 'sensu-api'
+        has_keys(%w[redis api])
+      when 'sensu-client'
+        has_keys(%w[client])
+        validate_client_config
+      end
+      if @logger
+        @logger.debug('[config] -- configuration valid -- running ' + @options[:service])
+      end
     end
 
     def self.read_arguments(arguments)
