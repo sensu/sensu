@@ -12,18 +12,25 @@ prog="sensu-<%= @service %>"
 
 user=${SENSU_USER-<%= node.sensu.user %>}
 config=${CONFIG-<%= node.sensu.directory %>/config.json}
-options=${OPTIONS--l <%= node.sensu.log.directory %>/$prog.log}
 exec=${EXEC-<%= Sensu.find_bin(@service) %>}
-
-pidfile=${PIDFILE-/var/run/$prog.pid}
+logfile=${LOGFILE-/var/log/sensu/$prog.log}
+pidfile=${PIDFILE-/var/run/sensu/$prog.pid}
 lockfile=${LOCKFILE-/var/lock/subsys/$prog}
+options=${OPTIONS}
+
+ensure_pid_dir () {
+    pid_dir=`dirname ${pidfile}`
+    if [ ! -d ${pid_dir} ] ; then
+        mkdir -p ${pid_dir}
+        chown -R ${user} ${pid_dir}
+        chmod 755 ${pid_dir}
+    fi
+}
 
 start() {
-    STRING=$"Starting $prog: "
-    echo $STRING
+    echo -n $"Starting $prog: "
 
     [ -x $exec ] || exit 5
-    [ -f $config ] || exit 6
 
     status &> /dev/null
 
@@ -33,23 +40,29 @@ start() {
         exit 1
     fi
 
-    su $user -c "$exec -c $config $options >/dev/null 2>&1 &"
+    ensure_pid_dir
+    daemon --user $user --pidfile $pidfile \
+        "$exec -b -c $config -p $pidfile -l $logfile $options"
     RETVAL=$?
     sleep 1
 
+    # make sure it's still running. some errors occur only after startup
+    status &> /dev/null
+    if [ $? -ne 0 ]; then
+        echo_failure
+        exit 1
+    fi
+
     if [ $RETVAL -eq 0 ]; then
         touch $lockfile
-        pid=$(pgrep -fl $prog | grep -v grep | grep -v bash | cut -f1 -d" ")
-        echo $pid > $pidfile
     fi
     echo
     return $RETVAL
 }
 
 stop() {
-    STRING=$"Stopping $prog: "
-    echo -n $STRING
-
+    echo -n $"Stopping $prog: "
+    
     if [ -f $pidfile ]; then
         killproc -p $pidfile $prog
         RETVAL=$?
