@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # chkconfig: 345 90 90
-# description: Sensu <%= @service.capitalize %> Service Script
+# description: Sensu <%= @service %> service script
 
 # Source function library.
 . /etc/init.d/functions
@@ -62,7 +62,7 @@ start() {
 
 stop() {
     echo -n $"Stopping $prog: "
-    
+
     if [ -f $pidfile ]; then
         killproc -p $pidfile $prog
         RETVAL=$?
