@@ -35,6 +35,6 @@
   - [[http://twitter.com/amdprophet][Justin Kolberg]]
   - [[http://twitter.com/kartar][James Turnbull]]
   - [[http://twitter.com/joshpasqualetto][Josh Pasqualetto]]
-  - Steve Lum
+  - [[http://github.com/lum][Steve Lum]]
   - [[http://twitter.com/miller_joe][Joe Miller]]
   - [[http://twitter.com/decklin][Decklin Foster]]
