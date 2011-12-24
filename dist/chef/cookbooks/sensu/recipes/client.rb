@@ -35,7 +35,7 @@ when "ubuntu", "debian"
 when "centos", "redhat"
   template "/etc/init.d/sensu-client" do
     source "init.erb"
-    variables :service => "client", :options => "-l #{node.sensu.log.directory}/sensu.log"
+    variables :service => "client"
     mode 0755
   end
 
