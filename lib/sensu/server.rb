@@ -16,8 +16,8 @@ module Sensu
       if options[:pid_file]
         Process.write_pid(options[:pid_file])
       end
-      EM.threadpool_size = 16
-      EM.run do
+      EM::threadpool_size = 16
+      EM::run do
         server.setup_redis
         server.setup_amqp
         server.setup_keepalives
@@ -37,17 +37,7 @@ module Sensu
       config = Sensu::Config.new(options)
       @settings = config.settings
       @logger = config.logger || config.open_log
-      @status = nil
-    end
-
-    def stop_reactor
-      EM.add_timer(3) do
-        EM.stop
-      end
-    end
-
-    def stopping?
-      @status == :stopping
+      @timers = Array.new
     end
 
     def setup_redis
@@ -108,7 +98,7 @@ module Sensu
               end
               output
             end
-            EM.defer(handle, report)
+            EM::defer(handle, report)
           when "amqp"
             exchange = details.exchange.name
             exchange_type = details.exchange.key?('type') ? details.exchange.type.to_sym : :direct
@@ -225,7 +215,7 @@ module Sensu
       @settings.checks.each_with_index do |(name, details), index|
         check_request = Hashie::Mash.new({:name => name})
         unless details.publish == false
-          EM.add_timer(stagger*index) do
+          @timers << EM::Timer.new(stagger*index) do
             details.subscribers.each do |target|
               if target.is_a?(Hash)
                 @logger.debug('[publisher] -- check requires matching -- ' + target.to_hash.to_s + ' -- ' + name)
@@ -235,12 +225,10 @@ module Sensu
                 exchange = target
               end
               interval = options[:test] ? 0.5 : details.interval
-              EM.add_periodic_timer(interval) do
-                unless stopping?
-                  check_request.issued = Time.now.to_i
-                  @logger.info('[publisher] -- publishing check request -- ' + name + ' -- ' + exchange)
-                  @amq.fanout(exchange).publish(check_request.to_json)
-                end
+              @timers << EM::PeriodicTimer.new(interval) do
+                check_request.issued = Time.now.to_i
+                @logger.info('[publisher] -- publishing check request -- ' + name + ' -- ' + exchange)
+                @amq.fanout(exchange).publish(check_request.to_json)
               end
             end
           end
@@ -250,37 +238,35 @@ module Sensu
 
     def setup_keepalive_monitor
       @logger.debug('[keepalive] -- setup keepalive monitor')
-      EM.add_periodic_timer(30) do
-        unless stopping?
-          @logger.debug('[keepalive] -- checking for stale clients')
-          @redis.smembers('clients').callback do |clients|
-            clients.each do |client_id|
-              @redis.get('client:' + client_id).callback do |client_json|
-                client = Hashie::Mash.new(JSON.parse(client_json))
-                time_since_last_keepalive = Time.now.to_i - client.timestamp
-                result = Hashie::Mash.new({
-                  :client => client.name,
-                  :check => {
-                    :name => 'keepalive',
-                    :issued => Time.now.to_i
-                  }
-                })
-                case
-                when time_since_last_keepalive >= 180
-                  result.check.status = 2
-                  result.check.output = 'No keep-alive sent from host in over 180 seconds'
-                  @amq.queue('results').publish(result.to_json)
-                when time_since_last_keepalive >= 120
-                  result.check.status = 1
-                  result.check.output = 'No keep-alive sent from host in over 120 seconds'
-                  @amq.queue('results').publish(result.to_json)
-                else
-                  @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
-                    if exists
-                      result.check.status = 0
-                      result.check.output = 'Keep-alive sent from host'
-                      @amq.queue('results').publish(result.to_json)
-                    end
+      @timers << EM::PeriodicTimer.new(30) do
+        @logger.debug('[keepalive] -- checking for stale clients')
+        @redis.smembers('clients').callback do |clients|
+          clients.each do |client_id|
+            @redis.get('client:' + client_id).callback do |client_json|
+              client = Hashie::Mash.new(JSON.parse(client_json))
+              time_since_last_keepalive = Time.now.to_i - client.timestamp
+              result = Hashie::Mash.new({
+                :client => client.name,
+                :check => {
+                  :name => 'keepalive',
+                  :issued => Time.now.to_i
+                }
+              })
+              case
+              when time_since_last_keepalive >= 180
+                result.check.status = 2
+                result.check.output = 'No keep-alive sent from host in over 180 seconds'
+                @amq.queue('results').publish(result.to_json)
+              when time_since_last_keepalive >= 120
+                result.check.status = 1
+                result.check.output = 'No keep-alive sent from host in over 120 seconds'
+                @amq.queue('results').publish(result.to_json)
+              else
+                @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
+                  if exists
+                    result.check.status = 0
+                    result.check.output = 'Keep-alive sent from host'
+                    @amq.queue('results').publish(result.to_json)
                   end
                 end
               end
@@ -320,39 +306,44 @@ module Sensu
 
     def setup_master_monitor
       request_master_election
-      EM.add_periodic_timer(20) do
-        unless stopping?
-          if @is_master
-            timestamp = Time.now.to_i
-            @redis.set('lock:master', timestamp).callback do
-              @logger.debug('[master] -- updated master lock timestamp -- ' + timestamp.to_s)
-            end
-          else
-            request_master_election
+      @timers << EM::PeriodicTimer.new(20) do
+        if @is_master
+          timestamp = Time.now.to_i
+          @redis.set('lock:master', timestamp).callback do
+            @logger.debug('[master] -- updated master lock timestamp -- ' + timestamp.to_s)
           end
+        else
+          request_master_election
         end
       end
     end
 
     def setup_queue_monitor
       @logger.debug('[monitor] -- setup queue monitor')
-      EM.add_periodic_timer(5) do
-        unless stopping?
-          unless @keepalive_queue.subscribed?
-            @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- keepalives')
-            setup_keepalives
-          end
-          unless @result_queue.subscribed?
-            @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- results')
-            setup_results
-          end
+      @timers << EM::PeriodicTimer.new(5) do
+        unless @keepalive_queue.subscribed?
+          @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- keepalives')
+          setup_keepalives
         end
+        unless @result_queue.subscribed?
+          @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- results')
+          setup_results
+        end
+      end
+    end
+
+    def stop_reactor
+      @logger.warn('[stop] -- stopping reactor')
+      EM::Timer.new(3) do
+        EM::stop_event_loop
       end
     end
 
     def stop(signal)
       @logger.warn('[stop] -- stopping sensu server -- ' + signal)
-      @status = :stopping
+      @timers.each do |timer|
+        timer.cancel
+      end
       @keepalive_queue.unsubscribe do
         @logger.warn('[stop] -- unsubscribed from rabbitmq queue -- keepalives')
         @result_queue.unsubscribe do

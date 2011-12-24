@@ -12,7 +12,7 @@ module Redis
 
     def unbind
       unless !@connected || @closing_connection
-        EM.add_timer(1) do
+        EM::Timer.new(1) do
           reconnect(@host, @port)
         end
       else
@@ -26,6 +26,6 @@ module Redis
   def self.connect(options={})
     host = options[:host] || 'localhost'
     port = options[:port] || 6379
-    EM.connect(host, port, Redis::Client)
+    EM::connect(host, port, Redis::Client)
   end
 end
