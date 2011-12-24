@@ -55,7 +55,7 @@ gem_package "sensu" do
   version node.sensu.version
 end
 
-directory node.sensu.directory do
+directory File.join(node.sensu.directory, 'conf.d') do
   recursive true
 end
 

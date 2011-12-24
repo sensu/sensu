@@ -39,7 +39,7 @@ when "ubuntu", "debian"
 when "centos", "redhat"
   template "/etc/init.d/sensu-server" do
     source "init.erb"
-    variables :service => "server", :options => "-l #{node.sensu.log.directory}/sensu.log"
+    variables :service => "server"
     mode 0755
   end
 

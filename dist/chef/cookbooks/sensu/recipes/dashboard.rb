@@ -41,7 +41,7 @@ when "ubuntu", "debian"
 when "centos", "redhat"
   template "/etc/init.d/sensu-dashboard" do
     source "init.erb"
-    variables :service => "dashboard", :options => "-l #{node.sensu.log.directory}/sensu.log"
+    variables :service => "dashboard"
     mode 0755
   end
 

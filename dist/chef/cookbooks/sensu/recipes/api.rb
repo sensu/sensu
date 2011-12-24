@@ -35,7 +35,7 @@ when "ubuntu", "debian"
 when "centos", "redhat"
   template "/etc/init.d/sensu-api" do
     source "init.erb"
-    variables :service => "api", :options => "-l #{node.sensu.log.directory}/sensu.log"
+    variables :service => "api"
     mode 0755
   end
 
