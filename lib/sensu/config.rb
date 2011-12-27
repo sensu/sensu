@@ -128,7 +128,7 @@ module Sensu
         unless details.key?('type')
           invalid_config('missing type for handler ' + name)
         end
-        case details.type
+        case details['type']
         when 'pipe'
           unless details.key?('command')
             invalid_config('missing command for pipe handler ' + name)

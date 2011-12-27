@@ -81,7 +81,7 @@ module Sensu
         if @settings.handlers.key?(handler)
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
           details = @settings.handlers[handler]
-          case details.type
+          case details['type']
           when "pipe"
             handle = proc do
               output = ''
@@ -101,7 +101,7 @@ module Sensu
             EM::defer(handle, report)
           when "amqp"
             exchange = details.exchange.name
-            exchange_type = details.exchange.key?('type') ? details.exchange.type.to_sym : :direct
+            exchange_type = details.exchange.key?('type') ? details.exchange['type'].to_sym : :direct
             exchange_options = details.exchange.reject { |key, value| %w[name type].include?(key) }
             @logger.debug('[event] -- publishing event to rabbitmq exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
             payload = details.send_only_check_output ? event.check.output : event.to_json
@@ -124,7 +124,7 @@ module Sensu
             :check => check,
             :occurrences => 1
           })
-          if check.type == 'metric'
+          if check['type'] == 'metric'
             handle_event(event)
           else
             history_key = 'history:' + client.name + ':' + check.name
