@@ -82,7 +82,7 @@ module Sensu
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
           details = @settings.handlers[handler]
           case details['type']
-          when "pipe"
+          when 'pipe'
             handle = proc do
               output = ''
               Bundler.with_clean_env do
@@ -99,7 +99,7 @@ module Sensu
               output
             end
             EM::defer(handle, report)
-          when "amqp"
+          when 'amqp'
             exchange = details.exchange.name
             exchange_type = details.exchange.key?('type') ? details.exchange['type'].to_sym : :direct
             exchange_options = details.exchange.reject { |key, value| %w[name type].include?(key) }
