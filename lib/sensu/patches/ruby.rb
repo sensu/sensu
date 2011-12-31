@@ -39,6 +39,7 @@ class Hash
         value1.concat(value2).uniq
       else
         value2
+      end
     end
     self.merge(hash, &merger)
   end
