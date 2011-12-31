@@ -33,7 +33,12 @@ class Hash
 
   def deep_merge(hash)
     merger = proc do |key, value1, value2|
-      value1.is_a?(Hash) && value2.is_a?(Hash) ? value1.merge(value2, &merger) : value2
+      if value1.is_a?(Hash) && value2.is_a?(Hash)
+        value1.merge(value2, &merger)
+      elsif value1.is_a?(Array) && value2.is_a?(Array)
+        value1.concat(value2).uniq
+      else
+        value2
     end
     self.merge(hash, &merger)
   end
