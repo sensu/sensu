@@ -56,17 +56,13 @@ module Sensu
           if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
             Logger.new(@options[:log_file])
             STDOUT.reopen(@options[:log_file], 'a')
-            STDERR.reopen(STDOUT)
-            STDOUT.sync = true
-            Logger.new(STDOUT)
           else
             invalid_config('log file is not writable: ' + @options[:log_file])
           end
-        else
-          STDERR.reopen(STDOUT)
-          STDOUT.sync = true
-          Logger.new(STDOUT)
         end
+        STDERR.reopen(STDOUT)
+        STDOUT.sync = true
+        Logger.new(STDOUT)
       end
       @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
       @logger.level = @options[:verbose] ? :debug : :info
