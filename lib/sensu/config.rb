@@ -44,18 +44,25 @@ module Sensu
 
     def open_log
       @logger = Cabin::Channel.new
-      if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
-        ruby_logger = case @options[:service]
-        when 'rake'
+      ruby_logger = case @options[:service]
+      when 'rake'
+        if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
           Logger.new(@options[:log_file])
         else
-          STDOUT.reopen(@options[:log_file], 'a')
-          STDERR.reopen(STDOUT)
-          STDOUT.sync = true
-          Logger.new(STDOUT)
+          invalid_config('log file is not writable: ' + @options[:log_file])
         end
       else
-        invalid_config('log file is not writable: ' + @options[:log_file])
+        if @options[:daemonize]
+          if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
+            Logger.new(@options[:log_file])
+            STDOUT.reopen(@options[:log_file], 'a')
+          else
+            invalid_config('log file is not writable: ' + @options[:log_file])
+          end
+        end
+        STDERR.reopen(STDOUT)
+        STDOUT.sync = true
+        Logger.new(STDOUT)
       end
       @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(ruby_logger))
       @logger.level = @options[:verbose] ? :debug : :info
@@ -93,30 +100,6 @@ module Sensu
       end
     end
 
-    def validate_common_config
-      @settings.checks.each do |name, details|
-        unless details.interval.is_a?(Integer) && details.interval > 0
-          invalid_config('missing interval for check ' + name)
-        end
-        unless details.command.is_a?(String)
-          invalid_config('missing command for check ' + name)
-        end
-        unless details.subscribers.is_a?(Array) && details.subscribers.count > 0
-          invalid_config('missing subscribers for check ' + name)
-        end
-        if details.key?('handler')
-          unless details.handler.is_a?(String)
-            invalid_config('handler must be a string for check ' + name)
-          end
-        end
-        if details.key?('handlers')
-          unless details.handlers.is_a?(Array)
-            invalid_config('handlers must be an array for check ' + name)
-          end
-        end
-      end
-    end
-
     def validate_server_config
       unless @settings.handlers.include?('default')
         invalid_config('missing default handler')
@@ -147,14 +130,31 @@ module Sensu
     end
 
     def validate_client_config
+      has_keys(%w[checks])
       unless @settings.client.name.is_a?(String)
         invalid_config('client must have a name')
       end
       unless @settings.client.address.is_a?(String)
         invalid_config('client must have an address (ip or hostname)')
       end
-      unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
-        invalid_config('client must have subscriptions')
+
+      @settings.checks.each do |name, details|
+        unless details.interval.is_a?(Integer) && details.interval > 0
+          invalid_config('missing interval for check ' + name)
+        end
+        unless details.command.is_a?(String)
+          invalid_config('missing command for check ' + name)
+        end
+        if details.key?('handler')
+          unless details.handler.is_a?(String)
+            invalid_config('handler must be a string for check ' + name)
+          end
+        end
+        if details.key?('handlers')
+          unless details.handlers.is_a?(Array)
+            invalid_config('handlers must be an array for check ' + name)
+          end
+        end
       end
     end
 
@@ -170,8 +170,7 @@ module Sensu
       if @logger
         @logger.debug('[config] -- validating configuration')
       end
-      has_keys(%w[rabbitmq checks])
-      validate_common_config
+      has_keys(%w[rabbitmq])
       case @options[:service]
       when 'rake'
         has_keys(%w[redis api handlers client])
