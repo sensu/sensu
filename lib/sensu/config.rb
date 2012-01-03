@@ -53,36 +53,6 @@ module Sensu
       end
     end
 
-    def setup_settings
-      if File.readable?(@options[:config_file])
-        begin
-          config_hash = JSON.parse(File.open(@options[:config_file], 'r').read)
-        rescue JSON::ParserError => error
-          invalid_config('configuration file (' + @options[:config_file] + ') must be valid JSON: ' + error)
-        end
-        @settings = Hashie::Mash.new(config_hash)
-      else
-        invalid_config('configuration file does not exist or is not readable: ' + @options[:config_file])
-      end
-      if File.exists?(@options[:config_dir])
-        Dir[@options[:config_dir] + '/**/*.json'].each do |snippet_file|
-          if File.readable?(snippet_file)
-            begin
-              snippet_hash = JSON.parse(File.open(snippet_file, 'r').read)
-            rescue JSON::ParserError => error
-              invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + error)
-            end
-            merged_settings = @settings.to_hash.deep_merge(snippet_hash)
-            @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
-            @settings = Hashie::Mash.new(merged_settings)
-          else
-            invalid_config('configuration snippet file is not readable: ' + snippet_file)
-          end
-        end
-      end
-      validate_settings
-    end
-
     def validate_common_settings
       @settings.checks.each do |name, details|
         unless details.interval.is_a?(Integer) && details.interval > 0
@@ -177,6 +147,36 @@ module Sensu
         validate_client_settings
       end
       @logger.info('[validate] -- configuration valid -- running')
+    end
+
+    def setup_settings
+      if File.readable?(@options[:config_file])
+        begin
+          config_hash = JSON.parse(File.open(@options[:config_file], 'r').read)
+        rescue JSON::ParserError => error
+          invalid_config('configuration file (' + @options[:config_file] + ') must be valid JSON: ' + error)
+        end
+        @settings = Hashie::Mash.new(config_hash)
+      else
+        invalid_config('configuration file does not exist or is not readable: ' + @options[:config_file])
+      end
+      if File.exists?(@options[:config_dir])
+        Dir[@options[:config_dir] + '/**/*.json'].each do |snippet_file|
+          if File.readable?(snippet_file)
+            begin
+              snippet_hash = JSON.parse(File.open(snippet_file, 'r').read)
+            rescue JSON::ParserError => error
+              invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + error)
+            end
+            merged_settings = @settings.to_hash.deep_merge(snippet_hash)
+            @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
+            @settings = Hashie::Mash.new(merged_settings)
+          else
+            invalid_config('configuration snippet file is not readable: ' + snippet_file)
+          end
+        end
+      end
+      validate_settings
     end
 
     def self.read_arguments(arguments)
