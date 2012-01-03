@@ -107,7 +107,7 @@ class TestSensu < Test::Unit::TestCase
         sorted_events.each_with_index do |(key, value), index|
           expected = {
             :status => index + 1,
-            :output => @settings.client.name + "\n",
+            :output => @settings.client.name + ' ' + @settings.client.custom.nested.attribute.to_s + "\n",
             :flapping => false,
             :occurrences => 1
           }
