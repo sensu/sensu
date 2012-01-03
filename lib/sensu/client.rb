@@ -69,9 +69,17 @@ module Sensu
           @checks_in_progress.push(check.name)
           unmatched_tokens = Array.new
           command = @settings.checks[check.name].command.gsub(/:::(.*?):::/) do
-            key = $1.to_s
-            unmatched_tokens.push(key) unless @settings.client.key?(key)
-            @settings.client[key].to_s
+            token = $1.to_s
+            begin
+              value = @settings.client.instance_eval(token)
+              if value.nil?
+                unmatched_tokens.push(token)
+              end
+            rescue NoMethodError
+              value = nil
+              unmatched_tokens.push(token)
+            end
+            value
           end
           if unmatched_tokens.empty?
             execute = proc do
