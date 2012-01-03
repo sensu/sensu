@@ -1,5 +1,6 @@
 require File.join(File.dirname(__FILE__), 'config')
 
+require 'thin'
 require 'sinatra/async'
 require 'redis'
 
@@ -12,7 +13,9 @@ module Sensu
     def self.run(options={})
       EM::run do
         self.setup(options)
-        self.run!(:port => $settings.api.port)
+
+        Thin::Logging.silent = true
+        Thin::Server.start(self, $settings.api.port)
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -246,7 +249,7 @@ module Sensu
       end
     end
 
-    def self.create_test_scaffolding(options={})
+    def self.setup_test_scaffolding(options={})
       self.setup(options)
       $settings.client.timestamp = Time.now.to_i
       $redis.set('client:' + $settings.client.name, $settings.client.to_json).callback do
@@ -258,7 +261,8 @@ module Sensu
             :occurrences => 1
           }.to_json).callback do
             $redis.set('stash:test/test', '{"key": "value"}').callback do
-              self.run!(:port => $settings.api.port)
+              Thin::Logging.silent = true
+              Thin::Server.start(self, $settings.api.port)
             end
           end
         end
@@ -267,9 +271,7 @@ module Sensu
 
     def self.stop(signal)
       $logger.warn('[stop] -- stopping sensu api -- ' + signal)
-      EM::Timer.new(1) do
-        EM::stop_event_loop
-      end
+      EM::stop_event_loop
     end
   end
 end

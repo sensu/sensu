@@ -43,7 +43,8 @@ module Sensu
         end
       end
       @logger = Cabin::Channel.new
-      @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(Logger.new(STDOUT)))
+      log_output = File.basename($0) == 'rake' ? '/tmp/sensu_test.log' : STDOUT
+      @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(Logger.new(log_output)))
       @logger.level = @options[:verbose] ? :debug : :info
       if Signal.list.include?('USR1')
         Signal.trap('USR1') do
@@ -175,7 +176,7 @@ module Sensu
         has_keys(%w[client])
         validate_client_settings
       end
-      @logger.debug('[validate] -- configuration valid -- running')
+      @logger.info('[validate] -- configuration valid -- running')
     end
 
     def self.read_arguments(arguments)
