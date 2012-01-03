@@ -17,15 +17,13 @@ class TestSensuAPI < Test::Unit::TestCase
         events = JSON.parse(http.response)
         assert(events.is_a?(Hash))
         assert_block "Response didn't contain the test event" do
-          contains_test_event = false
-          events.each do |client, events|
+          events.any? do |client, events|
             if client == @settings.client.name
-              events.each do |check, event|
-                contains_test_event = true if check == 'test'
+              events.keys.any? do |check|
+                check == 'test'
               end
             end
           end
-          contains_test_event
         end
         done
       end
