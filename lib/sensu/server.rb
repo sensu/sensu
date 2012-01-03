@@ -35,8 +35,8 @@ module Sensu
 
     def initialize(options={})
       config = Sensu::Config.new(options)
+      @logger = config.logger
       @settings = config.settings
-      @logger = config.logger || config.open_log
       @timers = Array.new
     end
 
@@ -93,7 +93,7 @@ module Sensu
                     output = io.read
                   end
                 rescue Errno::EPIPE => error
-                  output = handler + ' -- broken pipe: ' + error.to_s
+                  output = handler + ' -- broken pipe: ' + error
                 end
               end
               output

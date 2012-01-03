@@ -39,12 +39,10 @@ class TestSensu < Test::Unit::TestCase
     expected = {
       :config_file => @options[:config_file],
       :config_dir => @options[:config_dir],
-      :validate => true,
       :verbose => true,
       :log_file => '/tmp/sensu_test.log',
       :pid_file => '/tmp/sensu_test.pid',
-      :daemonize => true,
-      :service => 'rake'
+      :daemonize => true
     }
     assert_equal(expected, options)
     done
