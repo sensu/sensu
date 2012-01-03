@@ -28,8 +28,8 @@ module Sensu
 
     def initialize(options={})
       config = Sensu::Config.new(options)
+      @logger = config.logger
       @settings = config.settings
-      @logger = config.logger || config.open_log
       @timers = Array.new
     end
 
@@ -210,7 +210,7 @@ module Sensu
           @logger.warn('[socket] -- a check name, exit status, and output are required -- e.g. {"name": "x", "status": 0, "output": "y"}')
         end
       rescue JSON::ParserError => error
-        @logger.warn('[socket] -- check result must be valid JSON: ' + error.to_s)
+        @logger.warn('[socket] -- check result must be valid JSON: ' + error)
       end
       close_connection
     end

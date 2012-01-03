@@ -24,8 +24,8 @@ module Sensu
 
     def self.setup(options={})
       config = Sensu::Config.new(options)
+      $logger = config.logger
       $settings = config.settings
-      $logger = config.logger || config.open_log
       if options[:daemonize]
         Process.daemonize
       end
