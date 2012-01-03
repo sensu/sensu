@@ -49,19 +49,7 @@
     "c": {
       "handler": "default",
       "command": "ruby -e \"puts ':::name:::'; exit 3\"",
-      "subscribers": [
-        {
-          "name": "i-424242",
-          "!nonexistent": "test",
-          "subscribes": [
-            "a",
-            "c"
-          ],
-          "!subscribes": [
-            "d"
-          ]
-        }
-      ],
+      "standalone": true,
       "interval": 1
     },
     "d": {

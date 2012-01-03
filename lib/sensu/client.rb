@@ -15,6 +15,7 @@ module Sensu
         client.setup_keepalives
         client.setup_subscriptions
         client.setup_queue_monitor
+        client.setup_standalone
         client.setup_socket
 
         %w[INT TERM].each do |signal|
@@ -29,6 +30,7 @@ module Sensu
       config = Sensu::Config.new(options)
       @settings = config.settings
       @logger = config.logger || config.open_log
+      @timers = Array.new
     end
 
     def setup_amqp
@@ -46,7 +48,7 @@ module Sensu
     def setup_keepalives
       @logger.debug('[keepalive] -- setup keepalives')
       publish_keepalive
-      EM::PeriodicTimer.new(30) do
+      @timers << EM::PeriodicTimer.new(30) do
         publish_keepalive
       end
     end
@@ -110,55 +112,43 @@ module Sensu
 
     def setup_subscriptions
       @logger.debug('[subscribe] -- setup subscriptions')
-      @check_queue = @amq.queue(String.unique, :exclusive => true)
-      @settings.client.subscriptions.push('uchiwa').uniq!
-      @settings.client.subscriptions.each do |exchange|
+      @check_request_queue = @amq.queue(String.unique, :exclusive => true)
+      @settings.client.subscriptions.uniq.each do |exchange|
         @logger.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
-        @check_queue.bind(@amq.fanout(exchange))
+        @check_request_queue.bind(@amq.fanout(exchange))
       end
-      @check_queue.subscribe do |check_json|
-        check = Hashie::Mash.new(JSON.parse(check_json))
-        @logger.info('[subscribe] -- received check -- ' + check.name)
-        if check.key?('matching')
-          @logger.info('[subscribe] -- check requires matching -- ' + check.name)
-          matches = check.matching.all? do |key, value|
-            desired = case key
-            when /^!/
-              key = key.slice(1..-1)
-              false
-            else
-              true
-            end
-            matched = case key
-            when 'subscribes'
-              value.all? do |subscription|
-                @settings.client.subscriptions.include?(subscription)
-              end
-            else
-              @settings.client[key] == value
-            end
-            desired == matched
-          end
-          if matches
-            @logger.info('[subscribe] -- client matches -- ' + check.name)
-            execute_check(check)
-          else
-            @logger.info('[subscribe] -- client does not match -- ' + check.name)
-          end
-        else
-          execute_check(check)
-        end
+      @check_request_queue.subscribe do |check_request_json|
+        check = Hashie::Mash.new(JSON.parse(check_request_json))
+        @logger.info('[subscribe] -- received check request -- ' + check.name)
+        execute_check(check)
       end
     end
 
     def setup_queue_monitor
       @logger.debug('[monitor] -- setup queue monitor')
-      EM::PeriodicTimer.new(5) do
-        unless @check_queue.subscribed?
+      @timers << EM::PeriodicTimer.new(5) do
+        unless @check_request_queue.subscribed?
           @logger.warn('[monitor] -- re-subscribing to subscriptions')
-          @check_queue.delete
-          EM::Timer.new(1) do
+          @check_request_queue.delete
+          @timers << EM::Timer.new(1) do
             setup_subscriptions
+          end
+        end
+      end
+    end
+
+    def setup_standalone(options={})
+      @logger.debug('[standalone] -- setup standalone')
+      @settings.checks.each_with_index do |(name, details), index|
+        if details.standalone
+          check = Hashie::Mash.new(details.merge({:name => name}))
+          stagger = options[:test] ? 0 : 7
+          @timers << EM::Timer.new(stagger*index) do
+            interval = options[:test] ? 0.5 : details.interval
+            @timers << EM::PeriodicTimer.new(interval) do
+              check.issued = Time.now.to_i
+              execute_check(check)
+            end
           end
         end
       end
@@ -173,10 +163,21 @@ module Sensu
       end
     end
 
+    def stop_reactor
+      @logger.warn('[stop] -- stopping reactor')
+      EM::Timer.new(3) do
+        EM::stop_event_loop
+      end
+    end
+
     def stop(signal)
       @logger.warn('[stop] -- stopping sensu client -- ' + signal)
-      EM::Timer.new(1) do
-        EM::stop_event_loop
+      @timers.each do |timer|
+        timer.cancel
+      end
+      @check_request_queue.unsubscribe do
+        @logger.warn('[stop] -- unsubscribed from subscriptions')
+        stop_reactor
       end
     end
   end
