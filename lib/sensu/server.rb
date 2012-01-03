@@ -214,20 +214,13 @@ module Sensu
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
         check_request = Hashie::Mash.new({:name => name})
-        unless details.publish == false
+        unless details.publish == false || details.standalone
           @timers << EM::Timer.new(stagger*index) do
-            details.subscribers.each do |target|
-              if target.is_a?(Hash)
-                @logger.debug('[publisher] -- check requires matching -- ' + target.to_hash.to_s + ' -- ' + name)
-                check_request.matching = target
-                exchange = 'uchiwa'
-              else
-                exchange = target
-              end
+            details.subscribers.each do |exchange|
               interval = options[:test] ? 0.5 : details.interval
               @timers << EM::PeriodicTimer.new(interval) do
-                check_request.issued = Time.now.to_i
                 @logger.info('[publisher] -- publishing check request -- ' + name + ' -- ' + exchange)
+                check_request.issued = Time.now.to_i
                 @amq.fanout(exchange).publish(check_request.to_json)
               end
             end

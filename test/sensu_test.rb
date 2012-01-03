@@ -99,6 +99,7 @@ class TestSensu < Test::Unit::TestCase
     client.setup_amqp
     client.setup_keepalives
     client.setup_subscriptions
+    client.setup_standalone(:test => true)
     server.setup_publisher(:test => true)
     EM::Timer.new(1) do
       server.redis.hgetall('events:' + @settings.client.name).callback do |events|

@@ -101,8 +101,10 @@ module Sensu
         unless details.command.is_a?(String)
           invalid_config('missing command for check ' + name)
         end
-        unless details.subscribers.is_a?(Array) && details.subscribers.count > 0
-          invalid_config('missing subscribers for check ' + name)
+        unless details.standalone
+          unless details.subscribers.is_a?(Array) && details.subscribers.count > 0
+            invalid_config('missing subscribers for check ' + name)
+          end
         end
         if details.key?('handler')
           unless details.handler.is_a?(String)
