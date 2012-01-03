@@ -6,7 +6,7 @@ class TestSensuAPI < Test::Unit::TestCase
     config = Sensu::Config.new(@options)
     @settings = config.settings
     @api = 'http://' + @settings.api.host + ':' + @settings.api.port.to_s
-    Sensu::API.create_test_scaffolding(@options)
+    Sensu::API.setup_test_scaffolding(@options)
   end
 
   def test_get_events
