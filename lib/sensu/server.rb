@@ -71,8 +71,12 @@ module Sensu
       when event.check.key?('handlers')
         event.check.handlers
       else
-        @settings.handlers['default']['type'] == 'set' ? @settings.handlers['default'].handlers : ['default']
+        ['default']
       end
+      handlers.map! do |handler|
+        @settings.handlers[handler]['type'] == 'set' ? @settings.handlers[handler].handlers : handler
+      end
+      handlers.flatten!
       report = proc do |output|
         output.split(/\n+/).each do |line|
           @logger.info('[handler] -- ' + line)
