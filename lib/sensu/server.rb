@@ -114,6 +114,9 @@ module Sensu
             payload = details.send_only_check_output ? event.check.output : event.to_json
             @amq.method(exchange_type).call(exchange, exchange_options).publish(payload)
             @handlers_in_progress -= 1
+          when 'set'
+            @logger.warn('[event] -- you cannot nest handler sets -- ' + handler)
+            @handlers_in_progress -= 1
           end
         else
           @logger.warn('[event] -- unknown handler -- ' + handler)
