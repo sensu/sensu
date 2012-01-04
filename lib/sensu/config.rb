@@ -87,19 +87,23 @@ module Sensu
         unless details.is_a?(Hash)
           invalid_config('hander details must be a hash ' + name)
         end
-        unless details.key?('type')
+        unless details['type'].is_a?(String)
           invalid_config('missing type for handler ' + name)
         end
         case details['type']
+        when 'set'
+          unless details.handlers.is_a?(Array) && details.handlers.count > 0
+            invalid_config('missing handler set for handler ' + name)
+          end
         when 'pipe'
-          unless details.key?('command')
+          unless details.command.is_a?(String)
             invalid_config('missing command for pipe handler ' + name)
           end
         when 'amqp'
-          unless details.key?('exchange')
+          unless details.exchange.is_a?(Hash)
             invalid_config('missing exchange details for amqp handler ' + name)
           end
-          unless details.exchange.key?('name')
+          unless details.exchange.name.is_a?(String)
             invalid_config('missing exchange name for amqp handler ' + name)
           end
         else
