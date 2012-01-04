@@ -38,7 +38,7 @@ module Sensu
       @logger = config.logger
       @settings = config.settings
       @timers = Array.new
-      @handlers_in_progress = Array.new
+      @handlers_in_progress = 0
     end
 
     def setup_redis
@@ -77,11 +77,11 @@ module Sensu
         output.split(/\n+/).each do |line|
           @logger.info('[handler] -- ' + line)
         end
-        @handlers_in_progress.pop
+        @handlers_in_progress -= 1
       end
       handlers.each do |handler|
         if @settings.handlers.key?(handler)
-          @handlers_in_progress.push(nil)
+          @handlers_in_progress += 1
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
           details = @settings.handlers[handler]
           case details['type']
@@ -109,7 +109,7 @@ module Sensu
             @logger.debug('[event] -- publishing event to rabbitmq exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
             payload = details.send_only_check_output ? event.check.output : event.to_json
             @amq.method(exchange_type).call(exchange, exchange_options).publish(payload)
-            @handlers_in_progress.pop
+            @handlers_in_progress -= 1
           end
         else
           @logger.warn('[event] -- unknown handler -- ' + handler)
@@ -333,7 +333,7 @@ module Sensu
       EM::Timer.new(1) do
         @logger.info('[stop] -- completing handlers in progress')
         complete_in_progress = EM::tick_loop do
-          if @handlers_in_progress.empty?
+          if @handlers_in_progress == 0
             :stop
           end
         end
