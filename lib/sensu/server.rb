@@ -77,6 +77,7 @@ module Sensu
         @settings.handlers[handler]['type'] == 'set' ? @settings.handlers[handler].handlers : handler
       end
       handlers.flatten!
+      handlers.uniq!
       report = proc do |output|
         output.split(/\n+/).each do |line|
           @logger.info('[handler] -- ' + line)
