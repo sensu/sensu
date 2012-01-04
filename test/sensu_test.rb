@@ -70,7 +70,6 @@ class TestSensu < Test::Unit::TestCase
       :client => @settings.client,
       :check => {
         :name => 'test_handlers',
-        :handler => 'default',
         :issued => Time.now.to_i,
         :status => 1,
         :output => 'WARNING\n',

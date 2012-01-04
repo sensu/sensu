@@ -19,6 +19,12 @@
   },
   "handlers": {
     "default": {
+      "type": "set",
+      "handlers": [
+        "debug"
+      ]
+    },
+    "debug": {
       "type": "pipe",
       "command": "./test/handler.rb"
     },

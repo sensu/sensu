@@ -71,7 +71,7 @@ module Sensu
       when event.check.key?('handlers')
         event.check.handlers
       else
-        @settings.handlers.default['type'] == 'set' ? @settings.handlers.default.handlers : ['default']
+        @settings.handlers['default']['type'] == 'set' ? @settings.handlers['default'].handlers : ['default']
       end
       report = proc do |output|
         output.split(/\n+/).each do |line|
@@ -81,8 +81,8 @@ module Sensu
       end
       handlers.each do |handler|
         if @settings.handlers.key?(handler)
-          @handlers_in_progress += 1
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
+          @handlers_in_progress += 1
           details = @settings.handlers[handler]
           case details['type']
           when 'pipe'
