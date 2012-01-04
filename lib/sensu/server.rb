@@ -81,7 +81,7 @@ module Sensu
       end
       handlers.each do |handler|
         if @settings.handlers.key?(handler)
-          @handlers_in_progress.push(handler)
+          @handlers_in_progress.push(nil)
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
           details = @settings.handlers[handler]
           case details['type']
