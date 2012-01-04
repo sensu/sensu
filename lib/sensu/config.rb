@@ -91,10 +91,6 @@ module Sensu
           invalid_config('missing type for handler ' + name)
         end
         case details['type']
-        when 'set'
-          unless details.handlers.is_a?(Array) && details.handlers.count > 0
-            invalid_config('missing handler set for handler ' + name)
-          end
         when 'pipe'
           unless details.command.is_a?(String)
             invalid_config('missing command for pipe handler ' + name)
@@ -105,6 +101,10 @@ module Sensu
           end
           unless details.exchange.name.is_a?(String)
             invalid_config('missing exchange name for amqp handler ' + name)
+          end
+        when 'set'
+          unless details.handlers.is_a?(Array) && details.handlers.count > 0
+            invalid_config('missing handler set for handler ' + name)
           end
         else
           invalid_config('unknown type for handler ' + name)
