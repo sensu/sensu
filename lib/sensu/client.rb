@@ -31,6 +31,7 @@ module Sensu
       @logger = config.logger
       @settings = config.settings
       @timers = Array.new
+      @checks_in_progress = Array.new
     end
 
     def setup_amqp
@@ -62,10 +63,10 @@ module Sensu
     end
 
     def execute_check(check)
-      @logger.debug('[execute] -- executing check -- ' + check.name)
-      @checks_in_progress ||= Array.new
+      @logger.debug('[execute] -- attempting to execute check -- ' + check.name)
       if @settings.checks.key?(check.name)
         unless @checks_in_progress.include?(check.name)
+          @logger.debug('[execute] -- executing check -- ' + check.name)
           @checks_in_progress.push(check.name)
           unmatched_tokens = Array.new
           command = @settings.checks[check.name].command.gsub(/:::(.*?):::/) do
@@ -107,6 +108,8 @@ module Sensu
             publish_result(check)
             @checks_in_progress.delete(check.name)
           end
+        else
+          @logger.debug('[execute] -- previous check execution still in progress -- ' + check.name)
         end
       else
         @logger.warn('[execute] -- unkown check -- ' + check.name)
@@ -147,11 +150,13 @@ module Sensu
 
     def setup_standalone(options={})
       @logger.debug('[standalone] -- setup standalone')
-      @settings.checks.each_with_index do |(name, details), index|
+      standalone_count = 0
+      @settings.checks.each do |name, details|
         if details.standalone
+          standalone_count += 1
           check = Hashie::Mash.new(details.merge({:name => name}))
           stagger = options[:test] ? 0 : 7
-          @timers << EM::Timer.new(stagger*index) do
+          @timers << EM::Timer.new(stagger*standalone_count) do
             interval = options[:test] ? 0.5 : details.interval
             @timers << EM::PeriodicTimer.new(interval) do
               check.issued = Time.now.to_i
@@ -173,7 +178,7 @@ module Sensu
 
     def stop_reactor
       @logger.warn('[stop] -- stopping reactor')
-      EM::Timer.new(3) do
+      EM::Timer.new(0.25) do
         EM::stop_event_loop
       end
     end
@@ -183,9 +188,17 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
+      @logger.warn('[stop] -- unsubscribing from subscriptions')
       @check_request_queue.unsubscribe do
-        @logger.warn('[stop] -- unsubscribed from subscriptions')
-        stop_reactor
+        @logger.info('[stop] -- completing checks in progress')
+        complete_in_progress = EM::tick_loop do
+          if @checks_in_progress.empty?
+            :stop
+          end
+        end
+        complete_in_progress.on_stop do
+          stop_reactor
+        end
       end
     end
   end
