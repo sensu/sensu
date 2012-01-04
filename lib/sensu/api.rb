@@ -271,6 +271,7 @@ module Sensu
 
     def self.stop(signal)
       $logger.warn('[stop] -- stopping sensu api -- ' + signal)
+      $logger.warn('[stop] -- stopping reactor')
       EM::PeriodicTimer.new(0.25) do
         EM::stop_event_loop
       end
