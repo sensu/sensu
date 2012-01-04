@@ -38,6 +38,7 @@ module Sensu
       @logger = config.logger
       @settings = config.settings
       @timers = Array.new
+      @handlers_in_progress = 0
     end
 
     def setup_redis
@@ -76,9 +77,11 @@ module Sensu
         output.split(/\n+/).each do |line|
           @logger.info('[handler] -- ' + line)
         end
+        @handlers_in_progress -= 1
       end
       handlers.each do |handler|
         if @settings.handlers.key?(handler)
+          @handlers_in_progress += 1
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
           details = @settings.handlers[handler]
           case details['type']
@@ -106,6 +109,7 @@ module Sensu
             @logger.debug('[event] -- publishing event to rabbitmq exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
             payload = details.send_only_check_output ? event.check.output : event.to_json
             @amq.method(exchange_type).call(exchange, exchange_options).publish(payload)
+            @handlers_in_progress -= 1
           end
         else
           @logger.warn('[event] -- unknown handler -- ' + handler)
@@ -326,9 +330,19 @@ module Sensu
     end
 
     def stop_reactor
-      @logger.warn('[stop] -- stopping reactor')
-      EM::Timer.new(3) do
-        EM::stop_event_loop
+      EM::Timer.new(1) do
+        @logger.info('[stop] -- completing handlers in progress')
+        complete_in_progress = EM::tick_loop do
+          if @handlers_in_progress == 0
+            :stop
+          end
+        end
+        complete_in_progress.on_stop do
+          @logger.warn('[stop] -- stopping reactor')
+          EM::PeriodicTimer.new(0.25) do
+            EM::stop_event_loop
+          end
+        end
       end
     end
 
@@ -337,10 +351,10 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
+      @logger.warn('[stop] -- unsubscribing from keepalives')
       @keepalive_queue.unsubscribe do
-        @logger.warn('[stop] -- unsubscribed from rabbitmq queue -- keepalives')
+        @logger.warn('[stop] -- unsubscribing from results')
         @result_queue.unsubscribe do
-          @logger.warn('[stop] -- unsubscribed from rabbitmq queue -- results')
           if @is_master
             @redis.del('lock:master').callback do
               @logger.warn('[stop] -- resigned as master')
