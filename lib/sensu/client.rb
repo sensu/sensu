@@ -177,9 +177,17 @@ module Sensu
     end
 
     def stop_reactor
-      @logger.warn('[stop] -- stopping reactor')
-      EM::Timer.new(0.25) do
-        EM::stop_event_loop
+      @logger.info('[stop] -- completing checks in progress')
+      complete_in_progress = EM::tick_loop do
+        if @checks_in_progress.empty?
+          :stop
+        end
+      end
+      complete_in_progress.on_stop do
+        @logger.warn('[stop] -- stopping reactor')
+        EM::PeriodicTimer.new(0.25) do
+          EM::stop_event_loop
+        end
       end
     end
 
@@ -190,15 +198,7 @@ module Sensu
       end
       @logger.warn('[stop] -- unsubscribing from subscriptions')
       @check_request_queue.unsubscribe do
-        @logger.info('[stop] -- completing checks in progress')
-        complete_in_progress = EM::tick_loop do
-          if @checks_in_progress.empty?
-            :stop
-          end
-        end
-        complete_in_progress.on_stop do
-          stop_reactor
-        end
+        stop_reactor
       end
     end
   end
