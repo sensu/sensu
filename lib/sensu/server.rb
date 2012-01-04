@@ -115,7 +115,7 @@ module Sensu
             @amq.method(exchange_type).call(exchange, exchange_options).publish(payload)
             @handlers_in_progress -= 1
           when 'set'
-            @logger.warn('[event] -- you cannot nest handler sets -- ' + handler)
+            @logger.warn('[event] -- handler sets cannot be nested -- ' + handler)
             @handlers_in_progress -= 1
           end
         else
