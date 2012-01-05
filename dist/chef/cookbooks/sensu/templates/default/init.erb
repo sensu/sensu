@@ -6,6 +6,8 @@
 # Source function library.
 . /etc/init.d/functions
 
+[ -f /etc/profile.d/ruby-enterprise.sh ] && . /etc/profile.d/ruby-enterprise.sh
+
 prog="sensu-<%= @service %>"
 
 [ -f /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
@@ -76,7 +78,7 @@ stop() {
         echo
         return $RETVAL
     else
-        pid=$(pgrep -fl $prog | grep -v grep | grep -v bash | cut -f1 -d" ")
+        pid=$(pgrep -fl $exec | grep -v grep | grep -v bash | cut -f1 -d" ")
         if [ ! "$pid" == "" ]; then
             kill $pid
             RETVAL=$?
@@ -96,7 +98,7 @@ status() {
     local pid
 
     # First try "ps"
-    pid=$(pgrep -fl $prog | grep -v grep | grep -v bash | cut -f1 -d" ")
+    pid=$(pgrep -fl $exec | grep -v grep | grep -v bash | cut -f1 -d" ")
     if [ -n "$pid" ]; then
             echo $"${prog} (pid $pid) is running..."
                 return 0
