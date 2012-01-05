@@ -101,7 +101,7 @@ module Sensu
                     output = io.read
                   end
                 rescue Errno::EPIPE => error
-                  output = handler + ' -- broken pipe: ' + error
+                  output = handler + ' -- broken pipe: ' + error.to_s
                 end
               end
               output
