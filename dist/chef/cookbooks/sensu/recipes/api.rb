@@ -41,6 +41,7 @@ when "centos", "redhat"
 
   service "sensu-api" do
     action [:enable, :start]
+    supports :restart => true
     subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
   end
 end

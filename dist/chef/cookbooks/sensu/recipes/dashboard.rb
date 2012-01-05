@@ -36,7 +36,7 @@ when "ubuntu", "debian"
   service "sensu-dashboard" do
     provider Chef::Provider::Service::Upstart
     action [:enable, :start]
-    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu-dashboard"), :delayed
   end
 when "centos", "redhat"
   template "/etc/init.d/sensu-dashboard" do
@@ -47,6 +47,7 @@ when "centos", "redhat"
 
   service "sensu-dashboard" do
     action [:enable, :start]
-    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+    supports :restart => true
+    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu-dashboard"), :delayed
   end
 end
