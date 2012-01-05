@@ -38,3 +38,6 @@
   - [[http://github.com/lum][Steve Lum]]
   - [[http://twitter.com/miller_joe][Joe Miller]]
   - [[http://twitter.com/decklin][Decklin Foster]]
+  - [[http://twitter.com/ohlol][Scott Smith]]
+  - [[http://twitter.com/webframp][Sean Escriva]]
+  - [[http://twitter.com/fujin_][AJ Christensen]]
