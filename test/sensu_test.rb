@@ -104,7 +104,7 @@ class TestSensu < Test::Unit::TestCase
         sorted_events.each_with_index do |(key, value), index|
           expected = {
             :status => index + 1,
-            :output => @settings.client.name + ' ' + @settings.client.custom.nested.attribute.to_s + "\n",
+            :output => @settings.client.environment.instance_id + "\n",
             :flapping => false,
             :occurrences => 1
           }
@@ -112,7 +112,7 @@ class TestSensu < Test::Unit::TestCase
         end
         server.amq.queue(String.unique, :exclusive => true).bind('graphite').subscribe do |metric|
           assert(metric.is_a?(String))
-          assert_equal(metric.split(' ').first, ['sensu', @settings.client.name, 'diceroll'].join('.'))
+          assert_equal(metric.split(' ').first, ['sensu', @settings.client.environment.instance_id, 'diceroll'].join('.'))
           done
         end
       end

@@ -68,53 +68,30 @@ module Sensu
         unless @checks_in_progress.include?(check.name)
           @logger.debug('[execute] -- executing check -- ' + check.name)
           @checks_in_progress.push(check.name)
-          unmatched_tokens = Array.new
-          command = @settings.checks[check.name].command.gsub(/:::(.*?):::/) do
-            token = $1.to_s
-            begin
-              value = @settings.client.instance_eval(token)
-              if value.nil?
-                unmatched_tokens.push(token)
+          execute = proc do
+            Bundler.with_clean_env do
+              IO.popen([@settings.client.environment.to_hash, 'sh', '-c',  @settings.checks[check.name].command + ' 2>&1']) do |io|
+                check.output = io.read
               end
-            rescue NoMethodError
-              value = nil
-              unmatched_tokens.push(token)
             end
-            value
+            check.status = $?.exitstatus
           end
-          if unmatched_tokens.empty?
-            execute = proc do
-              Bundler.with_clean_env do
-                IO.popen(command + ' 2>&1') do |io|
-                  check.output = io.read
-                end
-              end
-              check.status = $?.exitstatus
+          publish = proc do
+            unless check.status.nil?
+              publish_result(check)
+            else
+              @logger.warn('[execute] -- nil exit status code -- ' + check.name)
             end
-            publish = proc do
-              unless check.status.nil?
-                publish_result(check)
-              else
-                @logger.warn('[execute] -- nil exit status code -- ' + check.name)
-              end
-              @checks_in_progress.delete(check.name)
-            end
-            EM::defer(execute, publish)
-          else
-            @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
-            check.status = 3
-            check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
-            check.handle = false
-            publish_result(check)
             @checks_in_progress.delete(check.name)
           end
+          EM::defer(execute, publish)
         else
           @logger.debug('[execute] -- previous check execution still in progress -- ' + check.name)
         end
       else
         @logger.warn('[execute] -- unkown check -- ' + check.name)
-        check.status = 3
         check.output = 'Unknown check'
+        check.status = 3
         check.handle = false
         publish_result(check)
         @checks_in_progress.delete(check.name)
