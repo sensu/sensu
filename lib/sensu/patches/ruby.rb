@@ -1,3 +1,9 @@
+class Array
+  def deep_merge(other_array, &merger)
+    concat(other_array).uniq
+  end
+end
+
 class Hash
   def symbolize_keys(item=self)
     case item
@@ -31,17 +37,11 @@ class Hash
     end
   end
 
-  def deep_merge(hash)
-    merger = proc do |key, value1, value2|
-      if value1.is_a?(Hash) && value2.is_a?(Hash)
-        value1.merge(value2, &merger)
-      elsif value1.is_a?(Array) && value2.is_a?(Array)
-        value1.concat(value2).uniq
-      else
-        value2
-      end
+  def deep_merge(other_hash, &merger)
+    merger ||= proc do |key, oldval, newval|
+      oldval.deep_merge(newval, &merger) rescue newval
     end
-    self.merge(hash, &merger)
+    merge(other_hash, &merger)
   end
 end
 
