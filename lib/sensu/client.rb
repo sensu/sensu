@@ -68,9 +68,10 @@ module Sensu
         unless @checks_in_progress.include?(check.name)
           @logger.debug('[execute] -- executing check -- ' + check.name)
           @checks_in_progress.push(check.name)
+          environment = @settings.client.key?('environment') ? @settings.client.environment.to_hash : Hash.new
           execute = proc do
             Bundler.with_clean_env do
-              IO.popen([@settings.client.environment.to_hash, 'sh', '-c',  @settings.checks[check.name].command + ' 2>&1']) do |io|
+              IO.popen([environment, 'sh', '-c',  @settings.checks[check.name].command + ' 2>&1']) do |io|
                 check.output = io.read
               end
             end
