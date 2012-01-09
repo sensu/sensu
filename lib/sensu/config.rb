@@ -128,7 +128,7 @@ module Sensu
         end
         @settings.client.environment.each do |variable, value|
           unless variable.is_a?(String) && value.is_a?(String)
-            invalid_config('environment variable must be a string ' + variable)
+            invalid_config('value must be a string for client environment variable ' + variable)
           end
         end
       end
