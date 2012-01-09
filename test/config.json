@@ -38,7 +38,7 @@
   },
   "checks": {
     "a": {
-      "command": "ruby -e \"puts ':::name::: :::custom.nested.attribute:::'; exit 1\"",
+      "command": "echo $instance_id; exit 1",
       "subscribers": [
         "a"
       ],
@@ -54,7 +54,7 @@
     },
     "c": {
       "handler": "default",
-      "command": "ruby -e \"puts ':::name::: :::custom.nested.attribute:::'; exit 3\"",
+      "command": "ruby -e \"puts ENV['instance_id']; exit 3\"",
       "standalone": true,
       "interval": 1
     },
@@ -62,7 +62,7 @@
       "handlers": [
         "default"
       ],
-      "command": "ruby -e \"puts ':::name::: :::custom.nested.attribute:::'; exit 4\"",
+      "command": "ruby -e \"puts ENV['instance_id']; exit 4\"",
       "subscribers": [
         "a",
         "b",
@@ -73,7 +73,7 @@
     "e": {
       "type": "metric",
       "handler": "graphite",
-      "command": "echo sensu.:::name:::.diceroll 4 `date +%s`",
+      "command": "echo sensu.$instance_id.diceroll 4 `date +%s`",
       "subscribers": [
         "c"
       ],
@@ -88,10 +88,8 @@
       "b",
       "c"
     ],
-    "custom": {
-      "nested": {
-        "attribute": true
-      }
+    "environment": {
+      "instance_id": "i-424242"
     }
   }
 }

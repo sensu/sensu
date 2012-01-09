@@ -30,6 +30,7 @@ module Sensu
       config = Sensu::Config.new(options)
       @logger = config.logger
       @settings = config.settings
+      @environment = @settings.client.key?('environment') ? @settings.client.environment.to_hash : Hash.new
       @timers = Array.new
       @checks_in_progress = Array.new
     end
@@ -68,53 +69,30 @@ module Sensu
         unless @checks_in_progress.include?(check.name)
           @logger.debug('[execute] -- executing check -- ' + check.name)
           @checks_in_progress.push(check.name)
-          unmatched_tokens = Array.new
-          command = @settings.checks[check.name].command.gsub(/:::(.*?):::/) do
-            token = $1.to_s
-            begin
-              value = @settings.client.instance_eval(token)
-              if value.nil?
-                unmatched_tokens.push(token)
+          execute = proc do
+            Bundler.with_clean_env do
+              IO.popen([@environment, 'sh', '-c',  @settings.checks[check.name].command + ' 2>&1']) do |io|
+                check.output = io.read
               end
-            rescue NoMethodError
-              value = nil
-              unmatched_tokens.push(token)
             end
-            value
+            check.status = $?.exitstatus
           end
-          if unmatched_tokens.empty?
-            execute = proc do
-              Bundler.with_clean_env do
-                IO.popen(command + ' 2>&1') do |io|
-                  check.output = io.read
-                end
-              end
-              check.status = $?.exitstatus
+          publish = proc do
+            unless check.status.nil?
+              publish_result(check)
+            else
+              @logger.warn('[execute] -- nil exit status code -- ' + check.name)
             end
-            publish = proc do
-              unless check.status.nil?
-                publish_result(check)
-              else
-                @logger.warn('[execute] -- nil exit status code -- ' + check.name)
-              end
-              @checks_in_progress.delete(check.name)
-            end
-            EM::defer(execute, publish)
-          else
-            @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
-            check.status = 3
-            check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
-            check.handle = false
-            publish_result(check)
             @checks_in_progress.delete(check.name)
           end
+          EM::defer(execute, publish)
         else
           @logger.debug('[execute] -- previous check execution still in progress -- ' + check.name)
         end
       else
         @logger.warn('[execute] -- unkown check -- ' + check.name)
-        check.status = 3
         check.output = 'Unknown check'
+        check.status = 3
         check.handle = false
         publish_result(check)
         @checks_in_progress.delete(check.name)
@@ -150,13 +128,13 @@ module Sensu
 
     def setup_standalone(options={})
       @logger.debug('[standalone] -- setup standalone')
-      standalone_count = 0
+      standalone_check_count = 0
       @settings.checks.each do |name, details|
         if details.standalone
-          standalone_count += 1
+          standalone_check_count += 1
           check = Hashie::Mash.new(details.merge({:name => name}))
           stagger = options[:test] ? 0 : 7
-          @timers << EM::Timer.new(stagger*standalone_count) do
+          @timers << EM::Timer.new(stagger*standalone_check_count) do
             interval = options[:test] ? 0.5 : details.interval
             @timers << EM::PeriodicTimer.new(interval) do
               check.issued = Time.now.to_i
