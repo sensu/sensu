@@ -73,7 +73,7 @@
     "e": {
       "type": "metric",
       "handler": "graphite",
-      "command": "echo sensu.${instance_id}.diceroll 4 `date +%s`",
+      "command": "echo sensu.$instance_id.diceroll 4 `date +%s`",
       "subscribers": [
         "c"
       ],
