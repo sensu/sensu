@@ -83,7 +83,7 @@ module Sensu
           @logger.info('[handler] -- ' + line)
         end
         child.err.split(/\n+/).each do |line|
-          @logger.info('[handler] -- error -- ' + line)
+          @logger.error('[handler] -- ' + line)
         end
         @handlers_in_progress -= 1
       end
