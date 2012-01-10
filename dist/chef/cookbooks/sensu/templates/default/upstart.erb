@@ -12,4 +12,4 @@ pre-start script
   test -x <%= Sensu.find_bin(@service) %> || { stop; exit 0; }
 end script
 
-exec sudo -u <%= node.sensu.user %> sh -c "<%= Sensu.find_bin(@service) %><% if @options %> <%= @options %><% end %>"
+exec setuidgid <%= node.sensu.user %> <%= Sensu.find_bin(@service) %><% if @options %> <%= @options %><% end %>
