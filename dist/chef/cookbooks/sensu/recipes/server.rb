@@ -49,3 +49,5 @@ when "centos", "redhat"
     subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
   end
 end
+
+include_recipe "sensu::firewall"
