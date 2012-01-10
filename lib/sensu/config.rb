@@ -9,9 +9,10 @@ gem 'eventmachine', '~> 1.0.0.beta.4'
 require 'optparse'
 require 'json'
 require 'hashie'
-require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em-stdlib-logger'
+require 'amqp'
+require 'posix/spawn'
 
 module Sensu
   class Config

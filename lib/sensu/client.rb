@@ -71,11 +71,10 @@ module Sensu
           @checks_in_progress.push(check.name)
           execute = proc do
             Bundler.with_clean_env do
-              IO.popen([@environment, 'sh', '-c',  @settings.checks[check.name].command + ' 2>&1']) do |io|
-                check.output = io.read
-              end
+              child = POSIX::Spawn::Child.new(@environment, @settings.checks[check.name].command)
+              check.output = child.out + child.err
+              check.status = child.status.exitstatus
             end
-            check.status = $?.exitstatus
           end
           publish = proc do
             unless check.status.nil?
