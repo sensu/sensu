@@ -256,7 +256,8 @@ module Sensu
         $redis.sadd('clients', $settings.client.name).callback do
           $redis.hset('events:' + $settings.client.name, 'test', {
             :status => 2,
-            :output => 'CRITICAL',
+            :output => "CRITICAL\n",
+            :error => "backtrace\n",
             :flapping => false,
             :occurrences => 1
           }.to_json).callback do
