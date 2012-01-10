@@ -151,13 +151,13 @@ module Sensu
 
     def setup_standalone(options={})
       @logger.debug('[standalone] -- setup standalone')
-      standalone_count = 0
+      standalone_check_count = 0
       @settings.checks.each do |name, details|
         if details.standalone
-          standalone_count += 1
+          standalone_check_count += 1
           check = Hashie::Mash.new(details.merge({:name => name}))
           stagger = options[:test] ? 0 : 7
-          @timers << EM::Timer.new(stagger*standalone_count) do
+          @timers << EM::Timer.new(stagger*standalone_check_count) do
             interval = options[:test] ? 0.5 : details.interval
             @timers << EM::PeriodicTimer.new(interval) do
               check.issued = Time.now.to_i
