@@ -91,22 +91,20 @@ module Sensu
           details = @settings.handlers[handler]
           case details['type']
           when 'pipe'
-            handle = proc do
-              output = ''
+            execute = proc do
               Bundler.with_clean_env do
                 begin
                   IO.popen(details.command + ' 2>&1', 'r+') do |io|
                     io.write(event.to_json)
                     io.close_write
-                    output = io.read
+                    io.read
                   end
                 rescue Errno::EPIPE => error
-                  output = handler + ' -- broken pipe: ' + error.to_s
+                  handler + ' -- broken pipe: ' + error.to_s
                 end
               end
-              output
             end
-            EM::defer(handle, report)
+            EM::defer(execute, report)
           when 'amqp'
             exchange = details.exchange.name
             exchange_type = details.exchange.key?('type') ? details.exchange['type'].to_sym : :direct
