@@ -94,12 +94,12 @@ module Sensu
           details = @settings.handlers[handler]
           case details['type']
           when 'pipe'
-            handle = proc do
+            execute = proc do
               Bundler.with_clean_env do
                 POSIX::Spawn::Child.new(details.command, :input => event.to_json)
               end
             end
-            EM::defer(handle, report)
+            EM::defer(execute, report)
           when 'amqp'
             exchange = details.exchange.name
             exchange_type = details.exchange.key?('type') ? details.exchange['type'].to_sym : :direct

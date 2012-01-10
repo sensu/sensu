@@ -71,14 +71,14 @@ module Sensu
           @checks_in_progress.push(check.name)
           execute = proc do
             Bundler.with_clean_env do
-              child = POSIX::Spawn::Child.new(@environment, @settings.checks[check.name].command)
-              check.output = child.out
-              check.error = child.err
-              check.status = child.status.exitstatus
+              POSIX::Spawn::Child.new(@environment, @settings.checks[check.name].command)
             end
           end
-          publish = proc do
+          publish = proc do |child|
+            check.status = child.status.exitstatus
             unless check.status.nil?
+              check.output = child.out
+              check.error = child.err
               publish_result(check)
             else
               @logger.warn('[execute] -- nil exit status code -- ' + check.name)
@@ -91,8 +91,8 @@ module Sensu
         end
       else
         @logger.warn('[execute] -- unkown check -- ' + check.name)
-        check.output = 'Unknown check'
         check.status = 3
+        check.output = 'Unknown check'
         check.handle = false
         publish_result(check)
         @checks_in_progress.delete(check.name)
