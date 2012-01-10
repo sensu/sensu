@@ -80,7 +80,7 @@ module Sensu
       handlers.uniq!
       report = proc do |child|
         child.out.split(/\n+/).each do |line|
-          @logger.info('[handler] -- output -- ' + line)
+          @logger.info('[handler] -- ' + line)
         end
         child.err.split(/\n+/).each do |line|
           @logger.info('[handler] -- error -- ' + line)
