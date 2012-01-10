@@ -128,7 +128,7 @@ module Sensu
       @redis.get('client:' + result.client).callback do |client_json|
         unless client_json.nil?
           client = Hashie::Mash.new(JSON.parse(client_json))
-          check = @settings.checks.key?(result.check.name) ? result.check.merge(@settings.checks[result.check.name]) : result.check
+          check = @settings.checks.key?(result.check.name) ? @settings.checks[result.check.name].merge(result.check) : result.check
           event = Hashie::Mash.new({
             :client => client,
             :check => check,
