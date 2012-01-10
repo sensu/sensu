@@ -38,7 +38,7 @@
   },
   "checks": {
     "a": {
-      "command": "echo $instance_id; exit 1",
+      "command": "echo $instance_id; echo backtrace 1>&2; exit 1",
       "subscribers": [
         "a"
       ],
@@ -54,7 +54,7 @@
     },
     "c": {
       "handler": "default",
-      "command": "ruby -e \"puts ENV['instance_id']; exit 3\"",
+      "command": "ruby -e \"puts ENV['instance_id']; STDERR.puts 'backtrace'; exit 3\"",
       "standalone": true,
       "interval": 1
     },
@@ -62,7 +62,7 @@
       "handlers": [
         "default"
       ],
-      "command": "ruby -e \"puts ENV['instance_id']; exit 4\"",
+      "command": "ruby -e \"puts ENV['instance_id']; STDERR.puts 'backtrace'; exit 4\"",
       "subscribers": [
         "a",
         "b",

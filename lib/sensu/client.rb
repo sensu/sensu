@@ -72,7 +72,8 @@ module Sensu
           execute = proc do
             Bundler.with_clean_env do
               child = POSIX::Spawn::Child.new(@environment, @settings.checks[check.name].command)
-              check.output = child.out + child.err
+              check.output = child.out
+              check.error = child.err
               check.status = child.status.exitstatus
             end
           end

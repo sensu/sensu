@@ -190,6 +190,7 @@ module Sensu
                     @redis.hset('events:' + client.name, check.name, {
                       :status => check.status,
                       :output => check.output,
+                      :error => check.error,
                       :flapping => is_flapping,
                       :occurrences => event.occurrences
                     }.to_json).callback do

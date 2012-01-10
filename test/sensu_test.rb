@@ -105,6 +105,7 @@ class TestSensu < Test::Unit::TestCase
           expected = {
             :status => index + 1,
             :output => @settings.client.environment.instance_id + "\n",
+            :error => "backtrace\n",
             :flapping => false,
             :occurrences => 1
           }

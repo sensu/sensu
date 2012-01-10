@@ -7,7 +7,7 @@
   },
   "checks": {
     "b": {
-      "command": "echo $instance_id; exit 2",
+      "command": "echo $instance_id; echo backtrace 1>&2; exit 2",
       "subscribers": [
         "b"
       ],
