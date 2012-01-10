@@ -95,11 +95,8 @@ module Sensu
               output = ''
               Bundler.with_clean_env do
                 begin
-                  IO.popen(details.command + ' 2>&1', 'r+') do |io|
-                    io.write(event.to_json)
-                    io.close_write
-                    output = io.read
-                  end
+                  child = POSIX::Spawn::Child.new(details.command, :input => event.to_json)
+                  output = child.out + child.err
                 rescue Errno::EPIPE => error
                   output = handler + ' -- broken pipe: ' + error.to_s
                 end
