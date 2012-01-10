@@ -78,7 +78,9 @@ module Sensu
             check.status = child.status.exitstatus
             unless check.status.nil?
               check.output = child.out
-              check.error = child.err
+              unless child.err.empty?
+                check.error = child.err
+              end
               publish_result(check)
             else
               @logger.warn('[execute] -- nil exit status code -- ' + check.name)
