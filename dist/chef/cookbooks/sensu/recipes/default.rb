@@ -27,6 +27,7 @@ when "debian", "ubuntu"
   %w[
     libssl-dev
     build-essential
+    daemontools
     nagios-plugins
     nagios-plugins-basic
     nagios-plugins-standard
