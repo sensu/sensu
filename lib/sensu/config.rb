@@ -56,6 +56,12 @@ module Sensu
 
     def validate_common_settings
       @settings.checks.each do |name, details|
+        contains_reserved_key = %w[status output error].any? do |key|
+          details.include?(key)
+        end
+        if contains_reserved_key
+          invalid_config('reserved key (status, output, error) defined in check ' + name)
+        end
         unless details.interval.is_a?(Integer) && details.interval > 0
           invalid_config('missing interval for check ' + name)
         end
@@ -128,7 +134,7 @@ module Sensu
           invalid_config('client environment must be a hash')
         end
         @settings.client.environment.each do |variable, value|
-          unless variable.is_a?(String) && value.is_a?(String)
+          unless value.is_a?(String)
             invalid_config('value must be a string for client environment variable ' + variable)
           end
         end
