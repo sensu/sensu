@@ -55,6 +55,9 @@ module Sensu
 
     def validate_common_settings
       @settings.checks.each do |name, details|
+        if details.key?('status') || details.key?('output')
+          invalid_config('reserved key (status or output) defined in check ' + name)
+        end
         unless details.interval.is_a?(Integer) && details.interval > 0
           invalid_config('missing interval for check ' + name)
         end
