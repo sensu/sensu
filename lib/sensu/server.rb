@@ -78,9 +78,12 @@ module Sensu
       end
       handlers.flatten!
       handlers.uniq!
-      report = proc do |output|
-        output.split(/\n+/).each do |line|
+      report = proc do |child|
+        child.out.split(/\n+/).each do |line|
           @logger.info('[handler] -- ' + line)
+        end
+        child.err.split(/\n+/).each do |line|
+          @logger.error('[handler] -- ' + line)
         end
         @handlers_in_progress -= 1
       end
@@ -91,22 +94,12 @@ module Sensu
           details = @settings.handlers[handler]
           case details['type']
           when 'pipe'
-            handle = proc do
-              output = ''
+            execute = proc do
               Bundler.with_clean_env do
-                begin
-                  IO.popen(details.command + ' 2>&1', 'r+') do |io|
-                    io.write(event.to_json)
-                    io.close_write
-                    output = io.read
-                  end
-                rescue Errno::EPIPE => error
-                  output = handler + ' -- broken pipe: ' + error.to_s
-                end
+                POSIX::Spawn::Child.new(details.command, :input => event.to_json)
               end
-              output
             end
-            EM::defer(handle, report)
+            EM::defer(execute, report)
           when 'amqp'
             exchange = details.exchange.name
             exchange_type = details.exchange.key?('type') ? details.exchange['type'].to_sym : :direct
@@ -130,7 +123,7 @@ module Sensu
       @redis.get('client:' + result.client).callback do |client_json|
         unless client_json.nil?
           client = Hashie::Mash.new(JSON.parse(client_json))
-          check = @settings.checks.key?(result.check.name) ? result.check.merge(@settings.checks[result.check.name]) : result.check
+          check = @settings.checks.key?(result.check.name) ? @settings.checks[result.check.name].merge(result.check) : result.check
           event = Hashie::Mash.new({
             :client => client,
             :check => check,
@@ -193,6 +186,7 @@ module Sensu
                     @redis.hset('events:' + client.name, check.name, {
                       :status => check.status,
                       :output => check.output,
+                      :error => check.error,
                       :flapping => is_flapping,
                       :occurrences => event.occurrences
                     }.to_json).callback do

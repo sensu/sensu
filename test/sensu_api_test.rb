@@ -67,7 +67,8 @@ class TestSensuAPI < Test::Unit::TestCase
         assert_equal(200, http.response_header.status)
         expected = {
           :status => 2,
-          :output => 'CRITICAL',
+          :output => "CRITICAL\n",
+          :error => "backtrace\n",
           :flapping => false,
           :occurrences => 1
         }

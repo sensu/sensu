@@ -9,9 +9,10 @@ gem 'eventmachine', '~> 1.0.0.beta.4'
 require 'optparse'
 require 'json'
 require 'hashie'
-require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em-stdlib-logger'
+require 'amqp'
+require 'posix/spawn'
 
 module Sensu
   class Config
@@ -55,6 +56,12 @@ module Sensu
 
     def validate_common_settings
       @settings.checks.each do |name, details|
+        contains_reserved_key = %w[status output error].any? do |key|
+          details.include?(key)
+        end
+        if contains_reserved_key
+          invalid_config('reserved key (status, output, error) defined in check ' + name)
+        end
         unless details.interval.is_a?(Integer) && details.interval > 0
           invalid_config('missing interval for check ' + name)
         end
@@ -121,6 +128,16 @@ module Sensu
       end
       unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
         invalid_config('client must have subscriptions')
+      end
+      if @settings.client.key?('environment')
+        unless @settings.client.environment.is_a?(Hash)
+          invalid_config('client environment must be a hash')
+        end
+        @settings.client.environment.each do |variable, value|
+          unless value.is_a?(String)
+            invalid_config('value must be a string for client environment variable ' + variable)
+          end
+        end
       end
     end
 
