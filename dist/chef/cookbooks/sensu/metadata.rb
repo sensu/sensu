@@ -15,7 +15,7 @@ depends "redis"
 depends "apt"
 
 # available @ http://community.opscode.com/cookbooks/iptables
-depends "iptables"
+#depends "iptables" # optional
 
 %w{ubuntu debian redhat centos}.each do |os|
   supports os

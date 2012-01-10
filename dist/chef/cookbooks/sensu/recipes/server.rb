@@ -50,4 +50,4 @@ when "centos", "redhat"
   end
 end
 
-include_recipe "sensu::firewall"
+#include_recipe "sensu::firewall" # optional
