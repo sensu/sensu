@@ -78,9 +78,12 @@ module Sensu
       end
       handlers.flatten!
       handlers.uniq!
-      report = proc do |output|
-        output.split(/\n+/).each do |line|
-          @logger.info('[handler] -- ' + line)
+      report = proc do |child|
+        child.out.split(/\n+/).each do |line|
+          @logger.info('[handler] -- output -- ' + line)
+        end
+        child.err.split(/\n+/).each do |line|
+          @logger.info('[handler] -- error -- ' + line)
         end
         @handlers_in_progress -= 1
       end
@@ -92,16 +95,9 @@ module Sensu
           case details['type']
           when 'pipe'
             handle = proc do
-              output = ''
               Bundler.with_clean_env do
-                begin
-                  child = POSIX::Spawn::Child.new(details.command, :input => event.to_json)
-                  output = child.out + child.err
-                rescue Errno::EPIPE => error
-                  output = handler + ' -- broken pipe: ' + error.to_s
-                end
+                POSIX::Spawn::Child.new(details.command, :input => event.to_json)
               end
-              output
             end
             EM::defer(handle, report)
           when 'amqp'
