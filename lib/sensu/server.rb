@@ -137,6 +137,8 @@ module Sensu
           if check['type'] == 'metric'
             unless check.handle == false
               handle_event(event)
+            else
+              @logger.debug('[result] -- handling disabled -- ' + [client.name, check.name, check.status].join(' -- '))
             end
           else
             history_key = 'history:' + client.name + ':' + check.name
@@ -179,11 +181,13 @@ module Sensu
                           unless check.handle == false
                             event.action = 'resolve'
                             handle_event(event)
+                          else
+                            @logger.debug('[result] -- handling disabled -- ' + [client.name, check.name, check.status].join(' -- '))
                           end
                         end
                       end
                     else
-                      @logger.debug('[result] -- check is flapping -- ' + client.name + ' -- ' + check.name)
+                      @logger.debug('[result] -- check is flapping -- ' + [client.name, check.name, check.status].join(' -- '))
                       @redis.hset('events:' + client.name, check.name, previous_occurrence.merge({'flapping' => true}).to_json)
                     end
                   elsif check.status != 0
@@ -200,6 +204,8 @@ module Sensu
                         event.check.flapping = is_flapping
                         event.action = 'create'
                         handle_event(event)
+                      else
+                        @logger.debug('[result] -- handling disabled -- ' + [client.name, check.name, check.status].join(' -- '))
                       end
                     end
                   end
