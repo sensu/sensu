@@ -208,29 +208,33 @@ module Sensu
     attr_accessor :settings, :logger, :amq
 
     def receive_data(data)
-      @logger.debug('[socket] -- new connection -- received data from external source')
-      begin
-        check = Hashie::Mash.new(JSON.parse(data))
-        validates = %w[name status output].all? do |key|
-          check.key?(key)
+      if data == 'ping'
+        @logger.debug('[socket] -- received ping')
+        send_data('pong')
+      else
+        @logger.debug('[socket] -- received data -- ' + data)
+        begin
+          check = Hashie::Mash.new(JSON.parse(data))
+          validates = %w[name output].all? do |key|
+            check[key].is_a?(String)
+          end
+          check.status ||= 0
+          if validates && check.status.is_a?(Integer)
+            @logger.info('[socket] -- publishing check result -- ' + [check.name, check.status, check.output].join(' -- '))
+            @amq.queue('results').publish({
+              :client => @settings.client.name,
+              :check => check.to_hash
+            }.to_json)
+            send_data('ok')
+          else
+            @logger.warn('[socket] -- check name and output must be strings, status defaults to 0 -- e.g. {"name": "x", "output": "y"}')
+            send_data('invalid')
+          end
+        rescue JSON::ParserError => error
+          @logger.warn('[socket] -- check result must be valid JSON: ' + error.to_s)
+          send_data('invalid')
         end
-        if validates
-          @logger.info('[socket] -- publishing check result -- ' + check.name)
-          @amq.queue('results').publish({
-            :client => @settings.client.name,
-            :check => check.to_hash
-          }.to_json)
-        else
-          @logger.warn('[socket] -- a check name, exit status, and output are required -- e.g. {"name": "x", "status": 0, "output": "y"}')
-        end
-      rescue JSON::ParserError => error
-        @logger.warn('[socket] -- check result must be valid JSON: ' + error.to_s)
       end
-      close_connection
-    end
-
-    def unbind
-      @logger.debug('[socket] -- connection closed')
     end
   end
 end
