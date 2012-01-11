@@ -135,7 +135,9 @@ module Sensu
             :occurrences => 1
           })
           if check['type'] == 'metric'
-            handle_event(event)
+            unless check.handle == false
+              handle_event(event)
+            end
           else
             history_key = 'history:' + client.name + ':' + check.name
             @redis.rpush(history_key, check.status).callback do
