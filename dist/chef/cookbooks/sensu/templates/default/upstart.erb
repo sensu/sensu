@@ -9,7 +9,7 @@ stop on [!12345]
 respawn
 
 pre-start script
-  test -x <%= node.sensu.bin_path %>/sensu-<%= @service %> || { stop; exit 0; }
+  test -x <%= @bin_path || node.sensu.bin_path %>/sensu-<%= @service %> || { stop; exit 0; }
 end script
 
-exec setuidgid <%= node.sensu.user %> <%= node.sensu.bin_path %>/sensu-<%= @service %><% if @options %> <%= @options %><% end %>
+exec setuidgid <%= node.sensu.user %> <%= @bin_path || node.sensu.bin_path %>/sensu-<%= @service %><% if @options %> <%= @options %><% end %>
