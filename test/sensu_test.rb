@@ -66,7 +66,7 @@ class TestSensu < Test::Unit::TestCase
 
   def test_handlers
     server = Sensu::Server.new(@options)
-    event = Hashie::Mash.new({
+    event = Hashie::Mash.new(
       :client => @settings.client,
       :check => {
         :name => 'test_handlers',
@@ -77,7 +77,7 @@ class TestSensu < Test::Unit::TestCase
       },
       :occurrences => 1,
       :action => 'create'
-    })
+    )
     server.handle_event(event)
     EM::Timer.new(1) do
       assert_equal(event.to_hash, JSON.parse(File.open('/tmp/sensu_test_handlers', 'rb').read))
