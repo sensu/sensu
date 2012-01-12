@@ -21,7 +21,7 @@ include_recipe "git::default"
 
 gem_package "bundler"
 
-directory File.join(node.sensu.sandbox.directory, "shared") do
+directory File.join(node.sensu.sandbox.directory, "shared/vendor") do
   recursive true
 end
 
@@ -36,7 +36,8 @@ deploy_revision "sensu" do
   deploy_to node.sensu.sandbox.directory
   repository "git://github.com/sonian/sensu.git"
   revision "v#{node.sensu.version}"
-  create_dirs_before_symlink %w[vendor]
+  purge_before_symlink Array.new
+  create_dirs_before_symlink Array.new
   symlink_before_migrate Hash.new
   symlinks ({"vendor" => "vendor"})
   action File.exists?(File.join(node.sensu.sandbox.directory, "current")) ? :deploy : :force_deploy
