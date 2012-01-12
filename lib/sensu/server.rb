@@ -200,6 +200,9 @@ module Sensu
                   else
                     @logger.debug('[result] -- check is flapping -- ' + [client.name, check.name, check.status].join(' -- '))
                     @redis.hset('events:' + client.name, check.name, previous_occurrence.merge({'flapping' => true}).to_json)
+                    if check['type'] == 'metric'
+                      handle_event(event)
+                    end
                   end
                 elsif check['type'] == 'metric'
                   handle_event(event)
