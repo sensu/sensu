@@ -72,6 +72,10 @@ when "sandbox"
   include_recipe "sensu::sandbox"
 end
 
+gem_package "sensu-plugin" do
+  version node.sensu.plugin.version
+end
+
 directory File.join(node.sensu.directory, 'conf.d') do
   recursive true
 end
