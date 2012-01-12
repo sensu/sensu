@@ -63,7 +63,7 @@ when "rubygems"
     version node.sensu.version
     notifies :run, resources(:execute => "gem_update")
   end
-  node.sensu.bin_path = Sensu.find_bin_path
+  node.set.sensu.bin_path = Sensu.find_bin_path
 when "sandbox"
   include_recipe "sensu::sandbox"
 end

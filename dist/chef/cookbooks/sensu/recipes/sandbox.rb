@@ -41,4 +41,4 @@ deploy_revision "sensu" do
   notifies :run, resources(:execute => "bundle"), :immediate
 end
 
-node.sensu.bin_path = File.join(node.sensu.sandbox.directory, "current/bin")
+node.set.sensu.bin_path = File.join(node.sensu.sandbox.directory, "current/bin")
