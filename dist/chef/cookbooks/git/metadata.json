@@ -1,0 +1,37 @@
+{
+  "name": "git",
+  "description": "Installs git and/or sets up a Git server daemon",
+  "long_description": "Description\n===========\n\nInstalls git and optionally sets up a git server as a daemon under runit.\n\nChanges\n=======\n\n## v0.10.0:\n\n* [COOK-853] - Git client installation on CentOS\n\n## v0.9.0:\n\n* Current public release.\n\nRequirements\n============\n\n## Platform:\n\n* Debian/Ubuntu\n* ArchLinux\n\n## Cookbooks:\n\n* runit\n\nUsage\n=====\n\nThis cookbook primarily installs git core packages. It can also be\nused to serve git repositories.\n\n    include_recipe \"git::server\"\n\nThis creates the directory /srv/git and starts a git daemon, exporting\nall repositories found. Repositories need to be added manually, but\nwill be available once they are created.\n\nLicense and Author\n==================\n\nAuthor:: Joshua Timberman (<joshua@opscode.com>)\n\nCopyright:: 2009, Opscode, Inc\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.\n",
+  "maintainer": "Opscode, Inc.",
+  "maintainer_email": "cookbooks@opscode.com",
+  "license": "Apache 2.0",
+  "platforms": {
+    "ubuntu": ">= 0.0.0",
+    "debian": ">= 0.0.0",
+    "arch": ">= 0.0.0",
+    "centos": ">= 0.0.0"
+  },
+  "dependencies": {
+    "runit": ">= 0.0.0",
+    "yum": ">= 0.0.0"
+  },
+  "recommendations": {
+  },
+  "suggestions": {
+  },
+  "conflicting": {
+  },
+  "providing": {
+  },
+  "replacing": {
+  },
+  "attributes": {
+  },
+  "groupings": {
+  },
+  "recipes": {
+    "git": "Installs git",
+    "git::server": "Sets up a runit_service for git daemon"
+  },
+  "version": "0.10.0"
+}

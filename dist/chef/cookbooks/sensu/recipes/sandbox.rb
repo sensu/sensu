@@ -17,6 +17,8 @@
 # limitations under the License.
 #
 
+include_recipe "git::default"
+
 gem_package "bundler"
 
 directory File.join(node.sensu.sandbox.directory, "shared") do
