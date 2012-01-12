@@ -112,7 +112,7 @@ class TestSensu < Test::Unit::TestCase
         end
         server.amq.queue(String.unique, :exclusive => true).bind('graphite').subscribe do |metric|
           assert(metric.is_a?(String))
-          assert_equal(metric.split(' ').first, ['sensu', @settings.client.name, 'diceroll'].join('.'))
+          assert_equal(['sensu', @settings.client.name, 'diceroll'].join('.'), metric.split(' ').first)
           done
         end
       end
@@ -133,8 +133,10 @@ class TestSensu < Test::Unit::TestCase
     external_source = proc do
       socket = TCPSocket.open('127.0.0.1', 3030)
       socket.write('{"name": "external", "status": 1, "output": "test"}')
+      socket.recv(2)
     end
-    callback = proc do
+    callback = proc do |response|
+      assert_equal('ok', response)
       EM::Timer.new(1.5) do
         server.redis.hgetall('events:' + @settings.client.name).callback do |events|
           assert(events.include?('external'))
