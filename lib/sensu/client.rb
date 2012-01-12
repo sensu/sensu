@@ -155,7 +155,7 @@ module Sensu
       @settings.checks.each do |name, details|
         if details.standalone
           standalone_check_count += 1
-          check = Hashie::Mash.new(details.merge({:name => name}))
+          check = Hashie::Mash.new(details.merge(:name => name))
           stagger = options[:test] ? 0 : 7
           @timers << EM::Timer.new(stagger*standalone_check_count) do
             interval = options[:test] ? 0.5 : details.interval
