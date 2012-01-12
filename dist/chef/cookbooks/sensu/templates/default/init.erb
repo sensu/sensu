@@ -14,7 +14,7 @@ prog="sensu-<%= @service %>"
 
 user=${SENSU_USER-<%= node.sensu.user %>}
 config=${CONFIG-<%= node.sensu.directory %>/config.json}
-exec=${EXEC-<%= Sensu.find_bin(@service) %>}
+exec=${EXEC-<%= node.sensu.bin_path %>/sensu-<%= @service %>}
 logfile=${LOGFILE-/var/log/sensu/$prog.log}
 pidfile=${PIDFILE-/var/run/sensu/$prog.pid}
 lockfile=${LOCKFILE-/var/lock/subsys/$prog}

@@ -52,8 +52,20 @@ when "centos", "redhat"
   end
 end
 
-gem_package "sensu" do
-  version node.sensu.version
+execute "gem_update" do
+  action :nothing
+  command "true"
+end
+
+case node.sensu.installation
+when "rubygems"
+  gem_package "sensu" do
+    version node.sensu.version
+    notifies :run, resources(:execute => "gem_update")
+  end
+  node.sensu.bin_path = Sensu.find_bin_path
+when "sandbox"
+  include_recipe "sensu::sandbox"
 end
 
 directory File.join(node.sensu.directory, 'conf.d') do
