@@ -1,8 +1,8 @@
 #
-# Cookbook Name:: sensu
-# Recipe:: firewall
+# Cookbook Name:: git
+# Recipe:: server
 #
-# Copyright 2012, Sean Escriva  <sean.escriva@gmail.com>
+# Copyright 2009, Opscode, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-include_recipe "iptables"
+include_recipe "git"
 
-#iptables_rule "port_rabbitmq"
-#iptables_rule "port_redis"
-#iptables_rule "port_sensu-api"
-#iptables_rule "port_sensu-dashboard"
+directory "/srv/git" do
+  owner "root"
+  group "root"
+  mode 0755
+end
+
+case node[:platform]
+when "debian", "ubuntu"
+  include_recipe "runit"
+  runit_service "git-daemon"
+else
+  log "Platform requires setting up a git daemon service script."
+  log "Hint: /usr/bin/git daemon --export-all --user=nobody --group=daemon --base-path=/srv/git"
+end

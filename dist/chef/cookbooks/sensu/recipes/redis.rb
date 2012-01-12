@@ -18,5 +18,6 @@
 #
 
 node.set.redis.listen_addr = "0.0.0.0"
+node.set.redis.listen_port = node.sensu.redis.port
 
 include_recipe "redis::server"

@@ -34,7 +34,7 @@ when "ubuntu", "debian"
   service "sensu-server" do
     provider Chef::Provider::Service::Upstart
     action [:enable, :start]
-    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :execute => "gem_update"), :delayed
   end
 when "centos", "redhat"
   template "/etc/init.d/sensu-server" do
@@ -46,6 +46,6 @@ when "centos", "redhat"
   service "sensu-server" do
     action [:enable, :start]
     supports :restart => true
-    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :gem_package => "sensu"), :delayed
+    subscribes :restart, resources(:file => File.join(node.sensu.directory, "config.json"), :execute => "gem_update"), :delayed
   end
 end
