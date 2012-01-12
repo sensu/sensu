@@ -61,7 +61,7 @@ case node.sensu.installation
 when "rubygems"
   gem_package "sensu" do
     version node.sensu.version
-    notifies :run, resources(:execute => "gem_update")
+    notifies :run, resources(:execute => "gem_update"), :immediate
   end
   node.set.sensu.bin_path = Sensu.find_bin_path
 when "sandbox"
