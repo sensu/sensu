@@ -129,11 +129,11 @@ module Sensu
         unless client_json.nil?
           client = Hashie::Mash.new(JSON.parse(client_json))
           check = @settings.checks.key?(result.check.name) ? @settings.checks[result.check.name].merge(result.check) : result.check
-          event = Hashie::Mash.new({
+          event = Hashie::Mash.new(
             :client => client,
             :check => check,
             :occurrences => 1
-          })
+          )
           history_key = 'history:' + client.name + ':' + check.name
           @redis.rpush(history_key, check.status).callback do
             @redis.lrange(history_key, -21, -1).callback do |history|
@@ -199,7 +199,12 @@ module Sensu
                     end
                   else
                     @logger.debug('[result] -- check is flapping -- ' + [client.name, check.name, check.status].join(' -- '))
-                    @redis.hset('events:' + client.name, check.name, previous_occurrence.merge({'flapping' => true}).to_json)
+                    @redis.hset('events:' + client.name, check.name, previous_occurrence.merge(:flapping => true).to_json).callback do
+                      if check['type'] == 'metric'
+                        event.check.flapping = is_flapping
+                        handle_event(event)
+                      end
+                    end
                   end
                 elsif check['type'] == 'metric'
                   handle_event(event)
@@ -225,7 +230,7 @@ module Sensu
       @logger.debug('[publisher] -- setup publisher')
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
-        check_request = Hashie::Mash.new({:name => name})
+        check_request = Hashie::Mash.new(:name => name)
         unless details.publish == false || details.standalone
           @timers << EM::Timer.new(stagger*index) do
             details.subscribers.each do |exchange|
@@ -250,13 +255,13 @@ module Sensu
             @redis.get('client:' + client_id).callback do |client_json|
               client = Hashie::Mash.new(JSON.parse(client_json))
               time_since_last_keepalive = Time.now.to_i - client.timestamp
-              result = Hashie::Mash.new({
+              result = Hashie::Mash.new(
                 :client => client.name,
                 :check => {
                   :name => 'keepalive',
                   :issued => Time.now.to_i
                 }
-              })
+              )
               case
               when time_since_last_keepalive >= 180
                 result.check.status = 2
