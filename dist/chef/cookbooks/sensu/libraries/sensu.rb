@@ -17,12 +17,12 @@ module Sensu
     JSON.pretty_generate(config)
   end
 
-  def self.find_bin(service)
-    bin_path = "/usr/bin/sensu-#{service}"
+  def self.find_bin_path
+    bin_path = "/usr/bin"
     ENV['PATH'].split(':').each do |path|
-      test_path = File.join(path, "sensu-#{service}")
+      test_path = File.join(path, "sensu-client")
       if File.exists?(test_path)
-        bin_path = test_path
+        bin_path = path
       end
     end
     bin_path
