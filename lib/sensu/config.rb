@@ -176,7 +176,7 @@ module Sensu
               invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + error.to_s)
             end
             merged_settings = @settings.to_hash.deep_merge(snippet_hash)
-            @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
+            @logger.warn('[settings] -- configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
             @settings = Hashie::Mash.new(merged_settings)
           else
             invalid_config('configuration snippet file is not readable: ' + snippet_file)
