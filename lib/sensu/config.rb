@@ -11,7 +11,7 @@ require 'json'
 require 'hashie'
 require 'amqp'
 require 'cabin'
-require 'cabin/outputs/em-stdlib-logger'
+require 'cabin/outputs/em/stdlib-logger'
 
 module Sensu
   class Config
@@ -44,7 +44,7 @@ module Sensu
       end
       @logger = Cabin::Channel.new
       log_output = File.basename($0) == 'rake' ? '/tmp/sensu_test.log' : STDOUT
-      @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(Logger.new(log_output)))
+      @logger.subscribe(Cabin::Outputs::EM::StdlibLogger.new(Logger.new(log_output)))
       @logger.level = @options[:verbose] ? :debug : :info
       if Signal.list.include?('USR1')
         Signal.trap('USR1') do
