@@ -99,8 +99,12 @@ module Sensu
                     io.close_write
                     io.read
                   end
+                rescue Errno::ENOENT => error
+                  handler + ' -- does not exist: ' + error.to_s
                 rescue Errno::EPIPE => error
                   handler + ' -- broken pipe: ' + error.to_s
+                rescue => error
+                  handler + ' -- unknown error: ' + error.to_s
                 end
               end
             end
