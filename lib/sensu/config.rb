@@ -1,6 +1,6 @@
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 
-require 'rubygems' if RUBY_VERSION < '1.9.0'
+require 'rubygems'
 require 'bundler'
 require 'bundler/setup'
 
@@ -12,6 +12,10 @@ require 'hashie'
 require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em/stdlib-logger'
+
+if ENV['RBTRACE']
+  require 'rbtrace'
+end
 
 module Sensu
   class Config
