@@ -7,6 +7,7 @@ require 'bundler/setup'
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
 require 'optparse'
+require 'time'
 require 'json'
 require 'hashie'
 require 'amqp'

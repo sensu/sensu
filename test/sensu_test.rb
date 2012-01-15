@@ -108,7 +108,7 @@ class TestSensu < Test::Unit::TestCase
             :flapping => false,
             :occurrences => 1
           }
-          assert_equal(expected, (JSON.parse(value).reject { |key, value| %w[issued duration].include?(key) }).symbolize_keys)
+          assert_equal(expected, (JSON.parse(value).reject { |key, value| key == 'issued' }).symbolize_keys)
         end
         server.amq.queue(String.unique, :exclusive => true).bind('graphite').subscribe do |metric|
           assert(metric.is_a?(String))

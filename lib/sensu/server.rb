@@ -178,8 +178,7 @@ module Sensu
                   @redis.hset('events:' + client.name, check.name, {
                     :status => check.status,
                     :output => check.output,
-                    :issued => check.issued,
-                    :duration => check.duration,
+                    :issued => Time.at(check.issued).utc.iso8601,
                     :flapping => is_flapping,
                     :occurrences => event.occurrences
                   }.to_json).callback do
