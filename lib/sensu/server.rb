@@ -99,8 +99,12 @@ module Sensu
                     io.close_write
                     io.read
                   end
+                rescue Errno::ENOENT => error
+                  handler + ' -- does not exist: ' + error.to_s
                 rescue Errno::EPIPE => error
                   handler + ' -- broken pipe: ' + error.to_s
+                rescue => error
+                  handler + ' -- unknown error: ' + error.to_s
                 end
               end
             end
@@ -174,6 +178,7 @@ module Sensu
                   @redis.hset('events:' + client.name, check.name, {
                     :status => check.status,
                     :output => check.output,
+                    :issued => Time.at(check.issued).utc.iso8601,
                     :flapping => is_flapping,
                     :occurrences => event.occurrences
                   }.to_json).callback do

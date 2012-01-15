@@ -1,17 +1,22 @@
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 
-require 'rubygems' if RUBY_VERSION < '1.9.0'
+require 'rubygems'
 require 'bundler'
 require 'bundler/setup'
 
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
 require 'optparse'
+require 'time'
 require 'json'
 require 'hashie'
 require 'amqp'
 require 'cabin'
-require 'cabin/outputs/em-stdlib-logger'
+require 'cabin/outputs/em/stdlib-logger'
+
+if ENV['RBTRACE']
+  require 'rbtrace'
+end
 
 module Sensu
   class Config
@@ -44,7 +49,7 @@ module Sensu
       end
       @logger = Cabin::Channel.new
       log_output = File.basename($0) == 'rake' ? '/tmp/sensu_test.log' : STDOUT
-      @logger.subscribe(Cabin::Outputs::EmStdlibLogger.new(Logger.new(log_output)))
+      @logger.subscribe(Cabin::Outputs::EM::StdlibLogger.new(Logger.new(log_output)))
       @logger.level = @options[:verbose] ? :debug : :info
       if Signal.list.include?('USR1')
         Signal.trap('USR1') do
@@ -176,7 +181,7 @@ module Sensu
               invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + error.to_s)
             end
             merged_settings = @settings.to_hash.deep_merge(snippet_hash)
-            @logger.warn('[settings] configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
+            @logger.warn('[settings] -- configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
             @settings = Hashie::Mash.new(merged_settings)
           else
             invalid_config('configuration snippet file is not readable: ' + snippet_file)
