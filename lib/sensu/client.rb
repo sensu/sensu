@@ -94,7 +94,7 @@ module Sensu
                 rescue => error
                   check.output = 'unexpected error: ' + error.to_s
                 end
-                check.duration = '%.3f' % Time.now.to_f - started
+                check.duration = ('%.3f' % (Time.now.to_f - started)).to_f
               end
               check.status = $?.exitstatus
             end
