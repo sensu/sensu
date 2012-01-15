@@ -86,9 +86,15 @@ module Sensu
           if unmatched_tokens.empty?
             execute = proc do
               Bundler.with_clean_env do
-                IO.popen(command + ' 2>&1') do |io|
-                  check.output = io.read
+                started = Time.now.to_f
+                begin
+                  IO.popen(command + ' 2>&1') do |io|
+                    check.output = io.read
+                  end
+                rescue => error
+                  check.output = 'unexpected error: ' + error.to_s
                 end
+                check.duration = '%.3f' % Time.now.to_f - started
               end
               check.status = $?.exitstatus
             end
