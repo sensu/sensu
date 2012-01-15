@@ -86,9 +86,15 @@ module Sensu
           if unmatched_tokens.empty?
             execute = proc do
               Bundler.with_clean_env do
-                IO.popen(command + ' 2>&1') do |io|
-                  check.output = io.read
+                started = Time.now.to_f
+                begin
+                  IO.popen(command + ' 2>&1') do |io|
+                    check.output = io.read
+                  end
+                rescue => error
+                  check.output = 'unexpected error: ' + error.to_s
                 end
+                check.duration = ('%.3f' % (Time.now.to_f - started)).to_f
               end
               check.status = $?.exitstatus
             end
@@ -218,6 +224,7 @@ module Sensu
           validates = %w[name output].all? do |key|
             check[key].is_a?(String)
           end
+          check.issued = Time.now.to_i
           check.status ||= 0
           if validates && check.status.is_a?(Integer)
             @logger.info('[socket] -- publishing check result -- ' + [check.name, check.status, check.output].join(' -- '))
