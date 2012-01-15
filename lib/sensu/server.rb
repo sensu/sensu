@@ -182,7 +182,7 @@ module Sensu
                     :flapping => is_flapping,
                     :occurrences => event.occurrences
                   }.to_json).callback do
-                    unless check.internal || check.handle == false
+                    unless check.handle == false
                       event.check.flapping = is_flapping
                       event.action = 'create'
                       handle_event(event)
@@ -194,7 +194,7 @@ module Sensu
                   unless is_flapping
                     unless check.auto_resolve == false && !check.force_resolve
                       @redis.hdel('events:' + client.name, check.name).callback do
-                        unless check.internal || check.handle == false
+                        unless check.handle == false
                           event.action = 'resolve'
                           handle_event(event)
                         else
