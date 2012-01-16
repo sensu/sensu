@@ -104,7 +104,7 @@ module Sensu
                 rescue Errno::EPIPE => error
                   handler + ' -- broken pipe: ' + error.to_s
                 rescue => error
-                  handler + ' -- unknown error: ' + error.to_s
+                  handler + ' -- unexpected error: ' + error.to_s
                 end
               end
             end
