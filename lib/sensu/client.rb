@@ -10,7 +10,7 @@ module Sensu
       if options[:pid_file]
         Process.write_pid(options[:pid_file])
       end
-      EM::threadpool_size = 16
+      EM::threadpool_size = 14
       EM::run do
         client.setup_amqp
         client.setup_keepalives
