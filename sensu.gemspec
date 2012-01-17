@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
   s.add_dependency("eventmachine", "~> 1.0.0.beta.4")
   s.add_dependency("amqp", "0.7.4")
   s.add_dependency("json")
-  s.add_dependency("hashie")
+  s.add_dependency("hashie", "~> 1.2.0")
   s.add_dependency("cabin", "0.1.8")
   s.add_dependency("ruby-redis")
   s.add_dependency("rack", "~> 1.3.4")
