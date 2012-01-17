@@ -296,7 +296,7 @@ module Sensu
         $redis.sadd('clients', $settings.client.name).callback do
           $redis.hset('events:' + $settings.client.name, 'test', {
             :status => 2,
-            :output => 'CRITICAL',
+            :output => "CRITICAL\n",
             :issued => Time.now.utc.iso8601,
             :flapping => false,
             :occurrences => 1
