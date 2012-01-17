@@ -1,5 +1,5 @@
 # most of these values can be replaced with your method of discovery
-default.sensu.version = "0.9.3.beta.1"
+default.sensu.version = "0.9.3.beta.3"
 default.sensu.installation = "rubygems"
 default.sensu.directory = "/etc/sensu"
 default.sensu.log.directory = "/var/log/sensu"
