@@ -110,7 +110,7 @@ class TestSensu < Test::Unit::TestCase
           }
           assert_equal(expected, (JSON.parse(value).reject { |key, value| key == 'issued' }).symbolize_keys)
         end
-        server.amq.queue(String.unique, :exclusive => true).bind('graphite').subscribe do |metric|
+        server.amq.queue(String.unique, :exclusive => true).bind('graphite', :key => 'sensu.*').subscribe do |metric|
           assert(metric.is_a?(String))
           assert_equal(['sensu', @settings.client.name, 'diceroll'].join('.'), metric.split(' ').first)
           done
