@@ -91,7 +91,7 @@ module Sensu
               }
               $amq.queue('results').publish({:client => client, :check => check}.to_json)
             end
-            $logger.info('[client] -- client deletion queued -- ' + client)
+            $logger.info('[client] -- client will be deleted -- ' + client)
             EM::Timer.new(5) do
               $logger.info('[client] -- deleting client -- ' + client)
               $redis.srem('clients', client)
@@ -173,11 +173,11 @@ module Sensu
     aget '/event/:client/:check' do |client, check|
       $logger.debug('[event] -- ' + request.ip + ' -- GET -- request for event -- ' + client + ' -- ' + check)
       $redis.hgetall('events:' + client).callback do |events|
-        event = events[check]
-        if event.nil?
+        event_json = events[check]
+        if event_json.nil?
           status 404
         end
-        body event
+        body event_json
       end
     end
 
@@ -231,18 +231,18 @@ module Sensu
 
     aget '/stash/*' do |path|
       $logger.debug('[stash] -- ' + request.ip + ' -- GET -- request for stash -- ' + path)
-      $redis.get('stash:' + path).callback do |stash|
-        if stash.nil?
+      $redis.get('stash:' + path).callback do |stash_json|
+        if stash_json.nil?
           status 404
         end
-        body stash
+        body stash_json
       end
     end
 
     adelete '/stash/*' do |path|
       $logger.debug('[stash] -- ' + request.ip + ' -- DELETE -- request for stash -- ' + path)
-      $redis.exists('stash:' + path).callback do |stash_exist|
-        if stash_exist
+      $redis.exists('stash:' + path).callback do |stash_exists|
+        if stash_exists
           $redis.srem('stashes', path).callback do
             $redis.del('stash:' + path).callback do
               status 204
@@ -274,9 +274,9 @@ module Sensu
       response = Hash.new
       if post_body.is_a?(Array) && post_body.size > 0
         post_body.each_with_index do |path, index|
-          $redis.get('stash:' + path).callback do |stash|
-            unless stash.nil?
-              response[path] = JSON.parse(stash)
+          $redis.get('stash:' + path).callback do |stash_json|
+            unless stash_json.nil?
+              response[path] = JSON.parse(stash_json)
             end
             if index == post_body.size - 1
               body response.to_json
