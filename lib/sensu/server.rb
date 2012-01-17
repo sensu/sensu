@@ -115,7 +115,9 @@ module Sensu
             exchange_options = details.exchange.reject { |key, value| %w[name type].include?(key) }
             @logger.debug('[event] -- publishing event to rabbitmq exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
             payload = details.send_only_check_output ? event.check.output : event.to_json
-            @amq.method(exchange_type).call(exchange, exchange_options).publish(payload)
+            unless payload.empty?
+              @amq.method(exchange_type).call(exchange, exchange_options).publish(payload)
+            end
             @handlers_in_progress -= 1
           when 'set'
             @logger.warn('[event] -- handler sets cannot be nested -- ' + handler)

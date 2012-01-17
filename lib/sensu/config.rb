@@ -110,6 +110,11 @@ module Sensu
           unless details.exchange.name.is_a?(String)
             invalid_config('missing exchange name for amqp handler ' + name)
           end
+          if details.exchange.key?('type')
+            unless %w[direct fanout topic].include?(details.exchange['type'])
+              invalid_config('invalid exchange type for amqp handler ' + name)
+            end
+          end
         when 'set'
           unless details.handlers.is_a?(Array) && details.handlers.count > 0
             invalid_config('missing handler set for handler ' + name)

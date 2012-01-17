@@ -31,7 +31,9 @@
     "graphite": {
       "type": "amqp",
       "exchange": {
-        "name": "graphite"
+        "type": "topic",
+        "name": "graphite",
+        "key": "sensu.test"
       },
       "send_only_check_output": true
     }
