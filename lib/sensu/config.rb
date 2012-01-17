@@ -98,7 +98,7 @@ module Sensu
         unless details['type'].is_a?(String)
           invalid_config('missing type for handler ' + name)
         end
-        case details['type']
+        case details.type
         when 'pipe'
           unless details.command.is_a?(String)
             invalid_config('missing command for pipe handler ' + name)

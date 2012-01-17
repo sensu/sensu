@@ -74,7 +74,7 @@ module Sensu
         ['default']
       end
       handlers.map! do |handler|
-        @settings.handlers[handler]['type'] == 'set' ? @settings.handlers[handler].handlers : handler
+        @settings.handlers[handler].type == 'set' ? @settings.handlers[handler].handlers : handler
       end
       handlers.flatten!
       handlers.uniq!
@@ -89,7 +89,7 @@ module Sensu
           @logger.debug('[event] -- handling event -- ' + [handler, event.client.name, event.check.name].join(' -- '))
           @handlers_in_progress += 1
           details = @settings.handlers[handler]
-          case details['type']
+          case details.type
           when 'pipe'
             execute = proc do
               Bundler.with_clean_env do
@@ -111,7 +111,7 @@ module Sensu
             EM::defer(execute, report)
           when 'amqp'
             exchange = details.exchange.name
-            exchange_type = details.exchange.key?('type') ? details.exchange['type'].to_sym : :direct
+            exchange_type = details.exchange.key?('type') ? details.exchange.type.to_sym : :direct
             exchange_options = details.exchange.reject { |key, value| %w[name type].include?(key) }
             @logger.debug('[event] -- publishing event to rabbitmq exchange -- ' + [exchange, event.client.name, event.check.name].join(' -- '))
             payload = details.send_only_check_output ? event.check.output : event.to_json
@@ -205,13 +205,13 @@ module Sensu
                   else
                     @logger.debug('[result] -- check is flapping -- ' + [client.name, check.name, check.status].join(' -- '))
                     @redis.hset('events:' + client.name, check.name, previous_occurrence.merge(:flapping => true).to_json).callback do
-                      if check['type'] == 'metric'
+                      if check.type == 'metric'
                         event.check.flapping = is_flapping
                         handle_event(event)
                       end
                     end
                   end
-                elsif check['type'] == 'metric'
+                elsif check.type == 'metric'
                   handle_event(event)
                 end
               end
