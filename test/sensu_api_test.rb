@@ -178,6 +178,32 @@ class TestSensuAPI < Test::Unit::TestCase
     end
   end
 
+  def test_check_request
+    EM::Timer.new(1) do
+      options = {
+        :body => '{"check": "a", "subscribers": ["a", "b"]}'
+      }
+      http = EM::HttpRequest.new(@api + '/check/request').post options
+      http.callback do
+        assert_equal(201, http.response_header.status)
+        done
+      end
+    end
+  end
+
+  def test_check_request_malformed
+    EM::Timer.new(1) do
+      options = {
+        :body => '{"check": "a", "subscribers": "malformed"}'
+      }
+      http = EM::HttpRequest.new(@api + '/check/request').post options
+      http.callback do
+        assert_equal(400, http.response_header.status)
+        done
+      end
+    end
+  end
+
   def test_create_stash
     EM::Timer.new(1) do
       options = {
