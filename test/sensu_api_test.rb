@@ -71,7 +71,7 @@ class TestSensuAPI < Test::Unit::TestCase
           :flapping => false,
           :occurrences => 1
         }
-        assert_equal(expected, JSON.parse(http.response).symbolize_keys)
+        assert_equal(expected, (JSON.parse(http.response).reject { |key, value| key == 'issued' }).symbolize_keys)
         done
       end
     end
