@@ -289,7 +289,7 @@ module Sensu
       end
     end
 
-    def self.setup_test_scaffolding(options={})
+    def self.run_test(options={}, &block)
       self.setup(options)
       $settings.client.timestamp = Time.now.to_i
       $redis.set('client:' + $settings.client.name, $settings.client.to_json).callback do
@@ -304,6 +304,7 @@ module Sensu
             $redis.set('stash:test/test', '{"key": "value"}').callback do
               Thin::Logging.silent = true
               Thin::Server.start(self, $settings.api.port)
+              block.call
             end
           end
         end
