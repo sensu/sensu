@@ -302,9 +302,11 @@ module Sensu
             :occurrences => 1
           }.to_json).callback do
             $redis.set('stash:test/test', '{"key": "value"}').callback do
-              Thin::Logging.silent = true
-              Thin::Server.start(self, $settings.api.port)
-              block.call
+              $redis.sadd('stashes', 'test/test').callback do
+                Thin::Logging.silent = true
+                Thin::Server.start(self, $settings.api.port)
+                block.call
+              end
             end
           end
         end
