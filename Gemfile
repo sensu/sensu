@@ -15,5 +15,8 @@ group :development do
   gem("rake")
   gem("em-spec")
   gem("em-http-request")
+end
+
+group :debug do
   gem("rbtrace")
 end

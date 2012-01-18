@@ -1,6 +1,4 @@
-class TestSensuAPI < Test::Unit::TestCase
-  include EventMachine::Test
-
+class TestSensuAPI < TestCase
   def setup
     @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json')}
     config = Sensu::Config.new(@options)

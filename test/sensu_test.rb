@@ -1,6 +1,4 @@
-class TestSensu < Test::Unit::TestCase
-  include EventMachine::Test
-
+class TestSensu < TestCase
   def setup
     @options = {
       :config_file => File.join(File.dirname(__FILE__), 'config.json'),
