@@ -152,12 +152,13 @@ class TestSensu < TestCase
     server2.setup_redis
     server1.setup_amqp
     server2.setup_amqp
-    server1.redis.flushall
-    server1.setup_master_monitor
-    server2.setup_master_monitor
-    EM::Timer.new(1) do
-      assert([server1.is_master, server2.is_master].uniq.count == 2)
-      done
+    server1.redis.flushall.callback do
+      server1.setup_master_monitor
+      server2.setup_master_monitor
+      EM::Timer.new(1) do
+        assert([server1.is_master, server2.is_master].uniq.count == 2)
+        done
+      end
     end
   end
 
@@ -168,7 +169,6 @@ class TestSensu < TestCase
     server2.setup_redis
     server1.setup_amqp
     server2.setup_amqp
-    server1.redis.flushall
     server1.redis.set('lock:master', Time.now.to_i - 60).callback do
       server1.setup_master_monitor
       server2.setup_master_monitor
