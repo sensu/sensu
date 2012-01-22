@@ -236,8 +236,12 @@ module Sensu
     #
     # Returns a populated settings hash
     def self.get_default_settings
-      settings = {:api => {}, :amqp => {}, :redis => {}}
-      amqp = URI(ENV["RABBITMQ_URL"])
+      settings = {:api => {}, :rabbitmq => {}, :redis => {}}
+      begin
+        amqp = URI(ENV["RABBITMQ_URL"])
+      rescue
+        amqp = nil
+      end
       unless amqp.nil?
         settings[:rabbitmq][:host]     = amqp.host
         settings[:rabbitmq][:port]     = amqp.port
@@ -245,8 +249,12 @@ module Sensu
         settings[:rabbitmq][:password] = amqp.password
         settings[:rabbitmq][:vhost]    = amqp.path
       end
-      redis = URI(ENV["REDISTOGO_URL"])
-      unless amqp.nil?
+      begin
+        redis = URI(ENV["REDISTOGO_URL"])
+      rescue
+        redis = nil
+      end
+      unless redis.nil?
         settings[:redis][:host]     = redis.host
         settings[:redis][:port]     = redis.port
         settings[:redis][:user]     = redis.user
