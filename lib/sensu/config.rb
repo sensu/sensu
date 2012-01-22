@@ -245,8 +245,8 @@ module Sensu
       unless amqp.nil?
         settings[:rabbitmq][:host]     = amqp.host
         settings[:rabbitmq][:port]     = amqp.port
-        settings[:rabbitmq][:user]     = amqp.user
-        settings[:rabbitmq][:password] = amqp.password
+        settings[:rabbitmq][:user]     = amqp.user unless amqp.user.nil?
+        settings[:rabbitmq][:password] = amqp.password unless amqp.password.nil?
         settings[:rabbitmq][:vhost]    = amqp.path
       end
       begin
@@ -257,8 +257,8 @@ module Sensu
       unless redis.nil?
         settings[:redis][:host]     = redis.host
         settings[:redis][:port]     = redis.port
-        settings[:redis][:user]     = redis.user
-        settings[:redis][:password] = redis.password
+        settings[:redis][:user]     = redis.user unless redis.user.nil?
+        settings[:redis][:password] = redis.password unless redis.password.nil?
       end
       settings[:api][:port] = ENV["PORT"]
       return settings
