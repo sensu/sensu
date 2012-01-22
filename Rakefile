@@ -6,7 +6,7 @@ task :default => 'test'
 
 def test_local_tcp_socket(port)
   begin
-    Timeout::timeout(1) do
+    timeout(1) do
       socket = TCPSocket.new('127.0.0.1', port)
       socket.close
     end
@@ -20,12 +20,10 @@ desc "Run tests"
 task :test do
   puts "Running tests ..."
   unless test_local_tcp_socket(5672)
-    puts "RabbitMQ MUST BE RUNNING!"
-    next
+    raise "RabbitMQ MUST BE RUNNING!"
   end
   unless test_local_tcp_socket(6379)
-    puts "Redis MUST BE RUNNING!"
-    next
+    raise "Redis MUST BE RUNNING!"
   end
   require File.join(File.dirname(__FILE__), 'test', 'helper')
   Dir['test/*_test.rb'].each do |test|
