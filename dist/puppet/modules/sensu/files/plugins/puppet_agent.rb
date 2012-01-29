@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Puppet Agent Plugin
+# Puppet Master Plugin
 # ===
 #
-# This plugin checks to see if the Puppet Labs Puppet agent is running
+# This plugin checks to see if the Puppet Labs Puppet master is running
 #
 
 `which tasklist`
@@ -28,12 +28,12 @@ else
 end
 running = false
 procs.each_line do |proc|
-  running = true if proc.find { |p| /puppetd|puppet agent/ =~ p }
+  running = true if proc.find { |p| /puppetmasterd|puppet master/ =~ p }
 end
 if running
-  puts 'PUPPET AGENT - OK - Puppet agent is running'
+  puts 'PUPPET Master - OK - Puppet master is running'
   exit 0
 else
-  puts 'PUPPET AGENT - WARNING - Puppet agent is NOT running'
+  puts 'PUPPET Master - WARNING - Puppet master is NOT running'
   exit 1
 end
