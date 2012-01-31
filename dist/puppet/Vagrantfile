@@ -1,7 +1,10 @@
 Vagrant::Config.run do |config|
   config.vm.box = "ubuntu-1104-server-i386"
-  config.vm.customize ["modifyvm", :id, "--memory", "1024"]
-  config.vm.customize ["modifyvm", :id, "--name",   "Sensu Stack"]
+  config.vm.customize [
+    "modifyvm", :id,
+    "--name",   "Sensu Stack",
+    "--memory", "1024"
+  ]
 
   config.vm.provision :shell, :inline => "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
   config.vm.provision :shell, :inline => "gem install puppet --no-ri --no-rdoc"
