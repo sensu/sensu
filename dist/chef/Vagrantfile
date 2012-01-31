@@ -3,14 +3,16 @@ Vagrant::Config.run do |config|
   config.vm.box = "ubuntu-1104-server-i386"
   # `vagrant box add centos-57-x86-64 http://dl.dropbox.com/u/8072848/centos-5.7-x86_64.box`
   #config.vm.box = "centos-57-x86-64"
-  config.vm.customize do |vm|
-    vm.memory_size = 1024
-    vm.name = "Sensu Stack"
-  end
+  config.vm.customize [
+    "modifyvm", :id,
+    "--name",   "Sensu Stack",
+    "--memory", "1024"
+  ]
+
   config.vm.provision :shell, :inline => "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
   config.vm.provision :shell, :inline => "gem install chef --no-rdoc --no-ri"
-  config.vm.forward_port("sensu-dashboard-http", 8080, 8080)
-  config.vm.forward_port("sensu-dashboard-websocket", 9000, 9000)
+  config.vm.forward_port 8080, 8080
+  config.vm.forward_port 9000, 9000
   config.vm.provision :chef_solo do |chef|
     chef.cookbooks_path = "cookbooks"
     chef.data_bags_path = "data_bags"
