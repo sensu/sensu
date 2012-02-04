@@ -45,12 +45,6 @@ class Hash
   end
 end
 
-class String
-  def self.unique(chars=32)
-    rand(36**chars).to_s(36)
-  end
-end
-
 module Process
   def self.write_pid(pid_file)
     if pid_file.nil?
