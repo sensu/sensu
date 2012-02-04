@@ -130,7 +130,8 @@ module Sensu
 
     def setup_subscriptions
       @logger.debug('[subscribe] -- setup subscriptions')
-      @check_request_queue = @amq.queue(String.unique, :exclusive => true)
+      @uniq_queue_name ||= rand(36**32).to_s(36)
+      @check_request_queue = @amq.queue(@uniq_queue_name, :exclusive => true)
       @settings.client.subscriptions.uniq.each do |exchange|
         @logger.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
         @check_request_queue.bind(@amq.fanout(exchange))
@@ -147,10 +148,7 @@ module Sensu
       @timers << EM::PeriodicTimer.new(5) do
         unless @check_request_queue.subscribed?
           @logger.warn('[monitor] -- re-subscribing to subscriptions')
-          @check_request_queue.delete
-          @timers << EM::Timer.new(1) do
-            setup_subscriptions
-          end
+          setup_subscriptions
         end
       end
     end
