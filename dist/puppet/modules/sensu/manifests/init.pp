@@ -16,9 +16,9 @@ class sensu {
   $dashboard_user       = $sensu::params::dashboard_user
   $dashboard_password   = $sensu::params::dashboard_password
 
-  package { 'sensu':
+  package { $sensu::params::sensu_package:
     ensure   => latest,
-    provider => gem,
+    provider => $sensu::params::sensu_provider,
   }
 
   file { '/etc/sensu':
