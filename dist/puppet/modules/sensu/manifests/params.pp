@@ -17,35 +17,23 @@ class sensu::params {
   $dashboard_user     = 'admin'
   $dashboard_password = 'secret'
   $sensu_package      = $::operatingsystem ? {
-    'scientific'  => 'rubygem-sensu',
-    'centos'      => 'rubygem-sensu',
-    'redhat'      => 'rubygem-sensu',
-    'ubuntu'      => 'sensu',
-    'debian'      => 'sensu',
-    default       => 'sensu',
+    /(scientific|centos|redhat)/  => 'rubygem-sensu',
+    /(ubuntu|debian)/             => 'sensu',
+    default                       => 'sensu',
   }
   $sensu_dash_package = $::operatingsystem ? {
-    'scientific'  => 'rubygem-sensu-dashboard',
-    'centos'      => 'rubygem-sensu-dashboard',
-    'redhat'      => 'rubygem-sensu-dashboard',
-    'ubuntu'      => 'sensu-dashboard',
-    'debian'      => 'sensu-dashboard',
-    default       => 'sensu-dashboard',
+    /(scientific|centos|redhat)/  => 'rubygem-sensu-dashboard',
+    /(ubuntu|debian)/             => 'sensu-dashboard',
+    default                       => 'sensu-dashboard',
   }
   $sensu_provider     = $::operatingsystem ? {
-    'scientific'  => 'yum',
-    'centos'      => 'yum',
-    'redhat'      => 'yum',
-    'ubuntu'      => 'gem',
-    'debian'      => 'gem',
-    default       => 'gem',
+    /(scientific|centos|redhat)/  => 'yum',
+    /(ubuntu|debian)/             => 'gem',
+    default                       => 'gem',
   }
   $redis_package      = $::operatingsystem ? {
-    'scientific'  => 'redis',
-    'centos'      => 'redis',
-    'redhat'      => 'redis',
-    'ubuntu'      => 'redis-server',
-    'debian'      => 'redis-server',
-    default       => 'redis-server',
+    /(scientific|centos|redhat)/  => 'redis',
+    /(ubuntu|debian)/             => 'redis-server',
+    default                       => 'redis-server',
   }
 }
