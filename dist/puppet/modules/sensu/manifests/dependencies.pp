@@ -4,17 +4,16 @@ class sensu::dependencies {
 
   $packages             = $sensu::params::packages
 
-  package { 'thin':
-    ensure => latest,
-  }
-
-  case $operatingsystem {
-    'redhat', 'centos': {
-
-      fail('Platform not supported by Sensu module. Patches welcomed.')
-
+  case $::operatingsystem {
+    'scientific', 'redhat', 'centos': {
+      # All packages installed as dependencies
     }
+
     'debian', 'ubuntu': {
+
+      package { 'thin':
+          ensure => latest,
+      }
 
       package { $packages:
         ensure  => latest,
@@ -25,6 +24,7 @@ class sensu::dependencies {
         before  => Package[$packages],
       }
     }
+
     default: {
       fail('Platform not supported by Sensu module. Patches welcomed.')
     }

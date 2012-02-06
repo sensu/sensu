@@ -7,28 +7,45 @@ class sensu::dashboard {
     $user    = $sensu::params::user
     $options = ''
 
-    package { 'sensu-dashboard':
+    package { $sensu::params::sensu_dash_package:
       ensure   => latest,
-      provider => gem,
+      provider => $sensu::params::sensu_provider,
     }
 
-    file { '/etc/init/sensu-dashboard.conf':
-      ensure  => file,
-      content => template('sensu/upstart.erb'),
-      mode    => '0644',
-    }
+    case $::operatingsystem {
+      'scientific', 'redhat', 'centos': {
+        $dash_require = Package[$sensu::params::sensu_dash_package]
+        $dash_provider = 'redhat'
+      }
 
-    exec { "link ${service}":
-      command => "/bin/ln -s /var/lib/gems/1.8/bin/sensu-${service} /usr/bin/sensu-${service}",
-      creates => "/usr/bin/sensu-${service}",
-      require => Package['sensu'],
+      'debian', 'ubuntu': {
+        $dash_require = [ Package[$sensu::params::sensu_dash_package],
+          File["/usr/bin/sensu-${service}"], File['/etc/init/sensu-dashboard.conf'] ]
+        $dash_provider = 'upstart'
+
+        file { '/etc/init/sensu-dashboard.conf':
+          ensure  => file,
+          content => template('sensu/upstart.erb'),
+          mode    => '0644',
+        }
+
+        file { "/usr/bin/sensu-${service}":
+          ensure  => 'link',
+          target  => "/var/lib/gems/1.8/bin/sensu-${service}",
+          require => Package['sensu'];
+        }
+      }
+
+      default: {
+        fail('Platform not supported by Sensu module. Patches welcomed.')
+      }
     }
 
     service { 'sensu-dashboard':
       ensure    => running,
       enable    => true,
-      provider  => upstart,
+      provider  => $dash_provider,
       subscribe => File['/etc/sensu/config.json'],
-      require   => [ Exec["link ${service}"], File['/etc/init/sensu-dashboard.conf'] ],
+      require   => $dash_require;
     }
 }
