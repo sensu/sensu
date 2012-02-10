@@ -131,7 +131,7 @@ module Sensu
     def setup_subscriptions
       @logger.debug('[subscribe] -- setup subscriptions')
       @uniq_queue_name ||= rand(36**32).to_s(36)
-      @check_request_queue = @amq.queue(@uniq_queue_name, :exclusive => true)
+      @check_request_queue = @amq.queue(@uniq_queue_name, :auto_delete => true)
       @settings.client.subscriptions.uniq.each do |exchange|
         @logger.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
         @check_request_queue.bind(@amq.fanout(exchange))
