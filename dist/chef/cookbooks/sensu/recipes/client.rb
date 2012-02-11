@@ -22,7 +22,7 @@ include_recipe "sensu::default"
 case node[:platform]
 when "ubuntu", "debian"
   template "/etc/init/sensu-client.conf" do
-    source "upstart.erb"
+    source "init/sensu-service.conf.erb"
     variables :service => "client", :options => "-l #{node.sensu.log.directory}/sensu.log"
     mode 0644
   end
@@ -34,7 +34,7 @@ when "ubuntu", "debian"
   end
 when "centos", "redhat"
   template "/etc/init.d/sensu-client" do
-    source "init.erb"
+    source "init/sensu-service.erb"
     variables :service => "client"
     mode 0755
   end
