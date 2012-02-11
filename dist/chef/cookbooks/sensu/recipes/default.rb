@@ -28,9 +28,6 @@ when "debian", "ubuntu"
     libssl-dev
     build-essential
     daemontools
-    nagios-plugins
-    nagios-plugins-basic
-    nagios-plugins-standard
   ].each do |pkg|
     package pkg
   end
@@ -45,8 +42,6 @@ when "centos", "redhat"
     gcc
     gcc-c++
     kernel-devel
-    nagios-plugins
-    nagios-plugins-nrpe
   ].each do |pkg|
     package pkg
   end
