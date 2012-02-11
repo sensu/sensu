@@ -31,11 +31,6 @@ when "debian", "ubuntu"
   ].each do |pkg|
     package pkg
   end
-
-  template "/etc/sudoers.d/sensu" do
-    source "sudoers.erb"
-    mode 0440
-  end
 when "centos", "redhat"
   %w[
     openssl-devel
@@ -44,6 +39,13 @@ when "centos", "redhat"
     kernel-devel
   ].each do |pkg|
     package pkg
+  end
+end
+
+unless node['platform'] == 'windows'
+  template "/etc/sudoers.d/sensu" do
+    source "sudoers.erb"
+    mode 0440
   end
 end
 
