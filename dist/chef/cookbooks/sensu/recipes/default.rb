@@ -87,7 +87,7 @@ include_recipe "sensu::dependencies"
 
 directory node.sensu.log.directory do
   recursive true
-  owner node.sensu.user
+  owner node.sensu.user if node['platform'] != 'windows'
   group node.sensu.group if node.sensu.has_key?(:group)
   mode 0755
 end
