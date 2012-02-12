@@ -58,7 +58,7 @@ case node.sensu.installation
 when "rubygems"
   gem_package "sensu" do
     version node.sensu.version
-    notifies :run, resources(:execute => "gem_update"), :immediate
+    notifies :run, 'execute[gem_update]', :immediate
   end
   ruby_block "set_bin_path" do
     block do
