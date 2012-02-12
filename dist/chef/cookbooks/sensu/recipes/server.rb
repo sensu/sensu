@@ -26,7 +26,7 @@ end
 case node[:platform]
 when "ubuntu", "debian"
   template "/etc/init/sensu-server.conf" do
-    source "upstart.erb"
+    source "init/sensu-service.conf.erb"
     variables :service => "server", :options => "-l #{node.sensu.log.directory}/sensu.log"
     mode 0644
   end
@@ -38,7 +38,7 @@ when "ubuntu", "debian"
   end
 when "centos", "redhat"
   template "/etc/init.d/sensu-server" do
-    source "init.erb"
+    source "init/sensu-service.erb"
     variables :service => "server"
     mode 0755
   end

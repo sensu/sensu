@@ -28,16 +28,8 @@ when "debian", "ubuntu"
     libssl-dev
     build-essential
     daemontools
-    nagios-plugins
-    nagios-plugins-basic
-    nagios-plugins-standard
   ].each do |pkg|
     package pkg
-  end
-
-  template "/etc/sudoers.d/sensu" do
-    source "sudoers.erb"
-    mode 0440
   end
 when "centos", "redhat"
   %w[
@@ -45,10 +37,15 @@ when "centos", "redhat"
     gcc
     gcc-c++
     kernel-devel
-    nagios-plugins
-    nagios-plugins-nrpe
   ].each do |pkg|
     package pkg
+  end
+end
+
+unless node['platform'] == 'windows'
+  template "/etc/sudoers.d/sensu" do
+    source "sudoers.erb"
+    mode 0440
   end
 end
 
@@ -61,7 +58,7 @@ case node.sensu.installation
 when "rubygems"
   gem_package "sensu" do
     version node.sensu.version
-    notifies :run, resources(:execute => "gem_update"), :immediate
+    notifies :run, 'execute[gem_update]', :immediate
   end
   ruby_block "set_bin_path" do
     block do
@@ -90,7 +87,7 @@ include_recipe "sensu::dependencies"
 
 directory node.sensu.log.directory do
   recursive true
-  owner node.sensu.user
+  owner node.sensu.user if node['platform'] != 'windows'
   group node.sensu.group if node.sensu.has_key?(:group)
   mode 0755
 end
