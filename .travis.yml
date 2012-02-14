@@ -6,6 +6,8 @@ notifications:
     - "irc.freenode.net#sensu"
 env:
   - RACK_ENV=development
+bundler_args:
+  - --without debug
 rvm:
   - 1.8.7
   - 1.9.2
