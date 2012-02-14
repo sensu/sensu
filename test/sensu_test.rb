@@ -65,13 +65,14 @@ class TestSensu < TestCase
   def test_handlers
     server = Sensu::Server.new(@options)
     event = Hashie::Mash.new(
-      :client => @settings.client,
+      :client => @settings.client.reject { |key, value| key == 'timestamp' },
       :check => {
         :name => 'test_handlers',
         :issued => Time.now.to_i,
         :status => 1,
         :output => 'WARNING\n',
-        :history => [1]
+        :history => [1],
+        :handler => 'file'
       },
       :occurrences => 1,
       :action => 'create'
