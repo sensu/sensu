@@ -78,7 +78,7 @@ class TestSensu < TestCase
       :action => 'create'
     )
     server.handle_event(event)
-    EM::Timer.new(1) do
+    EM::Timer.new(2) do
       assert_equal(event.to_hash, JSON.parse(File.open('/tmp/sensu_test_handlers', 'rb').read))
       done
     end
@@ -109,7 +109,7 @@ class TestSensu < TestCase
           }
           assert_equal(expected, (JSON.parse(value).reject { |key, value| key == 'issued' }).symbolize_keys)
         end
-        server.amq.queue('', :exclusive => true).bind('graphite', :key => 'sensu.*').subscribe do |metric|
+        server.amq.queue('', :auto_delete => true).bind('graphite', :key => 'sensu.*').subscribe do |metric|
           assert(metric.is_a?(String))
           assert_equal(['sensu', @settings.client.name, 'diceroll'].join('.'), metric.split(' ').first)
           done
