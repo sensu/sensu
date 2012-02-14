@@ -21,12 +21,16 @@
     "default": {
       "type": "set",
       "handlers": [
-        "debug"
+        "stdout"
       ]
     },
-    "debug": {
+    "stdout": {
       "type": "pipe",
-      "command": "./test/handler.rb"
+      "command": "./test/handlers/stdout.rb"
+    },
+    "file": {
+      "type": "pipe",
+      "command": "./test/handlers/file.rb"
     },
     "graphite": {
       "type": "amqp",
