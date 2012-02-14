@@ -6,8 +6,12 @@
   [[http://portertech.ca/2011/11/01/sensu-a-monitoring-framework][Blog post]]
 
   [[http://www.sonian.com/cloud-tools/cloud-monitoring-sensu/][Homepage]]
+
 * Documentation
   Find it [[https://github.com/sonian/sensu/wiki][HERE]].
+  [[http://joemiller.me/2012/01/19/getting-started-with-the-sensu-monitoring-framework/][Getting Started]]
+  [[http://joemiller.me/2012/01/24/re-use-nagios-plugins-in-sensu-for-quick-profit/][How to reuse your existing Nagios plugins]]
+  [[http://joemiller.me/2012/02/02/sensu-and-graphite/][Sensu and Graphite]]
 * Other Projects
   - [[https://github.com/sonian/sensu-community-plugins][Sensu Community Plugins]]
   - [[https://github.com/sonian/sensu-dashboard][Sensu Dashboard]]
