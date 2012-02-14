@@ -19,6 +19,9 @@ module Redis
         until @queue.empty?
           @queue.shift.fail RuntimeError.new 'connection closed'
         end
+        unless @connected
+          raise "could not connect to redis"
+        end
       end
     end
   end
