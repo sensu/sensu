@@ -1,5 +1,3 @@
-require File.join(File.dirname(__FILE__), 'patches', 'ruby')
-
 require 'rubygems'
 require 'bundler'
 require 'bundler/setup'
@@ -13,6 +11,9 @@ require 'hashie'
 require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em/stdlib-logger'
+
+require File.join(File.dirname(__FILE__), 'patches', 'ruby')
+require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
 if ENV['RBTRACE']
   require 'rbtrace'
