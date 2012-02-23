@@ -7,8 +7,7 @@ gem("json")
 gem("hashie")
 gem("cabin", "0.1.8")
 gem("ruby-redis")
-gem("rack", "~> 1.3.4")
-gem("async_sinatra")
+gem("async_sinatra", "1.0.0")
 gem("thin")
 
 group :development do
