@@ -68,10 +68,12 @@ module Sensu
     aget '/client/:name' do |client|
       $logger.debug('[client] -- ' + request.ip + ' -- GET -- request for client -- ' + client)
       $redis.get('client:' + client).callback do |client_json|
-        if client_json.nil?
+        unless client_json.nil?
+          body client_json
+        else
           status 404
+          body ''
         end
-        body client_json
       end
     end
 
@@ -102,11 +104,11 @@ module Sensu
               end
             end
             status 204
-            body nil
+            body ''
           end
         else
           status 404
-          body nil
+          body ''
         end
       end
     end
@@ -122,7 +124,7 @@ module Sensu
         body $settings.checks[check].to_json
       else
         status 404
-        body nil
+        body ''
       end
     end
 
@@ -132,7 +134,7 @@ module Sensu
         post_body = Hashie::Mash.new(JSON.parse(request.body.read))
       rescue JSON::ParserError
         status 400
-        body nil
+        body ''
       end
       if post_body.check.is_a?(String) && post_body.subscribers.is_a?(Array)
         post_body.subscribers.each do |exchange|
@@ -143,7 +145,7 @@ module Sensu
       else
         status 400
       end
-      body nil
+      body ''
     end
 
     aget '/events' do
@@ -187,7 +189,7 @@ module Sensu
         post_body = Hashie::Mash.new(JSON.parse(request.body.read))
       rescue JSON::ParserError
         status 400
-        body nil
+        body ''
       end
       if post_body.client.is_a?(String) && post_body.check.is_a?(String)
         $redis.hgetall('events:' + post_body.client).callback do |events|
@@ -205,11 +207,11 @@ module Sensu
           else
             status 404
           end
-          body nil
+          body ''
         end
       else
         status 400
-        body nil
+        body ''
       end
     end
 
@@ -219,12 +221,12 @@ module Sensu
         post_body = JSON.parse(request.body.read)
       rescue JSON::ParserError
         status 400
-        body nil
+        body ''
       end
       $redis.set('stash:' + path, post_body.to_json).callback do
         $redis.sadd('stashes', path).callback do
           status 201
-          body nil
+          body ''
         end
       end
     end
@@ -246,12 +248,12 @@ module Sensu
           $redis.srem('stashes', path).callback do
             $redis.del('stash:' + path).callback do
               status 204
-              body nil
+              body ''
             end
           end
         else
           status 404
-          body nil
+          body ''
         end
       end
     end
@@ -269,7 +271,7 @@ module Sensu
         post_body = JSON.parse(request.body.read)
       rescue JSON::ParserError
         status 400
-        body nil
+        body ''
       end
       response = Hash.new
       if post_body.is_a?(Array) && post_body.size > 0
@@ -285,7 +287,7 @@ module Sensu
         end
       else
         status 400
-        body nil
+        body ''
       end
     end
 
