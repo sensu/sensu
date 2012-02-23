@@ -48,8 +48,8 @@ module Sensu
 
     def setup_amqp
       @logger.debug('[amqp] -- connecting to rabbitmq')
-      rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
-      @amq = AMQP::Channel.new(rabbitmq)
+      @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      @amq = AMQP::Channel.new(@rabbitmq)
     end
 
     def setup_keepalives
@@ -321,6 +321,18 @@ module Sensu
       end
     end
 
+    def resign_as_master(&block)
+      if @is_master
+        @redis.del('lock:master').callback do
+          @logger.warn('[master] -- resigned as master')
+          block.call if block
+        end
+      else
+        @logger.warn('[master] -- not currently master')
+        block.call if block
+      end
+    end
+
     def setup_master_monitor
       request_master_election
       @timers << EM::PeriodicTimer.new(20) do
@@ -350,18 +362,16 @@ module Sensu
     end
 
     def stop_reactor
-      EM::Timer.new(1) do
-        @logger.info('[stop] -- completing handlers in progress')
-        complete_in_progress = EM::tick_loop do
-          if @handlers_in_progress == 0
-            :stop
-          end
+      @logger.info('[stop] -- completing handlers in progress')
+      complete_in_progress = EM::tick_loop do
+        if @handlers_in_progress == 0
+          :stop
         end
-        complete_in_progress.on_stop do
-          @logger.warn('[stop] -- stopping reactor')
-          EM::PeriodicTimer.new(0.25) do
-            EM::stop_event_loop
-          end
+      end
+      complete_in_progress.on_stop do
+        @logger.warn('[stop] -- stopping reactor')
+        EM::PeriodicTimer.new(0.25) do
+          EM::stop_event_loop
         end
       end
     end
@@ -371,18 +381,19 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
-      @logger.warn('[stop] -- unsubscribing from keepalives')
-      @keepalive_queue.unsubscribe do
-        @logger.warn('[stop] -- unsubscribing from results')
-        @result_queue.unsubscribe do
-          if @is_master
-            @redis.del('lock:master').callback do
-              @logger.warn('[stop] -- resigned as master')
+      unless @rabbitmq.reconnecting?
+        @logger.warn('[stop] -- unsubscribing from keepalives')
+        @keepalive_queue.unsubscribe do
+          @logger.warn('[stop] -- unsubscribing from results')
+          @result_queue.unsubscribe do
+            resign_as_master do
               stop_reactor
             end
-          else
-            stop_reactor
           end
+        end
+      else
+        resign_as_master do
+          stop_reactor
         end
       end
     end

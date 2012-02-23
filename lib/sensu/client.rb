@@ -37,8 +37,8 @@ module Sensu
 
     def setup_amqp
       @logger.debug('[amqp] -- connecting to rabbitmq')
-      rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
-      @amq = AMQP::Channel.new(rabbitmq)
+      @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      @amq = AMQP::Channel.new(@rabbitmq)
     end
 
     def publish_keepalive
@@ -201,9 +201,13 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
-      @logger.warn('[stop] -- unsubscribing from subscriptions')
-      @check_request_queue.unsubscribe do
-        stop_reactor
+      unless @rabbitmq.reconnecting?
+        @logger.warn('[stop] -- unsubscribing from subscriptions')
+        @check_request_queue.unsubscribe do
+          stop_reactor
+        end
+      else
+        EM::stop_event_loop
       end
     end
   end
