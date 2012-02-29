@@ -6,6 +6,7 @@ gem 'eventmachine', '~> 1.0.0.beta.4'
 
 require 'optparse'
 require 'time'
+require 'timeout'
 require 'json'
 require 'hashie'
 require 'amqp'

@@ -88,15 +88,21 @@ module Sensu
               Bundler.with_clean_env do
                 started = Time.now.to_f
                 begin
-                  IO.popen(command + ' 2>&1') do |io|
-                    check.output = io.read
+                  timeout(@settings.checks[check.name].timeout) do
+                    IO.popen(command + ' 2>&1') do |io|
+                      check.output = io.read
+                    end
                   end
+                rescue Timeout::Error
+                  check.output = 'Timed out'
+                  check.status = 1
                 rescue => error
-                  check.output = 'unexpected error: ' + error.to_s
+                  check.output = 'Unexpected error: ' + error.to_s
+                  check.status = 2
                 end
                 check.duration = ('%.3f' % (Time.now.to_f - started)).to_f
+                check.status ||= $?.exitstatus
               end
-              check.status = $?.exitstatus
             end
             publish = proc do
               unless check.status.nil?
