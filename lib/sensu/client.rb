@@ -93,6 +93,7 @@ module Sensu
                       check.output = io.read
                     end
                   end
+                  check.status = $?.exitstatus
                 rescue Timeout::Error
                   check.output = 'Timed out'
                   check.status = 1
@@ -101,7 +102,6 @@ module Sensu
                   check.status = 2
                 end
                 check.duration = ('%.3f' % (Time.now.to_f - started)).to_f
-                check.status ||= $?.exitstatus
               end
             end
             publish = proc do
