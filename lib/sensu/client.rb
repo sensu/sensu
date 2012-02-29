@@ -95,9 +95,11 @@ module Sensu
                   end
                   check.status = $?.exitstatus
                 rescue Timeout::Error
+                  @logger.warn('[execute] -- check timed out -- ' + check.name)
                   check.output = 'Timed out'
                   check.status = 1
                 rescue => error
+                  @logger.warn('[execute] -- unexpected error -- ' + check.name + ' -- ' + error.to_s)
                   check.output = 'Unexpected error: ' + error.to_s
                   check.status = 2
                 end
@@ -115,8 +117,8 @@ module Sensu
             EM::defer(execute, publish)
           else
             @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
-            check.status = 3
             check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
+            check.status = 3
             check.handle = false
             publish_result(check)
             @checks_in_progress.delete(check.name)
@@ -126,8 +128,8 @@ module Sensu
         end
       else
         @logger.warn('[execute] -- unkown check -- ' + check.name)
-        check.status = 3
         check.output = 'Unknown check'
+        check.status = 3
         check.handle = false
         publish_result(check)
         @checks_in_progress.delete(check.name)
