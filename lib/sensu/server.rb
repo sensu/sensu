@@ -178,8 +178,8 @@ module Sensu
                     event.occurrences = previous_occurrence.occurrences += 1
                   end
                   @redis.hset('events:' + client.name, check.name, {
-                    :status => check.status,
                     :output => check.output,
+                    :status => check.status,
                     :issued => Time.at(check.issued).utc.iso8601,
                     :flapping => is_flapping,
                     :occurrences => event.occurrences
