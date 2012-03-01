@@ -239,7 +239,7 @@ module Sensu
           check.status ||= 0
           check_output = check.output.chomp.gsub(/\n/, '\n')
           if validates && check.status.is_a?(Integer)
-            @logger.info('[socket] -- publishing check result -- ' + [check.name, check.status, check.output.chomp.gsub].join(' -- '))
+            @logger.info('[socket] -- publishing check result -- ' + [check.name, check.status, check_output].join(' -- '))
             @amq.queue('results').publish({
               :client => @settings.client.name,
               :check => check.to_hash
