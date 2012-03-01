@@ -29,6 +29,13 @@ module Redis
   def self.connect(options={})
     host = options[:host] || 'localhost'
     port = options[:port] || 6379
-    EM::connect(host, port, Redis::Client)
+    redis = EM::connect(host, port, Redis::Client)
+    redis.info do |info|
+      redis_version = info.split(/\n/).first.split(/:/).last
+      unless redis_version.match(/^[2-9].*/)
+        raise "redis version must be >= 2.0"
+      end
+    end
+    redis
   end
 end
