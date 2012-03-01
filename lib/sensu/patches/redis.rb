@@ -32,7 +32,7 @@ module Redis
     redis = EM::connect(host, port, Redis::Client)
     redis.info do |info|
       redis_version = info.split(/\n/).first.split(/:/).last
-      unless redis_version.match(/^[2-9].*/)
+      unless redis_version.to_i >= 2
         raise "redis version must be >= 2.0"
       end
     end
