@@ -111,7 +111,7 @@ class TestSensu < TestCase
         end
         server.amq.queue('', :auto_delete => true).bind('graphite', :key => 'sensu.*').subscribe do |metric|
           assert(metric.is_a?(String))
-          assert_equal(['sensu', @settings.client.name, 'diceroll'].join('.'), metric.split(' ').first)
+          assert_equal(['sensu', @settings.client.name, 'diceroll'].join('.'), metric.split(/\s/).first)
           done
         end
       end
