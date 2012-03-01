@@ -57,7 +57,7 @@ module Sensu
 
     def publish_result(check)
       check_output = check.output.chomp.gsub(/\n/, '\n')
-      @logger.info('[result] -- publishing check result -- ' + [check.name, check.status, check.output].join(' -- '))
+      @logger.info('[result] -- publishing check result -- ' + [check.name, check.status, check_output].join(' -- '))
       @amq.queue('results').publish({
         :client => @settings.client.name,
         :check => check.to_hash
