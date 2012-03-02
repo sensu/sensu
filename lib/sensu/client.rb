@@ -56,7 +56,7 @@ module Sensu
     end
 
     def publish_result(check)
-      @logger.info('[result] -- publishing check result -- ' + [check.name, check.status, check_output.gsub(/\n/, '\n')].join(' -- '))
+      @logger.info('[result] -- publishing check result -- ' + [check.name, check.status, check.output.gsub(/\n/, '\n')].join(' -- '))
       @amq.queue('results').publish({
         :client => @settings.client.name,
         :check => check.to_hash
@@ -237,7 +237,7 @@ module Sensu
           check.issued = Time.now.to_i
           check.status ||= 0
           if validates && check.status.is_a?(Integer)
-            @logger.info('[socket] -- publishing check result -- ' + [check.name, check.status, check_output.gsub(/\n/, '\n')].join(' -- '))
+            @logger.info('[socket] -- publishing check result -- ' + [check.name, check.status, check.output.gsub(/\n/, '\n')].join(' -- '))
             @amq.queue('results').publish({
               :client => @settings.client.name,
               :check => check.to_hash
