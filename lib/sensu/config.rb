@@ -86,6 +86,11 @@ module Sensu
             invalid_config('handlers must be an array for check ' + name)
           end
         end
+        if details.key?('timeout')
+          unless details.timeout.is_a?(Integer)
+            invalid_config('invalid timeout for check ' + name)
+          end
+        end
       end
     end
 
@@ -123,6 +128,11 @@ module Sensu
           end
         else
           invalid_config('unknown type for handler ' + name)
+        end
+        if details.key?('timeout')
+          unless details.timeout.is_a?(Integer)
+            invalid_config('invalid timeout for handler ' + name)
+          end
         end
       end
     end
