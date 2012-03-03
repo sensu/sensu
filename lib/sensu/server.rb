@@ -178,8 +178,8 @@ module Sensu
                     event.occurrences = previous_occurrence.occurrences += 1
                   end
                   @redis.hset('events:' + client.name, check.name, {
-                    :status => check.status,
                     :output => check.output,
+                    :status => check.status,
                     :issued => Time.at(check.issued).utc.iso8601,
                     :flapping => is_flapping,
                     :occurrences => event.occurrences
@@ -271,18 +271,18 @@ module Sensu
               )
               case
               when time_since_last_keepalive >= 180
-                result.check.status = 2
                 result.check.output = 'No keep-alive sent from host in over 180 seconds'
+                result.check.status = 2
                 @amq.queue('results').publish(result.to_json)
               when time_since_last_keepalive >= 120
-                result.check.status = 1
                 result.check.output = 'No keep-alive sent from host in over 120 seconds'
+                result.check.status = 1
                 @amq.queue('results').publish(result.to_json)
               else
                 @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
                   if exists
-                    result.check.status = 0
                     result.check.output = 'Keep-alive sent from host'
+                    result.check.status = 0
                     @amq.queue('results').publish(result.to_json)
                   end
                 end
