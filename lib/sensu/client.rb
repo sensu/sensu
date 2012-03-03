@@ -91,12 +91,13 @@ module Sensu
                   IO.popen(command + ' 2>&1') do |io|
                     check.output = io.read
                   end
+                  check.status = $?.exitstatus
                 rescue => error
-                  check.output = 'unexpected error: ' + error.to_s
+                  check.output = 'Unexpected error: ' + error.to_s
+                  check.status = 2
                 end
                 check.duration = ('%.3f' % (Time.now.to_f - started)).to_f
               end
-              check.status = $?.exitstatus
             end
             publish = proc do
               unless check.status.nil?
@@ -109,8 +110,8 @@ module Sensu
             EM::defer(execute, publish)
           else
             @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
-            check.status = 3
             check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
+            check.status = 3
             check.handle = false
             publish_result(check)
             @checks_in_progress.delete(check.name)
@@ -120,8 +121,8 @@ module Sensu
         end
       else
         @logger.warn('[execute] -- unkown check -- ' + check.name)
-        check.status = 3
         check.output = 'Unknown check'
+        check.status = 3
         check.handle = false
         publish_result(check)
         @checks_in_progress.delete(check.name)

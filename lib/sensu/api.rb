@@ -86,9 +86,9 @@ module Sensu
               $logger.info('[client] -- publishing check result to resolve event -- ' + client + ' -- ' + check_name)
               check = {
                 :name => check_name,
-                :issued => Time.now.to_i,
-                :status => 0,
                 :output => 'Client is being removed on request of the API',
+                :status => 0,
+                :issued => Time.now.to_i,
                 :force_resolve => true
               }
               $amq.queue('results').publish({:client => client, :check => check}.to_json)
@@ -197,9 +197,9 @@ module Sensu
             $logger.info('[event] -- publishing check result to resolve event -- ' + post_body.client + ' -- ' + post_body.check)
             check = {
               :name => post_body.check,
-              :issued => Time.now.to_i,
-              :status => 0,
               :output => 'Resolving on request of the API',
+              :status => 0,
+              :issued => Time.now.to_i,
               :force_resolve => true
             }
             $amq.queue('results').publish({:client => post_body.client, :check => check}.to_json)
@@ -297,8 +297,8 @@ module Sensu
       $redis.set('client:' + $settings.client.name, $settings.client.to_json).callback do
         $redis.sadd('clients', $settings.client.name).callback do
           $redis.hset('events:' + $settings.client.name, 'test', {
-            :status => 2,
             :output => "CRITICAL\n",
+            :status => 2,
             :issued => Time.now.utc.iso8601,
             :flapping => false,
             :occurrences => 1
