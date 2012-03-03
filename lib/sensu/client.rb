@@ -88,15 +88,23 @@ module Sensu
               Bundler.with_clean_env do
                 started = Time.now.to_f
                 begin
-                  IO.popen(command + ' 2>&1') do |io|
-                    check.output = io.read
+                  timeout(@settings.checks[check.name].timeout) do
+                    IO.popen(command + ' 2>&1') do |io|
+                      check.output = io.read
+                    end
                   end
+                  check.status = $?.exitstatus
+                rescue Timeout::Error
+                  @logger.warn('[execute] -- check timed out -- ' + check.name)
+                  check.output = 'Timed out'
+                  check.status = 1
                 rescue => error
-                  check.output = 'unexpected error: ' + error.to_s
+                  @logger.warn('[execute] -- unexpected error -- ' + check.name + ' -- ' + error.to_s)
+                  check.output = 'Unexpected error: ' + error.to_s
+                  check.status = 2
                 end
                 check.duration = ('%.3f' % (Time.now.to_f - started)).to_f
               end
-              check.status = $?.exitstatus
             end
             publish = proc do
               unless check.status.nil?
@@ -109,8 +117,8 @@ module Sensu
             EM::defer(execute, publish)
           else
             @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
-            check.status = 3
             check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
+            check.status = 3
             check.handle = false
             publish_result(check)
             @checks_in_progress.delete(check.name)
@@ -120,8 +128,8 @@ module Sensu
         end
       else
         @logger.warn('[execute] -- unkown check -- ' + check.name)
-        check.status = 3
         check.output = 'Unknown check'
+        check.status = 3
         check.handle = false
         publish_result(check)
         @checks_in_progress.delete(check.name)
@@ -143,10 +151,10 @@ module Sensu
             @logger.info('[subscribe] -- received check request -- ' + check.name)
             execute_check(check)
           else
-            @logger.warn('[subscribe] -- possible exchange overlap, invalid check request: ' + check_request_json)
+            @logger.warn('[subscribe] -- invalid check request: ' + check_request_json)
           end
         rescue JSON::ParserError => error
-          @logger.warn('[subscribe] -- possible exchange overlap, check request must be valid JSON: ' + error.to_s)
+          @logger.warn('[subscribe] -- check request must be valid JSON: ' + error.to_s)
         end
       end
     end
