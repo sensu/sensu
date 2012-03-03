@@ -88,7 +88,7 @@ module Sensu
         end
         if details.key?('timeout')
           unless details.timeout.is_a?(Integer)
-            invalid_config('invalid timeout for check ' + name)
+            invalid_config('timeout must be an integer for check ' + name)
           end
         end
       end
@@ -131,7 +131,7 @@ module Sensu
         end
         if details.key?('timeout')
           unless details.timeout.is_a?(Integer)
-            invalid_config('invalid timeout for handler ' + name)
+            invalid_config('timeout must be an integer for handler ' + name)
           end
         end
       end
