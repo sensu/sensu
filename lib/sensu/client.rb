@@ -143,10 +143,10 @@ module Sensu
             @logger.info('[subscribe] -- received check request -- ' + check.name)
             execute_check(check)
           else
-            @logger.warn('[subscribe] -- possible exchange overlap, invalid check request: ' + check_request_json)
+            @logger.warn('[subscribe] -- invalid check request: ' + check_request_json)
           end
         rescue JSON::ParserError => error
-          @logger.warn('[subscribe] -- possible exchange overlap, check request must be valid JSON: ' + error.to_s)
+          @logger.warn('[subscribe] -- check request must be valid JSON: ' + error.to_s)
         end
       end
     end
