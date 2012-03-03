@@ -68,11 +68,11 @@ class TestSensu < TestCase
       :client => @settings.client.reject { |key, value| key == 'timestamp' },
       :check => {
         :name => 'test_handlers',
-        :issued => Time.now.to_i,
-        :status => 1,
         :output => 'WARNING\n',
-        :history => [1],
-        :handler => 'file'
+        :status => 1,
+        :issued => Time.now.to_i,
+        :handler => 'file',
+        :history => [1]
       },
       :occurrences => 1,
       :action => 'create'
@@ -102,8 +102,8 @@ class TestSensu < TestCase
         sorted_events = events.sort_by { |status, value| value }
         sorted_events.each_with_index do |(key, value), index|
           expected = {
-            :status => index + 1,
             :output => @settings.client.name + ' ' + @settings.client.custom.nested.attribute.to_s + "\n",
+            :status => index + 1,
             :flapping => false,
             :occurrences => 1
           }
@@ -131,7 +131,7 @@ class TestSensu < TestCase
     client.setup_socket
     external_source = proc do
       socket = TCPSocket.open('127.0.0.1', 3030)
-      socket.write('{"name": "external", "status": 1, "output": "test"}')
+      socket.write('{"name": "external", "output": "test", "status": 1}')
       socket.recv(2)
     end
     callback = proc do |response|
