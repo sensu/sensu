@@ -239,7 +239,7 @@ module Sensu
       @settings.checks.each_with_index do |(name, details), index|
         check_request = Hashie::Mash.new(:name => name)
         unless details.publish == false || details.standalone
-          @timers << EM::Timer.new(stagger*index) do
+          @timers << EM::Timer.new(stagger * index) do
             details.subscribers.each do |exchange|
               interval = options[:test] ? 0.5 : details.interval
               @timers << EM::PeriodicTimer.new(interval) do
