@@ -66,8 +66,8 @@ class TestSensuAPI < TestCase
       http.callback do
         assert_equal(200, http.response_header.status)
         expected = {
-          :status => 2,
           :output => "CRITICAL\n",
+          :status => 2,
           :flapping => false,
           :occurrences => 1
         }
