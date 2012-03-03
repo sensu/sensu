@@ -146,7 +146,7 @@ module Sensu
       end
       @check_request_queue.subscribe do |check_request_json|
         begin
-          check = Hashie::Mash.new(JSON.parse(check_request_json).select {|key, value| %w[name issued].include?(key)})
+          check = Hashie::Mash.new(JSON.parse(check_request_json))
           if check.name.is_a?(String) && check.issued.is_a?(Integer)
             @logger.info('[subscribe] -- received check request -- ' + check.name)
             execute_check(check)
