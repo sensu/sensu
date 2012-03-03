@@ -93,6 +93,7 @@ module Sensu
                   end
                   check.status = $?.exitstatus
                 rescue => error
+                  @logger.warn('[execute] -- unexpected error: ' + error.to_s)
                   check.output = 'Unexpected error: ' + error.to_s
                   check.status = 2
                 end
