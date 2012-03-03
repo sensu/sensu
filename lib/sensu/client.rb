@@ -146,15 +146,15 @@ module Sensu
       end
       @check_request_queue.subscribe do |check_request_json|
         begin
-          check = Hashie::Mash.new(JSON.parse(check_request_json))
+          check = Hashie::Mash.new(JSON.parse(check_request_json).select {|key, value| %w[name issued].include?(key)})
           if check.name.is_a?(String) && check.issued.is_a?(Integer)
             @logger.info('[subscribe] -- received check request -- ' + check.name)
             execute_check(check)
           else
-            @logger.warn('[subscribe] -- possible exchange overlap, invalid check request: ' + check_request_json)
+            @logger.warn('[subscribe] -- invalid check request: ' + check_request_json)
           end
         rescue JSON::ParserError => error
-          @logger.warn('[subscribe] -- possible exchange overlap, check request must be valid JSON: ' + error.to_s)
+          @logger.warn('[subscribe] -- check request must be valid JSON: ' + error.to_s)
         end
       end
     end

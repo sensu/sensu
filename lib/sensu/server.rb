@@ -94,11 +94,15 @@ module Sensu
             execute = proc do
               Bundler.with_clean_env do
                 begin
-                  IO.popen(details.command + ' 2>&1', 'r+') do |io|
-                    io.write(event.to_json)
-                    io.close_write
-                    io.read
+                  timeout(details.timeout) do
+                    IO.popen(details.command + ' 2>&1', 'r+') do |io|
+                      io.write(event.to_json)
+                      io.close_write
+                      io.read
+                    end
                   end
+                rescue Timeout::Error
+                  handler + ' -- timed out'
                 rescue Errno::ENOENT => error
                   handler + ' -- does not exist: ' + error.to_s
                 rescue Errno::EPIPE => error
