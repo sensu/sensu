@@ -16,6 +16,8 @@ class TestSensuAPI < TestCase
         assert_equal(200, http.response_header.status)
         info = JSON.parse(http.response)
         assert_equal(Sensu::VERSION, info['sensu']['version'])
+        assert_equal('ok', info['health']['redis'])
+        assert_equal('ok', info['health']['rabbitmq'])
         done
       end
     end

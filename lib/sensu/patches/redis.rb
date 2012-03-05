@@ -2,6 +2,7 @@ module Redis
   class Client
     def connection_completed
       @connected = true
+      @reconnecting = false
       @port, @host = Socket.unpack_sockaddr_in(get_peername)
     end
 
@@ -13,6 +14,7 @@ module Redis
     def unbind
       unless !@connected || @closing_connection
         EM::Timer.new(1) do
+          @reconnecting = true
           reconnect(@host, @port)
         end
       else
@@ -26,7 +28,7 @@ module Redis
     end
 
     def reconnecting?
-      !@connected
+      @reconnecting || false
     end
   end
 
