@@ -12,6 +12,7 @@ require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em/stdlib-logger'
 
+require File.join(File.dirname(__FILE__), '..', 'sensu')
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 

@@ -9,6 +9,18 @@ class TestSensuAPI < TestCase
     @api = 'http://' + @settings.api.host + ':' + @settings.api.port.to_s
   end
 
+  def test_get_info
+    Sensu::API.run_test(@options) do
+      http = EM::HttpRequest.new(@api + '/info').get
+      http.callback do
+        assert_equal(200, http.response_header.status)
+        info = JSON.parse(http.response)
+        assert_equal(Sensu::VERSION, info['sensu']['version'])
+        done
+      end
+    end
+  end
+
   def test_get_events
     Sensu::API.run_test(@options) do
       http = EM::HttpRequest.new(@api + '/events').get

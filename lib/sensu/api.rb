@@ -46,6 +46,15 @@ module Sensu
       content_type 'application/json'
     end
 
+    aget '/info' do
+      response = {
+        :sensu => {
+          :version => Sensu::VERSION
+        }
+      }
+      body response.to_json
+    end
+
     aget '/clients' do
       $logger.debug('[clients] -- ' + request.ip + ' -- GET -- request for client list')
       response = Array.new
