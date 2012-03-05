@@ -9,19 +9,29 @@ class TestSensuAPI < TestCase
     @api = 'http://' + @settings.api.host + ':' + @settings.api.port.to_s
   end
 
+  def test_get_info
+    Sensu::API.run_test(@options) do
+      http = EM::HttpRequest.new(@api + '/info').get
+      http.callback do
+        assert_equal(200, http.response_header.status)
+        info = JSON.parse(http.response)
+        assert_equal(Sensu::VERSION, info['sensu']['version'])
+        done
+      end
+    end
+  end
+
   def test_get_events
     Sensu::API.run_test(@options) do
       http = EM::HttpRequest.new(@api + '/events').get
       http.callback do
         assert_equal(200, http.response_header.status)
         events = JSON.parse(http.response)
-        assert(events.is_a?(Hash))
+        assert(events.is_a?(Array))
         assert_block "Response didn't contain the test event" do
-          events.any? do |client, events|
-            if client == @settings.client.name
-              events.keys.any? do |check|
-                check == 'test'
-              end
+          events.any? do |event|
+            if event['client'] == @settings.client.name
+              event['check'] == 'test'
             end
           end
         end
@@ -66,6 +76,8 @@ class TestSensuAPI < TestCase
       http.callback do
         assert_equal(200, http.response_header.status)
         expected = {
+          :client => @settings.client.name,
+          :check => 'test',
           :output => "CRITICAL\n",
           :status => 2,
           :flapping => false,

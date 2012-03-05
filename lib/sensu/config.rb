@@ -12,6 +12,7 @@ require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em/stdlib-logger'
 
+require File.join(File.dirname(__FILE__), '..', 'sensu')
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
@@ -49,7 +50,7 @@ module Sensu
         end
       end
       @logger = Cabin::Channel.new
-      log_output = File.basename($0) == 'rake' ? '/tmp/sensu_test.log' : STDOUT
+      log_output = File.basename($0) == 'rake' ? '/tmp/sensu-test.log' : STDOUT
       @logger.subscribe(Cabin::Outputs::EM::StdlibLogger.new(Logger.new(log_output)))
       @logger.level = @options[:verbose] ? :debug : :info
       if Signal.list.include?('USR1')
@@ -62,7 +63,7 @@ module Sensu
     def validate_common_settings
       @settings.checks.each do |name, details|
         if details.key?('status') || details.key?('output')
-          invalid_config('reserved key (status or output) defined in check ' + name)
+          invalid_config('reserved key (output or status) defined in check ' + name)
         end
         unless details.interval.is_a?(Integer) && details.interval > 0
           invalid_config('missing interval for check ' + name)
