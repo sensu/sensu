@@ -24,6 +24,10 @@ module Redis
         end
       end
     end
+
+    def reconnecting?
+      !@connected
+    end
   end
 
   def self.connect(options={})
