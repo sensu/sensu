@@ -47,7 +47,7 @@ module Sensu
     end
 
     aget '/info' do
-      $logger.debug('[clients] -- ' + request.ip + ' -- GET -- request for sensu info')
+      $logger.debug('[info] -- ' + request.ip + ' -- GET -- request for sensu info')
       response = {
         :sensu => {
           :version => Sensu::VERSION
