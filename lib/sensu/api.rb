@@ -150,16 +150,13 @@ module Sensu
 
     aget '/events' do
       $logger.debug('[events] -- ' + request.ip + ' -- GET -- request for event list')
-      response = Hash.new
+      response = Array.new
       $redis.smembers('clients').callback do |clients|
         unless clients.empty?
           clients.each_with_index do |client, index|
             $redis.hgetall('events:' + client).callback do |events|
-              events.each do |key, value|
-                events[key] = JSON.parse(value)
-              end
-              unless events.empty?
-                response[client] = events
+              events.each do |check, details|
+                response.push(JSON.parse(details).merge(:client => client, :check => check))
               end
               if index == clients.size - 1
                 body response.to_json
@@ -176,10 +173,13 @@ module Sensu
       $logger.debug('[event] -- ' + request.ip + ' -- GET -- request for event -- ' + client + ' -- ' + check)
       $redis.hgetall('events:' + client).callback do |events|
         event_json = events[check]
-        if event_json.nil?
+        unless event_json.nil?
+          response = JSON.parse(event_json).merge(:client => client, :check => check)
+          body response.to_json
+        else
           status 404
+          body ''
         end
-        body event_json
       end
     end
 
