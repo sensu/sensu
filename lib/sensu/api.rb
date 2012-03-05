@@ -38,8 +38,8 @@ module Sensu
       $logger.debug('[setup] -- connecting to redis')
       $redis = Redis.connect($settings.redis.to_hash.symbolize_keys)
       $logger.debug('[setup] -- connecting to rabbitmq')
-      rabbitmq = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
-      $amq = AMQP::Channel.new(rabbitmq)
+      $rabbitmq = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
+      $amq = AMQP::Channel.new($rabbitmq)
     end
 
     before do
@@ -51,8 +51,18 @@ module Sensu
       response = {
         :sensu => {
           :version => Sensu::VERSION
+        },
+        :health => {
+          :redis => 'ok',
+          :rabbitmq => 'ok'
         }
       }
+      if $redis.reconnecting?
+        response[:health][:redis] = 'down'
+      end
+      if $rabbitmq.reconnecting?
+        response[:health][:rabbitmq] = 'down'
+      end
       body response.to_json
     end
 
