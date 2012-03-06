@@ -47,6 +47,14 @@ module Sensu
       end
     end
 
+    configure do
+      disable :protection
+    end
+
+    not_found do
+      ''
+    end
+
     before do
       content_type 'application/json'
     end
