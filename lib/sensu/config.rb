@@ -127,6 +127,19 @@ module Sensu
       end
     end
 
+    def validate_api_settings
+      if @settings.api.key?('user')
+        unless @settings.api.user.is_a?(String)
+          invalid_config('api user must be a string')
+        end
+      end
+      if @settings.api.key?('password')
+        unless @settings.api.password.is_a?(String)
+          invalid_config('api password must be a string')
+        end
+      end
+    end
+
     def validate_client_settings
       unless @settings.client.name.is_a?(String)
         invalid_config('client must have a name')
@@ -155,12 +168,14 @@ module Sensu
       when 'rake'
         has_keys(%w[redis api handlers client])
         validate_server_settings
+        validate_api_settings
         validate_client_settings
       when 'sensu-server'
-        has_keys(%w[redis handlers])
+        has_keys(%w[handlers])
         validate_server_settings
       when 'sensu-api'
-        has_keys(%w[redis api])
+        has_keys(%w[api])
+        validate_api_settings
       when 'sensu-client'
         has_keys(%w[client])
         validate_client_settings

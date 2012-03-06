@@ -40,6 +40,11 @@ module Sensu
       $logger.debug('[setup] -- connecting to rabbitmq')
       $rabbitmq = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
       $amq = AMQP::Channel.new($rabbitmq)
+      if $settings.api.user && $settings.api.password
+        use Rack::Auth::Basic do |user, password|
+          user == $settings.api.user && password == $settings.api.password
+        end
+      end
     end
 
     before do
