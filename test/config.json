@@ -9,7 +9,9 @@
   },
   "api": {
     "host": "localhost",
-    "port": 4567
+    "port": 4567,
+    "user": "foo",
+    "password": "bar"
   },
   "dashboard": {
     "host": "localhost",
@@ -21,12 +23,16 @@
     "default": {
       "type": "set",
       "handlers": [
-        "debug"
+        "stdout"
       ]
     },
-    "debug": {
+    "stdout": {
       "type": "pipe",
-      "command": "./test/handler.rb"
+      "command": "./test/handlers/stdout.rb"
+    },
+    "file": {
+      "type": "pipe",
+      "command": "./test/handlers/file.rb"
     },
     "graphite": {
       "type": "amqp",

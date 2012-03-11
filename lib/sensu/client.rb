@@ -37,8 +37,8 @@ module Sensu
 
     def setup_amqp
       @logger.debug('[amqp] -- connecting to rabbitmq')
-      rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
-      @amq = AMQP::Channel.new(rabbitmq)
+      @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      @amq = AMQP::Channel.new(@rabbitmq)
     end
 
     def publish_keepalive
@@ -56,7 +56,7 @@ module Sensu
     end
 
     def publish_result(check)
-      @logger.info('[result] -- publishing check result -- ' + [check.name, check.status, check.output].join(' -- '))
+      @logger.info('[result] -- publishing check result -- ' + [check.name, check.status, check.output.gsub(/\n/, '\n')].join(' -- '))
       @amq.queue('results').publish({
         :client => @settings.client.name,
         :check => check.to_hash
@@ -91,12 +91,14 @@ module Sensu
                   IO.popen(command + ' 2>&1') do |io|
                     check.output = io.read
                   end
+                  check.status = $?.exitstatus
                 rescue => error
-                  check.output = 'unexpected error: ' + error.to_s
+                  @logger.warn('[execute] -- unexpected error: ' + error.to_s)
+                  check.output = 'Unexpected error: ' + error.to_s
+                  check.status = 2
                 end
                 check.duration = ('%.3f' % (Time.now.to_f - started)).to_f
               end
-              check.status = $?.exitstatus
             end
             publish = proc do
               unless check.status.nil?
@@ -109,8 +111,8 @@ module Sensu
             EM::defer(execute, publish)
           else
             @logger.warn('[execute] -- missing client attributes -- ' + unmatched_tokens.join(', ') + ' -- ' + check.name)
-            check.status = 3
             check.output = 'Missing client attributes: ' + unmatched_tokens.join(', ')
+            check.status = 3
             check.handle = false
             publish_result(check)
             @checks_in_progress.delete(check.name)
@@ -120,8 +122,8 @@ module Sensu
         end
       else
         @logger.warn('[execute] -- unkown check -- ' + check.name)
-        check.status = 3
         check.output = 'Unknown check'
+        check.status = 3
         check.handle = false
         publish_result(check)
         @checks_in_progress.delete(check.name)
@@ -130,15 +132,24 @@ module Sensu
 
     def setup_subscriptions
       @logger.debug('[subscribe] -- setup subscriptions')
-      @check_request_queue = @amq.queue(String.unique, :exclusive => true)
+      @uniq_queue_name ||= rand(36**32).to_s(36)
+      @check_request_queue = @amq.queue(@uniq_queue_name, :auto_delete => true)
       @settings.client.subscriptions.uniq.each do |exchange|
         @logger.debug('[subscribe] -- queue binding to exchange -- ' + exchange)
         @check_request_queue.bind(@amq.fanout(exchange))
       end
       @check_request_queue.subscribe do |check_request_json|
-        check = Hashie::Mash.new(JSON.parse(check_request_json))
-        @logger.info('[subscribe] -- received check request -- ' + check.name)
-        execute_check(check)
+        begin
+          check = Hashie::Mash.new(JSON.parse(check_request_json))
+          if check.name.is_a?(String) && check.issued.is_a?(Integer)
+            @logger.info('[subscribe] -- received check request -- ' + check.name)
+            execute_check(check)
+          else
+            @logger.warn('[subscribe] -- invalid check request: ' + check_request_json)
+          end
+        rescue JSON::ParserError => error
+          @logger.warn('[subscribe] -- check request must be valid JSON: ' + error.to_s)
+        end
       end
     end
 
@@ -147,10 +158,7 @@ module Sensu
       @timers << EM::PeriodicTimer.new(5) do
         unless @check_request_queue.subscribed?
           @logger.warn('[monitor] -- re-subscribing to subscriptions')
-          @check_request_queue.delete
-          @timers << EM::Timer.new(1) do
-            setup_subscriptions
-          end
+          setup_subscriptions
         end
       end
     end
@@ -203,9 +211,13 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
-      @logger.warn('[stop] -- unsubscribing from subscriptions')
-      @check_request_queue.unsubscribe do
-        stop_reactor
+      unless @rabbitmq.reconnecting?
+        @logger.warn('[stop] -- unsubscribing from subscriptions')
+        @check_request_queue.unsubscribe do
+          stop_reactor
+        end
+      else
+        EM::stop_event_loop
       end
     end
   end
@@ -227,7 +239,7 @@ module Sensu
           check.issued = Time.now.to_i
           check.status ||= 0
           if validates && check.status.is_a?(Integer)
-            @logger.info('[socket] -- publishing check result -- ' + [check.name, check.status, check.output].join(' -- '))
+            @logger.info('[socket] -- publishing check result -- ' + [check.name, check.status, check.output.gsub(/\n/, '\n')].join(' -- '))
             @amq.queue('results').publish({
               :client => @settings.client.name,
               :check => check.to_hash

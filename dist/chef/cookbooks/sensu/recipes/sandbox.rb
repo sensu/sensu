@@ -29,7 +29,7 @@ execute "bundle" do
   command "bundle install --path vendor --without development test"
   cwd File.join(node.sensu.sandbox.directory, "current")
   action :nothing
-  notifies :run, resources(:execute => "gem_update"), :immediate
+  notifies :run, 'execute[gem_update]', :immediate
 end
 
 deploy_revision "sensu" do
@@ -41,7 +41,7 @@ deploy_revision "sensu" do
   symlink_before_migrate Hash.new
   symlinks ({"vendor" => "vendor"})
   action File.exists?(File.join(node.sensu.sandbox.directory, "current")) ? :deploy : :force_deploy
-  notifies :run, resources(:execute => "bundle"), :immediate
+  notifies :run, 'execute[bundle]', :immediate
 end
 
 node.set.sensu.bin_path = File.join(node.sensu.sandbox.directory, "current/bin")

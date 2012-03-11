@@ -1,24 +1,40 @@
 class TestSensuAPI < TestCase
   def setup
-    @options = {:config_file => File.join(File.dirname(__FILE__), 'config.json')}
+    @options = {
+      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
+      :config_dir  => File.join(File.dirname(__FILE__), 'conf.d')
+    }
     config = Sensu::Config.new(@options)
     @settings = config.settings
     @api = 'http://' + @settings.api.host + ':' + @settings.api.port.to_s
+    @head = {:head => {'authorization' => [@settings.api.user, @settings.api.password]}}
+  end
+
+  def test_get_info
+    Sensu::API.run_test(@options) do
+      http = EM::HttpRequest.new(@api + '/info').get(@head)
+      http.callback do
+        assert_equal(200, http.response_header.status)
+        info = JSON.parse(http.response)
+        assert_equal(Sensu::VERSION, info['sensu']['version'])
+        assert_equal('ok', info['health']['redis'])
+        assert_equal('ok', info['health']['rabbitmq'])
+        done
+      end
+    end
   end
 
   def test_get_events
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/events').get
+      http = EM::HttpRequest.new(@api + '/events').get(@head)
       http.callback do
         assert_equal(200, http.response_header.status)
         events = JSON.parse(http.response)
-        assert(events.is_a?(Hash))
+        assert(events.is_a?(Array))
         assert_block "Response didn't contain the test event" do
-          events.any? do |client, events|
-            if client == @settings.client.name
-              events.keys.any? do |check|
-                check == 'test'
-              end
+          events.any? do |event|
+            if event['client'] == @settings.client.name
+              event['check'] == 'test'
             end
           end
         end
@@ -29,7 +45,7 @@ class TestSensuAPI < TestCase
 
   def test_get_clients
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/clients').get
+      http = EM::HttpRequest.new(@api + '/clients').get(@head)
       http.callback do
         assert_equal(200, http.response_header.status)
         clients = JSON.parse(http.response)
@@ -46,7 +62,7 @@ class TestSensuAPI < TestCase
 
   def test_get_checks
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/checks').get
+      http = EM::HttpRequest.new(@api + '/checks').get(@head)
       http.callback do
         assert_equal(200, http.response_header.status)
         checks = JSON.parse(http.response)
@@ -59,12 +75,14 @@ class TestSensuAPI < TestCase
 
   def test_get_event
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/event/' + @settings.client.name + '/test').get
+      http = EM::HttpRequest.new(@api + '/event/' + @settings.client.name + '/test').get(@head)
       http.callback do
         assert_equal(200, http.response_header.status)
         expected = {
-          :status => 2,
+          :client => @settings.client.name,
+          :check => 'test',
           :output => "CRITICAL\n",
+          :status => 2,
           :flapping => false,
           :occurrences => 1
         }
@@ -79,7 +97,7 @@ class TestSensuAPI < TestCase
       options = {
         :body => '{"client": "' + @settings.client.name + '", "check": "test"}'
       }
-      http = EM::HttpRequest.new(@api + '/event/resolve').post options
+      http = EM::HttpRequest.new(@api + '/event/resolve').post(@head.merge(options))
       http.callback do
         assert_equal(201, http.response_header.status)
         done
@@ -92,7 +110,7 @@ class TestSensuAPI < TestCase
       options = {
         :body => '{"client": "' + @settings.client.name + '", "check": "nonexistent"}'
       }
-      http = EM::HttpRequest.new(@api + '/event/resolve').post options
+      http = EM::HttpRequest.new(@api + '/event/resolve').post(@head.merge(options))
       http.callback do
         assert_equal(404, http.response_header.status)
         done
@@ -105,7 +123,7 @@ class TestSensuAPI < TestCase
       options = {
         :body => 'malformed'
       }
-      http = EM::HttpRequest.new(@api + '/event/resolve').post options
+      http = EM::HttpRequest.new(@api + '/event/resolve').post(@head.merge(options))
       http.callback do
         assert_equal(400, http.response_header.status)
         done
@@ -115,7 +133,7 @@ class TestSensuAPI < TestCase
 
   def test_get_client
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/client/' + @settings.client.name).get
+      http = EM::HttpRequest.new(@api + '/client/' + @settings.client.name).get(@head)
       http.callback do
         assert_equal(200, http.response_header.status)
         assert_equal(@settings.client, JSON.parse(http.response).reject { |key, value| key == 'timestamp' })
@@ -126,7 +144,7 @@ class TestSensuAPI < TestCase
 
   def test_get_nonexistent_client
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/client/nonexistent').get
+      http = EM::HttpRequest.new(@api + '/client/nonexistent').get(@head)
       http.callback do
         assert_equal(404, http.response_header.status)
         done
@@ -136,7 +154,7 @@ class TestSensuAPI < TestCase
 
   def test_delete_client
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/client/' + @settings.client.name).delete
+      http = EM::HttpRequest.new(@api + '/client/' + @settings.client.name).delete(@head)
       http.callback do
         assert_equal(204, http.response_header.status)
         done
@@ -146,7 +164,7 @@ class TestSensuAPI < TestCase
 
   def test_delete_nonexistent_client
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/client/nonexistent').delete
+      http = EM::HttpRequest.new(@api + '/client/nonexistent').delete(@head)
       http.callback do
         assert_equal(404, http.response_header.status)
         done
@@ -156,7 +174,7 @@ class TestSensuAPI < TestCase
 
   def test_get_check
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/check/a').get
+      http = EM::HttpRequest.new(@api + '/check/a').get(@head)
       http.callback do
         assert_equal(200, http.response_header.status)
         assert_equal(@settings.checks.a.to_hash, JSON.parse(http.response))
@@ -167,7 +185,7 @@ class TestSensuAPI < TestCase
 
   def test_get_nonexistent_check
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/check/nonexistent').get
+      http = EM::HttpRequest.new(@api + '/check/nonexistent').get(@head)
       http.callback do
         assert_equal(404, http.response_header.status)
         done
@@ -180,7 +198,7 @@ class TestSensuAPI < TestCase
       options = {
         :body => '{"check": "a", "subscribers": ["a", "b"]}'
       }
-      http = EM::HttpRequest.new(@api + '/check/request').post options
+      http = EM::HttpRequest.new(@api + '/check/request').post(@head.merge(options))
       http.callback do
         assert_equal(201, http.response_header.status)
         done
@@ -193,7 +211,7 @@ class TestSensuAPI < TestCase
       options = {
         :body => '{"check": "a", "subscribers": "malformed"}'
       }
-      http = EM::HttpRequest.new(@api + '/check/request').post options
+      http = EM::HttpRequest.new(@api + '/check/request').post(@head.merge(options))
       http.callback do
         assert_equal(400, http.response_header.status)
         done
@@ -206,7 +224,7 @@ class TestSensuAPI < TestCase
       options = {
         :body => '{"key": "value"}'
       }
-      http = EM::HttpRequest.new(@api + '/stash/tester').post options
+      http = EM::HttpRequest.new(@api + '/stash/tester').post(@head.merge(options))
       http.callback do
         assert_equal(201, http.response_header.status)
         done
@@ -216,7 +234,7 @@ class TestSensuAPI < TestCase
 
   def test_get_stash
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/stash/test/test').get
+      http = EM::HttpRequest.new(@api + '/stash/test/test').get(@head)
       http.callback do |response|
         assert_equal(200, http.response_header.status)
         done
@@ -226,7 +244,7 @@ class TestSensuAPI < TestCase
 
   def test_get_stashes
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/stashes').get
+      http = EM::HttpRequest.new(@api + '/stashes').get(@head)
       http.callback do
         assert_equal(200, http.response_header.status)
         stashes = JSON.parse(http.response)
@@ -246,7 +264,7 @@ class TestSensuAPI < TestCase
       options = {
         :body => '["test/test", "tester"]'
       }
-      http = EM::HttpRequest.new(@api + '/stashes').post options
+      http = EM::HttpRequest.new(@api + '/stashes').post(@head.merge(options))
       http.callback do
         assert_equal(200, http.response_header.status)
         stashes = JSON.parse(http.response)
@@ -263,7 +281,7 @@ class TestSensuAPI < TestCase
 
   def test_delete_stash
     Sensu::API.run_test(@options) do
-      http = EM::HttpRequest.new(@api + '/stash/test/test').delete
+      http = EM::HttpRequest.new(@api + '/stash/test/test').delete(@head)
       http.callback do |response|
         assert_equal(204, http.response_header.status)
         done

@@ -38,12 +38,45 @@ module Sensu
       $logger.debug('[setup] -- connecting to redis')
       $redis = Redis.connect($settings.redis.to_hash.symbolize_keys)
       $logger.debug('[setup] -- connecting to rabbitmq')
-      rabbitmq = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
-      $amq = AMQP::Channel.new(rabbitmq)
+      $rabbitmq = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
+      $amq = AMQP::Channel.new($rabbitmq)
+      if $settings.api.user && $settings.api.password
+        use Rack::Auth::Basic do |user, password|
+          user == $settings.api.user && password == $settings.api.password
+        end
+      end
+    end
+
+    configure do
+      disable :protection
+    end
+
+    not_found do
+      ''
     end
 
     before do
       content_type 'application/json'
+    end
+
+    aget '/info' do
+      $logger.debug('[info] -- ' + request.ip + ' -- GET -- request for sensu info')
+      response = {
+        :sensu => {
+          :version => Sensu::VERSION
+        },
+        :health => {
+          :redis => 'ok',
+          :rabbitmq => 'ok'
+        }
+      }
+      if $redis.reconnecting?
+        response[:health][:redis] = 'down'
+      end
+      if $rabbitmq.reconnecting?
+        response[:health][:rabbitmq] = 'down'
+      end
+      body response.to_json
     end
 
     aget '/clients' do
@@ -68,10 +101,12 @@ module Sensu
     aget '/client/:name' do |client|
       $logger.debug('[client] -- ' + request.ip + ' -- GET -- request for client -- ' + client)
       $redis.get('client:' + client).callback do |client_json|
-        if client_json.nil?
+        unless client_json.nil?
+          body client_json
+        else
           status 404
+          body ''
         end
-        body client_json
       end
     end
 
@@ -84,9 +119,9 @@ module Sensu
               $logger.info('[client] -- publishing check result to resolve event -- ' + client + ' -- ' + check_name)
               check = {
                 :name => check_name,
-                :issued => Time.now.to_i,
-                :status => 0,
                 :output => 'Client is being removed on request of the API',
+                :status => 0,
+                :issued => Time.now.to_i,
                 :force_resolve => true
               }
               $amq.queue('results').publish({:client => client, :check => check}.to_json)
@@ -102,11 +137,11 @@ module Sensu
               end
             end
             status 204
-            body nil
+            body ''
           end
         else
           status 404
-          body nil
+          body ''
         end
       end
     end
@@ -122,7 +157,7 @@ module Sensu
         body $settings.checks[check].to_json
       else
         status 404
-        body nil
+        body ''
       end
     end
 
@@ -132,7 +167,7 @@ module Sensu
         post_body = Hashie::Mash.new(JSON.parse(request.body.read))
       rescue JSON::ParserError
         status 400
-        body nil
+        body ''
       end
       if post_body.check.is_a?(String) && post_body.subscribers.is_a?(Array)
         post_body.subscribers.each do |exchange|
@@ -143,21 +178,18 @@ module Sensu
       else
         status 400
       end
-      body nil
+      body ''
     end
 
     aget '/events' do
       $logger.debug('[events] -- ' + request.ip + ' -- GET -- request for event list')
-      response = Hash.new
+      response = Array.new
       $redis.smembers('clients').callback do |clients|
         unless clients.empty?
           clients.each_with_index do |client, index|
             $redis.hgetall('events:' + client).callback do |events|
-              events.each do |key, value|
-                events[key] = JSON.parse(value)
-              end
-              unless events.empty?
-                response[client] = events
+              events.each do |check, details|
+                response.push(JSON.parse(details).merge(:client => client, :check => check))
               end
               if index == clients.size - 1
                 body response.to_json
@@ -174,10 +206,13 @@ module Sensu
       $logger.debug('[event] -- ' + request.ip + ' -- GET -- request for event -- ' + client + ' -- ' + check)
       $redis.hgetall('events:' + client).callback do |events|
         event_json = events[check]
-        if event_json.nil?
+        unless event_json.nil?
+          response = JSON.parse(event_json).merge(:client => client, :check => check)
+          body response.to_json
+        else
           status 404
+          body ''
         end
-        body event_json
       end
     end
 
@@ -187,7 +222,7 @@ module Sensu
         post_body = Hashie::Mash.new(JSON.parse(request.body.read))
       rescue JSON::ParserError
         status 400
-        body nil
+        body ''
       end
       if post_body.client.is_a?(String) && post_body.check.is_a?(String)
         $redis.hgetall('events:' + post_body.client).callback do |events|
@@ -195,9 +230,9 @@ module Sensu
             $logger.info('[event] -- publishing check result to resolve event -- ' + post_body.client + ' -- ' + post_body.check)
             check = {
               :name => post_body.check,
-              :issued => Time.now.to_i,
-              :status => 0,
               :output => 'Resolving on request of the API',
+              :status => 0,
+              :issued => Time.now.to_i,
               :force_resolve => true
             }
             $amq.queue('results').publish({:client => post_body.client, :check => check}.to_json)
@@ -205,11 +240,11 @@ module Sensu
           else
             status 404
           end
-          body nil
+          body ''
         end
       else
         status 400
-        body nil
+        body ''
       end
     end
 
@@ -219,12 +254,12 @@ module Sensu
         post_body = JSON.parse(request.body.read)
       rescue JSON::ParserError
         status 400
-        body nil
+        body ''
       end
       $redis.set('stash:' + path, post_body.to_json).callback do
         $redis.sadd('stashes', path).callback do
           status 201
-          body nil
+          body ''
         end
       end
     end
@@ -246,12 +281,12 @@ module Sensu
           $redis.srem('stashes', path).callback do
             $redis.del('stash:' + path).callback do
               status 204
-              body nil
+              body ''
             end
           end
         else
           status 404
-          body nil
+          body ''
         end
       end
     end
@@ -269,7 +304,7 @@ module Sensu
         post_body = JSON.parse(request.body.read)
       rescue JSON::ParserError
         status 400
-        body nil
+        body ''
       end
       response = Hash.new
       if post_body.is_a?(Array) && post_body.size > 0
@@ -285,7 +320,7 @@ module Sensu
         end
       else
         status 400
-        body nil
+        body ''
       end
     end
 
@@ -295,8 +330,8 @@ module Sensu
       $redis.set('client:' + $settings.client.name, $settings.client.to_json).callback do
         $redis.sadd('clients', $settings.client.name).callback do
           $redis.hset('events:' + $settings.client.name, 'test', {
-            :status => 2,
             :output => "CRITICAL\n",
+            :status => 2,
             :issued => Time.now.utc.iso8601,
             :flapping => false,
             :occurrences => 1

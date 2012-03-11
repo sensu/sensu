@@ -25,7 +25,7 @@
 # Released under the same terms as Sensu (the MIT license); see LICENSE
 # for details.
 
-require 'rubygems'
+require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'sensu-plugin/check/cli'
 
 class CheckProcs < Sensu::Plugin::Check::CLI
@@ -34,12 +34,14 @@ class CheckProcs < Sensu::Plugin::Check::CLI
   option :crit_over, :short => '-c N', :proc => proc {|a| a.to_i }, :default => 1
   option :warn_under, :short => '-W N', :proc => proc {|a| a.to_i }, :default => 0
   option :crit_under, :short => '-C N', :proc => proc {|a| a.to_i }, :default => 0
+  option :metric, :short => '-t METRIC', :proc => proc {|a| a.to_sym }
 
   option :match_self, :short => '-m', :boolean => true, :default => false
   option :match_parent, :short => '-M', :boolean => true, :default => false
   option :cmd_pat, :short => '-p PATTERN'
-  option :vsz, :short => '-z VSZ', :proc => proc {|a| a.to_f }
-  option :rss, :short => '-r RSS', :proc => proc {|a| a.to_f }
+  option :file_pid, :short => '-f PATH', :proc => proc {|a| File.read(a).chomp.to_i }
+  option :vsz, :short => '-z VSZ', :proc => proc {|a| a.to_i }
+  option :rss, :short => '-r RSS', :proc => proc {|a| a.to_i }
   option :pcpu, :short => '-P PCPU', :proc => proc {|a| a.to_f }
   option :state, :short => '-s STATE', :proc => proc {|a| a.split(',') }
   option :user, :short => '-u USER', :proc => proc {|a| a.split(',') }
@@ -79,6 +81,8 @@ class CheckProcs < Sensu::Plugin::Check::CLI
 
   def run
     procs = get_procs
+
+    procs.reject! {|p| p[:pid].to_i != config[:file_pid] } if config[:file_pid]
     procs.reject! {|p| p[:pid].to_i == $$ } unless config[:match_self]
     procs.reject! {|p| p[:pid].to_i == Process.ppid } unless config[:match_parent]
     procs.reject! {|p| p[:command] !~ /#{config[:cmd_pat]}/ } if config[:cmd_pat]
@@ -92,10 +96,20 @@ class CheckProcs < Sensu::Plugin::Check::CLI
     msg += "; cmd /#{config[:cmd_pat]}/" if config[:cmd_pat]
     msg += "; state #{config[:state].join(',')}" if config[:state]
     msg += "; user #{config[:user].join(',')}" if config[:user]
+    msg += "; rss > #{config[:vsz]}" if config[:vsz]
+    msg += "; vsz > #{config[:rss]}" if config[:rss]
+    msg += "; pcpu > #{config[:pcpu]}" if config[:pcpu]
+    msg += "; pid #{config[:file_pid]}" if config[:file_pid]
 
-    if procs.size < config[:crit_under] || procs.size > config[:crit_over]
+    count = if config[:metric]
+      procs.map {|p| p[config[:metric]].to_i }.reduce {|a, b| a + b }
+    else
+      procs.size
+    end
+
+    if count < config[:crit_under] || count > config[:crit_over]
       critical msg
-    elsif procs.size < config[:warn_under] || procs.size > config[:warn_over]
+    elsif count < config[:warn_under] || count > config[:warn_over]
       warning msg
     else
       ok msg

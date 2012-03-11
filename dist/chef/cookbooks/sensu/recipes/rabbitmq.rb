@@ -52,5 +52,5 @@ end
 
 template "/etc/rabbitmq/rabbitmq.config" do
   mode 0644
-  notifies :restart, resources(:service => "rabbitmq-server"), :immediately
+  notifies :restart, 'service[rabbitmq-server]', :immediately
 end

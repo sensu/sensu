@@ -1,5 +1,3 @@
-require File.join(File.dirname(__FILE__), 'patches', 'ruby')
-
 require 'rubygems'
 require 'bundler'
 require 'bundler/setup'
@@ -15,6 +13,10 @@ require 'hashie'
 require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em/stdlib-logger'
+
+require File.join(File.dirname(__FILE__), '..', 'sensu')
+require File.join(File.dirname(__FILE__), 'patches', 'ruby')
+require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
 if ENV['RBTRACE']
   require 'rbtrace'
@@ -50,7 +52,7 @@ module Sensu
         end
       end
       @logger = Cabin::Channel.new
-      log_output = File.basename($0) == 'rake' ? '/tmp/sensu_test.log' : STDOUT
+      log_output = File.basename($0) == 'rake' ? '/tmp/sensu-test.log' : STDOUT
       @logger.subscribe(Cabin::Outputs::EM::StdlibLogger.new(Logger.new(log_output)))
       @logger.level = @options[:verbose] ? :debug : :info
       if Signal.list.include?('USR1')
@@ -63,7 +65,7 @@ module Sensu
     def validate_common_settings
       @settings.checks.each do |name, details|
         if details.key?('status') || details.key?('output')
-          invalid_config('reserved key (status or output) defined in check ' + name)
+          invalid_config('reserved key (output or status) defined in check ' + name)
         end
         unless details.interval.is_a?(Integer) && details.interval > 0
           invalid_config('missing interval for check ' + name)
@@ -127,6 +129,19 @@ module Sensu
       end
     end
 
+    def validate_api_settings
+      if @settings.api.key?('user')
+        unless @settings.api.user.is_a?(String)
+          invalid_config('api user must be a string')
+        end
+      end
+      if @settings.api.key?('password')
+        unless @settings.api.password.is_a?(String)
+          invalid_config('api password must be a string')
+        end
+      end
+    end
+
     def validate_client_settings
       unless @settings.client.name.is_a?(String)
         invalid_config('client must have a name')
@@ -155,12 +170,14 @@ module Sensu
       when 'rake'
         has_keys(%w[redis api handlers client])
         validate_server_settings
+        validate_api_settings
         validate_client_settings
       when 'sensu-server'
-        has_keys(%w[redis handlers])
+        has_keys(%w[handlers])
         validate_server_settings
       when 'sensu-api'
-        has_keys(%w[redis api])
+        has_keys(%w[api])
+        validate_api_settings
       when 'sensu-client'
         has_keys(%w[client])
         validate_client_settings

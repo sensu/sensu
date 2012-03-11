@@ -48,8 +48,8 @@ module Sensu
 
     def setup_amqp
       @logger.debug('[amqp] -- connecting to rabbitmq')
-      rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
-      @amq = AMQP::Channel.new(rabbitmq)
+      @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      @amq = AMQP::Channel.new(@rabbitmq)
     end
 
     def setup_keepalives
@@ -178,8 +178,8 @@ module Sensu
                     event.occurrences = previous_occurrence.occurrences += 1
                   end
                   @redis.hset('events:' + client.name, check.name, {
-                    :status => check.status,
                     :output => check.output,
+                    :status => check.status,
                     :issued => Time.at(check.issued).utc.iso8601,
                     :flapping => is_flapping,
                     :occurrences => event.occurrences
@@ -228,7 +228,7 @@ module Sensu
       @result_queue = @amq.queue('results')
       @result_queue.subscribe do |result_json|
         result = Hashie::Mash.new(JSON.parse(result_json))
-        @logger.info('[result] -- received result -- ' + [result.client, result.check.name, result.check.status, result.check.output].join(' -- '))
+        @logger.info('[result] -- received result -- ' + [result.client, result.check.name, result.check.status, result.check.output.gsub(/\n/, '\n')].join(' -- '))
         process_result(result)
       end
     end
@@ -239,7 +239,7 @@ module Sensu
       @settings.checks.each_with_index do |(name, details), index|
         check_request = Hashie::Mash.new(:name => name)
         unless details.publish == false || details.standalone
-          @timers << EM::Timer.new(stagger*index) do
+          @timers << EM::Timer.new(stagger * index) do
             details.subscribers.each do |exchange|
               interval = options[:test] ? 0.5 : details.interval
               @timers << EM::PeriodicTimer.new(interval) do
@@ -271,18 +271,18 @@ module Sensu
               )
               case
               when time_since_last_keepalive >= 180
-                result.check.status = 2
                 result.check.output = 'No keep-alive sent from host in over 180 seconds'
+                result.check.status = 2
                 @amq.queue('results').publish(result.to_json)
               when time_since_last_keepalive >= 120
-                result.check.status = 1
                 result.check.output = 'No keep-alive sent from host in over 120 seconds'
+                result.check.status = 1
                 @amq.queue('results').publish(result.to_json)
               else
                 @redis.hexists('events:' + client_id, 'keepalive').callback do |exists|
                   if exists
-                    result.check.status = 0
                     result.check.output = 'Keep-alive sent from host'
+                    result.check.status = 0
                     @amq.queue('results').publish(result.to_json)
                   end
                 end
@@ -321,6 +321,18 @@ module Sensu
       end
     end
 
+    def resign_as_master(&block)
+      if @is_master
+        @redis.del('lock:master').callback do
+          @logger.warn('[master] -- resigned as master')
+          block.call if block
+        end
+      else
+        @logger.warn('[master] -- not currently master')
+        block.call if block
+      end
+    end
+
     def setup_master_monitor
       request_master_election
       @timers << EM::PeriodicTimer.new(20) do
@@ -350,18 +362,16 @@ module Sensu
     end
 
     def stop_reactor
-      EM::Timer.new(1) do
-        @logger.info('[stop] -- completing handlers in progress')
-        complete_in_progress = EM::tick_loop do
-          if @handlers_in_progress == 0
-            :stop
-          end
+      @logger.info('[stop] -- completing handlers in progress')
+      complete_in_progress = EM::tick_loop do
+        if @handlers_in_progress == 0
+          :stop
         end
-        complete_in_progress.on_stop do
-          @logger.warn('[stop] -- stopping reactor')
-          EM::PeriodicTimer.new(0.25) do
-            EM::stop_event_loop
-          end
+      end
+      complete_in_progress.on_stop do
+        @logger.warn('[stop] -- stopping reactor')
+        EM::PeriodicTimer.new(0.25) do
+          EM::stop_event_loop
         end
       end
     end
@@ -371,18 +381,19 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
-      @logger.warn('[stop] -- unsubscribing from keepalives')
-      @keepalive_queue.unsubscribe do
-        @logger.warn('[stop] -- unsubscribing from results')
-        @result_queue.unsubscribe do
-          if @is_master
-            @redis.del('lock:master').callback do
-              @logger.warn('[stop] -- resigned as master')
+      unless @rabbitmq.reconnecting?
+        @logger.warn('[stop] -- unsubscribing from keepalives')
+        @keepalive_queue.unsubscribe do
+          @logger.warn('[stop] -- unsubscribing from results')
+          @result_queue.unsubscribe do
+            resign_as_master do
               stop_reactor
             end
-          else
-            stop_reactor
           end
+        end
+      else
+        resign_as_master do
+          stop_reactor
         end
       end
     end
