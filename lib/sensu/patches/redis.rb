@@ -14,7 +14,7 @@ module Redis
       end
       info.callback do |reply|
         redis_version = reply.split(/\n/).first.split(/:/).last
-        unless redis_version.to_i >= 3
+        unless redis_version.to_i >= 2
           raise 'redis version must be >= 2.0'
         end
       end
