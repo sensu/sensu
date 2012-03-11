@@ -5,8 +5,7 @@
   },
   "redis": {
     "host": "localhost",
-    "port": 6379,
-    "password": "foo"
+    "port": 6379
   },
   "api": {
     "host": "localhost",

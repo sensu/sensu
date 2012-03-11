@@ -5,6 +5,12 @@ module Redis
     def connection_completed
       @connected = true
       @reconnecting = false
+      info.callback do |reply|
+        redis_version = reply.split(/\n/).first.split(/:/).last
+        unless redis_version.to_i >= 2
+          raise 'redis version must be >= 2.0'
+        end
+      end
       if @redis_password
         auth(@redis_password).callback do |reply|
           unless reply == "OK"
@@ -43,17 +49,10 @@ module Redis
   def self.connect(options={})
     host = options[:host] || 'localhost'
     port = options[:port] || 6379
-    redis = EM::connect(host, port, Redis::Client) do |client|
+    EM::connect(host, port, Redis::Client) do |client|
       client.redis_host = host
       client.redis_port = port
       client.redis_password = options[:password]
     end
-    redis.info do |info|
-      redis_version = info.split(/\n/).first.split(/:/).last
-      unless redis_version.to_i >= 2
-        raise 'redis version must be >= 2.0'
-      end
-    end
-    redis
   end
 end
