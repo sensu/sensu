@@ -5,17 +5,17 @@ module Redis
     def connection_completed
       @connected = true
       @reconnecting = false
-      info.callback do |reply|
-        redis_version = reply.split(/\n/).first.split(/:/).last
-        unless redis_version.to_i >= 2
-          raise 'redis version must be >= 2.0'
-        end
-      end
       if @redis_password
         auth(@redis_password).callback do |reply|
           unless reply == "OK"
             raise 'could not authenticate'
           end
+        end
+      end
+      info.callback do |reply|
+        redis_version = reply.split(/\n/).first.split(/:/).last
+        unless redis_version.to_i >= 3
+          raise 'redis version must be >= 2.0'
         end
       end
     end
