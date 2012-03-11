@@ -1,9 +1,23 @@
 module Redis
   class Client
+    attr_accessor :redis_host, :redis_port, :redis_password
+
     def connection_completed
       @connected = true
       @reconnecting = false
-      @port, @host = Socket.unpack_sockaddr_in(get_peername)
+      if @redis_password
+        auth(@redis_password).callback do |reply|
+          unless reply == "OK"
+            raise 'could not authenticate'
+          end
+        end
+      end
+      info.callback do |reply|
+        redis_version = reply.split(/\n/).first.split(/:/).last
+        unless redis_version.to_i >= 2
+          raise 'redis version must be >= 2.0'
+        end
+      end
     end
 
     def close
@@ -15,14 +29,14 @@ module Redis
       unless !@connected || @closing_connection
         EM::Timer.new(1) do
           @reconnecting = true
-          reconnect(@host, @port)
+          reconnect(@redis_host, @redis_port)
         end
       else
         until @queue.empty?
-          @queue.shift.fail RuntimeError.new 'connection closed'
+          @queue.shift.fail RuntimeError.new('connection closed')
         end
         unless @connected
-          raise "could not connect to redis"
+          raise 'could not connect to redis'
         end
       end
     end
@@ -35,13 +49,10 @@ module Redis
   def self.connect(options={})
     host = options[:host] || 'localhost'
     port = options[:port] || 6379
-    redis = EM::connect(host, port, Redis::Client)
-    redis.info do |info|
-      redis_version = info.split(/\n/).first.split(/:/).last
-      unless redis_version.to_i >= 2
-        raise "redis version must be >= 2.0"
-      end
+    EM::connect(host, port, Redis::Client) do |client|
+      client.redis_host = host
+      client.redis_port = port
+      client.redis_password = options[:password]
     end
-    redis
   end
 end
