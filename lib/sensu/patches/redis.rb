@@ -6,7 +6,7 @@ module Redis
       @connected = true
       @reconnecting = false
       if @redis_password
-        self.auth(@redis_password).callback do |reply|
+        auth(@redis_password).callback do |reply|
           unless reply == "OK"
             raise 'could not authenticate'
           end
@@ -43,10 +43,10 @@ module Redis
   def self.connect(options={})
     host = options[:host] || 'localhost'
     port = options[:port] || 6379
-    redis = EM::connect(host, port, Redis::Client) do |connection|
-      connection.redis_host = host
-      connection.redis_port = port
-      connection.redis_password = options[:password]
+    redis = EM::connect(host, port, Redis::Client) do |client|
+      client.redis_host = host
+      client.redis_port = port
+      client.redis_password = options[:password]
     end
     redis.info do |info|
       redis_version = info.split(/\n/).first.split(/:/).last
