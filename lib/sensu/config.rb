@@ -151,8 +151,8 @@ module Sensu
         invalid_config('client must have subscriptions')
       end
       @settings.client.subscriptions.each do |subscription|
-        unless subscription.is_a?(String) && ! subscription.empty?
-          invalid_config('subscriptions must not be empty strings')
+        unless subscription.is_a?(String) && !subscription.empty?
+          invalid_config('subscription must not be an empty string')
         end
       end
     end
