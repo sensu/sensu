@@ -150,6 +150,11 @@ module Sensu
       unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
         invalid_config('client must have subscriptions')
       end
+      @settings.client.subscriptions.each do |subscription|
+        unless subscription.is_a?(String) && ! subscription.empty?
+          invalid_config('subscriptions must not be empty strings')
+        end
+      end
     end
 
     def has_keys(keys)
