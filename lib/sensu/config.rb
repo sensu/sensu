@@ -225,6 +225,10 @@ module Sensu
           puts opts
           exit
         end
+        opts.on('-V', '--version', 'Display version') do
+          puts Sensu::VERSION
+          exit
+        end
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE. Default is /etc/sensu/config.json') do |file|
           options[:config_file] = file
         end
