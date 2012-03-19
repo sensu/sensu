@@ -1,0 +1,1 @@
+sensu-server: true

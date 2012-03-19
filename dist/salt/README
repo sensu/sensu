@@ -1,0 +1,14 @@
+Initial salt contribution.
+
+Currently covers:
+    - Debian stable/testing
+    - Installation of all required packages
+    - Installation of sensu and sensu-dashboard via gem
+    - Installation of lsb-style init scripts for services
+
+Does not cover:
+    - Setting up users/permission/vhosts on rabbitmq
+    - Making config.json for you
+
+Tested on:
+    debian stable (+bpo for zmq)

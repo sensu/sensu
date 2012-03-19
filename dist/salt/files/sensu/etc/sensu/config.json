@@ -1,0 +1,49 @@
+{
+   "rabbitmq": {
+     "host": "localhost",
+     "user": "sensu",
+     "password": "sensupasswd",
+     "vhost": "/sensu"
+   },
+
+   "redis": {
+     "host": "localhost",
+     "port": 6379
+   },
+
+   "api": {
+     "host": "localhost",
+     "port": 4567
+   },
+
+   "dashboard": {
+     "host": "0.0.0.0",
+     "port": 8080,
+     "user": "admin",
+     "password": "secret"
+   },
+
+   "handlers": {
+     "default": {
+        "type": "pipe",
+        "command": "mail -s 'sensu alert' root@localhost"
+     }
+   },
+
+   "checks": {
+    "disk-free": {
+      "command": "df -h /",
+      "subscribers": [
+        "fileservers"
+      ],
+      "interval": 30
+     }
+   },
+
+  "client": {
+    "name": "{{ name }}",
+    "address": "127.0.0.1",
+    "subscriptions": [ "fileservers" ]
+  }
+}
+
