@@ -12,3 +12,16 @@ Does not cover:
 
 Tested on:
     debian stable (+bpo for zmq)
+
+How to use:
+    Copy the contents of files and pillar into their respective directories
+    in your salt tree.
+
+    Alter files/top.sls and pillar/top.sls, selecting which hosts you want
+    each service to go on.
+
+    Edit configuration files in files/sensu/etc/sensu/ to reflect your
+    environment. Files are referenced as sensu-$PART-$( hostname -s ).conf,
+    which should allow all your sensu configs to coexist.
+
+    Call salt \* state.highstate and you're off!
