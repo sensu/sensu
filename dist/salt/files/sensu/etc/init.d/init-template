@@ -5,8 +5,9 @@
                                     + " | grep bin/" + part ) %}
 
 DAEMON={{ daemon_path }}
-NAME=sensu-{{ part }}
+NAME={{ part }}
 DESC="sensu {{ part }}"
+HOST=$(hostname -s)
 
 test -x $DAEMON || exit 0
 
@@ -14,7 +15,7 @@ LOGFILE=/var/log/sensu/$NAME.log
 PIDFILE=/var/run/$NAME.pid
 DODTIME=4
 
-DAEMON_OPTS="-b -p $PIDFILE -l $LOGFILE"
+DAEMON_OPTS="-b -p $PIDFILE -l $LOGFILE -c /etc/sensu/$NAME-$HOST.conf"
 
 set -e
 

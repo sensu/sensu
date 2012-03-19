@@ -1,3 +1,6 @@
+{% import "sensu/common.jinja" as common %}
+{% set hostname = salt['cmd.run']('hostname -s') %}
+
 /var/log/sensu/:
     file:
         - directory
@@ -14,12 +17,16 @@
         - mode: 755
         - makedirs: true
 
-/etc/sensu/config.json:
+{%- for part in common.sensu_parts %}
+    {%- if pillar[part] %}
+{{ common.config_path(hostname, part) }}:
     file:
         - managed
-        - source: salt://sensu/etc/sensu/config.json
+        - source: salt://sensu/etc/sensu/{{ common.config_filename(hostname, part) }}
         - template: jinja
         - mode: 755
         - require:
             - file: /etc/sensu/
             - file: /var/log/sensu/
+    {%- endif %}
+{%- endfor %}

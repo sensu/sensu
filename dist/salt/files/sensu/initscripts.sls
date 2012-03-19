@@ -11,7 +11,6 @@
         - template: jinja
         - mode: 755
         - defaults:
-            daemon_path: "{{ salt['cmd.run'](cmd) }}"
             part: "{{ part }}"
 
         - require:
