@@ -12,7 +12,7 @@ require 'amqp'
 require 'cabin'
 require 'cabin/outputs/em/stdlib-logger'
 
-require File.join(File.dirname(__FILE__), '..', 'sensu')
+require File.join(File.dirname(__FILE__), 'version')
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
@@ -36,7 +36,9 @@ module Sensu
     end
 
     def invalid_config(message)
-      raise 'configuration invalid, ' + message
+      puts 'CONFIGURATION INVALID: ' + message
+      puts 'SENSU NOT RUNNING'
+      exit 2
     end
 
     def setup_logging
@@ -75,6 +77,11 @@ module Sensu
           unless details.subscribers.is_a?(Array) && details.subscribers.count > 0
             invalid_config('missing subscribers for check ' + name)
           end
+          details.subscribers.each do |subscriber|
+            unless subscriber.is_a?(String) && !subscriber.empty?
+              invalid_config('a check subscriber must be a string (not empty) for check ' + name)
+            end
+          end
         end
         if details.key?('handler')
           unless details.handler.is_a?(String)
@@ -95,7 +102,7 @@ module Sensu
       end
       @settings.handlers.each do |name, details|
         unless details.is_a?(Hash)
-          invalid_config('hander details must be a hash ' + name)
+          invalid_config('handler details must be a hash for handler ' + name)
         end
         unless details['type'].is_a?(String)
           invalid_config('missing type for handler ' + name)
@@ -128,12 +135,13 @@ module Sensu
     end
 
     def validate_api_settings
-      if @settings.api.key?('user')
+      unless @settings.api.port.is_a?(Integer)
+        invalid_config('api port must be an integer')
+      end
+      if @settings.api.key?('user') || @settings.api.key?('password')
         unless @settings.api.user.is_a?(String)
           invalid_config('api user must be a string')
         end
-      end
-      if @settings.api.key?('password')
         unless @settings.api.password.is_a?(String)
           invalid_config('api password must be a string')
         end
@@ -152,7 +160,7 @@ module Sensu
       end
       @settings.client.subscriptions.each do |subscription|
         unless subscription.is_a?(String) && !subscription.empty?
-          invalid_config('subscription must not be an empty string')
+          invalid_config('a client subscription must be a string (not empty)')
         end
       end
     end
@@ -167,11 +175,11 @@ module Sensu
 
     def validate_settings
       @logger.debug('[validate] -- validating configuration')
-      has_keys(%w[rabbitmq checks])
+      has_keys(%w[checks])
       validate_common_settings
       case File.basename($0)
       when 'rake'
-        has_keys(%w[redis api handlers client])
+        has_keys(%w[api handlers client])
         validate_server_settings
         validate_api_settings
         validate_client_settings
@@ -192,6 +200,9 @@ module Sensu
       if File.readable?(@options[:config_file])
         begin
           config_hash = JSON.parse(File.open(@options[:config_file], 'r').read)
+          %w[rabbitmq redis].each do |key|
+            config_hash[key] ||= Hash.new
+          end
         rescue JSON::ParserError => error
           invalid_config('configuration file (' + @options[:config_file] + ') must be valid JSON: ' + error.to_s)
         end

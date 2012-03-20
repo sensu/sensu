@@ -1,3 +1,3 @@
 module Sensu
-  VERSION = "0.9.5.beta.2"
+  # A monitoring framework that aims to be simple, malleable, & scalable.
 end
