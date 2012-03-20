@@ -136,14 +136,16 @@ class TestSensu < TestCase
     end
     callback = proc do |response|
       assert_equal('ok', response)
-      EM::Timer.new(1.5) do
+      EM::Timer.new(2) do
         server.redis.hgetall('events:' + @settings.client.name).callback do |events|
           assert(events.include?('external'))
           done
         end
       end
     end
-    EM::defer(external_source, callback)
+    EM::Timer.new(0.5) do
+      EM::defer(external_source, callback)
+    end
   end
 
   def test_first_master_election
