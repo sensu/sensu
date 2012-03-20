@@ -148,13 +148,18 @@ module Sensu
 
     aget '/checks' do
       $logger.debug('[checks] -- ' + request.ip + ' -- GET -- request for check list')
-      body $settings.checks.to_json
+      response = Array.new
+      $settings.checks.each do |check, details|
+        response.push(details.merge(:name => check))
+      end
+      body response.to_json
     end
 
     aget '/check/:name' do |check|
       $logger.debug('[check] -- ' + request.ip + ' -- GET -- request for check -- ' + check)
       if $settings.checks.key?(check)
-        body $settings.checks[check].to_json
+        response = $settings.checks[check].merge(:name => check)
+        body response.to_json
       else
         status 404
         body ''
