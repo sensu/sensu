@@ -148,10 +148,7 @@ module Sensu
 
     aget '/checks' do
       $logger.debug('[checks] -- ' + request.ip + ' -- GET -- request for check list')
-      response = Array.new
-      $settings.checks.each do |check, details|
-        response.push(details.merge(:name => check))
-      end
+      response = $settings.checks.map { |check, details| details.merge(:name => check) }
       body response.to_json
     end
 
