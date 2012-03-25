@@ -12,7 +12,7 @@ module Sensu
       end
       EM::threadpool_size = 14
       EM::run do
-        client.setup_amqp
+        client.setup_rabbitmq
         client.setup_keepalives
         client.setup_subscriptions
         client.setup_rabbitmq_monitor
@@ -35,7 +35,7 @@ module Sensu
       @checks_in_progress = Array.new
     end
 
-    def setup_amqp
+    def setup_rabbitmq
       @logger.debug('[amqp] -- connecting to rabbitmq')
       @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       @amq = AMQP::Channel.new(@rabbitmq)
