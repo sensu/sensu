@@ -258,7 +258,7 @@ module Sensu
             send_data('invalid')
           end
         rescue JSON::ParserError => error
-          @logger.warn('[socket] -- check result must be valid JSON: ' + error.to_s)
+          @logger.warn('[socket] -- check result must be valid json: ' + error.to_s)
           send_data('invalid')
         end
       end

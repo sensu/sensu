@@ -356,11 +356,11 @@ module Sensu
           @logger.warn('[monitor] -- reconnecting to rabbitmq')
         else
           unless @keepalive_queue.subscribed?
-            @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- keepalives')
+            @logger.warn('[monitor] -- re-subscribing to keepalives')
             setup_keepalives
           end
           unless @result_queue.subscribed?
-            @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- results')
+            @logger.warn('[monitor] -- re-subscribing to results')
             setup_results
           end
         end
