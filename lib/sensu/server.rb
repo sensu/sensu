@@ -327,11 +327,15 @@ module Sensu
       if @is_master
         @redis.del('lock:master').callback do
           @logger.warn('[master] -- resigned as master')
-          block.call if block
+          if block
+            block.call
+          end
         end
       else
         @logger.warn('[master] -- not currently master')
-        block.call if block
+        if block
+          block.call
+        end
       end
     end
 
