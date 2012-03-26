@@ -204,7 +204,7 @@ module Sensu
             config_hash[key] ||= Hash.new
           end
         rescue JSON::ParserError => error
-          invalid_config('configuration file (' + @options[:config_file] + ') must be valid JSON: ' + error.to_s)
+          invalid_config('configuration file (' + @options[:config_file] + ') must be valid json: ' + error.to_s)
         end
         @settings = Hashie::Mash.new(config_hash)
       else
@@ -216,7 +216,7 @@ module Sensu
             begin
               snippet_hash = JSON.parse(File.open(snippet_file, 'r').read)
             rescue JSON::ParserError => error
-              invalid_config('configuration snippet file (' + snippet_file + ') must be valid JSON: ' + error.to_s)
+              invalid_config('configuration snippet file (' + snippet_file + ') must be valid json: ' + error.to_s)
             end
             merged_settings = @settings.to_hash.deep_merge(snippet_hash)
             @logger.warn('[settings] -- configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
