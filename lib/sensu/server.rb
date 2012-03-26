@@ -19,11 +19,11 @@ module Sensu
       EM::threadpool_size = 14
       EM::run do
         server.setup_redis
-        server.setup_amqp
+        server.setup_rabbitmq
         server.setup_keepalives
         server.setup_results
         server.setup_master_monitor
-        server.setup_queue_monitor
+        server.setup_rabbitmq_monitor
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -46,8 +46,8 @@ module Sensu
       @redis = Redis.connect(@settings.redis.to_hash.symbolize_keys)
     end
 
-    def setup_amqp
-      @logger.debug('[amqp] -- connecting to rabbitmq')
+    def setup_rabbitmq
+      @logger.debug('[rabbitmq] -- connecting to rabbitmq')
       @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       @amq = AMQP::Channel.new(@rabbitmq)
     end
@@ -243,9 +243,11 @@ module Sensu
             details.subscribers.each do |exchange|
               interval = options[:test] ? 0.5 : details.interval
               @timers << EM::PeriodicTimer.new(interval) do
-                @logger.info('[publisher] -- publishing check request -- ' + name + ' -- ' + exchange)
-                check_request.issued = Time.now.to_i
-                @amq.fanout(exchange).publish(check_request.to_json)
+                unless @rabbitmq.reconnecting?
+                  @logger.info('[publisher] -- publishing check request -- ' + name + ' -- ' + exchange)
+                  check_request.issued = Time.now.to_i
+                  @amq.fanout(exchange).publish(check_request.to_json)
+                end
               end
             end
           end
@@ -325,11 +327,15 @@ module Sensu
       if @is_master
         @redis.del('lock:master').callback do
           @logger.warn('[master] -- resigned as master')
-          block.call if block
+          if block
+            block.call
+          end
         end
       else
         @logger.warn('[master] -- not currently master')
-        block.call if block
+        if block
+          block.call
+        end
       end
     end
 
@@ -347,16 +353,20 @@ module Sensu
       end
     end
 
-    def setup_queue_monitor
-      @logger.debug('[monitor] -- setup queue monitor')
+    def setup_rabbitmq_monitor
+      @logger.debug('[monitor] -- setup rabbitmq monitor')
       @timers << EM::PeriodicTimer.new(5) do
-        unless @keepalive_queue.subscribed?
-          @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- keepalives')
-          setup_keepalives
-        end
-        unless @result_queue.subscribed?
-          @logger.warn('[monitor] -- re-subscribing to rabbitmq queue -- results')
-          setup_results
+        if @rabbitmq.reconnecting?
+          @logger.warn('[monitor] -- reconnecting to rabbitmq')
+        else
+          unless @keepalive_queue.subscribed?
+            @logger.warn('[monitor] -- re-subscribing to keepalives')
+            setup_keepalives
+          end
+          unless @result_queue.subscribed?
+            @logger.warn('[monitor] -- re-subscribing to results')
+            setup_results
+          end
         end
       end
     end

@@ -50,9 +50,9 @@ class TestSensu < TestCase
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
     server.setup_redis
-    server.setup_amqp
+    server.setup_rabbitmq
     server.setup_keepalives
-    client.setup_amqp
+    client.setup_rabbitmq
     client.setup_keepalives
     EM::Timer.new(1) do
       server.redis.get('client:' + @settings.client.name).callback do |client_json|
@@ -88,11 +88,11 @@ class TestSensu < TestCase
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
     server.setup_redis
-    server.setup_amqp
+    server.setup_rabbitmq
     server.redis.flushall
     server.setup_keepalives
     server.setup_results
-    client.setup_amqp
+    client.setup_rabbitmq
     client.setup_keepalives
     client.setup_subscriptions
     client.setup_standalone(:test => true)
@@ -122,10 +122,10 @@ class TestSensu < TestCase
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
     server.setup_redis
-    server.setup_amqp
+    server.setup_rabbitmq
     server.redis.flushall
     server.setup_keepalives
-    client.setup_amqp
+    client.setup_rabbitmq
     client.setup_keepalives
     server.setup_results
     client.setup_socket
@@ -153,8 +153,8 @@ class TestSensu < TestCase
     server2 = Sensu::Server.new(@options)
     server1.setup_redis
     server2.setup_redis
-    server1.setup_amqp
-    server2.setup_amqp
+    server1.setup_rabbitmq
+    server2.setup_rabbitmq
     server1.redis.flushall.callback do
       server1.setup_master_monitor
       server2.setup_master_monitor
@@ -170,8 +170,8 @@ class TestSensu < TestCase
     server2 = Sensu::Server.new(@options)
     server1.setup_redis
     server2.setup_redis
-    server1.setup_amqp
-    server2.setup_amqp
+    server1.setup_rabbitmq
+    server2.setup_rabbitmq
     server1.redis.set('lock:master', Time.now.to_i - 60).callback do
       server1.setup_master_monitor
       server2.setup_master_monitor

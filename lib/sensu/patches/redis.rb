@@ -8,14 +8,14 @@ module Redis
       if @redis_password
         auth(@redis_password).callback do |reply|
           unless reply == "OK"
-            raise 'could not authenticate'
+            raise('could not authenticate')
           end
         end
       end
       info.callback do |reply|
         redis_version = reply.split(/\n/).first.split(/:/).last
         unless redis_version.to_i >= 2
-          raise 'redis version must be >= 2.0'
+          raise('redis version must be >= 2.0')
         end
       end
     end
@@ -36,7 +36,7 @@ module Redis
           @queue.shift.fail RuntimeError.new('connection closed')
         end
         unless @connected
-          raise 'could not connect to redis'
+          raise('could not connect to redis')
         end
       end
     end
