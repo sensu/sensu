@@ -7,14 +7,14 @@ module Redis
       @reconnecting = false
       if @redis_password
         auth(@redis_password).callback do |reply|
-          unless reply == "OK"
+          unless reply == 'OK'
             raise('could not authenticate')
           end
         end
       end
       info.callback do |reply|
         redis_version = reply.split(/\n/).first.split(/:/).last.chomp
-        if redis_version < "1.3.14"
+        if redis_version < '1.3.14'
           raise('redis version must be >= 2.0 RC 1')
         end
       end
