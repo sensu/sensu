@@ -271,8 +271,10 @@ module Sensu
       $redis.get('stash:' + path).callback do |stash_json|
         if stash_json.nil?
           status 404
+          body ''
+        else
+          body stash_json
         end
-        body stash_json
       end
     end
 
