@@ -123,7 +123,7 @@ module Sensu
           @logger.warn('[execute] -- previous check execution still in progress -- ' + check.name)
         end
       else
-        @logger.warn('[execute] -- unkown check -- ' + check.name)
+        @logger.warn('[execute] -- unknown check -- ' + check.name)
         check.output = 'Unknown check'
         check.status = 3
         check.handle = false
