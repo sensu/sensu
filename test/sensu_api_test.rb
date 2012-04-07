@@ -66,8 +66,9 @@ class TestSensuAPI < TestCase
       http.callback do
         assert_equal(200, http.response_header.status)
         checks = JSON.parse(http.response)
-        assert(checks.is_a?(Hash))
-        assert_equal(checks, @settings.checks.to_hash)
+        assert(checks.is_a?(Array))
+        expected = @settings.checks.map { |check, details| details.merge(:name => check) }
+        assert_equal(expected, checks)
         done
       end
     end
@@ -177,7 +178,7 @@ class TestSensuAPI < TestCase
       http = EM::HttpRequest.new(@api + '/check/a').get(@head)
       http.callback do
         assert_equal(200, http.response_header.status)
-        assert_equal(@settings.checks.a.to_hash, JSON.parse(http.response))
+        assert_equal(@settings.checks.a.to_hash, JSON.parse(http.response).reject { |key, value| key == 'name' })
         done
       end
     end

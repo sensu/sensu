@@ -48,14 +48,14 @@ end
 module Process
   def self.write_pid(pid_file)
     if pid_file.nil?
-      raise 'a pid file path must be provided'
+      raise('a pid file path must be provided')
     end
     begin
       File.open(pid_file, 'w') do |file|
         file.write(self.pid.to_s + "\n")
       end
     rescue
-      raise 'could not write to pid file: ' + pid_file
+      raise('could not write to pid file: ' + pid_file)
     end
   end
 
@@ -63,7 +63,7 @@ module Process
     srand
     fork and exit
     unless session_id = self.setsid
-      raise 'cannot detach from controlling terminal'
+      raise('cannot detach from controlling terminal')
     end
     trap 'SIGHUP', 'IGNORE'
     if pid = fork

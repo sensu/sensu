@@ -12,10 +12,10 @@ module Sensu
       end
       EM::threadpool_size = 14
       EM::run do
-        client.setup_amqp
+        client.setup_rabbitmq
         client.setup_keepalives
         client.setup_subscriptions
-        client.setup_queue_monitor
+        client.setup_rabbitmq_monitor
         client.setup_standalone
         client.setup_socket
 
@@ -35,8 +35,8 @@ module Sensu
       @checks_in_progress = Array.new
     end
 
-    def setup_amqp
-      @logger.debug('[amqp] -- connecting to rabbitmq')
+    def setup_rabbitmq
+      @logger.debug('[rabbitmq] -- connecting to rabbitmq')
       @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
       @amq = AMQP::Channel.new(@rabbitmq)
     end
@@ -51,7 +51,9 @@ module Sensu
       @logger.debug('[keepalive] -- setup keepalives')
       publish_keepalive
       @timers << EM::PeriodicTimer.new(30) do
-        publish_keepalive
+        unless @rabbitmq.reconnecting?
+          publish_keepalive
+        end
       end
     end
 
@@ -118,7 +120,7 @@ module Sensu
             @checks_in_progress.delete(check.name)
           end
         else
-          @logger.debug('[execute] -- previous check execution still in progress -- ' + check.name)
+          @logger.warn('[execute] -- previous check execution still in progress -- ' + check.name)
         end
       else
         @logger.warn('[execute] -- unkown check -- ' + check.name)
@@ -148,23 +150,27 @@ module Sensu
             @logger.warn('[subscribe] -- invalid check request: ' + check_request_json)
           end
         rescue JSON::ParserError => error
-          @logger.warn('[subscribe] -- check request must be valid JSON: ' + error.to_s)
+          @logger.warn('[subscribe] -- check request must be valid json: ' + error.to_s)
         end
       end
     end
 
-    def setup_queue_monitor
-      @logger.debug('[monitor] -- setup queue monitor')
+    def setup_rabbitmq_monitor
+      @logger.debug('[monitor] -- setup rabbitmq monitor')
       @timers << EM::PeriodicTimer.new(5) do
-        unless @check_request_queue.subscribed?
-          @logger.warn('[monitor] -- re-subscribing to subscriptions')
-          setup_subscriptions
+        if @rabbitmq.reconnecting?
+          @logger.warn('[monitor] -- reconnecting to rabbitmq')
+        else
+          unless @check_request_queue.subscribed?
+            @logger.warn('[monitor] -- re-subscribing to client subscriptions')
+            setup_subscriptions
+          end
         end
       end
     end
 
     def setup_standalone(options={})
-      @logger.debug('[standalone] -- setup standalone')
+      @logger.debug('[standalone] -- setup standalone checks')
       standalone_check_count = 0
       @settings.checks.each do |name, details|
         if details.standalone
@@ -174,8 +180,10 @@ module Sensu
           @timers << EM::Timer.new(stagger*standalone_check_count) do
             interval = options[:test] ? 0.5 : details.interval
             @timers << EM::PeriodicTimer.new(interval) do
-              check.issued = Time.now.to_i
-              execute_check(check)
+              unless @rabbitmq.reconnecting?
+                check.issued = Time.now.to_i
+                execute_check(check)
+              end
             end
           end
         end
@@ -183,7 +191,7 @@ module Sensu
     end
 
     def setup_socket
-      @logger.debug('[socket] -- starting up socket')
+      @logger.debug('[socket] -- starting up client tcp socket')
       EM::start_server('127.0.0.1', 3030, ClientSocket) do |socket|
         socket.settings = @settings
         socket.logger = @logger
@@ -212,7 +220,7 @@ module Sensu
         timer.cancel
       end
       unless @rabbitmq.reconnecting?
-        @logger.warn('[stop] -- unsubscribing from subscriptions')
+        @logger.warn('[stop] -- unsubscribing from client subscriptions')
         @check_request_queue.unsubscribe do
           stop_reactor
         end
@@ -250,7 +258,7 @@ module Sensu
             send_data('invalid')
           end
         rescue JSON::ParserError => error
-          @logger.warn('[socket] -- check result must be valid JSON: ' + error.to_s)
+          @logger.warn('[socket] -- check result must be valid json: ' + error.to_s)
           send_data('invalid')
         end
       end

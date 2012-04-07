@@ -148,13 +148,15 @@ module Sensu
 
     aget '/checks' do
       $logger.debug('[checks] -- ' + request.ip + ' -- GET -- request for check list')
-      body $settings.checks.to_json
+      response = $settings.checks.map { |check, details| details.merge(:name => check) }
+      body response.to_json
     end
 
     aget '/check/:name' do |check|
       $logger.debug('[check] -- ' + request.ip + ' -- GET -- request for check -- ' + check)
       if $settings.checks.key?(check)
-        body $settings.checks[check].to_json
+        response = $settings.checks[check].merge(:name => check)
+        body response.to_json
       else
         status 404
         body ''
@@ -269,8 +271,10 @@ module Sensu
       $redis.get('stash:' + path).callback do |stash_json|
         if stash_json.nil?
           status 404
+          body ''
+        else
+          body stash_json
         end
-        body stash_json
       end
     end
 
