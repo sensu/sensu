@@ -1,0 +1,13 @@
+site 'http://community.opscode.com/api/v1'
+
+cookbook 'sensu',
+  :git => 'git@github.com:sonian/sensu-cookbooks.git'
+
+cookbook 'rabbitmq'
+  :git => 'git@github.com:sonian/sensu-cookbooks.git'
+
+cookbook 'redis'
+  :git => 'git@github.com:sonian/sensu-cookbooks.git'
+
+cookbook 'yum'
+  :git => 'git@github.com:sonian/sensu-cookbooks.git'
