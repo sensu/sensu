@@ -12,6 +12,7 @@ rm -f ./testca/serial
 }
 
 function generate {
+mkdir -p ./client ./server ./testca/private ./testca/certs
 touch testca/index.txt
 echo 01 > testca/serial
 cd testca
