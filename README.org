@@ -7,9 +7,9 @@
 
   [[https://gemnasium.com/portertech/sensu.png]]
 
-  [[http://portertech.ca/2011/11/01/sensu-a-monitoring-framework][Blog post]]
+  [[http://portertech.ca/2011/11/01/sensu-a-monitoring-framework][A blog post explaining why Sonian built it]].
 
-  [[http://www.sonian.com/cloud-tools/cloud-monitoring-sensu/][Homepage]]
+  [[http://www.sonian.com/cloud-tools/cloud-monitoring-sensu/][Project homepage]].
 * Documentation
   - [[https://github.com/sonian/sensu/wiki][Sensu Wiki]].
   - [[http://joemiller.me/2012/01/19/getting-started-with-the-sensu-monitoring-framework/][Getting Started]]
