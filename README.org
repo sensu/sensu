@@ -4,6 +4,7 @@
   [[https://github.com/sonian/sensu/raw/master/sensu-logo.png]]
 
   [[https://secure.travis-ci.org/sonian/sensu.png]]
+
   [[https://gemnasium.com/portertech/sensu.png]]
 
   [[http://portertech.ca/2011/11/01/sensu-a-monitoring-framework][Blog post]]
