@@ -24,7 +24,7 @@
 
   Keep it simple.
 
-  [[https://github.com/sonian/sensu/contributors][Contributors]]
+  [[https://github.com/sonian/sensu/contributors][Contributor list]]
 ** Testing
 *** System Dependencies
   - Ruby (MRI, YARV) & Rubygems
