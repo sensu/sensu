@@ -1,5 +1,5 @@
-* Welcome to Sensu
-  Sensu, a monitoring framework that aims to be simple, malleable, and scalable.
+* Sensu [[https://secure.travis-ci.org/sonian/sensu.png]]
+  A monitoring framework that aims to be simple, malleable, and scalable.
 
   [[https://github.com/sonian/sensu/raw/master/sensu-logo.png]]
 
@@ -23,24 +23,13 @@
   - Create a [[http://help.github.com/send-pull-requests/][pull request]]
 
   Keep it simple.
+
+  [[https://github.com/sonian/sensu/contributors][Contributors]]
 ** Testing
-*** Travis CI
-  [[https://secure.travis-ci.org/sonian/sensu.png]]
 *** System Dependencies
-  - Ruby (MRI) & Rubygems
+  - Ruby (MRI, YARV) & Rubygems
   - RabbitMQ
   - Redis
 *** Running
   : bundle install
   : rake
-* Contributors
-  - [[http://twitter.com/portertech][Sean Porter]]
-  - [[http://twitter.com/amdprophet][Justin Kolberg]]
-  - [[http://twitter.com/kartar][James Turnbull]]
-  - [[http://twitter.com/joshpasqualetto][Josh Pasqualetto]]
-  - [[http://github.com/lum][Steve Lum]]
-  - [[http://twitter.com/miller_joe][Joe Miller]]
-  - [[http://twitter.com/decklin][Decklin Foster]]
-  - [[http://twitter.com/ohlol][Scott Smith]]
-  - [[http://twitter.com/webframp][Sean Escriva]]
-  - [[http://twitter.com/fujin_][AJ Christensen]]
