@@ -13,4 +13,6 @@ rvm:
   - 1.9.2
   - 1.9.3
 before_script:
-  - ps aux | grep rabbit
+  - sudo /etc/init.d/rabbitmq-server start
+  - sudo /etc/init.d/redis-server start
+  - sleep 3
