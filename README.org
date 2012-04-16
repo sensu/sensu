@@ -1,7 +1,7 @@
 * Sensu
   A monitoring framework that aims to be simple, malleable, and scalable.
 
-  [[https://github.com/sonian/sensu/raw/master/sensu-logo.png]]
+  [[https://github.com/sensu/sensu/raw/master/sensu-logo.png]]
 
   [[https://secure.travis-ci.org/sonian/sensu.png]]
 
