@@ -6,34 +6,7 @@
   [[https://secure.travis-ci.org/sonian/sensu.png]]
 
   [[https://gemnasium.com/portertech/sensu.png]]
-
-  [[http://portertech.ca/2011/11/01/sensu-a-monitoring-framework][A blog post explaining why Sonian built it]].
-
-  [[http://www.sonian.com/cloud-tools/cloud-monitoring-sensu/][Project homepage]].
-* Documentation
-  - [[http://joemiller.me/2012/01/19/getting-started-with-the-sensu-monitoring-framework/][A getting started blog post]].
-  - [[http://joemiller.me/2012/01/24/re-use-nagios-plugins-in-sensu-for-quick-profit/][A blog post on reusing existing Nagios plugins]].
-  - [[http://joemiller.me/2012/02/02/sensu-and-graphite/][A blog post on using Sensu to collect metrics for Graphite]].
-  - [[https://github.com/sonian/sensu/wiki][Sensu Wiki (in progress)]].
-* Other Projects
-  - [[https://github.com/sonian/sensu-community-plugins][Sensu Community Plugins]]
-  - [[https://github.com/sonian/sensu-dashboard][Sensu Dashboard]]
-  - [[https://github.com/sonian/sensu-plugin][Sensu Plugin & Handler Helper]]
-* License
+** Documentation
+  Please refer to the [[https://github.com/sensu/sensu/wiki][Sensu Wiki]].
+** License
   Sensu is released under the [[https://github.com/sonian/sensu/blob/master/MIT-LICENSE.txt][MIT license]].
-* Contributing
-  - [[http://help.github.com/fork-a-repo/][Fork]] Sensu
-  - Use a [[https://github.com/dchelimsky/rspec/wiki/Topic-Branches][topic branch]]
-  - Create a [[http://help.github.com/send-pull-requests/][pull request]]
-
-  Keep it simple.
-
-  [[https://github.com/sonian/sensu/contributors][Contributor list]]
-** Testing
-*** System Dependencies
-  - Ruby (MRI, YARV) & Rubygems
-  - RabbitMQ
-  - Redis
-*** Running
-  : bundle install
-  : rake
