@@ -3,7 +3,7 @@
 
   [[https://github.com/sensu/sensu/raw/master/sensu-logo.png]]
 
-  [[https://secure.travis-ci.org/sonian/sensu.png]]
+  [[https://secure.travis-ci.org/sensu/sensu.png]]
 
   [[https://gemnasium.com/portertech/sensu.png]]
 ** Documentation
