@@ -26,7 +26,7 @@ task :test do
     raise("REDIS MUST BE RUNNING!")
   end
   require File.join(File.dirname(__FILE__), 'test', 'helper')
-  Dir['test/*_test.rb'].each do |test|
+  Dir['test/*_tests.rb'].each do |test|
     require File.join(File.dirname(__FILE__), test)
   end
 end
