@@ -1,46 +1,12 @@
-* Welcome to Sensu
-  Sensu, a monitoring framework that aims to be simple, malleable, and scalable.
+* Sensu
+  A monitoring framework that aims to be simple, malleable, and scalable.
 
-  [[https://github.com/sonian/sensu/raw/master/sensu-logo.png]]
+  [[https://github.com/sensu/sensu/raw/master/sensu-logo.png]]
 
-  [[http://portertech.ca/2011/11/01/sensu-a-monitoring-framework][Blog post]]
+  [[https://secure.travis-ci.org/sensu/sensu.png]]
 
-  [[http://www.sonian.com/cloud-tools/cloud-monitoring-sensu/][Homepage]]
-* Documentation
-  - [[https://github.com/sonian/sensu/wiki][Sensu Wiki]].
-  - [[http://joemiller.me/2012/01/19/getting-started-with-the-sensu-monitoring-framework/][Getting Started]]
-  - [[http://joemiller.me/2012/01/24/re-use-nagios-plugins-in-sensu-for-quick-profit/][How to reuse your existing Nagios plugins]]
-  - [[http://joemiller.me/2012/02/02/sensu-and-graphite/][Sensu and Graphite]]
-* Other Projects
-  - [[https://github.com/sonian/sensu-community-plugins][Sensu Community Plugins]]
-  - [[https://github.com/sonian/sensu-dashboard][Sensu Dashboard]]
-  - [[https://github.com/sonian/sensu-plugin][Sensu Plugin & Handler Helper]]
-* License
+  [[https://gemnasium.com/portertech/sensu.png]]
+** Documentation
+  Please refer to the [[https://github.com/sensu/sensu/wiki][Sensu Wiki]].
+** License
   Sensu is released under the [[https://github.com/sonian/sensu/blob/master/MIT-LICENSE.txt][MIT license]].
-* Contributing
-  - [[http://help.github.com/fork-a-repo/][Fork]] Sensu
-  - Use a [[https://github.com/dchelimsky/rspec/wiki/Topic-Branches][topic branch]]
-  - Create a [[http://help.github.com/send-pull-requests/][pull request]]
-
-  Keep it simple.
-** Testing
-*** Travis CI
-  [[https://secure.travis-ci.org/sonian/sensu.png]]
-*** System Dependencies
-  - Ruby (MRI) & Rubygems
-  - RabbitMQ
-  - Redis
-*** Running
-  : bundle install
-  : rake
-* Contributors
-  - [[http://twitter.com/portertech][Sean Porter]]
-  - [[http://twitter.com/amdprophet][Justin Kolberg]]
-  - [[http://twitter.com/kartar][James Turnbull]]
-  - [[http://twitter.com/joshpasqualetto][Josh Pasqualetto]]
-  - [[http://github.com/lum][Steve Lum]]
-  - [[http://twitter.com/miller_joe][Joe Miller]]
-  - [[http://twitter.com/decklin][Decklin Foster]]
-  - [[http://twitter.com/ohlol][Scott Smith]]
-  - [[http://twitter.com/webframp][Sean Escriva]]
-  - [[http://twitter.com/fujin_][AJ Christensen]]

@@ -7,7 +7,7 @@ task :default => 'test'
 def test_local_tcp_socket(port)
   begin
     timeout(1) do
-      socket = TCPSocket.new('127.0.0.1', port)
+      socket = TCPSocket.new('localhost', port)
       socket.close
     end
     true

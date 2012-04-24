@@ -143,7 +143,7 @@ class TestSensu < TestCase
         end
       end
     end
-    EM::Timer.new(0.5) do
+    EM::Timer.new(2) do
       EM::defer(external_source, callback)
     end
   end
