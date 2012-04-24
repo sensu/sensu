@@ -52,9 +52,8 @@ module Sensu
         end
       end
       @logger = Cabin::Channel.new
-      log_output = File.basename($0) == 'rake' ? '/tmp/sensu-test.log' : STDOUT
-      @logger.subscribe(Cabin::Outputs::EM::StdlibLogger.new(Logger.new(log_output)))
-      @logger.level = @options[:verbose] ? :debug : :info
+      @logger.subscribe(Cabin::Outputs::EM::StdlibLogger.new(Logger.new(STDOUT)))
+      @logger.level = @options[:log_level] || (@options[:verbose] ? :debug : :info)
       if Signal.list.include?('USR1')
         Signal.trap('USR1') do
           @logger.level = @logger.level == :info ? :debug : :info
