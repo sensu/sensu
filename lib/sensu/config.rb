@@ -299,7 +299,7 @@ module Sensu
         settings[:redis][:user]     = redis.user unless redis.user.nil?
         settings[:redis][:password] = redis.password unless redis.password.nil?
       end
-      settings[:api][:port] = ENV["PORT"]
+      settings[:api][:port] = Integer(ENV["PORT"])
       return settings
     end
   end
