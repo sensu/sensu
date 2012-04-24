@@ -285,7 +285,8 @@ module Sensu
         settings[:rabbitmq][:port]     = amqp.port
         settings[:rabbitmq][:user]     = amqp.user unless amqp.user.nil?
         settings[:rabbitmq][:password] = amqp.password unless amqp.password.nil?
-        settings[:rabbitmq][:vhost]    = amqp.path
+        # remove / at the front for rabbitmq compatibility
+        settings[:rabbitmq][:vhost]    = amqp.path.gsub(/^[\/]+/,"")
       end
       begin
         redis = URI(ENV["REDISTOGO_URL"])
