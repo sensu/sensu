@@ -1,5 +1,5 @@
 class Mash < Hashie::Mash
-  def to_hash(options = {})
+  def to_hash(options={})
     options[:symbolize_keys] ||= true
     super
   end
@@ -85,6 +85,6 @@ module Process
         end
       end
     end
-    return session_id
+    session_id
   end
 end
