@@ -4,8 +4,10 @@ require 'bundler/setup'
 
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
+
 require 'optparse'
 require 'time'
+require 'uri'
 require 'json'
 require 'hashie'
 require 'amqp'
@@ -198,7 +200,10 @@ module Sensu
     def setup_settings
       if File.readable?(@options[:config_file])
         begin
-          config_hash = JSON.parse(File.open(@options[:config_file], 'r').read)
+          default_hash = get_default_settings
+          custom_hash = JSON.parse(File.open(@options[:config_file], 'r').read)
+          config_hash = default_hash.merge(custom_hash)
+
           %w[rabbitmq redis].each do |key|
             config_hash[key] ||= Hash.new
           end
@@ -260,6 +265,47 @@ module Sensu
       end
       optparse.parse!(arguments)
       DEFAULT_OPTIONS.merge(options)
+    end
+
+    # Public: function to get a hash of default settings populated from
+    # different environment variables. This is mostly helpful if you want to
+    # run components on platforms like heroku
+    #
+    # Returns a populated settings hash
+    def get_default_settings
+      settings = {:api => {}, :rabbitmq => {}, :redis => {}}
+      # parse RabbitMQ settings
+      begin
+        amqp = URI(ENV["RABBITMQ_URL"])
+      rescue
+        amqp = nil
+      end
+      unless amqp.nil?
+        settings[:rabbitmq][:host]     = amqp.host
+        settings[:rabbitmq][:port]     = amqp.port
+        settings[:rabbitmq][:user]     = amqp.user unless amqp.user.nil?
+        settings[:rabbitmq][:password] = amqp.password unless amqp.password.nil?
+        # remove / at the front for rabbitmq compatibility
+        settings[:rabbitmq][:vhost]    = amqp.path.gsub(/^[\/]+/,"")
+      end
+
+      # parse Redis settings
+      begin
+        redis = URI( ENV["REDIS_URL"] || ENV["REDISTOGO_URL"])
+      rescue
+        redis = nil
+      end
+      unless redis.nil?
+        settings[:redis][:host]     = redis.host
+        settings[:redis][:port]     = redis.port
+        settings[:redis][:user]     = redis.user unless redis.user.nil?
+        settings[:redis][:password] = redis.password unless redis.password.nil?
+      end
+
+      # assing an API port
+      settings[:api][:port] = Integer(ENV["API_PORT"] || ENV["PORT"])
+
+      return settings
     end
   end
 end
