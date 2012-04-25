@@ -43,12 +43,12 @@ module Sensu
 
     def setup_redis
       @logger.debug('[redis] -- connecting to redis')
-      @redis = Redis.connect(@settings.redis.to_hash.symbolize_keys)
+      @redis = Redis.connect(@settings.redis.to_hash)
     end
 
     def setup_rabbitmq
       @logger.debug('[rabbitmq] -- connecting to rabbitmq')
-      @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash)
       @amq = AMQP::Channel.new(@rabbitmq)
     end
 
@@ -56,7 +56,7 @@ module Sensu
       @logger.debug('[keepalive] -- setup keepalive')
       @keepalive_queue = @amq.queue('keepalives')
       @keepalive_queue.subscribe do |keepalive_json|
-        client = Hashie::Mash.new(JSON.parse(keepalive_json))
+        client = Mash.new(JSON.parse(keepalive_json))
         @logger.debug('[keepalive] -- received keepalive -- ' + client.name)
         @redis.set('client:' + client.name, keepalive_json).callback do
           @redis.sadd('clients', client.name)
@@ -133,9 +133,9 @@ module Sensu
       @logger.debug('[result] -- processing result -- ' + result.client + ' -- ' + result.check.name)
       @redis.get('client:' + result.client).callback do |client_json|
         unless client_json.nil?
-          client = Hashie::Mash.new(JSON.parse(client_json))
+          client = Mash.new(JSON.parse(client_json))
           check = @settings.checks.key?(result.check.name) ? @settings.checks[result.check.name].merge(result.check) : result.check
-          event = Hashie::Mash.new(
+          event = Mash.new(
             :client => client,
             :check => check,
             :occurrences => 1
@@ -160,7 +160,7 @@ module Sensu
                 @redis.lpop(history_key)
               end
               @redis.hget('events:' + client.name, check.name).callback do |event_json|
-                previous_occurrence = event_json ? Hashie::Mash.new(JSON.parse(event_json)) : false
+                previous_occurrence = event_json ? Mash.new(JSON.parse(event_json)) : false
                 is_flapping = false
                 if check.key?('low_flap_threshold') && check.key?('high_flap_threshold')
                   was_flapping = previous_occurrence ? previous_occurrence.flapping : false
@@ -227,7 +227,7 @@ module Sensu
       @logger.debug('[result] -- setup results')
       @result_queue = @amq.queue('results')
       @result_queue.subscribe do |result_json|
-        result = Hashie::Mash.new(JSON.parse(result_json))
+        result = Mash.new(JSON.parse(result_json))
         @logger.debug('[result] -- received result -- ' + [result.client, result.check.name, result.check.status, result.check.output.gsub(/\n/, '\n')].join(' -- '))
         process_result(result)
       end
@@ -237,7 +237,7 @@ module Sensu
       @logger.debug('[publisher] -- setup publisher')
       stagger = options[:test] ? 0 : 7
       @settings.checks.each_with_index do |(name, details), index|
-        check_request = Hashie::Mash.new(:name => name)
+        check_request = Mash.new(:name => name)
         unless details.publish == false || details.standalone
           @timers << EM::Timer.new(stagger * index) do
             details.subscribers.each do |exchange|
@@ -262,9 +262,9 @@ module Sensu
         @redis.smembers('clients').callback do |clients|
           clients.each do |client_id|
             @redis.get('client:' + client_id).callback do |client_json|
-              client = Hashie::Mash.new(JSON.parse(client_json))
+              client = Mash.new(JSON.parse(client_json))
               time_since_last_keepalive = Time.now.to_i - client.timestamp
-              result = Hashie::Mash.new(
+              result = Mash.new(
                 :client => client.name,
                 :check => {
                   :name => 'keepalive',
