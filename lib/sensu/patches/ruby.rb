@@ -26,8 +26,12 @@ class Hash
   end
 
   def deep_merge(other_hash, &merger)
-    merger ||= proc do |key, old_value, new_value|
-      old_value.deep_merge(new_value, &merger) rescue new_value
+    merger ||= proc do |key, value, new_value|
+      begin
+        value.deep_merge(new_value, &merger)
+      rescue
+        new_value
+      end
     end
     merge(other_hash, &merger)
   end
@@ -46,7 +50,7 @@ module Process
     end
     begin
       File.open(pid_file, 'w') do |file|
-        file.write(self.pid.to_s + "\n")
+        file.puts(self.pid)
       end
     rescue
       raise('could not write to pid file: ' + pid_file)
