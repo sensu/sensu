@@ -201,7 +201,7 @@ module Sensu
     def setup_settings
       if File.readable?(@options[:config_file])
         begin
-          default_hash = Config.get_default_settings
+          default_hash = get_default_settings
           custom_hash = JSON.parse(File.open(@options[:config_file], 'r').read)
           config_hash = default_hash.merge(custom_hash)
 
