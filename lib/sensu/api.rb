@@ -36,9 +36,9 @@ module Sensu
         Process.write_pid(options[:pid_file])
       end
       $logger.debug('[setup] -- connecting to redis')
-      $redis = Redis.connect($settings.redis.to_hash.symbolize_keys)
+      $redis = Redis.connect($settings.redis.to_hash)
       $logger.debug('[setup] -- connecting to rabbitmq')
-      $rabbitmq = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
+      $rabbitmq = AMQP.connect($settings.rabbitmq.to_hash)
       $amq = AMQP::Channel.new($rabbitmq)
       if $settings.api.user && $settings.api.password
         use Rack::Auth::Basic do |user, password|
@@ -166,7 +166,7 @@ module Sensu
     apost '/check/request' do
       $logger.debug('[check] -- ' + request.ip + ' -- POST -- request to publish a check request')
       begin
-        post_body = Hashie::Mash.new(JSON.parse(request.body.read))
+        post_body = Mash.new(JSON.parse(request.body.read))
       rescue JSON::ParserError
         status 400
         body ''
@@ -221,7 +221,7 @@ module Sensu
     apost '/event/resolve' do
       $logger.debug('[event] -- ' + request.ip + ' -- POST -- request to resolve event')
       begin
-        post_body = Hashie::Mash.new(JSON.parse(request.body.read))
+        post_body = Mash.new(JSON.parse(request.body.read))
       rescue JSON::ParserError
         status 400
         body ''

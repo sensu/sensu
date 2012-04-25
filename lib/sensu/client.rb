@@ -37,7 +37,7 @@ module Sensu
 
     def setup_rabbitmq
       @logger.debug('[rabbitmq] -- connecting to rabbitmq')
-      @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash.symbolize_keys)
+      @rabbitmq = AMQP.connect(@settings.rabbitmq.to_hash)
       @amq = AMQP::Channel.new(@rabbitmq)
     end
 
@@ -142,7 +142,7 @@ module Sensu
       end
       @check_request_queue.subscribe do |check_request_json|
         begin
-          check = Hashie::Mash.new(JSON.parse(check_request_json))
+          check = Mash.new(JSON.parse(check_request_json))
           if check.name.is_a?(String) && check.issued.is_a?(Integer)
             @logger.info('[subscribe] -- received check request -- ' + check.name)
             execute_check(check)
@@ -175,7 +175,7 @@ module Sensu
       @settings.checks.each do |name, details|
         if details.standalone
           standalone_check_count += 1
-          check = Hashie::Mash.new(details.merge(:name => name))
+          check = Mash.new(details.merge(:name => name))
           stagger = options[:test] ? 0 : 7
           @timers << EM::Timer.new(stagger*standalone_check_count) do
             interval = options[:test] ? 0.5 : details.interval
@@ -240,7 +240,7 @@ module Sensu
       else
         @logger.debug('[socket] -- received data -- ' + data)
         begin
-          check = Hashie::Mash.new(JSON.parse(data))
+          check = Mash.new(JSON.parse(data))
           validates = %w[name output].all? do |key|
             check[key].is_a?(String)
           end

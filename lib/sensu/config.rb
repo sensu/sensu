@@ -205,7 +205,7 @@ module Sensu
         rescue JSON::ParserError => error
           invalid_config('configuration file (' + @options[:config_file] + ') must be valid json: ' + error.to_s)
         end
-        @settings = Hashie::Mash.new(config_hash)
+        @settings = Mash.new(config_hash)
       else
         invalid_config('configuration file does not exist or is not readable: ' + @options[:config_file])
       end
@@ -219,7 +219,7 @@ module Sensu
             end
             merged_settings = @settings.to_hash.deep_merge(snippet_hash)
             @logger.warn('[settings] -- configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
-            @settings = Hashie::Mash.new(merged_settings)
+            @settings = Mash.new(merged_settings)
           else
             invalid_config('configuration snippet file is not readable: ' + snippet_file)
           end
