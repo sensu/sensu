@@ -5,6 +5,10 @@ class Array
 end
 
 class Hash
+  def to_mash
+    Hashie::Mash.new(self)
+  end
+
   def symbolize_keys(item=self)
     case item
     when Array
