@@ -4,10 +4,10 @@ require 'bundler/setup'
 
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
-require 'uri'
 
 require 'optparse'
 require 'time'
+require 'uri'
 require 'json'
 require 'hashie'
 require 'amqp'
@@ -273,8 +273,9 @@ module Sensu
     # run components on platforms like heroku
     #
     # Returns a populated settings hash
-    def self.get_default_settings
+    def get_default_settings
       settings = {:api => {}, :rabbitmq => {}, :redis => {}}
+      # parse RabbitMQ settings
       begin
         amqp = URI(ENV["RABBITMQ_URL"])
       rescue
@@ -288,8 +289,10 @@ module Sensu
         # remove / at the front for rabbitmq compatibility
         settings[:rabbitmq][:vhost]    = amqp.path.gsub(/^[\/]+/,"")
       end
+
+      # parse Redis settings
       begin
-        redis = URI(ENV["REDISTOGO_URL"])
+        redis = URI( ENV["REDIS_URL"] || ENV["REDISTOGO_URL"])
       rescue
         redis = nil
       end
@@ -299,7 +302,10 @@ module Sensu
         settings[:redis][:user]     = redis.user unless redis.user.nil?
         settings[:redis][:password] = redis.password unless redis.password.nil?
       end
-      settings[:api][:port] = Integer(ENV["PORT"])
+
+      # assing an API port
+      settings[:api][:port] = Integer(ENV["API_PORT"] || ENV["PORT"])
+
       return settings
     end
   end
