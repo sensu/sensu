@@ -58,12 +58,14 @@ module Sensu
     end
 
     def publish_result(check)
-      @logger.info('[result] -- publishing: ' + check.inspect)
-      payload = {
+      result = {
         :client => @settings.client.name,
         :check => check.to_hash
-      }.to_json
-      @amq.queue('results').publish(payload)
+      }
+      @logger.info('publishing result', {
+        :result => result
+      })
+      @amq.queue('results').publish(result.to_json)
     end
 
     def execute_check(check)

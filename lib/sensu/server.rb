@@ -224,11 +224,13 @@ module Sensu
     end
 
     def setup_results
-      @logger.debug('[results] -- setup')
+      @logger.debug('subscribing to results')
       @result_queue = @amq.queue('results')
       @result_queue.subscribe do |payload|
         results = JSON.parse(payload)
-        @logger.debug('[results] -- received: ' + results.inspect)
+        @logger.debug('received results', {
+          :results => results
+        })
         case results
         when Array
           results.each do |result|
