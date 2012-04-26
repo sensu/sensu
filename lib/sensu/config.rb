@@ -291,7 +291,7 @@ module Sensu
           })
         end
       end
-      @settings = Hashie::Mash.new(settings)
+      @settings = Mash.new(settings)
       validate_config
     end
 
