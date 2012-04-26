@@ -19,7 +19,7 @@ class TestSensu < TestCase
   def test_config_dir_snippets
     config = Sensu::Config.new(@options)
     settings = config.settings
-    assert(settings.handlers.key?('new_handler'))
+    assert(settings.handlers.key?(:new_handler))
     assert(settings.checks.b.subscribers == ['a', 'b'])
     assert(settings.checks.b.interval == 1)
     assert(settings.checks.b.auto_resolve == false)
