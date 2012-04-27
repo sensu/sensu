@@ -179,7 +179,8 @@ class TestSensuAPI < TestCase
       http = EM::HttpRequest.new(@api + '/check/a').get(@head)
       http.callback do
         assert_equal(200, http.response_header.status)
-        assert_equal(@settings.checks.a.to_hash, JSON.parse(http.response).reject { |key, value| key == 'name' })
+        check = JSON.parse(http.response, :symbolize_names => true).reject { |key, value| key == :name }
+        assert_equal(@settings.checks.a.to_hash, check)
         done
       end
     end

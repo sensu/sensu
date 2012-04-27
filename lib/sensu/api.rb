@@ -336,7 +336,7 @@ module Sensu
           $redis.hset('events:' + $settings.client.name, 'test', {
             :output => "CRITICAL\n",
             :status => 2,
-            :issued => Time.now.utc.iso8601,
+            :issued => Time.now.to_i,
             :flapping => false,
             :occurrences => 1
           }.to_json).callback do

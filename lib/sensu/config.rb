@@ -3,7 +3,6 @@ require 'rubygems'
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
 require 'optparse'
-require 'time'
 require 'uri'
 require 'json'
 require 'hashie'
