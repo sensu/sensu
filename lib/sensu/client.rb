@@ -17,7 +17,7 @@ module Sensu
         client.setup_subscriptions
         client.setup_rabbitmq_monitor
         client.setup_standalone
-        client.setup_socket
+        client.setup_sockets
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -154,7 +154,7 @@ module Sensu
 
     def setup_subscriptions
       @logger.debug('subscribing to client subscriptions')
-      @uniq_queue_name ||= rand(36**32).to_s(36)
+      @uniq_queue_name ||= rand(36 ** 32).to_s(36)
       @check_request_queue = @amq.queue(@uniq_queue_name, :auto_delete => true)
       @settings.client.subscriptions.uniq.each do |exchange|
         @logger.debug('binding queue to exchange', {
@@ -203,12 +203,12 @@ module Sensu
       @logger.debug('scheduling standalone checks')
       standalone_check_count = 0
       @settings.checks.each do |name, details|
-        if details.standalone
+        check = details.to_hash.merge(:name => name)
+        if check[:standalone]
           standalone_check_count += 1
-          check = details.to_hash.merge(:name => name)
           stagger = options[:test] ? 0 : 7
-          @timers << EM::Timer.new(stagger*standalone_check_count) do
-            interval = options[:test] ? 0.5 : details.interval
+          @timers << EM::Timer.new(stagger * standalone_check_count) do
+            interval = options[:test] ? 0.5 : check[:interval]
             @timers << EM::PeriodicTimer.new(interval) do
               unless @rabbitmq.reconnecting?
                 check[:issued] = Time.now.to_i
@@ -220,9 +220,17 @@ module Sensu
       end
     end
 
-    def setup_socket
+    def setup_sockets
       @logger.debug('binding client tcp socket')
-      EM::start_server('127.0.0.1', 3030, ::Sensu::Socket) do |socket|
+      EM::start_server('127.0.0.1', 3030, ClientSocket) do |socket|
+        socket.protocol = :tcp
+        socket.settings = @settings
+        socket.logger = @logger
+        socket.amq = @amq
+      end
+      @logger.debug('binding client udp socket')
+      EM::open_datagram_socket('127.0.0.1', 3030, ClientSocket) do |socket|
+        socket.protocol = :udp
         socket.settings = @settings
         socket.logger = @logger
         socket.amq = @amq
@@ -247,12 +255,15 @@ module Sensu
     end
 
     def stop(signal)
-      @logger.warn('[stop] -- stopping sensu client -- ' + signal)
+      @logger.warn('received signal', {
+        :signal => signal
+      })
+      @logger.warn('stopping')
       @timers.each do |timer|
         timer.cancel
       end
       unless @rabbitmq.reconnecting?
-        @logger.warn('[stop] -- unsubscribing from client subscriptions')
+        @logger.warn('unsubscribing from client subscriptions')
         @check_request_queue.unsubscribe do
           stop_reactor
         end
@@ -262,13 +273,19 @@ module Sensu
     end
   end
 
-  class Socket < EM::Connection
-    attr_accessor :settings, :logger, :amq
+  class ClientSocket < EM::Connection
+    attr_accessor :protocol, :settings, :logger, :amq
+
+    def reply(data)
+      if @protocol == :tcp
+        send_data(data)
+      end
+    end
 
     def receive_data(data)
       if data == 'ping'
         @logger.debug('socket received ping')
-        send_data('pong')
+        reply('pong')
       else
         @logger.debug('socket received data', {
           :data => data
@@ -289,19 +306,19 @@ module Sensu
               :payload => payload
             })
             @amq.queue('results').publish(payload.to_json)
-            send_data('ok')
+            reply('ok')
           else
             @logger.warn('invalid check result', {
               :check => check
             })
-            send_data('invalid')
+            reply('invalid')
           end
         rescue JSON::ParserError => error
           @logger.warn('check result must be valid json', {
             :data => data,
             :error => error.to_s
           })
-          send_data('invalid')
+          reply('invalid')
         end
       end
     end
