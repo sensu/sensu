@@ -80,8 +80,8 @@ module Sensu
         [:default]
       end
       expanded = handlers.map do |handler|
-        if @settings[:handlers].has_key?(handler)
-          @settings[:handlers][handler][:type] == 'set' ? @settings[:handlers][handler][:handlers] : handler
+        if @settings.handlers.key?(handler)
+          @settings.handlers[handler][:type] == 'set' ? @settings.handlers[handler].handlers : handler
         else
           @logger.error('unknown handler', {
             :handler => handler
@@ -90,7 +90,7 @@ module Sensu
         end
       end
       expanded.flatten.uniq.compact.map do |handler|
-        @settings[:handlers][handler].to_hash.merge(:name => handler)
+        @settings.handlers[handler].to_hash.merge(:name => handler)
       end
     end
 
