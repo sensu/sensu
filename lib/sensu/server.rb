@@ -286,8 +286,8 @@ module Sensu
     def setup_publisher(options={})
       @logger.debug('scheduling check requests')
       stagger = options[:test] ? 0 : 7
-      @settings.checks.each_with_index do |(name, details), index|
-        check = details.to_hash.merge(:name => name)
+      @settings.checks.each_with_index do |(check_name, check_details), index|
+        check = check_details.to_hash.merge(:name => check_name)
         unless check[:publish] == false || check[:standalone]
           @timers << EM::Timer.new(stagger * index) do
             interval = options[:test] ? 0.5 : check[:interval]

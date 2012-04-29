@@ -170,8 +170,8 @@ module Sensu
 
     aget '/checks' do
       request_log(env)
-      response = $settings.checks.map do |check_name, details|
-        details.merge(:name => check_name)
+      response = $settings.checks.map do |check_name, check_details|
+        check_details.merge(:name => check_name)
       end
       body response.to_json
     end
@@ -221,8 +221,8 @@ module Sensu
         unless clients.empty?
           clients.each_with_index do |client_name, index|
             $redis.hgetall('events:' + client_name).callback do |events|
-              events.each do |check_name, details|
-                response.push(JSON.parse(details).merge(:client => client_name, :check => check_name))
+              events.each do |check_name, event_json|
+                response.push(JSON.parse(event_json).merge(:client => client_name, :check => check_name))
               end
               if index == clients.size - 1
                 body response.to_json

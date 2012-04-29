@@ -202,8 +202,8 @@ module Sensu
     def setup_standalone(options={})
       @logger.debug('scheduling standalone checks')
       standalone_check_count = 0
-      @settings.checks.each do |name, details|
-        check = details.to_hash.merge(:name => name)
+      @settings.checks.each do |check_name, check_details|
+        check = check_details.to_hash.merge(:name => check_name)
         if check[:standalone]
           standalone_check_count += 1
           stagger = options[:test] ? 0 : 7
