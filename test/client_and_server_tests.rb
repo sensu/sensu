@@ -118,7 +118,7 @@ class TestSensu < TestCase
           }
           event = JSON.parse(event_json, :symbolize_names => true).reject do |key, value|
             key == :issued
-          endg
+          end
           assert_equal(expected, event)
         end
         server.amq.queue('', :auto_delete => true).bind('graphite', :key => 'sensu.*').subscribe do |metric|

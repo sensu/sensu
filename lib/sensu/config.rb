@@ -10,6 +10,7 @@ require 'amqp'
 require 'cabin'
 
 require File.join(File.dirname(__FILE__), 'version')
+require File.join(File.dirname(__FILE__), 'settings')
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
@@ -189,108 +190,14 @@ module Sensu
       @logger.debug('config valid')
     end
 
-    def env_settings
-      settings = Hash.new
-      %w[api rabbitmq redis].each do |key|
-        settings[key] = Hash.new
-      end
-      begin
-        amqp = ENV["RABBITMQ_URL"] ? URI(ENV["RABBITMQ_URL"]) : nil
-      rescue
-        @logger.error('rabbitmq url environment variable is invalid', {
-          :variable => 'RABBITMQ_URL'
-        })
-      end
-      unless amqp.nil?
-        settings[:rabbitmq][:host] = amqp.host
-        settings[:rabbitmq][:port] = amqp.port
-        settings[:rabbitmq][:vhost] = amqp.path.gsub(/^[\/]/,"")
-        unless amqp.user.nil?
-          settings[:rabbitmq][:user] = amqp.user
-        end
-        unless amqp.password.nil?
-          settings[:rabbitmq][:password] = amqp.password
-        end
-      end
-      begin
-        ENV["REDIS_URL"] ||= ENV["REDISTOGO_URL"]
-        redis = ENV["REDIS_URL"] ? URI(ENV["REDIS_URL"]) : nil
-      rescue
-        @logger.error('redis url environment variable is invalid', {
-          :variables => %w[REDIS_URL REDISTOGO_URL]
-        })
-      end
-      unless redis.nil?
-        settings[:redis][:host] = redis.host
-        settings[:redis][:port] = redis.port
-        unless redis.user.nil?
-          settings[:redis][:user] = redis.user
-        end
-        unless redis.password.nil?
-          settings[:redis][:password] = redis.password
-        end
-      end
-      ENV["API_PORT"] ||= ENV["PORT"]
-      if ENV["API_PORT"]
-        settings[:api][:port] = Integer(ENV["API_PORT"])
-      end
-      settings
-    end
-
     def setup_settings
-      settings = env_settings
-      if File.readable?(@options[:config_file])
-        begin
-          config_contents = File.open(@options[:config_file], 'r').read
-          config = JSON.parse(config_contents, :symbolize_names => true)
-          settings = settings.deep_merge(config)
-        rescue JSON::ParserError => error
-          @logger.error('config file must be valid json', {
-            :config_file => @options[:config_file],
-            :error => error.to_s
-          })
-          @logger.warn('ignoring config file', {
-            :config_file => @options[:config_file]
-          })
-        end
-      else
-        @logger.error('config file does not exist or is not readable', {
-          :config_file => @options[:config_file]
-        })
-        @logger.warn('ignoring config file', {
-          :config_file => @options[:config_file]
-        })
+      settings = Sensu::Settings.new
+      settings.load_env
+      settings.load_file(@options[:config_file])
+      Dir[@options[:config_dir] + '/**/*.json'].each do |file|
+        settings.load_file(file)
       end
-      Dir[@options[:config_dir] + '/**/*.json'].each do |snippet_file|
-        if File.readable?(snippet_file)
-          begin
-            config_contents = File.open(snippet_file, 'r').read
-            config = JSON.parse(config_contents, :symbolize_names => true)
-            merged_settings = settings.deep_merge(config)
-            @logger.warn('config file applied changes', {
-              :config_file => snippet_file,
-              :changes => settings.deep_diff(merged_settings)
-            })
-            settings = merged_settings
-          rescue JSON::ParserError => error
-            @logger.error('config file must be valid json', {
-              :config_file => snippet_file,
-              :error => error.to_s
-            })
-            @logger.warn('ignoring config file', {
-              :config_file => snippet_file
-            })
-          end
-        else
-          @logger.error('config file is not readable', {
-            :config_file => snippet_file
-          })
-          @logger.warn('ignoring config file', {
-            :config_file => snippet_file
-          })
-        end
-      end
-      @settings = Mash.new(settings)
+      @settings = Mash.new(settings.to_hash)
       validate_config
     end
 
