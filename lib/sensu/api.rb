@@ -155,7 +155,7 @@ module Sensu
               $redis.del('events:' + client_name)
               $redis.del('client:' + client_name)
               $settings.checks.each_key do |check_name|
-                $redis.del('history:' + client + ':' + check_name)
+                $redis.del('history:' + client_name + ':' + check_name)
               end
             end
             status 204
