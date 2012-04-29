@@ -59,37 +59,6 @@ module Sensu
       exit 2
     end
 
-    def validate_common_settings
-      @settings.checks.each do |name, details|
-        unless details.interval.is_a?(Integer) && details.interval > 0
-          invalid_config('missing interval for check: ' + name)
-        end
-        unless details.command.is_a?(String)
-          invalid_config('missing command for check: ' + name)
-        end
-        unless details.standalone
-          unless details.subscribers.is_a?(Array) && details.subscribers.count > 0
-            invalid_config('missing subscribers for check: ' + name)
-          end
-          details.subscribers.each do |subscriber|
-            unless subscriber.is_a?(String) && !subscriber.empty?
-              invalid_config('a check subscriber must be a string for check: ' + name)
-            end
-          end
-        end
-        if details.key?('handler')
-          unless details.handler.is_a?(String)
-            invalid_config('handler must be a string for check: ' + name)
-          end
-        end
-        if details.key?('handlers')
-          unless details.handlers.is_a?(Array)
-            invalid_config('handlers must be an array for check: ' + name)
-          end
-        end
-      end
-    end
-
     def validate_server_settings
       unless @settings.handlers.include?('default')
         invalid_config('missing default handler')
@@ -170,7 +139,6 @@ module Sensu
     def validate_config
       @logger.debug('validating config')
       has_keys(%w[checks])
-      validate_common_settings
       case File.basename($0)
       when 'rake'
         has_keys(%w[api handlers client])
@@ -196,6 +164,11 @@ module Sensu
       settings.load_file(@options[:config_file])
       Dir[@options[:config_dir] + '/**/*.json'].each do |file|
         settings.load_file(file)
+      end
+      begin
+        settings.validate
+      rescue => error
+        invalid_config(error)
       end
       @settings = Mash.new(settings.to_hash)
       validate_config

@@ -74,5 +74,48 @@ module Sensu
         })
       end
     end
+
+    def map_checks
+      @settings[:checks].map do |check_name, check_details|
+        check_details.merge(:name => check_name.to_s)
+      end
+    end
+
+    def validate
+      validate_checks
+    end
+
+    private
+
+    def validate_checks
+      map_checks.each do |check|
+        unless check[:interval].is_a?(Integer) && check[:interval] > 0
+          raise('missing interval for check: ' + check[:name])
+        end
+        unless check[:command].is_a?(String)
+          raise('missing command for check: ' + check[:name])
+        end
+        unless check[:standalone]
+          unless check[:subscribers].is_a?(Array) && check[:subscribers].count > 0
+            raise('missing subscribers for check: ' + check[:name])
+          end
+          check[:subscribers].each do |subscriber|
+            unless subscriber.is_a?(String) && !subscriber.empty?
+              raise('a check subscriber must be a string for check: ' + check[:name])
+            end
+          end
+        end
+        if check.has_key?(:handler)
+          unless check[:handler].is_a?(String)
+            raise('handler must be a string for check: ' + check[:name])
+          end
+        end
+        if check.has_key?(:handlers)
+          unless check[:handlers].is_a?(Array)
+            raise('handlers must be an array for check: ' + check[:name])
+          end
+        end
+      end
+    end
   end
 end
