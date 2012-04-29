@@ -111,23 +111,6 @@ module Sensu
       end
     end
 
-    def validate_client_settings
-      unless @settings.client.name.is_a?(String)
-        invalid_config('client must have a name')
-      end
-      unless @settings.client.address.is_a?(String)
-        invalid_config('client must have an address')
-      end
-      unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
-        invalid_config('client must have subscriptions')
-      end
-      @settings.client.subscriptions.each do |subscription|
-        unless subscription.is_a?(String) && !subscription.empty?
-          invalid_config('a client subscription must be a string')
-        end
-      end
-    end
-
     def has_keys(keys)
       keys.each do |key|
         unless @settings.key?(key)
@@ -141,19 +124,15 @@ module Sensu
       has_keys(%w[checks])
       case File.basename($0)
       when 'rake'
-        has_keys(%w[api handlers client])
+        has_keys(%w[api handlers])
         validate_server_settings
         validate_api_settings
-        validate_client_settings
       when 'sensu-server'
         has_keys(%w[handlers])
         validate_server_settings
       when 'sensu-api'
         has_keys(%w[api])
         validate_api_settings
-      when 'sensu-client'
-        has_keys(%w[client])
-        validate_client_settings
       end
       @logger.debug('config valid')
     end

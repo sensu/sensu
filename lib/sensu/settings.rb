@@ -83,11 +83,20 @@ module Sensu
 
     def validate
       validate_checks
+      case File.basename($0)
+      when 'rake'
+        validate_client
+      when 'sensu-client'
+        validate_client
+      end
     end
 
     private
 
     def validate_checks
+      unless @settings.has_key?(:checks)
+        raise('missing check configuration')
+      end
       map_checks.each do |check|
         unless check[:interval].is_a?(Integer) && check[:interval] > 0
           raise('missing interval for check: ' + check[:name])
@@ -114,6 +123,26 @@ module Sensu
           unless check[:handlers].is_a?(Array)
             raise('handlers must be an array for check: ' + check[:name])
           end
+        end
+      end
+    end
+
+    def validate_client
+      unless @settings.has_key?(:client)
+        raise('missing client configuration')
+      end
+      unless @settings[:client][:name].is_a?(String)
+        raise('client must have a name')
+      end
+      unless @settings[:client][:address].is_a?(String)
+        raise('client must have an address')
+      end
+      unless @settings[:client][:subscriptions].is_a?(Array) && @settings[:client][:subscriptions].count > 0
+        raise('client must have subscriptions')
+      end
+      @settings[:client][:subscriptions].each do |subscription|
+        unless subscription.is_a?(String) && !subscription.empty?
+          raise('a client subscription must be a string')
         end
       end
     end
