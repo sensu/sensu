@@ -12,14 +12,14 @@ class TestSensu < TestCase
   def test_read_config_file
     config = Sensu::Config.new(@options)
     settings = config.settings
-    assert(settings.key?('client'))
+    assert(settings.key?(:client))
     done
   end
 
   def test_config_dir_snippets
     config = Sensu::Config.new(@options)
     settings = config.settings
-    assert(settings.handlers.key?('new_handler'))
+    assert(settings.handlers.key?(:new_handler))
     assert(settings.checks.b.subscribers == ['a', 'b'])
     assert(settings.checks.b.interval == 1)
     assert(settings.checks.b.auto_resolve == false)
@@ -57,7 +57,10 @@ class TestSensu < TestCase
     client.setup_keepalives
     EM::Timer.new(1) do
       server.redis.get('client:' + @settings.client.name).callback do |client_json|
-        assert_equal(@settings.client, JSON.parse(client_json).reject { |key, value| key == 'timestamp' })
+        client = JSON.parse(client_json, :symbolize_names => true).reject do |key, value|
+          key == :timestamp
+        end
+        assert_equal(@settings.client.to_hash, client)
         done
       end
     end
@@ -65,8 +68,11 @@ class TestSensu < TestCase
 
   def test_handlers
     server = Sensu::Server.new(@options)
-    event = Hashie::Mash.new(
-      :client => @settings.client.reject { |key, value| key == 'timestamp' },
+    client = @settings.client.to_hash.reject do |key, value|
+      key == :timestamp
+    end
+    event = {
+      :client => client,
       :check => {
         :name => 'test_handlers',
         :output => 'WARNING\n',
@@ -77,10 +83,12 @@ class TestSensu < TestCase
       },
       :occurrences => 1,
       :action => 'create'
-    )
+    }
     server.handle_event(event)
     EM::Timer.new(2) do
-      assert_equal(event.to_hash, JSON.parse(File.open('/tmp/sensu_test_handlers', 'rb').read))
+      handler_output_file = File.open('/tmp/sensu_test_handlers', 'rb').read
+      handler_output = JSON.parse(handler_output_file, :symbolize_names => true)
+      assert_equal(event, handler_output)
       done
     end
   end
@@ -100,15 +108,18 @@ class TestSensu < TestCase
     server.setup_publisher(:test => true)
     EM::Timer.new(1) do
       server.redis.hgetall('events:' + @settings.client.name).callback do |events|
-        sorted_events = events.sort_by { |status, value| value }
-        sorted_events.each_with_index do |(key, value), index|
+        sorted_events = events.sort_by { |check_name, event_json| check_name }
+        sorted_events.each_with_index do |(check_name, event_json), index|
           expected = {
             :output => @settings.client.name + ' ' + @settings.client.custom.nested.attribute.to_s + "\n",
             :status => index + 1,
             :flapping => false,
             :occurrences => 1
           }
-          assert_equal(expected, (JSON.parse(value).reject { |key, value| key == 'issued' }).symbolize_keys)
+          event = JSON.parse(event_json, :symbolize_names => true).reject do |key, value|
+            key == :issued
+          end
+          assert_equal(expected, event)
         end
         server.amq.queue('', :auto_delete => true).bind('graphite', :key => 'sensu.*').subscribe do |metric|
           assert(metric.is_a?(String))
@@ -119,7 +130,7 @@ class TestSensu < TestCase
     end
   end
 
-  def test_client_socket
+  def test_client_sockets
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
     server.setup_redis
@@ -129,17 +140,20 @@ class TestSensu < TestCase
     client.setup_rabbitmq
     client.setup_keepalives
     server.setup_results
-    client.setup_socket
+    client.setup_sockets
     external_source = proc do
-      socket = TCPSocket.open('127.0.0.1', 3030)
-      socket.write('{"name": "external", "output": "test", "status": 1}')
-      socket.recv(2)
+      udp_socket = UDPSocket.new
+      udp_socket.send('{"name": "udp_socket", "output": "test", "status": 1}', 0, '127.0.0.1', 3030)
+      tcp_socket = TCPSocket.open('127.0.0.1', 3030)
+      tcp_socket.write('{"name": "tcp_socket", "output": "test", "status": 1}')
+      tcp_socket.recv(2)
     end
     callback = proc do |response|
       assert_equal('ok', response)
       EM::Timer.new(2) do
         server.redis.hgetall('events:' + @settings.client.name).callback do |events|
-          assert(events.include?('external'))
+          assert(events.include?('udp_socket'))
+          assert(events.include?('tcp_socket'))
           done
         end
       end

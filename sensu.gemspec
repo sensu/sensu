@@ -12,12 +12,11 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
   s.has_rdoc    = false
 
-  s.add_dependency("bundler")
   s.add_dependency("eventmachine", "~> 1.0.0.beta.4")
   s.add_dependency("amqp", "0.7.4")
   s.add_dependency("json")
   s.add_dependency("hashie")
-  s.add_dependency("cabin", "0.1.8")
+  s.add_dependency("cabin", "0.4.4")
   s.add_dependency("ruby-redis")
   s.add_dependency("async_sinatra", "1.0.0")
   s.add_dependency("thin")
