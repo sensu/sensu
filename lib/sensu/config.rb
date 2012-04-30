@@ -51,74 +51,6 @@ module Sensu
       end
     end
 
-    def invalid_config(message)
-      @logger.fatal('CONFIG INVALID!', {
-        :reason => message
-      })
-      @logger.fatal('SENSU NOT RUNNING!')
-      exit 2
-    end
-
-    def validate_server_settings
-      unless @settings.handlers.include?('default')
-        invalid_config('missing default handler')
-      end
-      @settings.handlers.each do |name, details|
-        unless details.is_a?(Hash)
-          invalid_config('handler details must be a hash for handler: ' + name)
-        end
-        unless details['type'].is_a?(String)
-          invalid_config('missing type for handler: ' + name)
-        end
-        case details['type']
-        when 'pipe'
-          unless details.command.is_a?(String)
-            invalid_config('missing command for pipe handler: ' + name)
-          end
-        when 'amqp'
-          unless details.exchange.is_a?(Hash)
-            invalid_config('missing exchange details for amqp handler: ' + name)
-          end
-          unless details.exchange.name.is_a?(String)
-            invalid_config('missing exchange name for amqp handler: ' + name)
-          end
-          if details.exchange.key?('type')
-            unless %w[direct fanout topic].include?(details.exchange['type'])
-              invalid_config('invalid exchange type for amqp handler: ' + name)
-            end
-          end
-        when 'set'
-          unless details.handlers.is_a?(Array) && details.handlers.count > 0
-            invalid_config('missing handler set for handler: ' + name)
-          end
-        else
-          invalid_config('unknown type for handler: ' + name)
-        end
-      end
-    end
-
-    def has_keys(keys)
-      keys.each do |key|
-        unless @settings.key?(key)
-          invalid_config('missing the following key: ' + key)
-        end
-      end
-    end
-
-    def validate_config
-      @logger.debug('validating config')
-      has_keys(%w[checks])
-      case File.basename($0)
-      when 'rake'
-        has_keys(%w[handlers])
-        validate_server_settings
-      when 'sensu-server'
-        has_keys(%w[handlers])
-        validate_server_settings
-      end
-      @logger.debug('config valid')
-    end
-
     def setup_settings
       settings = Sensu::Settings.new
       settings.load_env
@@ -129,10 +61,13 @@ module Sensu
       begin
         settings.validate
       rescue => error
-        invalid_config(error)
+        @logger.fatal('CONFIG INVALID', {
+          :error => error.to_s
+        })
+        @logger.fatal('SENSU NOT RUNNING!')
+        exit 2
       end
       @settings = Mash.new(settings.to_hash)
-      validate_config
     end
 
     def self.read_arguments(arguments)

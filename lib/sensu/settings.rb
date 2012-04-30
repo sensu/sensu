@@ -1,6 +1,6 @@
 module Sensu
   class Settings
-    attr_accessor :loaded_env, :loaded_files
+    attr_reader :loaded_env, :loaded_files
 
     def initialize
       @logger = Cabin::Channel.get($0)
@@ -81,23 +81,34 @@ module Sensu
       end
     end
 
+    def map_handlers
+      @settings[:handlers].map do |handler_name, handler_details|
+        handler_details.merge(:name => handler_name.to_s)
+      end
+    end
+
     def validate
+      @logger.debug('validating settings')
       validate_checks
       case File.basename($0)
       when 'rake'
         validate_client
         validate_api
-      when 'sensu-api'
-        validate_api
+        validate_server
       when 'sensu-client'
         validate_client
+      when 'sensu-api'
+        validate_api
+      when 'sensu-server'
+        validate_server
       end
+      @logger.debug('settings are valid')
     end
 
     private
 
     def validate_checks
-      unless @settings.has_key?(:checks)
+      unless @settings[:checks].is_a?(Hash)
         raise('missing check configuration')
       end
       map_checks.each do |check|
@@ -131,7 +142,7 @@ module Sensu
     end
 
     def validate_client
-      unless @settings.has_key?(:client)
+      unless @settings[:client].is_a?(Hash)
         raise('missing client configuration')
       end
       unless @settings[:client][:name].is_a?(String)
@@ -151,7 +162,7 @@ module Sensu
     end
 
     def validate_api
-      unless @settings.has_key?(:api)
+      unless @settings[:api].is_a?(Hash)
         raise('missing api configuration')
       end
       unless @settings[:api][:port].is_a?(Integer)
@@ -163,6 +174,44 @@ module Sensu
         end
         unless @settings[:api][:password].is_a?(String)
           raise('api password must be a string')
+        end
+      end
+    end
+
+    def validate_server
+      unless @settings[:handlers].is_a?(Hash)
+        raise('missing handler configuration')
+      end
+      unless @settings[:handlers].include?(:default)
+        raise('missing default handler')
+      end
+      map_handlers.each do |handler|
+        unless handler[:type].is_a?(String)
+          raise('missing type for handler: ' + handler[:name])
+        end
+        case handler[:type]
+        when 'pipe'
+          unless handler[:command].is_a?(String)
+            raise('missing command for pipe handler: ' + handler[:name])
+          end
+        when 'amqp'
+          unless handler[:exchange].is_a?(Hash)
+            raise('missing exchange details for amqp handler: ' + handler[:name])
+          end
+          unless handler[:exchange][:name].is_a?(String)
+            raise('missing exchange name for amqp handler: ' + handler[:name])
+          end
+          if handler[:exchange].has_key?(:type)
+            unless %w[direct fanout topic].include?(handler[:exchange][:type])
+              raise('invalid exchange type for amqp handler: ' + handler[:name])
+            end
+          end
+        when 'set'
+          unless handler[:handlers].is_a?(Array) && handler[:handlers].count > 0
+            raise('missing handler set for handler: ' + handler[:name])
+          end
+        else
+          raise('unknown type for handler: ' + name)
         end
       end
     end
