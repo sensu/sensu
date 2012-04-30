@@ -86,6 +86,9 @@ module Sensu
       case File.basename($0)
       when 'rake'
         validate_client
+        validate_api
+      when 'sensu-api'
+        validate_api
       when 'sensu-client'
         validate_client
       end
@@ -143,6 +146,23 @@ module Sensu
       @settings[:client][:subscriptions].each do |subscription|
         unless subscription.is_a?(String) && !subscription.empty?
           raise('a client subscription must be a string')
+        end
+      end
+    end
+
+    def validate_api
+      unless @settings.has_key?(:api)
+        raise('missing api configuration')
+      end
+      unless @settings[:api][:port].is_a?(Integer)
+        raise('api port must be an integer')
+      end
+      if @settings[:api].has_key?(:user) || @settings[:api].has_key?(:password)
+        unless @settings[:api][:user].is_a?(String)
+          raise('api user must be a string')
+        end
+        unless @settings[:api][:password].is_a?(String)
+          raise('api password must be a string')
         end
       end
     end

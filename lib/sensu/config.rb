@@ -97,20 +97,6 @@ module Sensu
       end
     end
 
-    def validate_api_settings
-      unless @settings.api.port.is_a?(Integer)
-        invalid_config('api port must be an integer')
-      end
-      if @settings.api.key?('user') || @settings.api.key?('password')
-        unless @settings.api.user.is_a?(String)
-          invalid_config('api user must be a string')
-        end
-        unless @settings.api.password.is_a?(String)
-          invalid_config('api password must be a string')
-        end
-      end
-    end
-
     def has_keys(keys)
       keys.each do |key|
         unless @settings.key?(key)
@@ -124,15 +110,11 @@ module Sensu
       has_keys(%w[checks])
       case File.basename($0)
       when 'rake'
-        has_keys(%w[api handlers])
+        has_keys(%w[handlers])
         validate_server_settings
-        validate_api_settings
       when 'sensu-server'
         has_keys(%w[handlers])
         validate_server_settings
-      when 'sensu-api'
-        has_keys(%w[api])
-        validate_api_settings
       end
       @logger.debug('config valid')
     end
