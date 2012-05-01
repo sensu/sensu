@@ -19,7 +19,7 @@ require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
 module Sensu
   class Config
-    attr_accessor :logger, :settings
+    attr_reader :options, :logger, :settings
 
     def initialize(options={})
       @options = DEFAULT_OPTIONS.merge(options)
