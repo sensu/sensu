@@ -31,7 +31,7 @@ module Sensu
         end
       end
       optparse.parse!(arguments)
-      Sensu::DEFAULT_OPTIONS.merge(options)
+      DEFAULT_OPTIONS.merge(options)
     end
   end
 end
