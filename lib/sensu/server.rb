@@ -92,20 +92,18 @@ module Sensu
           case details['type']
           when 'pipe'
             execute = proc do
-              Bundler.with_clean_env do
-                begin
-                  IO.popen(details.command + ' 2>&1', 'r+') do |io|
-                    io.write(event.to_json)
-                    io.close_write
-                    io.read
-                  end
-                rescue Errno::ENOENT => error
-                  handler + ' -- does not exist: ' + error.to_s
-                rescue Errno::EPIPE => error
-                  handler + ' -- broken pipe: ' + error.to_s
-                rescue => error
-                  handler + ' -- unexpected error: ' + error.to_s
+              begin
+                IO.popen(details.command + ' 2>&1', 'r+') do |io|
+                  io.write(event.to_json)
+                  io.close_write
+                  io.read
                 end
+              rescue Errno::ENOENT => error
+                handler + ' -- does not exist: ' + error.to_s
+              rescue Errno::EPIPE => error
+                handler + ' -- broken pipe: ' + error.to_s
+              rescue => error
+                handler + ' -- unexpected error: ' + error.to_s
               end
             end
             EM::defer(execute, report)

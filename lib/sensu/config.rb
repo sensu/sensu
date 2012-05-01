@@ -1,6 +1,4 @@
 require 'rubygems'
-require 'bundler'
-require 'bundler/setup'
 
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
@@ -15,10 +13,6 @@ require 'cabin/outputs/em/stdlib-logger'
 require File.join(File.dirname(__FILE__), 'version')
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 require File.join(File.dirname(__FILE__), 'patches', 'amqp')
-
-if ENV['RBTRACE']
-  require 'rbtrace'
-end
 
 module Sensu
   class Config
