@@ -119,7 +119,7 @@ class TestSensu < TestCase
     end
   end
 
-  def test_client_socket
+  def test_client_sockets
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
     server.setup_redis
@@ -129,17 +129,21 @@ class TestSensu < TestCase
     client.setup_rabbitmq
     client.setup_keepalives
     server.setup_results
-    client.setup_socket
+    client.setup_sockets
     external_source = proc do
-      socket = TCPSocket.open('127.0.0.1', 3030)
-      socket.write('{"name": "external", "output": "test", "status": 1}')
-      socket.recv(2)
+      udp_socket = UDPSocket.new
+      udp_socket.send('{"name": "udp_socket", "output": "one", "status": 1}', 0, '127.0.0.1', 3030)
+      udp_socket.send('{"name": "udp_socket", "output": "two", "status": 1}', 0, '127.0.0.1', 3030)
+      tcp_socket = TCPSocket.open('127.0.0.1', 3030)
+      tcp_socket.write('{"name": "tcp_socket", "output": "test", "status": 1}')
+      tcp_socket.recv(2)
     end
     callback = proc do |response|
       assert_equal('ok', response)
       EM::Timer.new(2) do
         server.redis.hgetall('events:' + @settings.client.name).callback do |events|
-          assert(events.include?('external'))
+          assert(events.include?('udp_socket'))
+          assert(events.include?('tcp_socket'))
           done
         end
       end

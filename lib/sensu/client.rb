@@ -1,4 +1,5 @@
 require File.join(File.dirname(__FILE__), 'config')
+require File.join(File.dirname(__FILE__), 'socket')
 
 module Sensu
   class Client
@@ -17,7 +18,7 @@ module Sensu
         client.setup_subscriptions
         client.setup_rabbitmq_monitor
         client.setup_standalone
-        client.setup_socket
+        client.setup_sockets
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -190,11 +191,19 @@ module Sensu
       end
     end
 
-    def setup_socket
-      @logger.debug('[socket] -- starting up client tcp socket')
-      EM::start_server('127.0.0.1', 3030, ClientSocket) do |socket|
-        socket.settings = @settings
+    def setup_sockets
+      @logger.debug('binding client tcp socket')
+      EM::start_server('127.0.0.1', 3030, Sensu::Socket) do |socket|
+        socket.protocol = :tcp
         socket.logger = @logger
+        socket.settings = @settings
+        socket.amq = @amq
+      end
+      @logger.debug('binding client udp socket')
+      EM::open_datagram_socket('127.0.0.1', 3030, Sensu::Socket) do |socket|
+        socket.protocol = :udp
+        socket.logger = @logger
+        socket.settings = @settings
         socket.amq = @amq
       end
     end
@@ -226,41 +235,6 @@ module Sensu
         end
       else
         EM::stop_event_loop
-      end
-    end
-  end
-
-  class ClientSocket < EM::Connection
-    attr_accessor :settings, :logger, :amq
-
-    def receive_data(data)
-      if data == 'ping'
-        @logger.debug('[socket] -- received ping')
-        send_data('pong')
-      else
-        @logger.debug('[socket] -- received data -- ' + data)
-        begin
-          check = Hashie::Mash.new(JSON.parse(data))
-          validates = %w[name output].all? do |key|
-            check[key].is_a?(String)
-          end
-          check.issued = Time.now.to_i
-          check.status ||= 0
-          if validates && check.status.is_a?(Integer)
-            @logger.info('[socket] -- publishing check result -- ' + [check.name, check.status, check.output.gsub(/\n/, '\n')].join(' -- '))
-            @amq.queue('results').publish({
-              :client => @settings.client.name,
-              :check => check.to_hash
-            }.to_json)
-            send_data('ok')
-          else
-            @logger.warn('[socket] -- check name and output must be strings, status defaults to 0 -- e.g. {"name": "x", "output": "y"}')
-            send_data('invalid')
-          end
-        rescue JSON::ParserError => error
-          @logger.warn('[socket] -- check result must be valid json: ' + error.to_s)
-          send_data('invalid')
-        end
       end
     end
   end
