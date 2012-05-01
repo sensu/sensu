@@ -1,4 +1,4 @@
-require File.expand_path("../lib/sensu/version", __FILE__)
+require File.expand_path("../lib/sensu/constants", __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = "sensu"

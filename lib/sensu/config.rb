@@ -9,7 +9,7 @@ require 'hashie'
 require 'cabin'
 require 'amqp'
 
-require File.join(File.dirname(__FILE__), 'version')
+require File.join(File.dirname(__FILE__), 'constants')
 require File.join(File.dirname(__FILE__), 'logger')
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 require File.join(File.dirname(__FILE__), 'patches', 'amqp')
@@ -18,13 +18,8 @@ module Sensu
   class Config
     attr_accessor :logger, :settings
 
-    DEFAULT_OPTIONS = {
-      :config_file => '/etc/sensu/config.json',
-      :config_dir => '/etc/sensu/conf.d'
-    }
-
     def initialize(options={})
-      @options = DEFAULT_OPTIONS.merge(options)
+      @options = Sensu::DEFAULT_OPTIONS.merge(options)
       setup_logging
       setup_settings
     end
@@ -237,7 +232,7 @@ module Sensu
         end
       end
       optparse.parse!(arguments)
-      DEFAULT_OPTIONS.merge(options)
+      Sensu::DEFAULT_OPTIONS.merge(options)
     end
   end
 end
