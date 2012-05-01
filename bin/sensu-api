@@ -1,7 +1,10 @@
 #!/usr/bin/env ruby
 
-$: << File.dirname(__FILE__) + '/../lib' unless $:.include?(File.dirname(__FILE__) + '/../lib/')
-require 'sensu/api'
+unless $:.include?(File.dirname(__FILE__) + '/../lib/')
+  $: << File.dirname(__FILE__) + '/../lib'
+end
 
-options = Sensu::Config.read_arguments(ARGV)
+require 'sensu/client'
+
+options = Sensu::CLI.read
 Sensu::API.run(options)

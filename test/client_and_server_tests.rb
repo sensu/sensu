@@ -27,7 +27,7 @@ class TestSensu < TestCase
   end
 
   def test_cli_arguments
-    options = Sensu::Config.read_arguments([
+    options = Sensu::CLI.read([
       '-c', @options[:config_file],
       '-d', @options[:config_dir],
       '-v',
