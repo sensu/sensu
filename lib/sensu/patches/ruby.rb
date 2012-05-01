@@ -47,7 +47,7 @@ module Process
         file.puts(self.pid)
       end
     rescue
-      raise("could not write to pid file: #{pid_file}")
+      raise('could not write to pid file: ' + pid_file)
     end
   end
 
