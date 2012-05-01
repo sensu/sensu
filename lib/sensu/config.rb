@@ -6,11 +6,11 @@ require 'optparse'
 require 'time'
 require 'json'
 require 'hashie'
-require 'amqp'
 require 'cabin'
-require 'cabin/outputs/em/stdlib-logger'
+require 'amqp'
 
-require File.join(File.dirname(__FILE__), 'version')
+require File.join(File.dirname(__FILE__), 'constants')
+require File.join(File.dirname(__FILE__), 'logger')
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
@@ -18,13 +18,8 @@ module Sensu
   class Config
     attr_accessor :logger, :settings
 
-    DEFAULT_OPTIONS = {
-      :config_file => '/etc/sensu/config.json',
-      :config_dir => '/etc/sensu/conf.d'
-    }
-
     def initialize(options={})
-      @options = DEFAULT_OPTIONS.merge(options)
+      @options = Sensu::DEFAULT_OPTIONS.merge(options)
       setup_logging
       setup_settings
     end
@@ -36,23 +31,7 @@ module Sensu
     end
 
     def setup_logging
-      if @options[:log_file]
-        if File.writable?(@options[:log_file]) || !File.exist?(@options[:log_file]) && File.writable?(File.dirname(@options[:log_file]))
-          STDOUT.reopen(@options[:log_file], 'a')
-          STDERR.reopen(STDOUT)
-          STDOUT.sync = true
-        else
-          invalid_config('log file is not writable: ' + @options[:log_file])
-        end
-      end
-      @logger = Cabin::Channel.new
-      @logger.subscribe(Cabin::Outputs::EM::StdlibLogger.new(Logger.new(STDOUT)))
-      @logger.level = @options[:log_level] || (@options[:verbose] ? :debug : :info)
-      if Signal.list.include?('USR1')
-        Signal.trap('USR1') do
-          @logger.level = @logger.level == :info ? :debug : :info
-        end
-      end
+      @logger = Sensu::Logger.new(@options)
     end
 
     def validate_common_settings
@@ -253,7 +232,7 @@ module Sensu
         end
       end
       optparse.parse!(arguments)
-      DEFAULT_OPTIONS.merge(options)
+      Sensu::DEFAULT_OPTIONS.merge(options)
     end
   end
 end

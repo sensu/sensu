@@ -1,4 +1,4 @@
-require File.expand_path("../lib/sensu/version", __FILE__)
+require File.expand_path("../lib/sensu/constants", __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = "sensu"
@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
   s.add_dependency("amqp", "0.7.4")
   s.add_dependency("json")
   s.add_dependency("hashie")
-  s.add_dependency("cabin", "0.1.8")
+  s.add_dependency("cabin", "0.4.4")
   s.add_dependency("ruby-redis")
   s.add_dependency("async_sinatra", "1.0.0")
   s.add_dependency("thin")
