@@ -222,12 +222,21 @@ module Sensu
     end
 
     def setup_results
-      @logger.debug('[result] -- setup results')
+      @logger.debug('subscribing to results')
       @result_queue = @amq.queue('results')
-      @result_queue.subscribe do |result_json|
-        result = Hashie::Mash.new(JSON.parse(result_json))
-        @logger.debug('[result] -- received result -- ' + [result.client, result.check.name, result.check.status, result.check.output.gsub(/\n/, '\n')].join(' -- '))
-        process_result(result)
+      @result_queue.subscribe do |payload|
+        results = JSON.parse(payload)
+        @logger.debug('received results', {
+          :results => results
+        })
+        case results
+        when Array
+          results.each do |result|
+            process_result(result.to_mash)
+          end
+        when Hash
+          process_result(results.to_mash)
+        end
       end
     end
 
