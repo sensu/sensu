@@ -51,7 +51,7 @@ module Sensu
           unless @loaded_files.empty?
             @logger.warn('config file applied changes', {
               :config_file => file,
-              :changes => @settings.deep_diff(merged)
+              :changes => deep_diff(@settings, merged)
             })
           end
           @settings = merged
@@ -114,6 +114,20 @@ module Sensu
     end
 
     private
+
+    def deep_diff(hash_one, hash_two)
+      keys = hash_one.keys.concat(hash_two.keys).uniq
+      keys.inject(Hash.new) do |diff, key|
+        unless hash_one[key] == hash_two[key]
+          if hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
+            diff[key] = deep_diff(hash_one[key], hash_two[key])
+          else
+            diff[key] = [hash_one[key], hash_two[key]]
+          end
+        end
+        diff
+      end
+    end
 
     def validate_checks
       unless @settings[:checks].is_a?(Hash)
