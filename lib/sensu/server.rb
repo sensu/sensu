@@ -6,7 +6,7 @@ require File.join(File.dirname(__FILE__), 'patches', 'redis')
 
 module Sensu
   class Server
-    attr_accessor :redis, :amq, :is_master
+    attr_reader :redis, :amq, :is_master
 
     def self.run(options={})
       server = self.new(options)
