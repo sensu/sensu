@@ -4,7 +4,7 @@ unless $:.include?(File.dirname(__FILE__) + '/../lib/')
   $: << File.dirname(__FILE__) + '/../lib'
 end
 
-require 'sensu/client'
+require 'sensu/api'
 
 options = Sensu::CLI.read
 Sensu::API.run(options)

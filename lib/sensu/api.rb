@@ -63,7 +63,7 @@ module Sensu
       $logger.debug('[info] -- ' + request.ip + ' -- GET -- request for sensu info')
       response = {
         :sensu => {
-          :version => Sensu::VERSION
+          :version => VERSION
         },
         :health => {
           :redis => 'ok',

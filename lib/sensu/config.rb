@@ -12,6 +12,7 @@ require 'amqp'
 require File.join(File.dirname(__FILE__), 'constants')
 require File.join(File.dirname(__FILE__), 'cli')
 require File.join(File.dirname(__FILE__), 'logger')
+require File.join(File.dirname(__FILE__), 'settings')
 
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
 require File.join(File.dirname(__FILE__), 'patches', 'amqp')
@@ -21,7 +22,7 @@ module Sensu
     attr_accessor :logger, :settings
 
     def initialize(options={})
-      @options = Sensu::DEFAULT_OPTIONS.merge(options)
+      @options = DEFAULT_OPTIONS.merge(options)
       setup_logging
       setup_settings
     end
@@ -36,171 +37,23 @@ module Sensu
       @logger = Sensu::Logger.new(@options)
     end
 
-    def validate_common_settings
-      @settings.checks.each do |name, details|
-        if details.key?('status') || details.key?('output')
-          invalid_config('reserved key (output or status) defined in check ' + name)
-        end
-        unless details.interval.is_a?(Integer) && details.interval > 0
-          invalid_config('missing interval for check ' + name)
-        end
-        unless details.command.is_a?(String)
-          invalid_config('missing command for check ' + name)
-        end
-        unless details.standalone
-          unless details.subscribers.is_a?(Array) && details.subscribers.count > 0
-            invalid_config('missing subscribers for check ' + name)
-          end
-          details.subscribers.each do |subscriber|
-            unless subscriber.is_a?(String) && !subscriber.empty?
-              invalid_config('a check subscriber must be a string (not empty) for check ' + name)
-            end
-          end
-        end
-        if details.key?('handler')
-          unless details.handler.is_a?(String)
-            invalid_config('handler must be a string for check ' + name)
-          end
-        end
-        if details.key?('handlers')
-          unless details.handlers.is_a?(Array)
-            invalid_config('handlers must be an array for check ' + name)
-          end
-        end
-      end
-    end
-
-    def validate_server_settings
-      unless @settings.handlers.include?('default')
-        invalid_config('missing default handler')
-      end
-      @settings.handlers.each do |name, details|
-        unless details.is_a?(Hash)
-          invalid_config('handler details must be a hash for handler ' + name)
-        end
-        unless details['type'].is_a?(String)
-          invalid_config('missing type for handler ' + name)
-        end
-        case details['type']
-        when 'pipe'
-          unless details.command.is_a?(String)
-            invalid_config('missing command for pipe handler ' + name)
-          end
-        when 'amqp'
-          unless details.exchange.is_a?(Hash)
-            invalid_config('missing exchange details for amqp handler ' + name)
-          end
-          unless details.exchange.name.is_a?(String)
-            invalid_config('missing exchange name for amqp handler ' + name)
-          end
-          if details.exchange.key?('type')
-            unless %w[direct fanout topic].include?(details.exchange['type'])
-              invalid_config('invalid exchange type for amqp handler ' + name)
-            end
-          end
-        when 'set'
-          unless details.handlers.is_a?(Array) && details.handlers.count > 0
-            invalid_config('missing handler set for handler ' + name)
-          end
-        else
-          invalid_config('unknown type for handler ' + name)
-        end
-      end
-    end
-
-    def validate_api_settings
-      unless @settings.api.port.is_a?(Integer)
-        invalid_config('api port must be an integer')
-      end
-      if @settings.api.key?('user') || @settings.api.key?('password')
-        unless @settings.api.user.is_a?(String)
-          invalid_config('api user must be a string')
-        end
-        unless @settings.api.password.is_a?(String)
-          invalid_config('api password must be a string')
-        end
-      end
-    end
-
-    def validate_client_settings
-      unless @settings.client.name.is_a?(String)
-        invalid_config('client must have a name')
-      end
-      unless @settings.client.address.is_a?(String)
-        invalid_config('client must have an address (ip or hostname)')
-      end
-      unless @settings.client.subscriptions.is_a?(Array) && @settings.client.subscriptions.count > 0
-        invalid_config('client must have subscriptions')
-      end
-      @settings.client.subscriptions.each do |subscription|
-        unless subscription.is_a?(String) && !subscription.empty?
-          invalid_config('a client subscription must be a string (not empty)')
-        end
-      end
-    end
-
-    def has_keys(keys)
-      keys.each do |key|
-        unless @settings.key?(key)
-          invalid_config('missing the following key: ' + key)
-        end
-      end
-    end
-
-    def validate_settings
-      @logger.debug('[validate] -- validating configuration')
-      has_keys(%w[checks])
-      validate_common_settings
-      case File.basename($0)
-      when 'rake'
-        has_keys(%w[api handlers client])
-        validate_server_settings
-        validate_api_settings
-        validate_client_settings
-      when 'sensu-server'
-        has_keys(%w[handlers])
-        validate_server_settings
-      when 'sensu-api'
-        has_keys(%w[api])
-        validate_api_settings
-      when 'sensu-client'
-        has_keys(%w[client])
-        validate_client_settings
-      end
-      @logger.info('[validate] -- configuration valid -- running')
-    end
-
     def setup_settings
-      if File.readable?(@options[:config_file])
-        begin
-          config_hash = JSON.parse(File.open(@options[:config_file], 'r').read)
-          %w[rabbitmq redis].each do |key|
-            config_hash[key] ||= Hash.new
-          end
-        rescue JSON::ParserError => error
-          invalid_config('configuration file (' + @options[:config_file] + ') must be valid json: ' + error.to_s)
-        end
-        @settings = Hashie::Mash.new(config_hash)
-      else
-        invalid_config('configuration file does not exist or is not readable: ' + @options[:config_file])
+      settings = Sensu::Settings.new
+      settings.load_env
+      settings.load_file(@options[:config_file])
+      Dir[@options[:config_dir] + '/**/*.json'].each do |file|
+        settings.load_file(file)
       end
-      if File.exists?(@options[:config_dir])
-        Dir[@options[:config_dir] + '/**/*.json'].each do |snippet_file|
-          if File.readable?(snippet_file)
-            begin
-              snippet_hash = JSON.parse(File.open(snippet_file, 'r').read)
-            rescue JSON::ParserError => error
-              invalid_config('configuration snippet file (' + snippet_file + ') must be valid json: ' + error.to_s)
-            end
-            merged_settings = @settings.to_hash.deep_merge(snippet_hash)
-            @logger.warn('[settings] -- configuration snippet (' + snippet_file + ') applied changes: ' + @settings.deep_diff(merged_settings).to_json)
-            @settings = Hashie::Mash.new(merged_settings)
-          else
-            invalid_config('configuration snippet file is not readable: ' + snippet_file)
-          end
-        end
+      begin
+        settings.validate
+      rescue => error
+        @logger.fatal('CONFIG INVALID', {
+          :error => error.to_s
+        })
+        @logger.fatal('SENSU NOT RUNNING!')
+        exit 2
       end
-      validate_settings
+      @settings = Hashie::Mash.new(settings.to_hash)
     end
   end
 end
