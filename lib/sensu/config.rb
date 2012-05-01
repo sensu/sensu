@@ -23,18 +23,8 @@ module Sensu
 
     def initialize(options={})
       @options = DEFAULT_OPTIONS.merge(options)
-      setup_logging
-      setup_settings
-    end
-
-    def invalid_config(message)
-      puts 'CONFIGURATION INVALID: ' + message
-      puts 'SENSU NOT RUNNING'
-      exit 2
-    end
-
-    def setup_logging
       @logger = Sensu::Logger.new(@options)
+      setup_settings
     end
 
     def setup_settings
