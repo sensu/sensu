@@ -52,7 +52,7 @@ module Sensu
         begin
           contents = File.open(file, 'r').read
           config = JSON.parse(contents, :symbolize_names => true)
-          merged = @settings.deep_merge(config)
+          merged = deep_merge(@settings, config)
           unless @loaded_files.empty?
             @logger.warn('config file applied changes', {
               :config_file => file,
@@ -135,6 +135,21 @@ module Sensu
           hash[key.to_sym]
         end
       end
+    end
+
+    def deep_merge(hash_one, hash_two)
+      merged = hash_one.dup
+      hash_two.each do |key, value|
+        merged[key] = case
+        when hash_one[key].is_a?(Hash) && value.is_a?(Hash)
+          deep_merge(hash_one[key], value)
+        when hash_one[key].is_a?(Array) && value.is_a?(Array)
+          hash_one[key].concat(value).uniq
+        else
+          value
+        end
+      end
+      merged
     end
 
     def deep_diff(hash_one, hash_two)
