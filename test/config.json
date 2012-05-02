@@ -46,7 +46,7 @@
   },
   "checks": {
     "a": {
-      "command": "ruby -e \"puts ':::name::: :::custom.nested.attribute:::'; exit 1\"",
+      "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 1\"",
       "subscribers": [
         "a"
       ],
@@ -62,7 +62,7 @@
     },
     "c": {
       "handler": "default",
-      "command": "ruby -e \"puts ':::name::: :::custom.nested.attribute:::'; exit 3\"",
+      "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 3\"",
       "standalone": true,
       "interval": 1
     },
@@ -70,7 +70,7 @@
       "handlers": [
         "default"
       ],
-      "command": "ruby -e \"puts ':::name::: :::custom.nested.attribute:::'; exit 4\"",
+      "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 4\"",
       "subscribers": [
         "a",
         "b",
@@ -96,10 +96,8 @@
       "b",
       "c"
     ],
-    "custom": {
-      "nested": {
-        "attribute": true
-      }
+    "nested": {
+      "attribute": true
     }
   }
 }

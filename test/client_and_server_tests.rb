@@ -19,7 +19,7 @@ class TestSensu < TestCase
   def test_config_dir_snippets
     config = Sensu::Config.new(@options)
     settings = config.settings
-    assert(settings.handler_exists?(:new_handler))
+    assert(settings.handler_exists?('new_handler'))
     assert(settings[:checks][:b][:subscribers] == ['a', 'b'])
     assert(settings[:checks][:b][:interval] == 1)
     assert(settings[:checks][:b][:auto_resolve] == false)
@@ -107,7 +107,7 @@ class TestSensu < TestCase
         sorted_events = events.sort_by { |check_name, event_json| check_name }
         sorted_events.each_with_index do |(check_name, event_json), index|
           expected = {
-            :output => @settings[:client][:name] + ' ' + @settings[:client][:custom][:nested][:attribute].to_s + "\n",
+            :output => @settings[:client][:name] + ' ' + @settings[:client][:nested][:attribute].to_s + "\n",
             :status => index + 1,
             :flapping => false,
             :occurrences => 1
