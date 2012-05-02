@@ -5,20 +5,18 @@ class Array
 end
 
 class Hash
-  alias_method :original_reader, :[]
+  alias_method :regular_reader, :[]
 
   def [](key)
-    if self.has_key?(key)
-      original_reader(key)
-    elsif key.is_a?(String)
-      original_reader(key.to_sym)
+    if key.is_a?(String) && has_key?(key.to_sym)
+      regular_reader(key.to_sym)
     else
-      original_reader(key)
+      regular_reader(key)
     end
   end
 
   def method_missing(method, *arguments, &block)
-    if self.has_key?(method)
+    if has_key?(method)
       self[method]
     else
       super
@@ -44,7 +42,7 @@ module Process
     end
     begin
       File.open(pid_file, 'w') do |file|
-        file.puts(self.pid)
+        file.puts(pid)
       end
     rescue
       raise('could not write to pid file: ' + pid_file)

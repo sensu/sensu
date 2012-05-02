@@ -3,19 +3,17 @@ require 'rubygems'
 gem 'eventmachine', '~> 1.0.0.beta.4'
 
 require 'optparse'
-require 'time'
 require 'json'
-require 'hashie'
 require 'cabin'
 require 'amqp'
+
+require File.join(File.dirname(__FILE__), 'patches', 'ruby')
+require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
 require File.join(File.dirname(__FILE__), 'constants')
 require File.join(File.dirname(__FILE__), 'cli')
 require File.join(File.dirname(__FILE__), 'logger')
 require File.join(File.dirname(__FILE__), 'settings')
-
-require File.join(File.dirname(__FILE__), 'patches', 'ruby')
-require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
 module Sensu
   class Config
