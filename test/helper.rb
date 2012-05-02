@@ -17,4 +17,12 @@ else
   end
 end
 
+class Hash
+  def sanitize_keys
+    reject do |key, value|
+      [:timestamp, :issued].include?(key)
+    end
+  end
+end
+
 Dir.glob(File.dirname(__FILE__) + '/../lib/sensu/*.rb', &method(:require))

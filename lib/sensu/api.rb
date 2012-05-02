@@ -15,7 +15,7 @@ module Sensu
         self.setup(options)
 
         Thin::Logging.silent = true
-        Thin::Server.start(self, $settings.api.port)
+        Thin::Server.start(self, $settings[:api][:port])
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -35,16 +35,31 @@ module Sensu
       if options[:pid_file]
         Process.write_pid(options[:pid_file])
       end
-      $logger.debug('[setup] -- connecting to redis')
-      $redis = Redis.connect($settings.redis.to_hash.symbolize_keys)
-      $logger.debug('[setup] -- connecting to rabbitmq')
-      $rabbitmq = AMQP.connect($settings.rabbitmq.to_hash.symbolize_keys)
+      $logger.debug('connecting to redis', {
+        :settings => $settings[:redis]
+      })
+      $redis = Redis.connect($settings[:redis])
+      $logger.debug('connecting to rabbitmq', {
+        :settings => $settings[:rabbitmq]
+      })
+      $rabbitmq = AMQP.connect($settings[:rabbitmq])
       $amq = AMQP::Channel.new($rabbitmq)
-      if $settings.api.user && $settings.api.password
+      if $settings[:api][:user] && $settings[:api][:password]
         use Rack::Auth::Basic do |user, password|
-          user == $settings.api.user && password == $settings.api.password
+          user == $settings[:api][:user] && password == $settings[:api][:password]
         end
       end
+    end
+
+    def request_log(env)
+      $logger.info([env['REQUEST_METHOD'], env['REQUEST_PATH']].join(' '), {
+        :remote_address => env['REMOTE_ADDR'],
+        :user_agent => env['HTTP_USER_AGENT'],
+        :request_method => env['REQUEST_METHOD'],
+        :request_uri => env['REQUEST_URI'],
+        :request_body =>  env['rack.input'].read
+      })
+      env['rack.input'].rewind
     end
 
     configure do
@@ -60,7 +75,7 @@ module Sensu
     end
 
     aget '/info' do
-      $logger.debug('[info] -- ' + request.ip + ' -- GET -- request for sensu info')
+      request_log(env)
       response = {
         :sensu => {
           :version => VERSION
@@ -80,12 +95,12 @@ module Sensu
     end
 
     aget '/clients' do
-      $logger.debug('[clients] -- ' + request.ip + ' -- GET -- request for client list')
+      request_log(env)
       response = Array.new
       $redis.smembers('clients').callback do |clients|
         unless clients.empty?
-          clients.each_with_index do |client, index|
-            $redis.get('client:' + client).callback do |client_json|
+          clients.each_with_index do |client_name, index|
+            $redis.get('client:' + client_name).callback do |client_json|
               response.push(JSON.parse(client_json))
               if index == clients.size - 1
                 body response.to_json
@@ -98,9 +113,9 @@ module Sensu
       end
     end
 
-    aget '/client/:name' do |client|
-      $logger.debug('[client] -- ' + request.ip + ' -- GET -- request for client -- ' + client)
-      $redis.get('client:' + client).callback do |client_json|
+    aget '/client/:name' do |client_name|
+      request_log(env)
+      $redis.get('client:' + client_name).callback do |client_json|
         unless client_json.nil?
           body client_json
         else
@@ -110,30 +125,37 @@ module Sensu
       end
     end
 
-    adelete '/client/:name' do |client|
-      $logger.debug('[client] -- ' + request.ip + ' -- DELETE -- request for client -- ' + client)
-      $redis.sismember('clients', client).callback do |client_exists|
-        if client_exists
-          $redis.hgetall('events:' + client).callback do |events|
-            events.keys.each do |check_name|
-              $logger.info('[client] -- publishing check result to resolve event -- ' + client + ' -- ' + check_name)
-              check = {
-                :name => check_name,
-                :output => 'Client is being removed on request of the API',
-                :status => 0,
-                :issued => Time.now.to_i,
-                :force_resolve => true
+    adelete '/client/:name' do |client_name|
+      request_log(env)
+      $redis.get('client:' + client_name).callback do |client_json|
+        unless client_json.nil?
+          client = JSON.parse(client_json, :symbolize_names => true)
+          $logger.info('deleting client', {
+            :client => client
+          })
+          $redis.hgetall('events:' + client_name).callback do |events|
+            events.each_key do |check_name|
+              payload = {
+                :client => client_name,
+                :check => {
+                  :name => check_name,
+                  :output => 'Client is being removed on request of the API',
+                  :status => 0,
+                  :issued => Time.now.to_i,
+                  :force_resolve => true
+                }
               }
-              $amq.queue('results').publish({:client => client, :check => check}.to_json)
+              $logger.info('publishing check result', {
+                :payload => payload
+              })
+              $amq.queue('results').publish(payload.to_json)
             end
-            $logger.info('[client] -- client will be deleted -- ' + client)
             EM::Timer.new(5) do
-              $logger.info('[client] -- deleting client -- ' + client)
-              $redis.srem('clients', client)
-              $redis.del('events:' + client)
-              $redis.del('client:' + client)
-              $settings.checks.each_key do |check_name|
-                $redis.del('history:' + client + ':' + check_name)
+              $redis.srem('clients', client_name)
+              $redis.del('events:' + client_name)
+              $redis.del('client:' + client_name)
+              $settings[:checks].each_key do |check_name|
+                $redis.del('history:' + client_name + ':' + check_name)
               end
             end
             status 204
@@ -147,15 +169,14 @@ module Sensu
     end
 
     aget '/checks' do
-      $logger.debug('[checks] -- ' + request.ip + ' -- GET -- request for check list')
-      response = $settings.checks.map { |check, details| details.merge(:name => check) }
-      body response.to_json
+      request_log(env)
+      body $settings.checks.to_json
     end
 
-    aget '/check/:name' do |check|
-      $logger.debug('[check] -- ' + request.ip + ' -- GET -- request for check -- ' + check)
-      if $settings.checks.key?(check)
-        response = $settings.checks[check].merge(:name => check)
+    aget '/check/:name' do |check_name|
+      request_log(env)
+      if $settings.check_exists?(check_name)
+        response = $settings[:checks][check_name].merge(:name => check_name)
         body response.to_json
       else
         status 404
@@ -164,17 +185,24 @@ module Sensu
     end
 
     apost '/check/request' do
-      $logger.debug('[check] -- ' + request.ip + ' -- POST -- request to publish a check request')
+      request_log(env)
       begin
-        post_body = Hashie::Mash.new(JSON.parse(request.body.read))
+        post_body = JSON.parse(request.body.read, :symbolize_names => true)
       rescue JSON::ParserError
         status 400
         body ''
       end
-      if post_body.check.is_a?(String) && post_body.subscribers.is_a?(Array)
-        post_body.subscribers.each do |exchange|
-          $logger.info('[check] -- publishing check request -- ' + post_body.check + ' -- ' + exchange)
-          $amq.fanout(exchange).publish({:name => post_body.check, :issued => Time.now.to_i}.to_json)
+      if post_body[:check].is_a?(String) && post_body[:subscribers].is_a?(Array)
+        payload = {
+          :name => post_body[:check],
+          :issued => Time.now.to_i
+        }
+        $logger.info('publishing check request', {
+          :payload => payload,
+          :subscribers => post_body[:subscribers]
+        })
+        post_body[:subscribers].uniq.each do |exchange_name|
+          $amq.fanout(exchange_name).publish(payload.to_json)
         end
         status 201
       else
@@ -184,14 +212,14 @@ module Sensu
     end
 
     aget '/events' do
-      $logger.debug('[events] -- ' + request.ip + ' -- GET -- request for event list')
+      request_log(env)
       response = Array.new
       $redis.smembers('clients').callback do |clients|
         unless clients.empty?
-          clients.each_with_index do |client, index|
-            $redis.hgetall('events:' + client).callback do |events|
-              events.each do |check, details|
-                response.push(JSON.parse(details).merge(:client => client, :check => check))
+          clients.each_with_index do |client_name, index|
+            $redis.hgetall('events:' + client_name).callback do |events|
+              events.each do |check_name, event_json|
+                response.push(JSON.parse(event_json).merge(:client => client_name, :check => check_name))
               end
               if index == clients.size - 1
                 body response.to_json
@@ -204,12 +232,12 @@ module Sensu
       end
     end
 
-    aget '/event/:client/:check' do |client, check|
-      $logger.debug('[event] -- ' + request.ip + ' -- GET -- request for event -- ' + client + ' -- ' + check)
-      $redis.hgetall('events:' + client).callback do |events|
-        event_json = events[check]
+    aget '/event/:client/:check' do |client_name, check_name|
+      request_log(env)
+      $redis.hgetall('events:' + client_name).callback do |events|
+        event_json = events[check_name]
         unless event_json.nil?
-          response = JSON.parse(event_json).merge(:client => client, :check => check)
+          response = JSON.parse(event_json).merge(:client => client_name, :check => check_name)
           body response.to_json
         else
           status 404
@@ -219,25 +247,30 @@ module Sensu
     end
 
     apost '/event/resolve' do
-      $logger.debug('[event] -- ' + request.ip + ' -- POST -- request to resolve event')
+      request_log(env)
       begin
-        post_body = Hashie::Mash.new(JSON.parse(request.body.read))
+        post_body = JSON.parse(request.body.read, :symbolize_names => true)
       rescue JSON::ParserError
         status 400
         body ''
       end
-      if post_body.client.is_a?(String) && post_body.check.is_a?(String)
-        $redis.hgetall('events:' + post_body.client).callback do |events|
-          if events.include?(post_body.check)
-            $logger.info('[event] -- publishing check result to resolve event -- ' + post_body.client + ' -- ' + post_body.check)
-            check = {
-              :name => post_body.check,
-              :output => 'Resolving on request of the API',
-              :status => 0,
-              :issued => Time.now.to_i,
-              :force_resolve => true
+      if post_body[:client].is_a?(String) && post_body[:check].is_a?(String)
+        $redis.hgetall('events:' + post_body[:client]).callback do |events|
+          if events.include?(post_body[:check])
+            payload = {
+              :client => post_body[:client],
+              :check => {
+                :name => post_body[:check],
+                :output => 'Resolving on request of the API',
+                :status => 0,
+                :issued => Time.now.to_i,
+                :force_resolve => true
+              }
             }
-            $amq.queue('results').publish({:client => post_body.client, :check => check}.to_json)
+            $logger.info('publishing check result', {
+              :payload => payload
+            })
+            $amq.queue('results').publish(payload.to_json)
             status 201
           else
             status 404
@@ -251,7 +284,7 @@ module Sensu
     end
 
     apost '/stash/*' do |path|
-      $logger.debug('[stash] -- ' + request.ip + ' -- POST -- request for stash -- ' + path)
+      request_log(env)
       begin
         post_body = JSON.parse(request.body.read)
       rescue JSON::ParserError
@@ -267,7 +300,7 @@ module Sensu
     end
 
     aget '/stash/*' do |path|
-      $logger.debug('[stash] -- ' + request.ip + ' -- GET -- request for stash -- ' + path)
+      request_log(env)
       $redis.get('stash:' + path).callback do |stash_json|
         if stash_json.nil?
           status 404
@@ -279,7 +312,7 @@ module Sensu
     end
 
     adelete '/stash/*' do |path|
-      $logger.debug('[stash] -- ' + request.ip + ' -- DELETE -- request for stash -- ' + path)
+      request_log(env)
       $redis.exists('stash:' + path).callback do |stash_exists|
         if stash_exists
           $redis.srem('stashes', path).callback do
@@ -296,14 +329,14 @@ module Sensu
     end
 
     aget '/stashes' do
-      $logger.debug('[stashes] -- ' + request.ip + ' -- GET -- request for list of stashes')
+      request_log(env)
       $redis.smembers('stashes') do |stashes|
         body stashes.to_json
       end
     end
 
     apost '/stashes' do
-      $logger.debug('[stashes] -- ' + request.ip + ' -- POST -- request for multiple stashes')
+      request_log(env)
       begin
         post_body = JSON.parse(request.body.read)
       rescue JSON::ParserError
@@ -330,20 +363,20 @@ module Sensu
 
     def self.run_test(options={}, &block)
       self.setup(options)
-      $settings.client.timestamp = Time.now.to_i
-      $redis.set('client:' + $settings.client.name, $settings.client.to_json).callback do
-        $redis.sadd('clients', $settings.client.name).callback do
-          $redis.hset('events:' + $settings.client.name, 'test', {
+      $settings[:client][:timestamp] = Time.now.to_i
+      $redis.set('client:' + $settings[:client][:name], $settings[:client].to_json).callback do
+        $redis.sadd('clients', $settings[:client][:name]).callback do
+          $redis.hset('events:' + $settings[:client][:name], 'test', {
             :output => "CRITICAL\n",
             :status => 2,
-            :issued => Time.now.utc.iso8601,
+            :issued => Time.now.to_i,
             :flapping => false,
             :occurrences => 1
           }.to_json).callback do
             $redis.set('stash:test/test', '{"key": "value"}').callback do
               $redis.sadd('stashes', 'test/test').callback do
                 Thin::Logging.silent = true
-                Thin::Server.start(self, $settings.api.port)
+                Thin::Server.start(self, $settings[:api][:port])
                 block.call
               end
             end
@@ -353,8 +386,11 @@ module Sensu
     end
 
     def self.stop(signal)
-      $logger.warn('[stop] -- stopping sensu api -- ' + signal)
-      $logger.warn('[stop] -- stopping reactor')
+      $logger.warn('received signal', {
+        :signal => signal
+      })
+      $logger.warn('stopping')
+      $logger.warn('stopping reactor')
       EM::PeriodicTimer.new(0.25) do
         EM::stop_event_loop
       end

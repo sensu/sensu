@@ -16,7 +16,6 @@ Gem::Specification.new do |s|
   s.add_dependency("eventmachine", "~> 1.0.0.beta.4")
   s.add_dependency("amqp", "0.7.4")
   s.add_dependency("json")
-  s.add_dependency("hashie")
   s.add_dependency("cabin", "0.4.4")
   s.add_dependency("ruby-redis")
   s.add_dependency("async_sinatra", "1.0.0")

@@ -51,7 +51,7 @@ module Sensu
           unless @loaded_files.empty?
             @logger.warn('config file applied changes', {
               :config_file => file,
-              :changes => @settings.deep_diff(merged)
+              :changes => deep_diff(@settings, merged)
             })
           end
           @settings = merged
@@ -77,13 +77,13 @@ module Sensu
 
     def checks
       @settings[:checks].map do |check_name, check_details|
-        check_details.merge(:name => check_name)
+        check_details.merge(:name => check_name.to_s)
       end
     end
 
     def handlers
       @settings[:handlers].map do |handler_name, handler_details|
-        handler_details.merge(:name => handler_name)
+        handler_details.merge(:name => handler_name.to_s)
       end
     end
 
@@ -115,35 +115,49 @@ module Sensu
 
     private
 
+    def deep_diff(hash_one, hash_two)
+      keys = hash_one.keys.concat(hash_two.keys).uniq
+      keys.inject(Hash.new) do |diff, key|
+        unless hash_one[key] == hash_two[key]
+          if hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
+            diff[key] = deep_diff(hash_one[key], hash_two[key])
+          else
+            diff[key] = [hash_one[key], hash_two[key]]
+          end
+        end
+        diff
+      end
+    end
+
     def validate_checks
       unless @settings[:checks].is_a?(Hash)
         raise('missing check configuration')
       end
       checks.each do |check|
         unless check[:interval].is_a?(Integer) && check[:interval] > 0
-          raise("missing interval for check: #{check[:name]}")
+          raise('missing interval for check: ' + check[:name])
         end
         unless check[:command].is_a?(String)
-          raise("missing command for check: #{check[:name]}")
+          raise('missing command for check: ' + check[:name])
         end
         unless check[:standalone]
           unless check[:subscribers].is_a?(Array) && check[:subscribers].count > 0
-            raise("missing subscribers for check: #{check[:name]}")
+            raise('missing subscribers for check: ' + check[:name])
           end
           check[:subscribers].each do |subscriber|
             unless subscriber.is_a?(String) && !subscriber.empty?
-              raise("a check subscriber must be a string for check: #{check[:name]}")
+              raise('a check subscriber must be a string for check: ' + check[:name])
             end
           end
         end
         if check.has_key?(:handler)
           unless check[:handler].is_a?(String)
-            raise("handler must be a string for check: #{check[:name]}")
+            raise('handler must be a string for check: ' + check[:name])
           end
         end
         if check.has_key?(:handlers)
           unless check[:handlers].is_a?(Array)
-            raise("handlers must be an array for check: #{check[:name]}")
+            raise('handlers must be an array for check: ' + check[:name])
           end
         end
       end
@@ -195,31 +209,31 @@ module Sensu
       end
       handlers.each do |handler|
         unless handler[:type].is_a?(String)
-          raise("missing type for handler: #{handler[:name]}")
+          raise('missing type for handler: ' + handler[:name])
         end
         case handler[:type]
         when 'pipe'
           unless handler[:command].is_a?(String)
-            raise("missing command for pipe handler: #{handler[:name]}")
+            raise('missing command for pipe handler: ' + handler[:name])
           end
         when 'amqp'
           unless handler[:exchange].is_a?(Hash)
-            raise("missing exchange details for amqp handler: #{handler[:name]}")
+            raise('missing exchange details for amqp handler: ' + handler[:name])
           end
           unless handler[:exchange][:name].is_a?(String)
-            raise("missing exchange name for amqp handler: #{handler[:name]}")
+            raise('missing exchange name for amqp handler: ' + handler[:name])
           end
           if handler[:exchange].has_key?(:type)
             unless %w[direct fanout topic].include?(handler[:exchange][:type])
-              raise("invalid exchange type for amqp handler: #{handler[:name]}")
+              raise('invalid exchange type for amqp handler: ' + handler[:name])
             end
           end
         when 'set'
           unless handler[:handlers].is_a?(Array) && handler[:handlers].count > 0
-            raise("missing handler set for handler: #{handler[:name]}")
+            raise('missing handler set for handler: ' + handler[:name])
           end
         else
-          raise("unknown type for handler: #{handler[:name]}")
+          raise('unknown type for handler: ' + handler[:name])
         end
       end
     end
