@@ -29,12 +29,6 @@ module Sensu
       config = Sensu::Config.new(options)
       $logger = config.logger
       $settings = config.settings
-      if options[:daemonize]
-        Process.daemonize
-      end
-      if options[:pid_file]
-        Process.write_pid(options[:pid_file])
-      end
       $logger.debug('connecting to redis', {
         :settings => $settings[:redis]
       })

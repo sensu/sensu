@@ -3,7 +3,7 @@ module Sensu
     attr_reader :indifferent_access, :loaded_env, :loaded_files
 
     def initialize
-      @logger = Cabin::Channel.get($0)
+      @logger = Cabin::Channel.get
       @settings = Hash.new
       @indifferent_access = false
       @loaded_env = false

@@ -10,13 +10,6 @@ module Sensu
 
     def self.run(options={})
       server = self.new(options)
-      if options[:daemonize]
-        Process.daemonize
-      end
-      if options[:pid_file]
-        Process.write_pid(options[:pid_file])
-      end
-      EM::threadpool_size = 14
       EM::run do
         server.setup_redis
         server.setup_rabbitmq
@@ -101,10 +94,12 @@ module Sensu
 
     def handle_event(event)
       report = proc do |output|
-        output.split(/\n+/).each do |line|
-          @logger.info('handler output', {
-            :output => line
-          })
+        if output.is_a?(String)
+          output.split(/\n+/).each do |line|
+            @logger.info('handler output', {
+              :output => line
+            })
+          end
         end
         @handlers_in_progress -= 1
       end
