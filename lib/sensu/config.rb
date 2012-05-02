@@ -14,6 +14,7 @@ require File.join(File.dirname(__FILE__), 'constants')
 require File.join(File.dirname(__FILE__), 'cli')
 require File.join(File.dirname(__FILE__), 'logger')
 require File.join(File.dirname(__FILE__), 'settings')
+require File.join(File.dirname(__FILE__), 'process')
 
 module Sensu
   class Config
@@ -21,12 +22,14 @@ module Sensu
 
     def initialize(options={})
       @options = DEFAULT_OPTIONS.merge(options)
+      @logger = Cabin::Channel.get
       setup_logging
       setup_settings
+      setup_process
     end
 
     def setup_logging
-      @logger = Sensu::Logger.get(@options)
+      Sensu::Logger.new(@options)
     end
 
     def setup_settings
@@ -45,6 +48,10 @@ module Sensu
         @logger.fatal('SENSU NOT RUNNING!')
         exit 2
       end
+    end
+
+    def setup_process
+      Sensu::Process.new(@options)
     end
   end
 end

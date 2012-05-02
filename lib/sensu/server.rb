@@ -10,13 +10,6 @@ module Sensu
 
     def self.run(options={})
       server = self.new(options)
-      if options[:daemonize]
-        Process.daemonize
-      end
-      if options[:pid_file]
-        Process.write_pid(options[:pid_file])
-      end
-      EM::threadpool_size = 14
       EM::run do
         server.setup_redis
         server.setup_rabbitmq

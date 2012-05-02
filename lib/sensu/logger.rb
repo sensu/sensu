@@ -1,11 +1,9 @@
 module Sensu
   class Logger
-    attr_reader :channel
-
     def initialize(options={})
-      @channel = Cabin::Channel.get($0)
-      @channel.subscribe(STDOUT)
-      @channel.level = options[:verbose] ? :debug : options[:log_level] || :info
+      @logger = Cabin::Channel.get
+      @logger.subscribe(STDOUT)
+      @logger.level = options[:verbose] ? :debug : options[:log_level] || :info
       reopen(options)
       setup_traps(options)
     end
@@ -18,7 +16,7 @@ module Sensu
           STDERR.reopen(STDOUT)
           STDOUT.sync = true
         else
-          @channel.error('log file is not writable', {
+          @logger.error('log file is not writable', {
             :log_file => options[:log_file]
           })
         end
@@ -28,7 +26,7 @@ module Sensu
     def setup_traps(options={})
       if Signal.list.include?('USR1')
         Signal.trap('USR1') do
-          @channel.level = @channel.level == :info ? :debug : :info
+          @logger.level = @logger.level == :info ? :debug : :info
         end
       end
       if Signal.list.include?('USR2')
@@ -36,11 +34,6 @@ module Sensu
           reopen(options)
         end
       end
-    end
-
-    def self.get(options={})
-      logger = self.new(options)
-      logger.channel
     end
   end
 end
