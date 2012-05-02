@@ -79,8 +79,8 @@ module Sensu
       else
         ['default']
       end
-      handler_list.select! do |handler_name|
-        @settings.handler_exists?(handler_name)
+      handler_list.reject! do |handler_name|
+        !@settings.handler_exists?(handler_name)
       end
       handler_list.map! do |handler_name|
         if @settings[:handlers][handler_name][:type] == 'set'
@@ -91,8 +91,8 @@ module Sensu
       end
       handler_list.flatten!
       handler_list.uniq!
-      handler_list.select! do |handler_name|
-        @settings.handler_exists?(handler_name)
+      handler_list.reject! do |handler_name|
+        !@settings.handler_exists?(handler_name)
       end
       handler_list.map do |handler_name|
         @settings[:handlers][handler_name].merge(:name => handler_name)
