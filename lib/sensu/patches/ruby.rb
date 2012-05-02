@@ -5,16 +5,6 @@ class Array
 end
 
 class Hash
-  alias_method :regular_reader, :[]
-
-  def [](key)
-    if key.is_a?(String) && has_key?(key.to_sym)
-      regular_reader(key.to_sym)
-    else
-      regular_reader(key)
-    end
-  end
-
   def method_missing(method, *arguments, &block)
     if has_key?(method)
       self[method]
