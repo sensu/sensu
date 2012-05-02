@@ -1,9 +1,3 @@
-class Array
-  def deep_merge(other_array, &merger)
-    concat(other_array).uniq
-  end
-end
-
 class Hash
   def method_missing(method, *arguments, &block)
     if has_key?(method)
@@ -11,17 +5,6 @@ class Hash
     else
       super
     end
-  end
-
-  def deep_merge(other_hash, &merger)
-    merger ||= Proc.new do |key, old_value, new_value|
-      begin
-        old_value.deep_merge(new_value, &merger)
-      rescue
-        new_value
-      end
-    end
-    merge(other_hash, &merger)
   end
 end
 
