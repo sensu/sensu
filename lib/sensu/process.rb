@@ -1,6 +1,7 @@
 module Sensu
   class Process
     def initialize(options={})
+      @logger = Cabin::Channel.get
       if options[:daemonize]
         daemonize
       end
@@ -16,7 +17,10 @@ module Sensu
           file.puts(::Process.pid)
         end
       rescue
-        raise('could not write to pid file: ' + pid_file)
+        @logger.fatal('could not write to pid file', {
+          :pid_file => pid_file
+        })
+        exit 2
       end
     end
 
@@ -26,7 +30,8 @@ module Sensu
         exit
       end
       unless ::Process.setsid
-        raise('cannot detach from controlling terminal')
+        @logger.fatal('cannot detach from controlling terminal')
+        exit 2
       end
       Signal.trap('SIGHUP', 'IGNORE')
       if fork
