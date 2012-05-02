@@ -86,7 +86,7 @@ module Sensu
         if @settings[:handlers][handler_name][:type] == 'set'
           @settings[:handlers][handler_name][:handlers]
         else
-          handler_name.to_sym
+          handler_name
         end
       end
       handler_list.flatten!
