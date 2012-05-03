@@ -12,7 +12,6 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
   s.has_rdoc    = false
 
-  s.add_dependency('bundler')
   s.add_dependency('eventmachine', '~> 1.0.0.beta.4')
   s.add_dependency('amqp', '0.7.4')
   s.add_dependency('json')

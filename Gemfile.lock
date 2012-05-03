@@ -4,7 +4,6 @@ PATH
     sensu (0.9.6.beta)
       amqp (= 0.7.4)
       async_sinatra (= 1.0.0)
-      bundler
       cabin (= 0.4.4)
       eventmachine (~> 1.0.0.beta.4)
       json
