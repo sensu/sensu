@@ -32,6 +32,7 @@ class TestSensu < TestCase
     assert(settings[:rabbitmq].is_a?(Hash))
     ENV['RABBITMQ_URL'] = 'amqp://guest:guest@localhost:5672/'
     settings.load_env
+    assert(settings.loaded_env)
     assert_equal(settings[:rabbitmq], ENV['RABBITMQ_URL'])
     done
   end

@@ -11,19 +11,19 @@ def test_local_tcp_socket(port)
       socket.close
     end
     true
-  rescue Timeout::Error, Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+  rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Timeout::Error
     false
   end
 end
 
-desc "Run tests"
+desc 'Run tests'
 task :test do
-  puts "Running tests ..."
+  puts 'Running tests ...'
   unless test_local_tcp_socket(5672)
-    raise("RABBITMQ MUST BE RUNNING!")
+    raise('RABBITMQ MUST BE RUNNING!')
   end
   unless test_local_tcp_socket(6379)
-    raise("REDIS MUST BE RUNNING!")
+    raise('REDIS MUST BE RUNNING!')
   end
   require File.join(File.dirname(__FILE__), 'test', 'helper')
   Dir['test/*_tests.rb'].each do |tests|
