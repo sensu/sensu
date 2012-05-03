@@ -5,20 +5,20 @@ class TestSensu < TestCase
       :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
       :log_level => :error
     }
-    config = Sensu::Config.new(@options)
-    @settings = config.settings
+    base = Sensu::Base.new(@options)
+    @settings = base.settings
   end
 
   def test_read_config_file
-    config = Sensu::Config.new(@options)
-    settings = config.settings
+    base = Sensu::Base.new(@options)
+    settings = base.settings
     assert(settings.check_exists?('a'))
     done
   end
 
   def test_config_dir_snippets
-    config = Sensu::Config.new(@options)
-    settings = config.settings
+    base = Sensu::Base.new(@options)
+    settings = base.settings
     assert(settings.handler_exists?('new_handler'))
     assert(settings[:checks][:b][:subscribers] == ['a', 'b'])
     assert(settings[:checks][:b][:interval] == 1)

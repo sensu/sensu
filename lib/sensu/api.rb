@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'config')
+require File.join(File.dirname(__FILE__), 'base')
 
 require 'thin'
 require 'sinatra/async'
@@ -26,9 +26,9 @@ module Sensu
     end
 
     def self.setup(options={})
-      config = Sensu::Config.new(options)
-      $logger = config.logger
-      $settings = config.settings
+      base = Sensu::Base.new(options)
+      $logger = base.logger
+      $settings = base.settings
       $logger.debug('connecting to redis', {
         :settings => $settings[:redis]
       })

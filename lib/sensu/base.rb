@@ -17,7 +17,7 @@ require File.join(File.dirname(__FILE__), 'settings')
 require File.join(File.dirname(__FILE__), 'process')
 
 module Sensu
-  class Config
+  class Base
     attr_reader :options, :logger, :settings
 
     def initialize(options={})
