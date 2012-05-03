@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    sensu (0.9.5)
+    sensu (0.9.6.beta)
       amqp (= 0.7.4)
       async_sinatra (= 1.0.0)
       bundler
@@ -14,7 +14,7 @@ PATH
 GEM
   remote: http://rubygems.org/
   specs:
-    addressable (2.2.7)
+    addressable (2.2.8)
     amqp (0.7.4)
       eventmachine
     async_sinatra (1.0.0)
