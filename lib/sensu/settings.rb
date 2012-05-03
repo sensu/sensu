@@ -82,6 +82,10 @@ module Sensu
       end
     end
 
+    def set_env
+      ENV['SENSU_CONFIG_FILES'] = @loaded_files.join(':')
+    end
+
     def checks
       @settings[:checks].map do |check_name, check_details|
         check_details.merge(:name => check_name.to_s)
