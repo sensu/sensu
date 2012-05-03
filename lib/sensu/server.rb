@@ -312,44 +312,49 @@ module Sensu
       end
     end
 
+    def publish_result(client, check)
+      payload = {
+        :client => client[:name],
+        :check => check
+      }
+      @logger.info('publishing check result', {
+        :payload => payload
+      })
+      @amq.queue('results').publish(payload.to_json)
+    end
+
     def setup_keepalive_monitor
       @logger.debug('monitoring client keepalives')
       @timers << EM::PeriodicTimer.new(30) do
-        @logger.debug('checking for stale client info')
-        @redis.smembers('clients').callback do |clients|
-          clients.each do |client_name|
-            @redis.get('client:' + client_name).callback do |client_json|
-              client = JSON.parse(client_json, :symbolize_names => true)
-              time_since_last_keepalive = Time.now.to_i - client[:timestamp]
-              check = Hash.new
-              case
-              when time_since_last_keepalive >= 180
-                check[:output] = 'No keep-alive sent from host in over 180 seconds'
-                check[:status] = 2
-              when time_since_last_keepalive >= 120
-                check[:output] = 'No keep-alive sent from host in over 120 seconds'
-                check[:status] = 1
-              else
-                @redis.hexists('events:' + client[:name], 'keepalive').callback do |exists|
-                  if exists
-                    check[:output] = 'Keep-alive sent from host'
-                    check[:status] = 0
-                  end
-                end
-              end
-              unless check.empty?
-                check.merge(
+        unless @rabbitmq.reconnecting?
+          @logger.debug('checking for stale client info')
+          @redis.smembers('clients').callback do |clients|
+            clients.each do |client_name|
+              @redis.get('client:' + client_name).callback do |client_json|
+                client = JSON.parse(client_json, :symbolize_names => true)
+                check = {
                   :name => 'keepalive',
                   :issued => Time.now.to_i
-                )
-                payload = {
-                  :client => client[:name],
-                  :check => check
                 }
-                @logger.info('publishing check result', {
-                  :payload => payload
-                })
-                @amq.queue('results').publish(payload.to_json)
+                time_since_last_keepalive = Time.now.to_i - client[:timestamp]
+                case
+                when time_since_last_keepalive >= 180
+                  check[:output] = 'No keep-alive sent from host in over 180 seconds'
+                  check[:status] = 2
+                  publish_result(client, check)
+                when time_since_last_keepalive >= 120
+                  check[:output] = 'No keep-alive sent from host in over 120 seconds'
+                  check[:status] = 1
+                  publish_result(client, check)
+                else
+                  @redis.hexists('events:' + client[:name], 'keepalive').callback do |exists|
+                    if exists
+                      check[:output] = 'Keep-alive sent from host'
+                      check[:status] = 0
+                      publish_result(client, check)
+                    end
+                  end
+                end
               end
             end
           end
