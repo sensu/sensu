@@ -48,6 +48,7 @@ module Sensu
         @logger.fatal('SENSU NOT RUNNING!')
         exit 2
       end
+      @settings.set_env
     end
 
     def setup_process
