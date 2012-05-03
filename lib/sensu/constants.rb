@@ -1,5 +1,5 @@
 module Sensu
-  VERSION = '0.9.6.beta.1'
+  VERSION = '0.9.6.beta.2'
 
   DEFAULT_OPTIONS = {
     :config_file => '/etc/sensu/config.json',
