@@ -5,24 +5,34 @@ class TestSensu < TestCase
       :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
       :log_level => :error
     }
-    config = Sensu::Config.new(@options)
-    @settings = config.settings
+    base = Sensu::Base.new(@options)
+    @settings = base.settings
   end
 
   def test_read_config_file
-    config = Sensu::Config.new(@options)
-    settings = config.settings
+    base = Sensu::Base.new(@options)
+    settings = base.settings
     assert(settings.check_exists?('a'))
     done
   end
 
   def test_config_dir_snippets
-    config = Sensu::Config.new(@options)
-    settings = config.settings
+    base = Sensu::Base.new(@options)
+    settings = base.settings
     assert(settings.handler_exists?('new_handler'))
     assert(settings[:checks][:b][:subscribers] == ['a', 'b'])
     assert(settings[:checks][:b][:interval] == 1)
     assert(settings[:checks][:b][:auto_resolve] == false)
+    done
+  end
+
+  def test_read_env
+    base = Sensu::Base.new(@options)
+    settings = base.settings
+    assert(settings[:rabbitmq].is_a?(Hash))
+    ENV['RABBITMQ_URL'] = 'amqp://guest:guest@localhost:5672/'
+    settings.load_env
+    assert_equal(settings[:rabbitmq], ENV['RABBITMQ_URL'])
     done
   end
 

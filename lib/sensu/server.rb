@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'config')
+require File.join(File.dirname(__FILE__), 'base')
 
 require 'redis'
 
@@ -27,9 +27,9 @@ module Sensu
     end
 
     def initialize(options={})
-      config = Sensu::Config.new(options)
-      @logger = config.logger
-      @settings = config.settings
+      base = Sensu::Base.new(options)
+      @logger = base.logger
+      @settings = base.settings
       @timers = Array.new
       @handlers_in_progress = 0
     end

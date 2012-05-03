@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), 'config')
+require File.join(File.dirname(__FILE__), 'base')
 require File.join(File.dirname(__FILE__), 'socket')
 
 module Sensu
@@ -22,9 +22,9 @@ module Sensu
     end
 
     def initialize(options={})
-      config = Sensu::Config.new(options)
-      @logger = config.logger
-      @settings = config.settings
+      base = Sensu::Base.new(options)
+      @logger = base.logger
+      @settings = base.settings
       @timers = Array.new
       @checks_in_progress = Array.new
     end
