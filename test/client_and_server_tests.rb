@@ -16,7 +16,7 @@ class TestSensu < TestCase
     done
   end
 
-  def test_config_dir_snippets
+  def test_config_directory_snippets
     base = Sensu::Base.new(@options)
     settings = base.settings
     assert(settings.handler_exists?('new_handler'))
@@ -33,7 +33,16 @@ class TestSensu < TestCase
     ENV['RABBITMQ_URL'] = 'amqp://guest:guest@localhost:5672/'
     settings.load_env
     assert(settings.loaded_env)
-    assert_equal(settings[:rabbitmq], ENV['RABBITMQ_URL'])
+    assert_equal(ENV['RABBITMQ_URL'], settings[:rabbitmq])
+    done
+  end
+
+  def test_set_env
+    base = Sensu::Base.new(@options)
+    settings = base.settings
+    settings.set_env
+    expected = [@options[:config_file], @options[:config_dir] + '/snippet.json'].join(':')
+    assert_equal(expected, ENV['SENSU_CONFIG_FILES'])
     done
   end
 
