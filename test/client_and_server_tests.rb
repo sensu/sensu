@@ -26,6 +26,16 @@ class TestSensu < TestCase
     done
   end
 
+  def test_read_env
+    base = Sensu::Base.new(@options)
+    settings = base.settings
+    assert(settings[:rabbitmq].is_a?(Hash))
+    ENV['RABBITMQ_URL'] = 'amqp://guest:guest@localhost:5672/'
+    settings.load_env
+    assert_equal(settings[:rabbitmq], ENV['RABBITMQ_URL'])
+    done
+  end
+
   def test_cli_arguments
     options = Sensu::CLI.read([
       '-c', @options[:config_file],
