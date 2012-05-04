@@ -182,6 +182,7 @@ module Sensu
             :check => check,
             :occurrences => 1
           }
+          @redis.sadd('history:' + client[:name], check[:name])
           history_key = 'history:' + client[:name] + ':' + check[:name]
           @redis.rpush(history_key, check[:status]).callback do
             @redis.lrange(history_key, -21, -1).callback do |history|
