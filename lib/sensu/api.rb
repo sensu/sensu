@@ -58,9 +58,14 @@ module Sensu
 
     configure do
       disable :protection
+      disable :show_exceptions
     end
 
     not_found do
+      ''
+    end
+
+    error do
       ''
     end
 
@@ -145,8 +150,11 @@ module Sensu
               $redis.srem('clients', client_name)
               $redis.del('events:' + client_name)
               $redis.del('client:' + client_name)
-              $settings[:checks].each_key do |check_name|
-                $redis.del('history:' + client_name + ':' + check_name)
+              $redis.smembers('history:' + client_name).callback do |checks|
+                checks.each do |check_name|
+                  $redis.del('history:' + client_name + ':' + check_name)
+                end
+                $redis.del('history:' + client_name)
               end
             end
             status 204
@@ -180,7 +188,7 @@ module Sensu
         status 400
         body ''
       end
-      if post_body[:check].is_a?(String) && post_body[:subscribers].is_a?(Array)
+      if post_body.is_a?(Hash) && post_body[:check].is_a?(String) && post_body[:subscribers].is_a?(Array)
         payload = {
           :name => post_body[:check],
           :issued => Time.now.to_i
@@ -239,7 +247,7 @@ module Sensu
         status 400
         body ''
       end
-      if post_body[:client].is_a?(String) && post_body[:check].is_a?(String)
+      if post_body.is_a?(Hash) && post_body[:client].is_a?(String) && post_body[:check].is_a?(String)
         $redis.hgetall('events:' + post_body[:client]).callback do |events|
           if events.include?(post_body[:check])
             payload = {
