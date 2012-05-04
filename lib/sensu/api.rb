@@ -66,10 +66,10 @@ module Sensu
 
     before do
       content_type 'application/json'
+      request_log(env)
     end
 
     aget '/info' do
-      request_log(env)
       response = {
         :sensu => {
           :version => VERSION
@@ -89,7 +89,6 @@ module Sensu
     end
 
     aget '/clients' do
-      request_log(env)
       response = Array.new
       $redis.smembers('clients').callback do |clients|
         unless clients.empty?
@@ -108,7 +107,6 @@ module Sensu
     end
 
     aget '/client/:name' do |client_name|
-      request_log(env)
       $redis.get('client:' + client_name).callback do |client_json|
         unless client_json.nil?
           body client_json
@@ -120,7 +118,6 @@ module Sensu
     end
 
     adelete '/client/:name' do |client_name|
-      request_log(env)
       $redis.get('client:' + client_name).callback do |client_json|
         unless client_json.nil?
           client = JSON.parse(client_json, :symbolize_names => true)
@@ -163,12 +160,10 @@ module Sensu
     end
 
     aget '/checks' do
-      request_log(env)
       body $settings.checks.to_json
     end
 
     aget '/check/:name' do |check_name|
-      request_log(env)
       if $settings.check_exists?(check_name)
         response = $settings[:checks][check_name].merge(:name => check_name)
         body response.to_json
@@ -179,7 +174,6 @@ module Sensu
     end
 
     apost '/check/request' do
-      request_log(env)
       begin
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
       rescue JSON::ParserError
@@ -206,7 +200,6 @@ module Sensu
     end
 
     aget '/events' do
-      request_log(env)
       response = Array.new
       $redis.smembers('clients').callback do |clients|
         unless clients.empty?
@@ -227,7 +220,6 @@ module Sensu
     end
 
     aget '/event/:client/:check' do |client_name, check_name|
-      request_log(env)
       $redis.hgetall('events:' + client_name).callback do |events|
         event_json = events[check_name]
         unless event_json.nil?
@@ -241,7 +233,6 @@ module Sensu
     end
 
     apost '/event/resolve' do
-      request_log(env)
       begin
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
       rescue JSON::ParserError
@@ -278,7 +269,6 @@ module Sensu
     end
 
     apost '/stash/*' do |path|
-      request_log(env)
       begin
         post_body = JSON.parse(request.body.read)
       rescue JSON::ParserError
@@ -294,7 +284,6 @@ module Sensu
     end
 
     aget '/stash/*' do |path|
-      request_log(env)
       $redis.get('stash:' + path).callback do |stash_json|
         if stash_json.nil?
           status 404
@@ -306,7 +295,6 @@ module Sensu
     end
 
     adelete '/stash/*' do |path|
-      request_log(env)
       $redis.exists('stash:' + path).callback do |stash_exists|
         if stash_exists
           $redis.srem('stashes', path).callback do
@@ -323,14 +311,12 @@ module Sensu
     end
 
     aget '/stashes' do
-      request_log(env)
       $redis.smembers('stashes') do |stashes|
         body stashes.to_json
       end
     end
 
     apost '/stashes' do
-      request_log(env)
       begin
         post_body = JSON.parse(request.body.read)
       rescue JSON::ParserError
