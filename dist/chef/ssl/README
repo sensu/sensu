@@ -1,5 +1,0 @@
-Generate SSL config files for sensu & rabbitmq. Be sure to edit testca/openssl.cnf with your own options if this isnt planned for a demo install. Then update the 
-SSL certificates in ../../dist/chef/data_bags/sensu/ssl.json.
-
-
-run as ./ssl_certs.sh clean or ./ssl_certs.sh generate
