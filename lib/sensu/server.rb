@@ -93,73 +93,75 @@ module Sensu
     end
 
     def handle_event(event)
-      report = proc do |output|
-        if output.is_a?(String)
-          output.split(/\n+/).each do |line|
-            @logger.info('handler output', {
-              :output => line
-            })
-          end
-        end
-        @handlers_in_progress -= 1
-      end
-      handlers = check_handlers(event[:check])
-      handlers.each do |handler|
-        @logger.debug('handling event', {
-          :event => event,
-          :handler => handler
-        })
-        @handlers_in_progress += 1
-        case handler[:type]
-        when 'pipe'
-          execute = proc do
-            begin
-              IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
-                io.write(event.to_json)
-                io.close_write
-                io.read
-              end
-            rescue Errno::ENOENT => error
-              @logger.error('handler does not exist', {
-                :event => event,
-                :handler => handler,
-                :error => error.to_s
-              })
-            rescue Errno::EPIPE => error
-              @logger.error('broken pipe', {
-                :event => event,
-                :handler => handler,
-                :error => error.to_s
-              })
-            rescue => error
-              @logger.error('unexpected error', {
-                :event => event,
-                :handler => handler,
-                :error => error.to_s
+      unless(subdued?(event[:check], :handler))
+        report = proc do |output|
+          if output.is_a?(String)
+            output.split(/\n+/).each do |line|
+              @logger.info('handler output', {
+                :output => line
               })
             end
           end
-          EM::defer(execute, report)
-        when 'amqp'
-          exchange_name = handler[:exchange][:name]
-          exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
-          exchange_options = handler[:exchange].reject do |key, value|
-            [:name, :type].include?(key)
-          end
-          @logger.debug('publishing event to an amqp exchange', {
-            :event => event,
-            :exchange => handler[:exchange]
-          })
-          payload = handler[:send_only_check_output] ? event[:check][:output] : event.to_json
-          unless payload.empty?
-            @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
-          end
           @handlers_in_progress -= 1
-        when 'set'
-          @logger.error('handler sets cannot be nested', {
+        end
+        handlers = check_handlers(event[:check])
+        handlers.each do |handler|
+          @logger.debug('handling event', {
+            :event => event,
             :handler => handler
           })
-          @handlers_in_progress -= 1
+          @handlers_in_progress += 1
+          case handler[:type]
+          when 'pipe'
+            execute = proc do
+              begin
+                IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
+                  io.write(event.to_json)
+                  io.close_write
+                  io.read
+                end
+              rescue Errno::ENOENT => error
+                @logger.error('handler does not exist', {
+                  :event => event,
+                  :handler => handler,
+                  :error => error.to_s
+                })
+              rescue Errno::EPIPE => error
+                @logger.error('broken pipe', {
+                  :event => event,
+                  :handler => handler,
+                  :error => error.to_s
+                })
+              rescue => error
+                @logger.error('unexpected error', {
+                  :event => event,
+                  :handler => handler,
+                  :error => error.to_s
+                })
+              end
+            end
+            EM::defer(execute, report)
+          when 'amqp'
+            exchange_name = handler[:exchange][:name]
+            exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
+            exchange_options = handler[:exchange].reject do |key, value|
+              [:name, :type].include?(key)
+            end
+            @logger.debug('publishing event to an amqp exchange', {
+              :event => event,
+              :exchange => handler[:exchange]
+            })
+            payload = handler[:send_only_check_output] ? event[:check][:output] : event.to_json
+            unless payload.empty?
+              @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
+            end
+            @handlers_in_progress -= 1
+          when 'set'
+            @logger.error('handler sets cannot be nested', {
+              :handler => handler
+            })
+            @handlers_in_progress -= 1
+          end
         end
       end
     end
@@ -294,17 +296,19 @@ module Sensu
           @timers << EM::Timer.new(stagger * check_count) do
             interval = options[:test] ? 0.5 : check[:interval]
             @timers << EM::PeriodicTimer.new(interval) do
-              unless @rabbitmq.reconnecting?
-                payload = {
-                  :name => check[:name],
-                  :issued => Time.now.to_i
-                }
-                @logger.info('publishing check request', {
-                  :payload => payload,
-                  :subscribers => check[:subscribers]
-                })
-                check[:subscribers].uniq.each do |exchange_name|
-                  @amq.fanout(exchange_name).publish(payload.to_json)
+              unless(subdued?(check, :publisher))
+                unless @rabbitmq.reconnecting?
+                  payload = {
+                    :name => check[:name],
+                    :issued => Time.now.to_i
+                  }
+                  @logger.info('publishing check request', {
+                    :payload => payload,
+                    :subscribers => check[:subscribers]
+                  })
+                  check[:subscribers].uniq.each do |exchange_name|
+                    @amq.fanout(exchange_name).publish(payload.to_json)
+                  end
                 end
               end
             end
@@ -477,6 +481,40 @@ module Sensu
         resign_as_master do
           stop_reactor
         end
+      end
+    end
+    
+    private
+
+    def subdued?(check, type)
+      subdue = false
+      if(check[:subdue].is_a?(Hash))
+        if(check['subdue'].has_key?(:start) && check[:subdue].has_key?(:end))
+          start = Time.parse(check[:subdue][:start])
+          stop = Time.parse(check[:subdue][:end])
+          if(stop < start) # -> 11pm - 6am
+            if(Time.now < stop)
+              start = Time.parse("12:00:00 am")
+            else
+              stop = Time.parse("11:59:59 pm")
+            end
+          end
+        end
+        days = Array(check[:subdue][:days]).map(&:downcase)
+        if(days.include?(Time.now.strftime('%A').downcase) || (start && Time.now >= start && Time.now <= stop))
+          subdue = true
+        end
+        if((subdue || check[:subdue].size == 1) && check[:subdue][:exceptions])
+          subdue = !Array(check[:subdue][:exceptions]).detect{|ex_hsh|
+            Time.now >= Time.parse(ex_hsh[:start]) && Time.now <= Time.parse(ex_hsh[:end])
+          }
+        end
+      end
+      if(subdue)
+        (check[:subdue][:at].nil? && type == :handler) ||
+        (check[:subdue][:at] && check[:subdue][:at].to_sym == type)
+      else
+        false
       end
     end
   end
