@@ -46,13 +46,26 @@ module Redis
     end
   end
 
-  def self.connect(options={})
-    host = options[:host] || 'localhost'
-    port = options[:port] || 6379
+  def self.connect(options)
+    options ||= Hash.new
+    if options.is_a?(String)
+      begin
+        uri = URI.parse(options)
+        host = uri.host
+        port = uri.port || 6379
+        password = uri.password
+      rescue
+        raise('invalid redis url')
+      end
+    else
+      host = options[:host] || 'localhost'
+      port = options[:port] || 6379
+      password = options[:password]
+    end
     EM::connect(host, port, Redis::Client) do |client|
       client.redis_host = host
       client.redis_port = port
-      client.redis_password = options[:password]
+      client.redis_password = password
     end
   end
 end
