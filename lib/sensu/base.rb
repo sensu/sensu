@@ -4,6 +4,7 @@ gem 'eventmachine', '~> 1.0.0.beta.4'
 
 require 'optparse'
 require 'json'
+require 'uri'
 require 'cabin'
 require 'amqp'
 
