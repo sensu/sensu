@@ -13,40 +13,14 @@
     "user": "foo",
     "password": "bar"
   },
-  "dashboard": {
-    "host": "localhost",
-    "port": 8080,
-    "user": "admin",
-    "password": "secret"
-  },
   "handlers": {
     "default": {
-      "type": "set",
-      "handlers": [
-        "stdout"
-      ]
-    },
-    "stdout": {
       "type": "pipe",
       "command": "./test/handlers/stdout.rb"
-    },
-    "file": {
-      "type": "pipe",
-      "command": "./test/handlers/file.rb"
-    },
-    "graphite": {
-      "type": "amqp",
-      "exchange": {
-        "type": "topic",
-        "name": "graphite",
-        "key": "sensu.test"
-      },
-      "send_only_check_output": true
     }
   },
   "checks": {
     "subdue_time": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
@@ -54,7 +28,6 @@
       ]
     },
     "nonsubdue_time": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
@@ -62,7 +35,6 @@
       ]
     },
     "subdue_time_wrap": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
@@ -70,7 +42,6 @@
       ]
     },
     "nonsubdue_time_wrap": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
@@ -78,7 +49,6 @@
       ]
     },
     "subdue_day": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
@@ -86,7 +56,6 @@
       ]
     },
     "nonsubdue_day": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
@@ -94,7 +63,6 @@
       ]
     },
     "subdue_days": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
@@ -102,7 +70,6 @@
       ]
     },
     "nonsubdue_days": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
@@ -110,7 +77,6 @@
       ]
     },
     "subdue_exception": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
@@ -118,7 +84,6 @@
       ]
     },
     "nonsubdue_exception": {
-      "handler": "default",
       "command": "ruby -e \"puts 'test'; exit 1\"",
       "interval": 1,
       "subscribers": [
