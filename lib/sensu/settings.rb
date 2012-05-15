@@ -17,10 +17,6 @@ module Sensu
       @settings[key.to_sym]
     end
 
-    def []=(key, value)
-      @settings[key.to_sym] = value
-    end
-
     def indifferent_access!
       @settings = indifferent_access(@settings)
       @indifferent_access = true
