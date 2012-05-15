@@ -483,36 +483,40 @@ module Sensu
         end
       end
     end
-    
+
     private
 
     def subdued?(check, type)
       subdue = false
-      if(check[:subdue].is_a?(Hash))
-        if(check['subdue'].has_key?(:start) && check[:subdue].has_key?(:end))
+      if check[:subdue].is_a?(Hash)
+        if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
           start = Time.parse(check[:subdue][:start])
           stop = Time.parse(check[:subdue][:end])
-          if(stop < start) # -> 11pm - 6am
-            if(Time.now < stop)
-              start = Time.parse("12:00:00 am")
+          if stop < start
+            if Time.now < stop
+              start = Time.parse('12:00:00 AM')
             else
-              stop = Time.parse("11:59:59 pm")
+              stop = Time.parse('11:59:59 PM')
             end
           end
+          if Time.now >= start && Time.now <= stop
+            subdue = true
+          end
         end
-        days = Array(check[:subdue][:days]).map(&:downcase)
-        if(days.include?(Time.now.strftime('%A').downcase) || (start && Time.now >= start && Time.now <= stop))
-          subdue = true
+        if check[:subdue].has_key?(:days)
+          days = Array(check[:subdue][:days]).map(&:downcase)
+          if days.include?(Time.now.strftime('%A').downcase)
+            subdue = true
+          end
         end
-        if((subdue || check[:subdue].size == 1) && check[:subdue][:exceptions])
-          subdue = !Array(check[:subdue][:exceptions]).detect{|ex_hsh|
-            Time.now >= Time.parse(ex_hsh[:start]) && Time.now <= Time.parse(ex_hsh[:end])
-          }
+        if (subdue || check[:subdue].size == 1) && check[:subdue].has_key?(:exceptions)
+          subdue = !Array(check[:subdue][:exceptions]).any? do |exception|
+            Time.now >= Time.parse(exception[:start]) && Time.now <= Time.parse(exception[:end])
+          end
         end
       end
-      if(subdue)
-        (check[:subdue][:at].nil? && type == :handler) ||
-        (check[:subdue][:at] && check[:subdue][:at].to_sym == type)
+      if subdue
+        (check[:subdue][:at].nil? && type == :handler) || (check[:subdue][:at] && check[:subdue][:at].to_sym == type)
       else
         false
       end
