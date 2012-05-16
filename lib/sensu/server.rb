@@ -487,9 +487,12 @@ module Sensu
     private
 
     def subdued?(check, type)
+      puts "subdued?"
+      puts "check: #{check.inspect}"
       subdue = false
       if check[:subdue].is_a?(Hash)
         if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
+          puts "start stop"
           start = Time.parse(check[:subdue][:start])
           stop = Time.parse(check[:subdue][:end])
           if stop < start
@@ -502,12 +505,18 @@ module Sensu
           if Time.now >= start && Time.now <= stop
             subdue = true
           end
+          puts "start: #{start}"
+          puts "stop: #{stop}"
+          puts "subdued: #{subdue}"
         end
         if check[:subdue].has_key?(:days)
+          puts "days"
           days = Array(check[:subdue][:days]).map(&:downcase)
           if days.include?(Time.now.strftime('%A').downcase)
             subdue = true
           end
+          puts "days: #{days.inspect}"
+          puts "subdued: #{subdue}"
         end
         if (subdue || check[:subdue].size == 1) && check[:subdue].has_key?(:exceptions)
           subdue = !Array(check[:subdue][:exceptions]).any? do |exception|
@@ -516,8 +525,10 @@ module Sensu
         end
       end
       if subdue
+        puts "subdued: #{subdue}"
         (check[:subdue][:at].nil? && type == :handler) || (check[:subdue][:at] && check[:subdue][:at].to_sym == type)
       else
+        puts "subdued: #{subdue}"
         false
       end
     end
