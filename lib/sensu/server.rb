@@ -524,11 +524,12 @@ module Sensu
           end
         end
       end
-      if subdue
-        puts "subdued: #{subdue}"
-        (check[:subdue][:at].nil? && type == :handler) || (check[:subdue][:at] && check[:subdue][:at].to_sym == type)
+      case
+      when subdue && !check[:subdue].has_key?(:at) && type == :handler
+        true
+      when subdue && check[:subdue].has_key?(:at) && check[:subdue][:at].to_sym == type
+        true
       else
-        puts "subdued: #{subdue}"
         false
       end
     end
