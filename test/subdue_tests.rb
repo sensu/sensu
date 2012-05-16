@@ -81,25 +81,24 @@ class TestSensuSubdue < TestCase
     client = Sensu::Client.new(@options)
     server.setup_redis
     server.setup_rabbitmq
-    server.redis.flushall.callback do
-      server.setup_keepalives
-      server.setup_results
-      client.setup_rabbitmq
-      client.setup_keepalives
-      client.setup_subscriptions
-      client.setup_standalone(:test => true)
-      server.setup_publisher(:test => true)
-      EM::Timer.new(2) do
-        puts "get client events"
-        server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
-          puts "events: #{events.inspect}"
-          assert(events.size > 0, 'Failed to receive events')
-          found = events.keys.find_all do |name|
-            name.start_with?('subdue')
-          end
-          assert(found.size == 0, 'Found subdued event(s): ' + found.join(', '))
-          done
+    server.redis.flushall
+    server.setup_keepalives
+    server.setup_results
+    client.setup_rabbitmq
+    client.setup_keepalives
+    client.setup_subscriptions
+    client.setup_standalone(:test => true)
+    server.setup_publisher(:test => true)
+    EM::Timer.new(2) do
+      puts "get client events"
+      server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+        puts "events: #{events.inspect}"
+        assert(events.size > 0, 'Failed to receive events')
+        found = events.keys.find_all do |name|
+          name.start_with?('subdue')
         end
+        assert(found.size == 0, 'Found subdued event(s): ' + found.join(', '))
+        done
       end
     end
   end
