@@ -101,32 +101,39 @@ class TestSensuSubdue < TestCase
     end
   end
 
-#  def test_handler_subdue
-#    server = Sensu::Server.new(@options)
-#    client = @settings[:client].sanitize_keys
-#    file_path = '/tmp/sensu_test_handlers'
-#    @settings[:checks].each do |check|
-#      File.delete(file_path) if File.exists?(file_path)
-#      event = {
-#        :client => client,
-#        :check => check.last.merge(
-#          :handler => 'file',
-#          :issued => Time.now.to_i,
-#          :status => 1,
-#          :history => [1]
-#        ),
-#        :occurrences => 1,
-#        :action => 'create'
-#      }
-#      event[:check][:subdue].delete(:at)
-#      server.handle_event(event)
-#      sleep(0.5)
-#      if(check.first.to_s.start_with?('subdue'))
-#        assert(!File.exists?(file_path), 'File should not exist for: ' + check.first)
-#      else
-#        assert File.exists?(file_path), "File should exist for: #{check.first}"
-#      end
-#    end
-#    done
-#  end
+  def test_handler_subdue
+    server = Sensu::Server.new(@options)
+    client = @settings[:client].sanitize_keys
+    @settings.checks.each do |check|
+      file_path = '/tmp/sensu_' + check[:name]
+      if File.exists?(file_path)
+        File.delete(file_path)
+      end
+      event = {
+        :client => client,
+        :check => check.merge(
+          :handler => 'file',
+          :issued => Time.now.to_i,
+          :output => 'foobar',
+          :status => 1,
+          :history => [1]
+        ),
+        :occurrences => 1,
+        :action => 'create'
+      }
+      event[:check][:subdue].delete(:at)
+      server.handle_event(event)
+    end
+    EM::Timer.new(2) do
+      @settings.checks.each do |check|
+        file_path = '/tmp/sensu_' + check[:name]
+        if(check[:name].start_with?('subdue'))
+          assert(!File.exists?(file_path), 'File should not exist for: ' + check[:name])
+        else
+          assert(File.exists?(file_path), 'File should exist for: ' + check[:name])
+        end
+      end
+      done
+    end
+  end
 end

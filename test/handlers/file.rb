@@ -3,8 +3,8 @@
 require 'rubygems'
 require 'json'
 
-event = JSON.parse(STDIN.read)
+event = JSON.parse(STDIN.read, :symbolize_names => true)
 
-File.open('/tmp/sensu_test_handlers', 'w') do |file|
+File.open('/tmp/sensu_' + event[:check][:name], 'w') do |file|
   file.write(JSON.pretty_generate(event))
 end

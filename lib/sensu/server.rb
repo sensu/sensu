@@ -509,7 +509,7 @@ module Sensu
             subdue = true
           end
         end
-        if (subdue || check[:subdue].size == 1) && check[:subdue].has_key?(:exceptions)
+        if subdue && check[:subdue].has_key?(:exceptions)
           subdue = !Array(check[:subdue][:exceptions]).any? do |exception|
             Time.now >= Time.parse(exception[:start]) && Time.now <= Time.parse(exception[:end])
           end
