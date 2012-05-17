@@ -15,8 +15,18 @@
   },
   "handlers": {
     "default": {
+      "type": "set",
+      "handlers": [
+        "stdout"
+      ]
+    },
+    "stdout": {
       "type": "pipe",
       "command": "./test/handlers/stdout.rb"
+    },
+    "file": {
+      "type": "pipe",
+      "command": "./test/handlers/file.rb"
     }
   },
   "checks": {
