@@ -124,7 +124,7 @@ class TestSensuSubdue < TestCase
       event[:check][:subdue].delete(:at)
       server.handle_event(event)
     end
-    EM::Timer.new(2) do
+    EM::Timer.new(4) do
       @settings.checks.each do |check|
         file_path = '/tmp/sensu_' + check[:name]
         if(check[:name].start_with?('subdue'))
