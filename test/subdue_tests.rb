@@ -89,10 +89,8 @@ class TestSensuSubdue < TestCase
     client.setup_subscriptions
     client.setup_standalone(:test => true)
     server.setup_publisher(:test => true)
-    EM::Timer.new(2) do
-      puts "get client events"
+    EM::Timer.new(4) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
-        puts "events: #{events.inspect}"
         assert(events.size > 0, 'Failed to receive events')
         found = events.keys.find_all do |name|
           name.start_with?('subdue')
