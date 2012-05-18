@@ -30,7 +30,9 @@ module Sensu
     end
 
     def setup_logging
-      Sensu::Logger.new(@options)
+      logger = Sensu::Logger.new(@options)
+      logger.reopen
+      logger.setup_traps
     end
 
     def setup_settings
@@ -43,7 +45,7 @@ module Sensu
       begin
         @settings.validate
       rescue => error
-        @logger.fatal('CONFIG INVALID', {
+        @logger.fatal('config invalid', {
           :error => error.to_s
         })
         @logger.fatal('SENSU NOT RUNNING!')
@@ -53,7 +55,14 @@ module Sensu
     end
 
     def setup_process
-      Sensu::Process.new(@options)
+      process = Sensu::Process.new
+      if @options[:daemonize]
+        process.daemonize
+      end
+      if @options[:pid_file]
+        process.write_pid(@options[:pid_file])
+      end
+      process.setup_eventmachine
     end
   end
 end

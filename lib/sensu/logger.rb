@@ -4,26 +4,26 @@ module Sensu
       @logger = Cabin::Channel.get
       @logger.subscribe(STDOUT)
       @logger.level = options[:verbose] ? :debug : options[:log_level] || :info
-      reopen(options)
-      setup_traps(options)
+      @log_file = options[:log_file]
     end
 
-    def reopen(options={})
-      unless options[:log_file].nil?
-        if File.writable?(options[:log_file]) ||
-            !File.exist?(options[:log_file]) && File.writable?(File.dirname(options[:log_file]))
-          STDOUT.reopen(options[:log_file], 'a')
+    def reopen(file=nil)
+      file ||= @log_file
+      unless file.nil?
+        @log_file = file
+        if File.writable?(file) || !File.exist?(file) && File.writable?(File.dirname(file))
+          STDOUT.reopen(file, 'a')
           STDERR.reopen(STDOUT)
           STDOUT.sync = true
         else
           @logger.error('log file is not writable', {
-            :log_file => options[:log_file]
+            :log_file => file
           })
         end
       end
     end
 
-    def setup_traps(options={})
+    def setup_traps
       if Signal.list.include?('USR1')
         Signal.trap('USR1') do
           @logger.level = @logger.level == :info ? :debug : :info
@@ -31,7 +31,7 @@ module Sensu
       end
       if Signal.list.include?('USR2')
         Signal.trap('USR2') do
-          reopen(options)
+          reopen(@log_file)
         end
       end
     end
