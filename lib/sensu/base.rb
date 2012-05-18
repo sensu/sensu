@@ -22,7 +22,7 @@ module Sensu
     attr_reader :options, :logger, :settings
 
     def initialize(options={})
-      @options = DEFAULT_OPTIONS.merge(options)
+      @options = Sensu::DEFAULT_OPTIONS.merge(options)
       @logger = Cabin::Channel.get
       setup_logging
       setup_settings

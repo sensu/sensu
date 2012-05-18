@@ -5,15 +5,31 @@ require 'socket'
 
 if RUBY_VERSION < '1.9.0'
   gem 'test-unit'
+
   require 'test/unit'
+
   class TestCase < Test::Unit::TestCase
     include ::EM::Test
+
+    def teardown
+      Dir.glob('/tmp/sensu_*').each do |file|
+        File.delete(file)
+      end
+    end
   end
 else
   require 'minitest/unit'
+
   MiniTest::Unit.autorun
+
   class TestCase < MiniTest::Unit::TestCase
     include ::EM::Test
+
+    def teardown
+      Dir.glob('/tmp/sensu_*').each do |file|
+        File.delete(file)
+      end
+    end
   end
 end
 

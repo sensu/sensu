@@ -77,7 +77,7 @@ module Sensu
     aget '/info' do
       response = {
         :sensu => {
-          :version => VERSION
+          :version => Sensu::VERSION
         },
         :health => {
           :redis => 'ok',

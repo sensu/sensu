@@ -10,6 +10,7 @@ class TestSensuSubdue < TestCase
   end
 
   def teardown
+    super
     File.delete(File.join(File.dirname(__FILE__), 'subdue_config.json'))
   end
 
