@@ -245,6 +245,7 @@ module Sensu
                       @redis.hdel('events:' + client[:name], check[:name]).callback do
                         unless check[:handle] == false
                           event[:action] = 'resolve'
+                          event[:occurrences] = previous_occurrence[:occurrences]
                           handle_event(event)
                         else
                           @logger.debug('handling disabled', {
