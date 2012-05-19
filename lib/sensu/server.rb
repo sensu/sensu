@@ -81,13 +81,13 @@ module Sensu
           end
         end
         if check[:subdue].has_key?(:days)
-          days = Array(check[:subdue][:days]).map(&:downcase)
+          days = check[:subdue][:days].map(&:downcase)
           if days.include?(Time.now.strftime('%A').downcase)
             subdue = true
           end
         end
         if subdue && check[:subdue].has_key?(:exceptions)
-          subdue = Array(check[:subdue][:exceptions]).none? do |exception|
+          subdue = check[:subdue][:exceptions].none? do |exception|
             Time.now >= Time.parse(exception[:start]) && Time.now <= Time.parse(exception[:end])
           end
         end
