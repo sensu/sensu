@@ -1,25 +1,19 @@
 module Sensu
   class Process
-    def initialize(options={})
+    def initialize
       @logger = Cabin::Channel.get
-      if options[:daemonize]
-        daemonize
-      end
-      if options[:pid_file]
-        write_pid(options[:pid_file])
-      end
-      setup_eventmachine
     end
 
-    def write_pid(pid_file)
+    def write_pid(file)
       begin
-        File.open(pid_file, 'w') do |file|
-          file.puts(::Process.pid)
+        File.open(file, 'w') do |pid_file|
+          pid_file.puts(::Process.pid)
         end
       rescue
         @logger.fatal('could not write to pid file', {
-          :pid_file => pid_file
+          :pid_file => file
         })
+        @logger.fatal('SENSU NOT RUNNING!')
         exit 2
       end
     end
