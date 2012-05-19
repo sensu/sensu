@@ -281,8 +281,8 @@ module Sensu
                     unless check[:auto_resolve] == false && !check[:force_resolve]
                       @redis.hdel('events:' + client[:name], check[:name]).callback do
                         unless check[:handle] == false
-                          event[:action] = 'resolve'
                           event[:occurrences] = previous_occurrence[:occurrences]
+                          event[:action] = 'resolve'
                           handle_event(event)
                         else
                           @logger.debug('handling disabled', {
