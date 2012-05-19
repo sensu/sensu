@@ -219,6 +219,12 @@ module Sensu
             unless check[:subdue][:days].is_a?(Array)
               raise('subdue days must be an array for check: ' + check[:name])
             end
+            check[:subdue][:days].each do |day|
+              days = %w[sunday monday tuesday wednesday thursday friday saturday]
+              unless day.is_a?(String) && days.include?(day.downcase)
+                raise('subdue days must be valid days of the week for check: ' + check[:name])
+              end
+            end
           end
           if check[:subdue].has_key?(:exceptions)
             unless check[:subdue][:exceptions].is_a?(Array)
