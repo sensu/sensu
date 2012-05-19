@@ -3,6 +3,14 @@ require 'em-spec/test'
 require 'em-http-request'
 require 'socket'
 
+module TestUtil
+  def teardown
+    Dir.glob('/tmp/sensu_*').each do |file|
+      File.delete(file)
+    end
+  end
+end
+
 if RUBY_VERSION < '1.9.0'
   gem 'test-unit'
 
@@ -10,12 +18,7 @@ if RUBY_VERSION < '1.9.0'
 
   class TestCase < Test::Unit::TestCase
     include ::EM::Test
-
-    def teardown
-      Dir.glob('/tmp/sensu_*').each do |file|
-        File.delete(file)
-      end
-    end
+    include TestUtil
   end
 else
   require 'minitest/unit'
@@ -24,12 +27,7 @@ else
 
   class TestCase < MiniTest::Unit::TestCase
     include ::EM::Test
-
-    def teardown
-      Dir.glob('/tmp/sensu_*').each do |file|
-        File.delete(file)
-      end
-    end
+    include TestUtil
   end
 end
 

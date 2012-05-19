@@ -63,6 +63,43 @@ module Sensu
       end
     end
 
+    def check_subdued?(check, subdue_type)
+      subdue = false
+      if check[:subdue].is_a?(Hash)
+        if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
+          start = Time.parse(check[:subdue][:start])
+          stop = Time.parse(check[:subdue][:end])
+          if stop < start
+            if Time.now < stop
+              start = Time.parse('12:00:00 AM')
+            else
+              stop = Time.parse('11:59:59 PM')
+            end
+          end
+          if Time.now >= start && Time.now <= stop
+            subdue = true
+          end
+        end
+        if check[:subdue].has_key?(:days)
+          days = Array(check[:subdue][:days]).map(&:downcase)
+          if days.include?(Time.now.strftime('%A').downcase)
+            subdue = true
+          end
+        end
+        if subdue && check[:subdue].has_key?(:exceptions)
+          subdue = Array(check[:subdue][:exceptions]).none? do |exception|
+            Time.now >= Time.parse(exception[:start]) && Time.now <= Time.parse(exception[:end])
+          end
+        end
+      end
+      if subdue
+        (!check[:subdue].has_key?(:at) && subdue_type == :handler) ||
+          (check[:subdue].has_key?(:at) && check[:subdue][:at].to_sym == subdue_type)
+      else
+        false
+      end
+    end
+
     def check_handlers(check)
       handler_list = case
       when check.has_key?(:handler)
@@ -93,7 +130,7 @@ module Sensu
     end
 
     def handle_event(event)
-      unless(subdued?(event[:check], :handler))
+      unless check_subdued?(event[:check], :handler)
         report = proc do |output|
           if output.is_a?(String)
             output.split(/\n+/).each do |line|
@@ -297,7 +334,7 @@ module Sensu
           @timers << EM::Timer.new(stagger * check_count) do
             interval = options[:test] ? 0.5 : check[:interval]
             @timers << EM::PeriodicTimer.new(interval) do
-              unless(subdued?(check, :publisher))
+              unless check_subdued?(check, :publisher)
                 unless @rabbitmq.reconnecting?
                   payload = {
                     :name => check[:name],
@@ -482,47 +519,6 @@ module Sensu
         resign_as_master do
           stop_reactor
         end
-      end
-    end
-
-    private
-
-    def subdued?(check, type)
-      subdue = false
-      if check[:subdue].is_a?(Hash)
-        if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
-          start = Time.parse(check[:subdue][:start])
-          stop = Time.parse(check[:subdue][:end])
-          if stop < start
-            if Time.now < stop
-              start = Time.parse('12:00:00 AM')
-            else
-              stop = Time.parse('11:59:59 PM')
-            end
-          end
-          if Time.now >= start && Time.now <= stop
-            subdue = true
-          end
-        end
-        if check[:subdue].has_key?(:days)
-          days = Array(check[:subdue][:days]).map(&:downcase)
-          if days.include?(Time.now.strftime('%A').downcase)
-            subdue = true
-          end
-        end
-        if subdue && check[:subdue].has_key?(:exceptions)
-          subdue = !Array(check[:subdue][:exceptions]).any? do |exception|
-            Time.now >= Time.parse(exception[:start]) && Time.now <= Time.parse(exception[:end])
-          end
-        end
-      end
-      case
-      when subdue && !check[:subdue].has_key?(:at) && type == :handler
-        true
-      when subdue && check[:subdue].has_key?(:at) && check[:subdue][:at].to_sym == type
-        true
-      else
-        false
       end
     end
   end
