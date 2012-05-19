@@ -39,15 +39,22 @@ class TestSensuSubdue < TestCase
     }
     config[:checks][:subdue_day][:subdue] = {
       :at => 'publisher',
-      :days => Time.now.strftime('%A')
+      :days => [
+        Time.now.strftime('%A')
+      ]
     }
     config[:checks][:subdue_days][:subdue] = {
       :at => 'publisher',
-      :days => [Time.now.strftime('%A'), 'Monday']
+      :days => [
+        Time.now.strftime('%A'),
+        'Monday'
+      ]
     }
     config[:checks][:nonsubdue_day][:subdue] = {
       :at => 'publisher',
-      :days => (Time.now + 86400).strftime('%A')
+      :days => [
+        (Time.now + 86400).strftime('%A')
+      ]
     }
     config[:checks][:nonsubdue_days][:subdue] = {
       :at => 'publisher',
@@ -58,19 +65,23 @@ class TestSensuSubdue < TestCase
     }
     config[:checks][:subdue_exception][:subdue] = {
       :at => 'publisher',
-      :exceptions => [{
-        :start => (Time.now + 3600).rfc2822,
-        :end => (Time.now + 7200)
-      }],
-      :days => %w[sunday monday tuesday wednesday thursday friday saturday]
+      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
+      :exceptions => [
+        {
+          :start => (Time.now + 3600).rfc2822,
+          :end => (Time.now + 7200)
+        }
+      ]
     }
     config[:checks][:nonsubdue_exception][:subdue] = {
       :at => 'publisher',
-      :exceptions => [{
-        :start => (Time.now - 3600).rfc2822,
-        :end => (Time.now + 3600).rfc2822
-      }],
-      :days => %w[sunday monday tuesday wednesday thursday friday saturday]
+      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
+      :exceptions => [
+        {
+          :start => (Time.now - 3600).rfc2822,
+          :end => (Time.now + 3600).rfc2822
+        }
+      ]
     }
     File.open(File.join(File.dirname(__FILE__), 'subdue_config.json'), 'w') do |file|
       file.write config.to_json

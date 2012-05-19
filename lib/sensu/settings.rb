@@ -203,6 +203,48 @@ module Sensu
             raise('handlers must be an array for check: ' + check[:name])
           end
         end
+        if check.has_key?(:subdue)
+          unless check[:subdue].is_a?(Hash)
+            raise('subdue must be a hash for check: ' + check[:name])
+          end
+          if check[:subdue].has_key?(:start) || check[:subdue].has_key?(:end)
+            begin
+              Time.parse(check[:subdue][:start])
+              Time.parse(check[:subdue][:end])
+            rescue
+              raise('subdue start & end times must be valid for check: ' + check[:name])
+            end
+          end
+          if check[:subdue].has_key?(:days)
+            unless check[:subdue][:days].is_a?(Array)
+              raise('subdue days must be an array for check: ' + check[:name])
+            end
+            check[:subdue][:days].each do |day|
+              days = %w[sunday monday tuesday wednesday thursday friday saturday]
+              unless day.is_a?(String) && days.include?(day.downcase)
+                raise('subdue days must be valid days of the week for check: ' + check[:name])
+              end
+            end
+          end
+          if check[:subdue].has_key?(:exceptions)
+            unless check[:subdue][:exceptions].is_a?(Array)
+              raise('subdue exceptions must be an array for check: ' + check[:name])
+            end
+            check[:subdue][:exceptions].each do |exception|
+              unless exception.is_a?(Hash)
+                raise('subdue exception items must be a hash for check: ' + check[:name])
+              end
+              if exception.has_key?(:start) || exception.has_key?(:end)
+                begin
+                  Time.parse(exception[:start])
+                  Time.parse(exception[:end])
+                rescue
+                  raise('subdue exception start & end times must be valid for check: ' + check[:name])
+                end
+              end
+            end
+          end
+        end
       end
     end
 
