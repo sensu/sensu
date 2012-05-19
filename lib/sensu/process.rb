@@ -25,6 +25,7 @@ module Sensu
       end
       unless ::Process.setsid
         @logger.fatal('cannot detach from controlling terminal')
+        @logger.fatal('SENSU NOT RUNNING!')
         exit 2
       end
       Signal.trap('SIGHUP', 'IGNORE')
