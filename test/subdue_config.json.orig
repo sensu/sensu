@@ -32,73 +32,73 @@
   "checks": {
     "subdue_time": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     },
     "nonsubdue_time": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     },
     "subdue_time_wrap": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     },
     "nonsubdue_time_wrap": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     },
     "subdue_day": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     },
     "nonsubdue_day": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     },
     "subdue_days": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     },
     "nonsubdue_days": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     },
     "subdue_exception": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     },
     "nonsubdue_exception": {
       "command": "ruby -e \"puts 'test'; exit 1\"",
-      "interval": 1,
       "subscribers": [
         "a"
-      ]
+      ],
+      "interval": 1
     }
   },
   "client": {
