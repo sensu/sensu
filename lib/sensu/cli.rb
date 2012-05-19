@@ -8,7 +8,7 @@ module Sensu
           exit
         end
         opts.on('-V', '--version', 'Display version') do
-          puts VERSION
+          puts Sensu::VERSION
           exit
         end
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE. Default is /etc/sensu/config.json') do |file|
@@ -31,7 +31,7 @@ module Sensu
         end
       end
       optparse.parse!(arguments)
-      DEFAULT_OPTIONS.merge(options)
+      Sensu::DEFAULT_OPTIONS.merge(options)
     end
   end
 end
