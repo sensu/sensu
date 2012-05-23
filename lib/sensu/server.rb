@@ -112,11 +112,8 @@ module Sensu
       else
         ['default']
       end
-      handler_list.reject! do |handler_name|
-        !@settings.handler_exists?(handler_name)
-      end
       handler_list.map! do |handler_name|
-        if @settings[:handlers][handler_name][:type] == 'set'
+        if @settings.handler_exists?(handler_name) && @settings[:handlers][handler_name][:type] == 'set'
           @settings[:handlers][handler_name][:handlers]
         else
           handler_name
@@ -125,7 +122,16 @@ module Sensu
       handler_list.flatten!
       handler_list.uniq!
       handler_list.reject! do |handler_name|
-        !@settings.handler_exists?(handler_name)
+        unless @settings.handler_exists?(handler_name)
+          @logger.warn('unknown handler', {
+            :handler => {
+              :name => handler_name
+            }
+          })
+          true
+        else
+          false
+        end
       end
       handler_list.map do |handler_name|
         @settings[:handlers][handler_name].merge(:name => handler_name)
