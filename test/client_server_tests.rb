@@ -62,8 +62,8 @@ class TestSensuClientServer < TestCase
     client.setup_rabbitmq
     client.setup_keepalives
     client.setup_subscriptions
-    client.setup_standalone(:test => true)
-    server.setup_publisher(:test => true)
+    client.setup_standalone
+    server.setup_publisher
     EM::Timer.new(1) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
         sorted_events = events.sort_by { |check_name, event_json| check_name }

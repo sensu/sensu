@@ -1,0 +1,87 @@
+require 'redis'
+
+module Sensu
+  class Redis < Redis::Client
+    attr_accessor :host, :port, :password, :on_disconnect
+
+    def initialize(*args)
+      super
+      @logger = Cabin::Channel.get
+      @connected = false
+      @closing_connection = false
+    end
+
+    def connection_completed
+      @connected = true
+      if @password
+        auth(@password).callback do |reply|
+          unless reply == 'OK'
+            explode('redis authentication failed')
+          end
+        end
+      end
+      info.callback do |reply|
+        redis_version = reply.split(/\n/).first.split(/:/).last.chomp
+        if redis_version < '1.3.14'
+          explode('redis version must be >= 2.0 RC 1')
+        end
+      end
+    end
+
+    def reconnect!
+      unless @connected
+        EM::Timer.new(1) do
+          reconnect(@host, @port)
+        end
+      end
+    end
+
+    def close
+      @closing_connection = true
+      close_connection
+    end
+
+    def unbind
+      @connected = false
+      super
+      if @on_disconnect && !@closing_connection
+        @on_disconnect.call
+      end
+    end
+
+    def connected?
+      @connected
+    end
+
+    def self.connect(options)
+      options ||= Hash.new
+      if options.is_a?(String)
+        begin
+          uri = URI.parse(options)
+          host = uri.host
+          port = uri.port || 6379
+          password = uri.password
+        rescue
+          explode('invalid redis url')
+        end
+      else
+        host = options[:host] || 'localhost'
+        port = options[:port] || 6379
+        password = options[:password]
+      end
+      EM::connect(host, port, self) do |redis|
+        redis.host = host
+        redis.port = port
+        redis.password = password
+      end
+    end
+
+    private
+
+    def explode(message)
+      @logger.fatal(message)
+      @logger.fatal('SENSU NOT RUNNING!')
+      exit 2
+    end
+  end
+end

@@ -1,8 +1,5 @@
 require File.join(File.dirname(__FILE__), 'base')
-
-require 'redis'
-
-require File.join(File.dirname(__FILE__), 'patches', 'redis')
+require File.join(File.dirname(__FILE__), 'redis')
 
 module Sensu
   class Server
@@ -38,7 +35,13 @@ module Sensu
       @logger.debug('connecting to redis', {
         :settings => @settings[:redis]
       })
-      @redis = Redis.connect(@settings[:redis])
+      @redis = Sensu::Redis.connect(@settings[:redis])
+      unless testing?
+        @redis.on_disconnect = Proc.new do
+          @logger.fatal('redis connection closed')
+          stop('TERM')
+        end
+      end
     end
 
     def setup_rabbitmq
@@ -131,7 +134,7 @@ module Sensu
 
     def handle_event(event)
       unless check_subdued?(event[:check], :handler)
-        report = proc do |output|
+        report = Proc.new do |output|
           if output.is_a?(String)
             output.split(/\n+/).each do |line|
               @logger.info('handler output', {
@@ -150,7 +153,7 @@ module Sensu
           @handlers_in_progress += 1
           case handler[:type]
           when 'pipe'
-            execute = proc do
+            execute = Proc.new do
               begin
                 IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
                   io.write(event.to_json)
@@ -324,18 +327,18 @@ module Sensu
       end
     end
 
-    def setup_publisher(options={})
+    def setup_publisher
       @logger.debug('scheduling check requests')
       check_count = 0
-      stagger = options[:test] ? 0 : 7
+      stagger = testing? ? 0 : 7
       @settings.checks.each do |check|
         unless check[:publish] == false || check[:standalone]
           check_count += 1
           @timers << EM::Timer.new(stagger * check_count) do
-            interval = options[:test] ? 0.5 : check[:interval]
+            interval = testing? ? 0.5 : check[:interval]
             @timers << EM::PeriodicTimer.new(interval) do
               unless check_subdued?(check, :publisher)
-                unless @rabbitmq.reconnecting?
+                if @rabbitmq.connected?
                   payload = {
                     :name => check[:name],
                     :issued => Time.now.to_i
@@ -369,7 +372,7 @@ module Sensu
     def setup_keepalive_monitor
       @logger.debug('monitoring client keepalives')
       @timers << EM::PeriodicTimer.new(30) do
-        unless @rabbitmq.reconnecting?
+        if @rabbitmq.connected?
           @logger.debug('checking for stale client info')
           @redis.smembers('clients').callback do |clients|
             clients.each do |client_name|
@@ -382,17 +385,17 @@ module Sensu
                 time_since_last_keepalive = Time.now.to_i - client[:timestamp]
                 case
                 when time_since_last_keepalive >= 180
-                  check[:output] = 'No keep-alive sent from host in over 180 seconds'
+                  check[:output] = 'No keep-alive sent from client in over 180 seconds'
                   check[:status] = 2
                   publish_result(client, check)
                 when time_since_last_keepalive >= 120
-                  check[:output] = 'No keep-alive sent from host in over 120 seconds'
+                  check[:output] = 'No keep-alive sent from client in over 120 seconds'
                   check[:status] = 1
                   publish_result(client, check)
                 else
                   @redis.hexists('events:' + client[:name], 'keepalive').callback do |exists|
                     if exists
-                      check[:output] = 'Keep-alive sent from host'
+                      check[:output] = 'Keep-alive sent from client'
                       check[:status] = 0
                       publish_result(client, check)
                     end
@@ -434,7 +437,7 @@ module Sensu
     end
 
     def resign_as_master(&block)
-      if @is_master
+      if @is_master && @redis.connected?
         @redis.del('lock:master').callback do
           @logger.warn('resigned as master')
           if block
@@ -442,7 +445,6 @@ module Sensu
           end
         end
       else
-        @logger.warn('not currently master')
         if block
           block.call
         end
@@ -465,9 +467,7 @@ module Sensu
     def setup_rabbitmq_monitor
       @logger.debug('monitoring rabbitmq connection')
       @timers << EM::PeriodicTimer.new(5) do
-        if @rabbitmq.reconnecting?
-          @logger.warn('reconnecting to rabbitmq')
-        else
+        if @rabbitmq.connected?
           unless @keepalive_queue.subscribed?
             @logger.warn('re-subscribing to keepalives')
             setup_keepalives
@@ -476,6 +476,8 @@ module Sensu
             @logger.warn('re-subscribing to results')
             setup_results
           end
+        else
+          @logger.warn('reconnecting to rabbitmq')
         end
       end
     end
@@ -490,10 +492,9 @@ module Sensu
         end
       end
       complete_in_progress.on_stop do
+        @redis.close
         @logger.warn('stopping reactor')
-        EM::PeriodicTimer.new(0.25) do
-          EM::stop_event_loop
-        end
+        EM::stop_event_loop
       end
     end
 
@@ -505,7 +506,7 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
-      unless @rabbitmq.reconnecting?
+      if @rabbitmq.connected?
         @logger.warn('unsubscribing from keepalives')
         @keepalive_queue.unsubscribe do
           @logger.warn('unsubscribing from results')
@@ -520,6 +521,12 @@ module Sensu
           stop_reactor
         end
       end
+    end
+
+    private
+
+    def testing?
+      File.basename($0) == 'rake'
     end
   end
 end

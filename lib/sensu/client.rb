@@ -48,8 +48,8 @@ module Sensu
     def setup_keepalives
       @logger.debug('scheduling keepalives')
       publish_keepalive
-      @timers << EM::PeriodicTimer.new(30) do
-        unless @rabbitmq.reconnecting?
+      @timers << EM::PeriodicTimer.new(20) do
+        if @rabbitmq.connected?
           publish_keepalive
         end
       end
@@ -90,7 +90,7 @@ module Sensu
             substitute
           end
           if unmatched_tokens.empty?
-            execute = proc do
+            execute = Proc.new do
               started = Time.now.to_f
               begin
                 IO.popen(command + ' 2>&1') do |io|
@@ -106,7 +106,7 @@ module Sensu
               end
               check[:duration] = ('%.3f' % (Time.now.to_f - started)).to_f
             end
-            publish = proc do
+            publish = Proc.new do
               unless check[:status].nil?
                 publish_result(check)
               else
@@ -178,28 +178,28 @@ module Sensu
     def setup_rabbitmq_monitor
       @logger.debug('monitoring rabbitmq connection')
       @timers << EM::PeriodicTimer.new(5) do
-        if @rabbitmq.reconnecting?
-          @logger.warn('reconnecting to rabbitmq')
-        else
+        if @rabbitmq.connected?
           unless @check_request_queue.subscribed?
             @logger.warn('re-subscribing to client subscriptions')
             setup_subscriptions
           end
+        else
+          @logger.warn('reconnecting to rabbitmq')
         end
       end
     end
 
-    def setup_standalone(options={})
+    def setup_standalone
       @logger.debug('scheduling standalone checks')
       standalone_check_count = 0
-      stagger = options[:test] ? 0 : 7
+      stagger = testing? ? 0 : 7
       @settings.checks.each do |check|
         if check[:standalone]
           standalone_check_count += 1
           @timers << EM::Timer.new(stagger * standalone_check_count) do
-            interval = options[:test] ? 0.5 : check[:interval]
+            interval = testing? ? 0.5 : check[:interval]
             @timers << EM::PeriodicTimer.new(interval) do
-              unless @rabbitmq.reconnecting?
+              if @rabbitmq.connected?
                 check[:issued] = Time.now.to_i
                 execute_check(check)
               end
@@ -237,9 +237,7 @@ module Sensu
       end
       complete_in_progress.on_stop do
         @logger.warn('stopping reactor')
-        EM::PeriodicTimer.new(0.25) do
-          EM::stop_event_loop
-        end
+        EM::stop_event_loop
       end
     end
 
@@ -251,7 +249,7 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
-      unless @rabbitmq.reconnecting?
+      if @rabbitmq.connected?
         @logger.warn('unsubscribing from client subscriptions')
         @check_request_queue.unsubscribe do
           stop_reactor
@@ -259,6 +257,12 @@ module Sensu
       else
         EM::stop_event_loop
       end
+    end
+
+    private
+
+    def testing?
+      File.basename($0) == 'rake'
     end
   end
 end
