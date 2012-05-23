@@ -99,8 +99,8 @@ class TestSensuSubdue < TestCase
     client.setup_rabbitmq
     client.setup_keepalives
     client.setup_subscriptions
-    client.setup_standalone(:test => true)
-    server.setup_publisher(:test => true)
+    client.setup_standalone
+    server.setup_publisher
     EM::Timer.new(4) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
         assert(events.size > 0, 'Failed to receive events')

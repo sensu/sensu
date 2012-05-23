@@ -1,10 +1,8 @@
 require File.join(File.dirname(__FILE__), 'base')
+require File.join(File.dirname(__FILE__), 'redis')
 
 require 'thin'
 require 'sinatra/async'
-require 'redis'
-
-require File.join(File.dirname(__FILE__), 'patches', 'redis')
 
 module Sensu
   class API < Sinatra::Base
@@ -32,7 +30,11 @@ module Sensu
       $logger.debug('connecting to redis', {
         :settings => $settings[:redis]
       })
-      $redis = Redis.connect($settings[:redis])
+      $redis = Sensu::Redis.connect($settings[:redis])
+      $redis.on_disconnect = Proc.new do
+        $logger.warn('reconnecting to redis')
+        $redis.reconnect!
+      end
       $logger.debug('connecting to rabbitmq', {
         :settings => $settings[:rabbitmq]
       })
@@ -45,7 +47,15 @@ module Sensu
       end
     end
 
-    def request_log(env)
+    def healthy?
+      unless $redis.connected?
+        unless env['REQUEST_PATH'] == '/info'
+          halt 500
+        end
+      end
+    end
+
+    def request_log
       $logger.info([env['REQUEST_METHOD'], env['REQUEST_PATH']].join(' '), {
         :remote_address => env['REMOTE_ADDR'],
         :user_agent => env['HTTP_USER_AGENT'],
@@ -71,7 +81,8 @@ module Sensu
 
     before do
       content_type 'application/json'
-      request_log(env)
+      request_log
+      healthy?
     end
 
     aget '/info' do
@@ -80,16 +91,10 @@ module Sensu
           :version => Sensu::VERSION
         },
         :health => {
-          :redis => 'ok',
-          :rabbitmq => 'ok'
+          :redis => $redis.connected? ? 'ok' : 'down',
+          :rabbitmq => $rabbitmq.connected? ? 'ok' : 'down'
         }
       }
-      if $redis.reconnecting?
-        response[:health][:redis] = 'down'
-      end
-      if $rabbitmq.reconnecting?
-        response[:health][:rabbitmq] = 'down'
-      end
       body response.to_json
     end
 
@@ -378,10 +383,9 @@ module Sensu
         :signal => signal
       })
       $logger.warn('stopping')
+      $redis.close
       $logger.warn('stopping reactor')
-      EM::PeriodicTimer.new(0.25) do
-        EM::stop_event_loop
-      end
+      EM::stop_event_loop
     end
   end
 end
