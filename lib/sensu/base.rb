@@ -23,7 +23,6 @@ module Sensu
 
     def initialize(options={})
       @options = Sensu::DEFAULT_OPTIONS.merge(options)
-      @logger = Cabin::Channel.get
       setup_logging
       setup_settings
       setup_process
@@ -33,6 +32,7 @@ module Sensu
       logger = Sensu::Logger.new(@options)
       logger.reopen
       logger.setup_traps
+      @logger = logger.channel
     end
 
     def setup_settings
