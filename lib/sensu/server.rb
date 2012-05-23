@@ -66,7 +66,7 @@ module Sensu
       end
     end
 
-    def check_subdued?(check, subdue_type)
+    def check_subdued?(check, subdue_at)
       subdue = false
       if check[:subdue].is_a?(Hash)
         if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
@@ -96,8 +96,8 @@ module Sensu
         end
       end
       if subdue
-        (!check[:subdue].has_key?(:at) && subdue_type == :handler) ||
-          (check[:subdue].has_key?(:at) && check[:subdue][:at].to_sym == subdue_type)
+        (!check[:subdue].has_key?(:at) && subdue_at == :handler) ||
+          (check[:subdue].has_key?(:at) && check[:subdue][:at].to_sym == subdue_at)
       else
         false
       end
