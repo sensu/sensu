@@ -23,7 +23,6 @@ module Sensu
 
     def initialize(options={})
       @options = Sensu::DEFAULT_OPTIONS.merge(options)
-      @logger = Cabin::Channel.get
       setup_logging
       setup_settings
       setup_process
@@ -33,6 +32,7 @@ module Sensu
       logger = Sensu::Logger.new(@options)
       logger.reopen
       logger.setup_traps
+      @logger = logger.channel
     end
 
     def setup_settings
@@ -42,15 +42,7 @@ module Sensu
       Dir[@options[:config_dir] + '/**/*.json'].each do |file|
         @settings.load_file(file)
       end
-      begin
-        @settings.validate
-      rescue => error
-        @logger.fatal('config invalid', {
-          :error => error.to_s
-        })
-        @logger.fatal('SENSU NOT RUNNING!')
-        exit 2
-      end
+      @settings.validate!
       @settings.set_env
     end
 

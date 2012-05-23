@@ -7,6 +7,10 @@ module Sensu
       @log_file = options[:log_file]
     end
 
+    def channel
+      @logger
+    end
+
     def reopen(file=nil)
       file ||= @log_file
       unless file.nil?
