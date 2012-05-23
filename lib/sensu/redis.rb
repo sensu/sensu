@@ -31,10 +31,8 @@ module Sensu
     end
 
     def reconnect!
-      unless @connected
-        EM::Timer.new(1) do
-          reconnect(@host, @port)
-        end
+      EM::Timer.new(1) do
+        reconnect(@host, @port)
       end
     end
 
