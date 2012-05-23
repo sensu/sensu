@@ -16,14 +16,16 @@ module Sensu
       if @password
         auth(@password).callback do |reply|
           unless reply == 'OK'
-            explode('redis authentication failed')
+            @logger.fatal('redis authentication failed')
+            close_connection
           end
         end
       end
       info.callback do |reply|
         redis_version = reply.split(/\n/).first.split(/:/).last.chomp
         if redis_version < '1.3.14'
-          explode('redis version must be >= 2.0 RC 1')
+          @logger.fatal('redis version must be >= 2.0 RC 1')
+          close_connection
         end
       end
     end
@@ -62,7 +64,9 @@ module Sensu
           port = uri.port || 6379
           password = uri.password
         rescue
-          explode('invalid redis url')
+          @logger.fatal('invalid redis url')
+          @logger.fatal('SENSU NOT RUNNING!')
+          exit 2
         end
       else
         host = options[:host] || 'localhost'
@@ -74,14 +78,6 @@ module Sensu
         redis.port = port
         redis.password = password
       end
-    end
-
-    private
-
-    def explode(message)
-      @logger.fatal(message)
-      @logger.fatal('SENSU NOT RUNNING!')
-      exit 2
     end
   end
 end
