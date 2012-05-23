@@ -10,7 +10,6 @@ require 'cabin'
 require 'amqp'
 
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
-require File.join(File.dirname(__FILE__), 'patches', 'amqp')
 
 require File.join(File.dirname(__FILE__), 'constants')
 require File.join(File.dirname(__FILE__), 'cli')
