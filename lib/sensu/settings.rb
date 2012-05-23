@@ -106,7 +106,7 @@ module Sensu
       @settings[:handlers].has_key?(handler_name.to_sym)
     end
 
-    def validate
+    def validate!
       @logger.debug('validating settings')
       validate_checks
       case File.basename($0)
@@ -172,74 +172,108 @@ module Sensu
       end
     end
 
+    def invalid(reason, details={})
+      @logger.fatal('invalid settings', {
+        :reason => reason
+      }.merge(details))
+      @logger.fatal('SENSU NOT RUNNING!')
+      exit 2
+    end
+
     def validate_checks
       unless @settings[:checks].is_a?(Hash)
-        raise('missing check configuration')
+        invalid('missing checks configuration')
       end
       checks.each do |check|
         unless check[:interval].is_a?(Integer) && check[:interval] > 0
-          raise('missing interval for check: ' + check[:name])
+          invalid('check is missing interval', {
+            :check => check
+          })
         end
         unless check[:command].is_a?(String)
-          raise('missing command for check: ' + check[:name])
+          invalid('check is missing command', {
+            :check => check
+          })
         end
         unless check[:standalone]
           unless check[:subscribers].is_a?(Array) && check[:subscribers].count > 0
-            raise('missing subscribers for check: ' + check[:name])
+            invalid('check is missing subscribers', {
+              :check => check
+            })
           end
           check[:subscribers].each do |subscriber|
             unless subscriber.is_a?(String) && !subscriber.empty?
-              raise('a check subscriber must be a string for check: ' + check[:name])
+              invalid('check subscribers must each be a string', {
+                :check => check
+              })
             end
           end
         end
         if check.has_key?(:handler)
           unless check[:handler].is_a?(String)
-            raise('handler must be a string for check: ' + check[:name])
+            invalid('check handler must be a string', {
+              :check => check
+            })
           end
         end
         if check.has_key?(:handlers)
           unless check[:handlers].is_a?(Array)
-            raise('handlers must be an array for check: ' + check[:name])
+            invalid('check handlers must be an array', {
+              :check => check
+            })
           end
         end
         if check.has_key?(:subdue)
           unless check[:subdue].is_a?(Hash)
-            raise('subdue must be a hash for check: ' + check[:name])
+            invalid('check subdue must be a hash', {
+              :check => check
+            })
           end
           if check[:subdue].has_key?(:start) || check[:subdue].has_key?(:end)
             begin
               Time.parse(check[:subdue][:start])
               Time.parse(check[:subdue][:end])
             rescue
-              raise('subdue start & end times must be valid for check: ' + check[:name])
+              invalid('check subdue start & end times must be valid', {
+                :check => check
+              })
             end
           end
           if check[:subdue].has_key?(:days)
             unless check[:subdue][:days].is_a?(Array)
-              raise('subdue days must be an array for check: ' + check[:name])
+              invalid('check subdue days must be an array', {
+                :check => check
+              })
             end
             check[:subdue][:days].each do |day|
               days = %w[sunday monday tuesday wednesday thursday friday saturday]
               unless day.is_a?(String) && days.include?(day.downcase)
-                raise('subdue days must be valid days of the week for check: ' + check[:name])
+                invalid('check subdue days must be valid days of the week', {
+                  :check => check
+                })
               end
             end
           end
           if check[:subdue].has_key?(:exceptions)
             unless check[:subdue][:exceptions].is_a?(Array)
-              raise('subdue exceptions must be an array for check: ' + check[:name])
+              invalid('check subdue exceptions must be an array', {
+                :check => check
+              })
             end
             check[:subdue][:exceptions].each do |exception|
               unless exception.is_a?(Hash)
-                raise('subdue exception items must be a hash for check: ' + check[:name])
+                invalid('check subdue exceptions must each be a hash', {
+                  :check => check
+                })
               end
               if exception.has_key?(:start) || exception.has_key?(:end)
                 begin
                   Time.parse(exception[:start])
                   Time.parse(exception[:end])
                 rescue
-                  raise('subdue exception start & end times must be valid for check: ' + check[:name])
+                  invalid('check subdue exception start & end times must be valid', {
+                    :check => check
+                  })
                 end
               end
             end
@@ -250,75 +284,89 @@ module Sensu
 
     def validate_client
       unless @settings[:client].is_a?(Hash)
-        raise('missing client configuration')
+        invalid('missing client configuration')
       end
       unless @settings[:client][:name].is_a?(String)
-        raise('client must have a name')
+        invalid('client must have a name')
       end
       unless @settings[:client][:address].is_a?(String)
-        raise('client must have an address')
+        invalid('client must have an address')
       end
       unless @settings[:client][:subscriptions].is_a?(Array) && @settings[:client][:subscriptions].count > 0
-        raise('client must have subscriptions')
+        invalid('client must have subscriptions')
       end
       @settings[:client][:subscriptions].each do |subscription|
         unless subscription.is_a?(String) && !subscription.empty?
-          raise('a client subscription must be a string')
+          invalid('client subscriptions must each be a string')
         end
       end
     end
 
     def validate_api
       unless @settings[:api].is_a?(Hash)
-        raise('missing api configuration')
+        invalid('missing api configuration')
       end
       unless @settings[:api][:port].is_a?(Integer)
-        raise('api port must be an integer')
+        invalid('api port must be an integer')
       end
       if @settings[:api].has_key?(:user) || @settings[:api].has_key?(:password)
         unless @settings[:api][:user].is_a?(String)
-          raise('api user must be a string')
+          invalid('api user must be a string')
         end
         unless @settings[:api][:password].is_a?(String)
-          raise('api password must be a string')
+          invalid('api password must be a string')
         end
       end
     end
 
     def validate_server
       unless @settings[:handlers].is_a?(Hash)
-        raise('missing handler configuration')
+        invalid('missing handlers configuration')
       end
       unless @settings[:handlers].include?(:default)
-        raise('missing default handler')
+        invalid('missing default handler')
       end
       handlers.each do |handler|
         unless handler[:type].is_a?(String)
-          raise('missing type for handler: ' + handler[:name])
+          invalid('handler is missing type', {
+            :handler => handler
+          })
         end
         case handler[:type]
         when 'pipe'
           unless handler[:command].is_a?(String)
-            raise('missing command for pipe handler: ' + handler[:name])
+            invalid('handler is missing command', {
+              :handler => handler
+            })
           end
         when 'amqp'
           unless handler[:exchange].is_a?(Hash)
-            raise('missing exchange details for amqp handler: ' + handler[:name])
+            invalid('handler is missing exchange hash', {
+              :handler => handler
+            })
           end
           unless handler[:exchange][:name].is_a?(String)
-            raise('missing exchange name for amqp handler: ' + handler[:name])
+            invalid('handler is missing exchange name', {
+              :handler => handler
+            })
           end
           if handler[:exchange].has_key?(:type)
             unless %w[direct fanout topic].include?(handler[:exchange][:type])
-              raise('invalid exchange type for amqp handler: ' + handler[:name])
+              invalid('handler exchange type is invalid', {
+                :handler => handler
+              })
             end
           end
         when 'set'
           unless handler[:handlers].is_a?(Array) && handler[:handlers].count > 0
-            raise('missing handler set for handler: ' + handler[:name])
+            invalid('handler set is missing handlers', {
+              :handler => handler
+            })
           end
         else
-          raise('unknown type for handler: ' + handler[:name])
+          invalid('unknown handler type', {
+            :handler => handler
+          })
         end
       end
     end

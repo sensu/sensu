@@ -42,15 +42,7 @@ module Sensu
       Dir[@options[:config_dir] + '/**/*.json'].each do |file|
         @settings.load_file(file)
       end
-      begin
-        @settings.validate
-      rescue => error
-        @logger.fatal('config invalid', {
-          :error => error.to_s
-        })
-        @logger.fatal('SENSU NOT RUNNING!')
-        exit 2
-      end
+      @settings.validate!
       @settings.set_env
     end
 
