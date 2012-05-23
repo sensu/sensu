@@ -44,7 +44,7 @@ class TestSensuClientServer < TestCase
     }
     server.handle_event(event)
     EM::Timer.new(2) do
-      assert(File.exist?('/tmp/sensu_test_handlers'))
+      assert(File.exists?('/tmp/sensu_test_handlers'))
       handler_output_file = File.open('/tmp/sensu_test_handlers', 'rb').read
       handler_output = JSON.parse(handler_output_file, :symbolize_names => true)
       assert_equal(event, handler_output)
