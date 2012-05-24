@@ -22,8 +22,8 @@ module Sensu
     end
 
     def initialize(options={})
+      @logger = Cabin::Channel.get
       base = Sensu::Base.new(options)
-      @logger = base.logger
       @settings = base.settings
       @timers = Array.new
       @checks_in_progress = Array.new
