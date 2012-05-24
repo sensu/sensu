@@ -91,6 +91,7 @@ module Sensu
           end
           if unmatched_tokens.empty?
             execute = Proc.new do
+              check = check.dup
               started = Time.now.to_f
               begin
                 IO.popen(command + ' 2>&1') do |io|
@@ -105,14 +106,11 @@ module Sensu
                 check[:status] = 2
               end
               check[:duration] = ('%.3f' % (Time.now.to_f - started)).to_f
+              check
             end
-            publish = Proc.new do
+            publish = Proc.new do |check|
               unless check[:status].nil?
                 publish_result(check)
-              else
-                @logger.warn('nil exit status code', {
-                  :check => check
-                })
               end
               @checks_in_progress.delete(check[:name])
             end
