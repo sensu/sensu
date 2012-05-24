@@ -443,7 +443,7 @@ module Sensu
     end
 
     def resign_as_master(&block)
-      if @is_master && @redis.connected?
+      if @redis.connected? && @is_master
         @redis.del('lock:master').callback do
           @logger.warn('resigned as master')
           if block
@@ -488,19 +488,37 @@ module Sensu
       end
     end
 
-    def stop_reactor
+    def unsubscribe(&block)
+      if @rabbitmq.connected?
+        @logger.warn('unsubscribing from keepalives')
+        @keepalive_queue.unsubscribe do
+          @logger.warn('unsubscribing from results')
+          @result_queue.unsubscribe do
+            if block
+              block.call
+            end
+          end
+        end
+      else
+        if block
+          block.call
+        end
+      end
+    end
+
+    def complete_handlers_in_progress(&block)
       @logger.info('completing handlers in progress', {
         :handlers_in_progress => @handlers_in_progress
       })
-      complete_in_progress = EM::tick_loop do
+      complete = EM::tick_loop do
         if @handlers_in_progress == 0
           :stop
         end
       end
-      complete_in_progress.on_stop do
-        @redis.close
-        @logger.warn('stopping reactor')
-        EM::stop_event_loop
+      complete.on_stop do
+        if block
+          block.call
+        end
       end
     end
 
@@ -512,19 +530,13 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
-      if @rabbitmq.connected?
-        @logger.warn('unsubscribing from keepalives')
-        @keepalive_queue.unsubscribe do
-          @logger.warn('unsubscribing from results')
-          @result_queue.unsubscribe do
-            resign_as_master do
-              stop_reactor
-            end
-          end
-        end
-      else
+      unsubscribe do
         resign_as_master do
-          stop_reactor
+          complete_handlers_in_progress do
+            @redis.close
+            @logger.warn('stopping reactor')
+            EM::stop_event_loop
+          end
         end
       end
     end
