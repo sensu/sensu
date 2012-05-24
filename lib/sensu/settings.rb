@@ -106,7 +106,7 @@ module Sensu
       @settings[:handlers].has_key?(handler_name.to_sym)
     end
 
-    def validate!
+    def validate
       @logger.debug('validating settings')
       validate_checks
       case File.basename($0)

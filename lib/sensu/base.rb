@@ -41,7 +41,7 @@ module Sensu
       Dir[@options[:config_dir] + '/**/*.json'].each do |file|
         @settings.load_file(file)
       end
-      @settings.validate!
+      @settings.validate
       @settings.set_env
     end
 
