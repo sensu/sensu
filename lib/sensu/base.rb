@@ -19,7 +19,7 @@ require File.join(File.dirname(__FILE__), 'process')
 
 module Sensu
   class Base
-    attr_reader :options, :logger, :settings
+    attr_reader :options, :settings
 
     def initialize(options={})
       @options = Sensu::DEFAULT_OPTIONS.merge(options)
@@ -32,7 +32,6 @@ module Sensu
       logger = Sensu::Logger.new(@options)
       logger.reopen
       logger.setup_traps
-      @logger = logger.channel
     end
 
     def setup_settings

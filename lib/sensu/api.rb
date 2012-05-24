@@ -24,8 +24,8 @@ module Sensu
     end
 
     def self.setup(options={})
+      $logger = Cabin::Channel.get
       base = Sensu::Base.new(options)
-      $logger = base.logger
       $settings = base.settings
       $logger.debug('connecting to redis', {
         :settings => $settings[:redis]
