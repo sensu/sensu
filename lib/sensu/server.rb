@@ -177,9 +177,11 @@ module Sensu
                   :error => error.to_s
                 })
               end
+            end
+            complete = Proc.new do
               @handlers_in_progress -= 1
             end
-            EM::defer(execute)
+            EM::defer(execute, complete)
           when 'amqp'
             exchange_name = handler[:exchange][:name]
             exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
