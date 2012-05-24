@@ -140,19 +140,9 @@ module Sensu
 
     def handle_event(event)
       unless check_subdued?(event[:check], :handler)
-        report = Proc.new do |output|
-          if output.is_a?(String)
-            output.split(/\n+/).each do |line|
-              @logger.info('handler output', {
-                :output => line
-              })
-            end
-          end
-          @handlers_in_progress -= 1
-        end
         handlers = check_handlers(event[:check])
         handlers.each do |handler|
-          @logger.debug('handling event', {
+          @logger.info('handling event', {
             :event => event,
             :handler => handler
           })
@@ -164,7 +154,9 @@ module Sensu
                 IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
                   io.write(event.to_json)
                   io.close_write
-                  io.read
+                  io.read.split(/\n+/).each do |line|
+                    @logger.debug(line)
+                  end
                 end
               rescue Errno::ENOENT => error
                 @logger.error('handler does not exist', {
@@ -185,8 +177,9 @@ module Sensu
                   :error => error.to_s
                 })
               end
+              @handlers_in_progress -= 1
             end
-            EM::defer(execute, report)
+            EM::defer(execute)
           when 'amqp'
             exchange_name = handler[:exchange][:name]
             exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
