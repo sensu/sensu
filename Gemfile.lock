@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    sensu (0.9.6.beta.4)
+    sensu (0.9.6.beta.5)
       amqp (= 0.7.4)
       async_sinatra (= 1.0.0)
       cabin (= 0.4.4)
@@ -40,7 +40,7 @@ GEM
       test-unit
     eventmachine (1.0.0.beta.4)
     http_parser.rb (0.5.3)
-    json (1.7.0)
+    json (1.7.3)
     rack (1.4.1)
     rack-protection (1.2.0)
       rack
