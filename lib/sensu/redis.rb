@@ -4,14 +4,16 @@ module Sensu
   class Redis < Redis::Client
     attr_accessor :host, :port, :password, :on_disconnect
 
-    def initialize(*args)
+    def initialize(*arguments)
       super
       @logger = Cabin::Channel.get
+      @connection_established = false
       @connected = false
       @closing_connection = false
     end
 
     def connection_completed
+      @connection_established = true
       @connected = true
       if @password
         auth(@password).callback do |reply|
@@ -47,6 +49,10 @@ module Sensu
       if @on_disconnect && !@closing_connection
         @on_disconnect.call
       end
+    end
+
+    def connection_established?
+      @connection_established
     end
 
     def connected?

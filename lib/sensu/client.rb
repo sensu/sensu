@@ -34,6 +34,13 @@ module Sensu
         :settings => @settings[:rabbitmq]
       })
       @rabbitmq = AMQP.connect(@settings[:rabbitmq])
+      @rabbitmq.on_disconnect = Proc.new do
+        @logger.fatal('cannot connect to rabbitmq', {
+          :settings => @settings[:rabbitmq]
+        })
+        @logger.fatal('SENSU NOT RUNNING!')
+        exit 2
+      end
       @amq = AMQP::Channel.new(@rabbitmq)
     end
 

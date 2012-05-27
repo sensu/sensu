@@ -38,8 +38,16 @@ module Sensu
       @redis = Sensu::Redis.connect(@settings[:redis])
       unless testing?
         @redis.on_disconnect = Proc.new do
-          @logger.fatal('redis connection closed')
-          stop('TERM')
+          if @redis.connection_established?
+            @logger.fatal('redis connection closed')
+            stop('TERM')
+          else
+            @logger.fatal('cannot connect to redis', {
+              :settings => @settings[:redis]
+            })
+            @logger.fatal('SENSU NOT RUNNING!')
+            exit 2
+          end
         end
       end
     end
@@ -49,6 +57,14 @@ module Sensu
         :settings => @settings[:rabbitmq]
       })
       @rabbitmq = AMQP.connect(@settings[:rabbitmq])
+      @rabbitmq.on_disconnect = Proc.new do
+        @logger.fatal('cannot connect to rabbitmq', {
+          :settings => @settings[:rabbitmq]
+        })
+        @logger.fatal('SENSU NOT RUNNING!')
+        @redis.close
+        exit 2
+      end
       @amq = AMQP::Channel.new(@rabbitmq)
     end
 
