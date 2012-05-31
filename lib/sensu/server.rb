@@ -210,10 +210,12 @@ module Sensu
             })
             payloads = Array.new
             if handler[:send_only_check_output]
-              payloads.push(event[:check][:output])
-            elsif handler[:split_check_output]
-              event[:check][:output].split(/\n+/).each do |line|
-                payloads.push(line)
+              if handler[:split_check_output]
+                event[:check][:output].split(/\n+/).each do |line|
+                  payloads.push(line)
+                end
+              else
+                payloads.push(event[:check][:output])
               end
             else
               payloads.push(event.to_json)
