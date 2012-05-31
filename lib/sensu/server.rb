@@ -208,9 +208,20 @@ module Sensu
               :event => event,
               :exchange => handler[:exchange]
             })
-            payload = handler[:send_only_check_output] ? event[:check][:output] : event.to_json
-            unless payload.empty?
-              @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
+            payloads = Array.new
+            if handler[:send_only_check_output]
+              payloads.push(event[:check][:output])
+            elsif handler[:split_check_output]
+              event[:check][:output].split(/\n+/).each do |line|
+                payloads.push(line)
+              end
+            else
+              payloads.push(event.to_json)
+            end
+            payloads.each do |payload|
+              unless payload.empty?
+                @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
+              end
             end
             @handlers_in_progress -= 1
           when 'set'
