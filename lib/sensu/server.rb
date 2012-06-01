@@ -158,7 +158,7 @@ module Sensu
       unless check_subdued?(event[:check], :handler)
         handlers = check_handlers(event[:check])
         handlers.each do |handler|
-          @logger.info('handling event', {
+          @logger.debug('handling event', {
             :event => event,
             :handler => handler
           })
