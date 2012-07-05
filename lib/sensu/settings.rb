@@ -5,6 +5,7 @@ module Sensu
     def initialize
       @logger = Cabin::Channel.get
       @settings = Hash.new
+      @settings[:checks] = Hash.new
       @indifferent_access = false
       @loaded_env = false
       @loaded_files = Array.new
@@ -182,7 +183,7 @@ module Sensu
 
     def validate_checks
       unless @settings[:checks].is_a?(Hash)
-        invalid('missing checks configuration')
+        invalid('checks must be a hash')
       end
       checks.each do |check|
         unless check[:interval].is_a?(Integer) && check[:interval] > 0
