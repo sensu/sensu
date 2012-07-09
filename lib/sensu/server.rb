@@ -171,7 +171,7 @@ module Sensu
                   io.write(event.to_json)
                   io.close_write
                   io.read.split(/\n+/).each do |line|
-                    @logger.debug(line)
+                    @logger.info(line)
                   end
                 end
               rescue Errno::ENOENT => error
