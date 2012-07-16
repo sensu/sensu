@@ -34,6 +34,11 @@
       "type": "pipe",
       "command": "./test/handlers/file.rb"
     },
+    "transformed": {
+      "type": "pipe",
+      "command": "./test/handlers/stdout.rb",
+      "transformer": "./test/transformers/noop.rb"
+    },
     "graphite": {
       "type": "amqp",
       "exchange": {
@@ -53,6 +58,7 @@
       "interval": 1
     },
     "b": {
+      "handler": "default",
       "command": "will be overridden by a config snippet",
       "subscribers": [
         "a"
@@ -61,15 +67,15 @@
       "auto_resolve": true
     },
     "c": {
-      "handler": "default",
+      "handlers": [
+        "default"
+      ],
       "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 3\"",
       "standalone": true,
       "interval": 1
     },
     "d": {
-      "handlers": [
-        "default"
-      ],
+      "handler": "transformed",
       "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 4\"",
       "subscribers": [
         "a",

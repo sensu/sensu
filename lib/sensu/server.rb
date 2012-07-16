@@ -167,6 +167,20 @@ module Sensu
           else
             transformed = event[:check][:output]
           end
+        else
+          begin
+            IO.popen(handler[:transformer], 'r+') do |io|
+              io.write(event.to_json)
+              io.close_write
+              transformed = io.read
+            end
+          rescue => error
+            @logger.error('transformer error', {
+              :event => event,
+              :transformer => handler[:transformer],
+              :error => error.to_s
+            })
+          end
         end
         transformed
       else
@@ -194,20 +208,8 @@ module Sensu
                     @logger.info(line)
                   end
                 end
-              rescue Errno::ENOENT => error
-                @logger.error('handler does not exist', {
-                  :event => event,
-                  :handler => handler,
-                  :error => error.to_s
-                })
-              rescue Errno::EPIPE => error
-                @logger.error('broken pipe', {
-                  :event => event,
-                  :handler => handler,
-                  :error => error.to_s
-                })
               rescue => error
-                @logger.error('unexpected error', {
+                @logger.error('handler error', {
                   :event => event,
                   :handler => handler,
                   :error => error.to_s
