@@ -154,6 +154,26 @@ module Sensu
       end
     end
 
+    def transform_event_data(handler, event)
+      if handler.has_key?(:transformer)
+        transformed = nil
+        case handler[:transformer]
+        when /^only_check_output/
+          if handler[:type] == 'amqp' && handler[:transformer] =~ /split$/
+            transformed = Array.new
+            event[:check][:output].split(/\n+/).each do |line|
+              transformed.push(line)
+            end
+          else
+            transformed = event[:check][:output]
+          end
+        end
+        transformed
+      else
+        event.to_json
+      end
+    end
+
     def handle_event(event)
       unless check_subdued?(event[:check], :handler)
         handlers = check_handlers(event[:check])
@@ -168,7 +188,7 @@ module Sensu
             execute = Proc.new do
               begin
                 IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
-                  io.write(event.to_json)
+                  io.write(transform_event_data(handler, event))
                   io.close_write
                   io.read.split(/\n+/).each do |line|
                     @logger.info(line)
@@ -208,24 +228,18 @@ module Sensu
               :event => event,
               :exchange => handler[:exchange]
             })
-            payloads = Array.new
-            if handler[:send_only_check_output]
-              if handler[:split_check_output]
-                event[:check][:output].split(/\n+/).each do |line|
-                  payloads.push(line)
+            payloads = Proc.new do
+              Array(transform_event_data(handler, event))
+            end
+            publish = Proc.new do |payloads|
+              payloads.each do |payload|
+                unless payload.empty?
+                  @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
                 end
-              else
-                payloads.push(event[:check][:output])
               end
-            else
-              payloads.push(event.to_json)
+              @handlers_in_progress -= 1
             end
-            payloads.each do |payload|
-              unless payload.empty?
-                @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
-              end
-            end
-            @handlers_in_progress -= 1
+            EM::defer(payloads, publish)
           when 'set'
             @logger.error('handler sets cannot be nested', {
               :handler => handler

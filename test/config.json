@@ -41,7 +41,7 @@
         "name": "graphite",
         "key": "sensu.test"
       },
-      "send_only_check_output": true
+      "transformer": "only_check_output"
     }
   },
   "checks": {
