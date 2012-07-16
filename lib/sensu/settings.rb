@@ -5,7 +5,9 @@ module Sensu
     def initialize
       @logger = Cabin::Channel.get
       @settings = Hash.new
-      @settings[:checks] = Hash.new
+      [:checks, :handlers, :transformers].each do |key|
+        @settings[key] = Hash.new
+      end
       @indifferent_access = false
       @loaded_env = false
       @loaded_files = Array.new
@@ -87,24 +89,16 @@ module Sensu
       ENV['SENSU_CONFIG_FILES'] = @loaded_files.join(':')
     end
 
-    def checks
-      @settings[:checks].map do |check_name, check_details|
-        check_details.merge(:name => check_name.to_s)
+    [:checks, :handlers, :transformers].each do |key|
+      define_method(key) do
+        @settings[key].map do |name, details|
+          details.merge(:name => name.to_s)
+        end
       end
-    end
 
-    def handlers
-      @settings[:handlers].map do |handler_name, handler_details|
-        handler_details.merge(:name => handler_name.to_s)
+      define_method((key.to_s.chop + '_exists?').to_sym) do |name|
+        @settings[key].has_key?(name.to_sym)
       end
-    end
-
-    def check_exists?(check_name)
-      @settings[:checks].has_key?(check_name.to_sym)
-    end
-
-    def handler_exists?(handler_name)
-      @settings[:handlers].has_key?(handler_name.to_sym)
     end
 
     def validate
@@ -322,7 +316,7 @@ module Sensu
 
     def validate_server
       unless @settings[:handlers].is_a?(Hash)
-        invalid('missing handlers configuration')
+        invalid('handlers must be a hash')
       end
       unless @settings[:handlers].include?(:default)
         invalid('missing default handler')
@@ -367,6 +361,16 @@ module Sensu
         else
           invalid('unknown handler type', {
             :handler => handler
+          })
+        end
+      end
+      unless @settings[:transformers].is_a?(Hash)
+        invalid('transformers must be a hash')
+      end
+      transformers.each do |transformer|
+        unless transformer[:command].is_a?(String)
+          invalid('transformer is missing command', {
+            :transformer => transformer
           })
         end
       end

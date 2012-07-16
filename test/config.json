@@ -19,6 +19,11 @@
     "user": "admin",
     "password": "secret"
   },
+  "transformers": {
+    "noop": {
+      "command": "./test/transformers/noop.rb"
+    }
+  },
   "handlers": {
     "default": {
       "type": "set",
@@ -36,8 +41,8 @@
     },
     "transformed": {
       "type": "pipe",
-      "command": "./test/handlers/stdout.rb",
-      "transformer": "./test/transformers/noop.rb"
+      "transformer": "noop",
+      "command": "./test/handlers/stdout.rb"
     },
     "graphite": {
       "type": "amqp",

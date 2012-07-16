@@ -168,17 +168,26 @@ module Sensu
             transformed = event[:check][:output]
           end
         else
-          begin
-            IO.popen(handler[:transformer], 'r+') do |io|
-              io.write(event.to_json)
-              io.close_write
-              transformed = io.read
+          if @settings.transformer_exists?(handler[:transformer])
+            transformer = @settings[:transformers][handler[:transformer]]
+            begin
+              IO.popen(transformer[:command], 'r+') do |io|
+                io.write(event.to_json)
+                io.close_write
+                transformed = io.read
+              end
+            rescue => error
+              @logger.error('transformer error', {
+                :event => event,
+                :transformer => transformer,
+                :error => error.to_s
+              })
             end
-          rescue => error
-            @logger.error('transformer error', {
-              :event => event,
-              :transformer => handler[:transformer],
-              :error => error.to_s
+          else
+            @logger.error('unknown transformer', {
+              :transformer => {
+                :name => handler[:transformer]
+              }
             })
           end
         end
