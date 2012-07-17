@@ -216,11 +216,14 @@ module Sensu
           when 'pipe'
             execute = Proc.new do
               begin
-                IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
-                  io.write(transform_event_data(handler, event))
-                  io.close_write
-                  io.read.split(/\n+/).each do |line|
-                    @logger.info(line)
+                transformed_event_data = transform_event_data(handler, event)
+                unless transformed_event_data.nil? || transformed_event_data.empty?
+                  IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
+                    io.write(transformed_event_data)
+                    io.close_write
+                    io.read.split(/\n+/).each do |line|
+                      @logger.info(line)
+                    end
                   end
                 end
               rescue => error
