@@ -176,6 +176,12 @@ module Sensu
                 io.close_write
                 transformed = io.read
               end
+              unless $?.exitstatus == 0
+                @logger.warn('transformer had a non-zero exit status', {
+                  :event => event,
+                  :transformer => transformer
+                })
+              end
             rescue => error
               @logger.error('transformer error', {
                 :event => event,
