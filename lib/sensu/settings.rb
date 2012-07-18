@@ -5,7 +5,7 @@ module Sensu
     def initialize
       @logger = Cabin::Channel.get
       @settings = Hash.new
-      [:checks, :handlers, :transformers].each do |key|
+      [:checks, :handlers, :mutators].each do |key|
         @settings[key] = Hash.new
       end
       @indifferent_access = false
@@ -89,7 +89,7 @@ module Sensu
       ENV['SENSU_CONFIG_FILES'] = @loaded_files.join(':')
     end
 
-    [:checks, :handlers, :transformers].each do |key|
+    [:checks, :handlers, :mutators].each do |key|
       define_method(key) do
         @settings[key].map do |name, details|
           details.merge(:name => name.to_s)
@@ -364,13 +364,13 @@ module Sensu
           })
         end
       end
-      unless @settings[:transformers].is_a?(Hash)
-        invalid('transformers must be a hash')
+      unless @settings[:mutators].is_a?(Hash)
+        invalid('mutators must be a hash')
       end
-      transformers.each do |transformer|
-        unless transformer[:command].is_a?(String)
-          invalid('transformer is missing command', {
-            :transformer => transformer
+      mutators.each do |mutator|
+        unless mutator[:command].is_a?(String)
+          invalid('mutator is missing command', {
+            :mutator => mutator
           })
         end
       end

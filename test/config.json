@@ -19,9 +19,9 @@
     "user": "admin",
     "password": "secret"
   },
-  "transformers": {
+  "mutators": {
     "noop": {
-      "command": "./test/transformers/noop.rb"
+      "command": "./test/mutators/noop.rb"
     }
   },
   "handlers": {
@@ -39,9 +39,9 @@
       "type": "pipe",
       "command": "./test/handlers/file.rb"
     },
-    "transformed": {
+    "mutated": {
       "type": "pipe",
-      "transformer": "noop",
+      "mutator": "noop",
       "command": "./test/handlers/stdout.rb"
     },
     "graphite": {
@@ -51,7 +51,7 @@
         "name": "graphite",
         "key": "sensu.test"
       },
-      "transformer": "only_check_output"
+      "mutator": "only_check_output"
     }
   },
   "checks": {
@@ -80,7 +80,7 @@
       "interval": 1
     },
     "d": {
-      "handler": "transformed",
+      "handler": "mutated",
       "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 4\"",
       "subscribers": [
         "a",

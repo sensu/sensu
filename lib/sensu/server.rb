@@ -154,50 +154,50 @@ module Sensu
       end
     end
 
-    def transform_event_data(handler, event)
-      if handler.has_key?(:transformer)
-        transformed = nil
-        case handler[:transformer]
+    def mutate_event_data(handler, event)
+      if handler.has_key?(:mutator)
+        mutated = nil
+        case handler[:mutator]
         when /^only_check_output/
-          if handler[:type] == 'amqp' && handler[:transformer] =~ /split$/
-            transformed = Array.new
+          if handler[:type] == 'amqp' && handler[:mutator] =~ /split$/
+            mutated = Array.new
             event[:check][:output].split(/\n+/).each do |line|
-              transformed.push(line)
+              mutated.push(line)
             end
           else
-            transformed = event[:check][:output]
+            mutated = event[:check][:output]
           end
         else
-          if @settings.transformer_exists?(handler[:transformer])
-            transformer = @settings[:transformers][handler[:transformer]]
+          if @settings.mutator_exists?(handler[:mutator])
+            mutator = @settings[:mutators][handler[:mutator]]
             begin
-              IO.popen(transformer[:command], 'r+') do |io|
+              IO.popen(mutator[:command], 'r+') do |io|
                 io.write(event.to_json)
                 io.close_write
-                transformed = io.read
+                mutated = io.read
               end
               unless $?.exitstatus == 0
-                @logger.warn('transformer had a non-zero exit status', {
+                @logger.warn('mutator had a non-zero exit status', {
                   :event => event,
-                  :transformer => transformer
+                  :mutator => mutator
                 })
               end
             rescue => error
-              @logger.error('transformer error', {
+              @logger.error('mutator error', {
                 :event => event,
-                :transformer => transformer,
+                :mutator => mutator,
                 :error => error.to_s
               })
             end
           else
-            @logger.error('unknown transformer', {
-              :transformer => {
-                :name => handler[:transformer]
+            @logger.error('unknown mutator', {
+              :mutator => {
+                :name => handler[:mutator]
               }
             })
           end
         end
-        transformed
+        mutated
       else
         event.to_json
       end
@@ -216,10 +216,10 @@ module Sensu
           when 'pipe'
             execute = Proc.new do
               begin
-                transformed_event_data = transform_event_data(handler, event)
-                unless transformed_event_data.nil? || transformed_event_data.empty?
+                mutated_event_data = mutate_event_data(handler, event)
+                unless mutated_event_data.nil? || mutated_event_data.empty?
                   IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
-                    io.write(transformed_event_data)
+                    io.write(mutated_event_data)
                     io.close_write
                     io.read.split(/\n+/).each do |line|
                       @logger.info(line)
@@ -249,7 +249,7 @@ module Sensu
               :exchange => handler[:exchange]
             })
             payloads = Proc.new do
-              Array(transform_event_data(handler, event))
+              Array(mutate_event_data(handler, event))
             end
             publish = Proc.new do |payloads|
               payloads.each do |payload|
