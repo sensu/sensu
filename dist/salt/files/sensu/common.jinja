@@ -1,6 +1,0 @@
-{% set init_prefix = "/etc/init.d" %}
-{% set sensu_parts = ["sensu-server", "sensu-dashboard", "sensu-api", "sensu-client"] %}
-
-{% macro init_script_path(part) %}{{ init_prefix }}/{{ part }}{% endmacro %}
-{% macro config_filename(hostname, part) %}{{ part }}-{{ hostname }}.conf{% endmacro %}
-{% macro config_path(hostname, part) %}/etc/sensu/{{ config_filename(hostname, part) }}{% endmacro %}
