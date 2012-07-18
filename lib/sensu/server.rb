@@ -154,6 +154,55 @@ module Sensu
       end
     end
 
+    def mutate_event_data(handler, event)
+      if handler.has_key?(:mutator)
+        mutated = nil
+        case handler[:mutator]
+        when /^only_check_output/
+          if handler[:type] == 'amqp' && handler[:mutator] =~ /split$/
+            mutated = Array.new
+            event[:check][:output].split(/\n+/).each do |line|
+              mutated.push(line)
+            end
+          else
+            mutated = event[:check][:output]
+          end
+        else
+          if @settings.mutator_exists?(handler[:mutator])
+            mutator = @settings[:mutators][handler[:mutator]]
+            begin
+              IO.popen(mutator[:command], 'r+') do |io|
+                io.write(event.to_json)
+                io.close_write
+                mutated = io.read
+              end
+              unless $?.exitstatus == 0
+                @logger.warn('mutator had a non-zero exit status', {
+                  :event => event,
+                  :mutator => mutator
+                })
+              end
+            rescue => error
+              @logger.error('mutator error', {
+                :event => event,
+                :mutator => mutator,
+                :error => error.to_s
+              })
+            end
+          else
+            @logger.error('unknown mutator', {
+              :mutator => {
+                :name => handler[:mutator]
+              }
+            })
+          end
+        end
+        mutated
+      else
+        event.to_json
+      end
+    end
+
     def handle_event(event)
       unless check_subdued?(event[:check], :handler)
         handlers = check_handlers(event[:check])
@@ -167,27 +216,18 @@ module Sensu
           when 'pipe'
             execute = Proc.new do
               begin
-                IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
-                  io.write(event.to_json)
-                  io.close_write
-                  io.read.split(/\n+/).each do |line|
-                    @logger.info(line)
+                mutated_event_data = mutate_event_data(handler, event)
+                unless mutated_event_data.nil? || mutated_event_data.empty?
+                  IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
+                    io.write(mutated_event_data)
+                    io.close_write
+                    io.read.split(/\n+/).each do |line|
+                      @logger.info(line)
+                    end
                   end
                 end
-              rescue Errno::ENOENT => error
-                @logger.error('handler does not exist', {
-                  :event => event,
-                  :handler => handler,
-                  :error => error.to_s
-                })
-              rescue Errno::EPIPE => error
-                @logger.error('broken pipe', {
-                  :event => event,
-                  :handler => handler,
-                  :error => error.to_s
-                })
               rescue => error
-                @logger.error('unexpected error', {
+                @logger.error('handler error', {
                   :event => event,
                   :handler => handler,
                   :error => error.to_s
@@ -208,24 +248,18 @@ module Sensu
               :event => event,
               :exchange => handler[:exchange]
             })
-            payloads = Array.new
-            if handler[:send_only_check_output]
-              if handler[:split_check_output]
-                event[:check][:output].split(/\n+/).each do |line|
-                  payloads.push(line)
+            payloads = Proc.new do
+              Array(mutate_event_data(handler, event))
+            end
+            publish = Proc.new do |payloads|
+              payloads.each do |payload|
+                unless payload.empty?
+                  @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
                 end
-              else
-                payloads.push(event[:check][:output])
               end
-            else
-              payloads.push(event.to_json)
+              @handlers_in_progress -= 1
             end
-            payloads.each do |payload|
-              unless payload.empty?
-                @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
-              end
-            end
-            @handlers_in_progress -= 1
+            EM::defer(payloads, publish)
           when 'set'
             @logger.error('handler sets cannot be nested', {
               :handler => handler

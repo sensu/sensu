@@ -19,6 +19,11 @@
     "user": "admin",
     "password": "secret"
   },
+  "mutators": {
+    "noop": {
+      "command": "./test/mutators/noop.rb"
+    }
+  },
   "handlers": {
     "default": {
       "type": "set",
@@ -34,6 +39,11 @@
       "type": "pipe",
       "command": "./test/handlers/file.rb"
     },
+    "mutated": {
+      "type": "pipe",
+      "mutator": "noop",
+      "command": "./test/handlers/stdout.rb"
+    },
     "graphite": {
       "type": "amqp",
       "exchange": {
@@ -41,7 +51,7 @@
         "name": "graphite",
         "key": "sensu.test"
       },
-      "send_only_check_output": true
+      "mutator": "only_check_output"
     }
   },
   "checks": {
@@ -53,6 +63,7 @@
       "interval": 1
     },
     "b": {
+      "handler": "default",
       "command": "will be overridden by a config snippet",
       "subscribers": [
         "a"
@@ -61,15 +72,15 @@
       "auto_resolve": true
     },
     "c": {
-      "handler": "default",
+      "handlers": [
+        "default"
+      ],
       "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 3\"",
       "standalone": true,
       "interval": 1
     },
     "d": {
-      "handlers": [
-        "default"
-      ],
+      "handler": "mutated",
       "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 4\"",
       "subscribers": [
         "a",
