@@ -1,1 +1,0 @@
-sensu-dashboard: true

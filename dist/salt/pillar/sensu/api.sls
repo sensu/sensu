@@ -1,1 +1,0 @@
-sensu-api: true
