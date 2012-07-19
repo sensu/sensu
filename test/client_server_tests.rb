@@ -58,10 +58,12 @@ class TestSensuClientServer < TestCase
     event[:check][:handler] = 'tcp_socket'
     socket = Proc.new do
       tcp_server = TCPServer.open(1234)
-      tcp_server.accept.gets
+      data = tcp_server.accept.gets
+      tcp_server.close
+      data
     end
-    callback = Proc.new do |response|
-      output = JSON.parse(response, :symbolize_names => true)
+    callback = Proc.new do |data|
+      output = JSON.parse(data, :symbolize_names => true)
       assert_equal(event, output)
       done
     end
@@ -78,10 +80,12 @@ class TestSensuClientServer < TestCase
     socket = Proc.new do
       udp_socket = UDPSocket.new
       udp_socket.bind('127.0.0.1', 1234)
-      udp_socket.recv(1024)
+      data = udp_socket.recv(1024)
+      udp_socket.close
+      data
     end
-    callback = Proc.new do |response|
-      output = JSON.parse(response, :symbolize_names => true)
+    callback = Proc.new do |data|
+      output = JSON.parse(data, :symbolize_names => true)
       assert_equal(event, output)
       done
     end
