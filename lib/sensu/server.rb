@@ -242,17 +242,17 @@ module Sensu
             data = Proc.new do
               mutate_event_data(handler, event)
             end
-            send = Proc.new do |data|
+            write = Proc.new do |data|
               begin
                 case handler[:type]
-                when 'udp'
-                  EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
-                    socket.send_datagram(data, handler[:socket][:host], handler[:socket][:port])
-                    socket.close_connection_after_writing
-                  end
                 when 'tcp'
                   EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
                     socket.send_data(data)
+                    socket.close_connection_after_writing
+                  end
+                when 'udp'
+                  EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+                    socket.send_datagram(data, handler[:socket][:host], handler[:socket][:port])
                     socket.close_connection_after_writing
                   end
                 end
@@ -265,7 +265,7 @@ module Sensu
               end
               @handlers_in_progress -= 1
             end
-            EM::defer(data, send)
+            EM::defer(data, write)
           when 'amqp'
             exchange_name = handler[:exchange][:name]
             exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
