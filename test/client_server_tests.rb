@@ -14,7 +14,6 @@ class TestSensuClientServer < TestCase
         :issued => Time.now.to_i,
         :output => 'WARNING',
         :status => 1,
-        :handler => 'default',
         :history => [1]
       },
       :occurrences => 1,
