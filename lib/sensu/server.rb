@@ -238,16 +238,40 @@ module Sensu
               @handlers_in_progress -= 1
             end
             EM::defer(execute, complete)
+          when 'tcp', 'udp'
+            data = Proc.new do
+              mutate_event_data(handler, event)
+            end
+            send = Proc.new do |data|
+              begin
+                case handler[:type]
+                when 'udp'
+                  EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+                    socket.send_datagram(data, handler[:socket][:host], handler[:socket][:port])
+                    socket.close_connection_after_writing
+                  end
+                when 'tcp'
+                  EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
+                    socket.send_data(data)
+                    socket.close_connection_after_writing
+                  end
+                end
+              rescue => error
+                @logger.error('handler error', {
+                  :event => event,
+                  :handler => handler,
+                  :error => error.to_s
+                })
+              end
+              @handlers_in_progress -= 1
+            end
+            EM::defer(data, send)
           when 'amqp'
             exchange_name = handler[:exchange][:name]
             exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
             exchange_options = handler[:exchange].reject do |key, value|
               [:name, :type].include?(key)
             end
-            @logger.debug('publishing event to an amqp exchange', {
-              :event => event,
-              :exchange => handler[:exchange]
-            })
             payloads = Proc.new do
               Array(mutate_event_data(handler, event))
             end

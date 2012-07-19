@@ -334,6 +334,22 @@ module Sensu
               :handler => handler
             })
           end
+        when 'tcp', 'udp'
+          unless handler[:socket].is_a?(Hash)
+            invalid('handler is missing socket hash', {
+              :handler => handler
+            })
+          end
+          unless handler[:socket][:host].is_a?(String)
+            invalid('handler is missing socket host', {
+              :handler => handler
+            })
+          end
+          unless handler[:socket][:port].is_a?(Integer)
+            invalid('handler is missing socket port', {
+              :handler => handler
+            })
+          end
         when 'amqp'
           unless handler[:exchange].is_a?(Hash)
             invalid('handler is missing exchange hash', {

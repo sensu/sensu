@@ -33,9 +33,9 @@ class TestSensuClientServer < TestCase
       :client => client,
       :check => {
         :name => 'test_handlers',
-        :output => 'WARNING\n',
-        :status => 1,
         :issued => Time.now.to_i,
+        :output => 'WARNING',
+        :status => 1,
         :handler => 'file',
         :history => [1]
       },
@@ -98,26 +98,25 @@ class TestSensuClientServer < TestCase
     client.setup_keepalives
     server.setup_results
     client.setup_sockets
-    external_source = proc do
-      udp_socket = UDPSocket.new
-      udp_socket.send('{"name": "udp_socket", "output": "one", "status": 1}', 0, '127.0.0.1', 3030)
-      udp_socket.send('{"name": "udp_socket", "output": "two", "status": 1}', 0, '127.0.0.1', 3030)
-      tcp_socket = TCPSocket.open('127.0.0.1', 3030)
-      tcp_socket.write('{"name": "tcp_socket", "output": "only", "status": 1}')
-      tcp_socket.recv(2)
-    end
-    callback = proc do |response|
-      assert_equal('ok', response)
-      EM::Timer.new(2) do
-        server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
-          assert(events.include?('udp_socket'))
-          assert(events.include?('tcp_socket'))
-          done
+    EM::Timer.new(1) do
+      EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+        data = '{"name": "udp_socket", "output": "udp", "status": 1}'
+        2.times do
+          socket.send_datagram(data, '127.0.0.1', 3030)
         end
+        socket.close_connection_after_writing
+      end
+      EM::connect('127.0.0.1', 3030, nil) do |socket|
+        socket.send_data('{"name": "tcp_socket", "output": "tcp", "status": 1}')
+        socket.close_connection_after_writing
       end
     end
-    EM::Timer.new(2) do
-      EM::defer(external_source, callback)
+    EM::Timer.new(3) do
+      server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+        assert(events.include?('udp_socket'))
+        assert(events.include?('tcp_socket'))
+        done
+      end
     end
   end
 

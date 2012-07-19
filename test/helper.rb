@@ -1,7 +1,6 @@
 require 'rubygems'
 require 'em-spec/test'
 require 'em-http-request'
-require 'socket'
 
 module TestUtil
   def teardown

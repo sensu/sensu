@@ -44,14 +44,22 @@
       "mutator": "noop",
       "command": "./test/handlers/stdout.rb"
     },
+    "socket": {
+      "type": "tcp",
+      "mutator": "only_check_output",
+      "socket": {
+        "host": "localhost",
+        "port": 1234
+      }
+    },
     "graphite": {
       "type": "amqp",
+      "mutator": "only_check_output",
       "exchange": {
         "type": "topic",
         "name": "graphite",
         "key": "sensu.test"
-      },
-      "mutator": "only_check_output"
+      }
     }
   },
   "checks": {
