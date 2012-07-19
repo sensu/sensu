@@ -67,7 +67,13 @@ module Sensu
         :client => @settings[:client][:name],
         :check => check
       }
-      @logger.info('publishing check result', {
+      log_level = :info
+      if @settings.check_exists?(check[:name])
+        if @settings[:checks][check[:name]][:type] == 'metric'
+          log_level = :debug
+        end
+      end
+      @logger.send(log_level, 'publishing check result', {
         :payload => payload
       })
       @amq.queue('results').publish(payload.to_json)
