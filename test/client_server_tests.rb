@@ -7,6 +7,18 @@ class TestSensuClientServer < TestCase
     }
     base = Sensu::Base.new(@options)
     @settings = base.settings
+    @example_event = {
+      :client => @settings[:client].sanitize_keys,
+      :check => {
+        :name => 'example',
+        :issued => Time.now.to_i,
+        :output => 'WARNING',
+        :status => 1,
+        :history => [1]
+      },
+      :occurrences => 1,
+      :action => 'create'
+    }
   end
 
   def test_keepalives
@@ -26,30 +38,61 @@ class TestSensuClientServer < TestCase
     end
   end
 
-  def test_handlers
+  def test_pipe_handler
     server = Sensu::Server.new(@options)
-    client = @settings[:client].sanitize_keys
-    event = {
-      :client => client,
-      :check => {
-        :name => 'test_handlers',
-        :output => 'WARNING\n',
-        :status => 1,
-        :issued => Time.now.to_i,
-        :handler => 'file',
-        :history => [1]
-      },
-      :occurrences => 1,
-      :action => 'create'
-    }
+    event = @example_event
+    event[:check][:handler] = 'file'
     server.handle_event(event)
     EM::Timer.new(2) do
-      assert(File.exists?('/tmp/sensu_test_handlers'))
-      handler_output_file = File.open('/tmp/sensu_test_handlers', 'rb').read
-      handler_output = JSON.parse(handler_output_file, :symbolize_names => true)
-      assert_equal(event, handler_output)
+      assert(File.exists?('/tmp/sensu_example'))
+      output_file = File.open('/tmp/sensu_example', 'r')
+      output = JSON.parse(output_file.read, :symbolize_names => true)
+      assert_equal(event, output)
       done
     end
+  end
+
+  def test_tcp_handler
+    server = Sensu::Server.new(@options)
+    event = @example_event
+    event[:check][:handler] = 'tcp_socket'
+    socket = Proc.new do
+      tcp_server = TCPServer.open(1234)
+      data = tcp_server.accept.gets
+      tcp_server.close
+      data
+    end
+    callback = Proc.new do |data|
+      output = JSON.parse(data, :symbolize_names => true)
+      assert_equal(event, output)
+      done
+    end
+    EM::Timer.new(2) do
+      server.handle_event(event)
+    end
+    EM::defer(socket, callback)
+  end
+
+  def test_udp_handler
+    server = Sensu::Server.new(@options)
+    event = @example_event
+    event[:check][:handler] = 'udp_socket'
+    socket = Proc.new do
+      udp_socket = UDPSocket.new
+      udp_socket.bind('127.0.0.1', 1234)
+      data = udp_socket.recv(1024)
+      udp_socket.close
+      data
+    end
+    callback = Proc.new do |data|
+      output = JSON.parse(data, :symbolize_names => true)
+      assert_equal(event, output)
+      done
+    end
+    EM::Timer.new(2) do
+      server.handle_event(event)
+    end
+    EM::defer(socket, callback)
   end
 
   def test_publish_subscribe
@@ -98,26 +141,25 @@ class TestSensuClientServer < TestCase
     client.setup_keepalives
     server.setup_results
     client.setup_sockets
-    external_source = proc do
-      udp_socket = UDPSocket.new
-      udp_socket.send('{"name": "udp_socket", "output": "one", "status": 1}', 0, '127.0.0.1', 3030)
-      udp_socket.send('{"name": "udp_socket", "output": "two", "status": 1}', 0, '127.0.0.1', 3030)
-      tcp_socket = TCPSocket.open('127.0.0.1', 3030)
-      tcp_socket.write('{"name": "tcp_socket", "output": "only", "status": 1}')
-      tcp_socket.recv(2)
-    end
-    callback = proc do |response|
-      assert_equal('ok', response)
-      EM::Timer.new(2) do
-        server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
-          assert(events.include?('udp_socket'))
-          assert(events.include?('tcp_socket'))
-          done
+    EM::Timer.new(1) do
+      EM::connect('127.0.0.1', 3030, nil) do |socket|
+        socket.send_data('{"name": "tcp_socket", "output": "tcp", "status": 1}')
+        socket.close_connection_after_writing
+      end
+      EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+        data = '{"name": "udp_socket", "output": "udp", "status": 1}'
+        2.times do
+          socket.send_datagram(data, '127.0.0.1', 3030)
         end
+        socket.close_connection_after_writing
       end
     end
-    EM::Timer.new(2) do
-      EM::defer(external_source, callback)
+    EM::Timer.new(3) do
+      server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+        assert(events.include?('tcp_socket'))
+        assert(events.include?('udp_socket'))
+        done
+      end
     end
   end
 
