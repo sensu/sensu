@@ -7,6 +7,19 @@ class TestSensuClientServer < TestCase
     }
     base = Sensu::Base.new(@options)
     @settings = base.settings
+    @example_event = {
+      :client => @settings[:client].sanitize_keys,
+      :check => {
+        :name => 'example',
+        :issued => Time.now.to_i,
+        :output => 'WARNING',
+        :status => 1,
+        :handler => 'default',
+        :history => [1]
+      },
+      :occurrences => 1,
+      :action => 'create'
+    }
   end
 
   def test_keepalives
@@ -26,30 +39,37 @@ class TestSensuClientServer < TestCase
     end
   end
 
-  def test_handlers
+  def test_pipe_handler
     server = Sensu::Server.new(@options)
-    client = @settings[:client].sanitize_keys
-    event = {
-      :client => client,
-      :check => {
-        :name => 'test_handlers',
-        :issued => Time.now.to_i,
-        :output => 'WARNING',
-        :status => 1,
-        :handler => 'file',
-        :history => [1]
-      },
-      :occurrences => 1,
-      :action => 'create'
-    }
+    event = @example_event
+    event[:check][:handler] = 'file'
     server.handle_event(event)
     EM::Timer.new(2) do
-      assert(File.exists?('/tmp/sensu_test_handlers'))
-      handler_output_file = File.open('/tmp/sensu_test_handlers', 'rb').read
-      handler_output = JSON.parse(handler_output_file, :symbolize_names => true)
-      assert_equal(event, handler_output)
+      assert(File.exists?('/tmp/sensu_example'))
+      output_file = File.open('/tmp/sensu_example', 'r')
+      output = JSON.parse(output_file.read, :symbolize_names => true)
+      assert_equal(event, output)
       done
     end
+  end
+
+  def test_tcp_handler
+    server = Sensu::Server.new(@options)
+    event = @example_event
+    event[:check][:handler] = 'tcp_socket'
+    socket = Proc.new do
+      tcp_server = TCPServer.open(1234)
+      tcp_server.accept.gets
+    end
+    callback = Proc.new do |response|
+      output = JSON.parse(response, :symbolize_names => true)
+      assert_equal(event, output)
+      done
+    end
+    EM::Timer.new(2) do
+      server.handle_event(event)
+    end
+    EM::defer(socket, callback)
   end
 
   def test_publish_subscribe

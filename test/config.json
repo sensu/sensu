@@ -44,9 +44,8 @@
       "mutator": "noop",
       "command": "./test/handlers/stdout.rb"
     },
-    "socket": {
+    "tcp_socket": {
       "type": "tcp",
-      "mutator": "only_check_output",
       "socket": {
         "host": "localhost",
         "port": 1234
