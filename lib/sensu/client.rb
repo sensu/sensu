@@ -208,8 +208,7 @@ module Sensu
         if check[:standalone]
           standalone_check_count += 1
           @timers << EM::Timer.new(stagger * standalone_check_count) do
-            interval = testing? ? 0.5 : check[:interval]
-            @timers << EM::PeriodicTimer.new(interval) do
+            @timers << EM::PeriodicTimer.new(check[:interval]) do
               if @rabbitmq.connected?
                 check[:issued] = Time.now.to_i
                 execute_check(check)

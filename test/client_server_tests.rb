@@ -108,7 +108,7 @@ class TestSensuClientServer < TestCase
     client.setup_subscriptions
     client.setup_standalone
     server.setup_publisher
-    EM::Timer.new(1) do
+    EM::Timer.new(3) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
         sorted_events = events.sort_by { |check_name, event_json| check_name }
         sorted_events.each_with_index do |(check_name, event_json), index|
