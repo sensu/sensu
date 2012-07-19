@@ -108,17 +108,17 @@ class TestSensuClientServer < TestCase
     client.setup_subscriptions
     client.setup_standalone
     server.setup_publisher
-    EM::Timer.new(1) do
+    EM::Timer.new(3) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
         sorted_events = events.sort_by { |check_name, event_json| check_name }
         sorted_events.each_with_index do |(check_name, event_json), index|
           expected = {
             :output => @settings[:client][:name] + ' ' + @settings[:client][:nested][:attribute].to_s + "\n",
             :status => index + 1,
-            :flapping => false,
-            :occurrences => 1
+            :flapping => false
           }
           event = JSON.parse(event_json, :symbolize_names => true).sanitize_keys
+          assert(event.delete(:occurrences) > 0)
           assert_equal(expected, event)
         end
         server.amq.queue('', :auto_delete => true).bind('graphite', :key => 'sensu.*').subscribe do |metric|
