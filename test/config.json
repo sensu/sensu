@@ -74,7 +74,7 @@
       "subscribers": [
         "a"
       ],
-      "interval": 1
+      "interval": 10
     },
     "b": {
       "handler": "default",
@@ -91,7 +91,7 @@
       ],
       "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 3\"",
       "standalone": true,
-      "interval": 1
+      "interval": 10
     },
     "d": {
       "handler": "mutated",
@@ -101,7 +101,7 @@
         "b",
         "c"
       ],
-      "interval": 1
+      "interval": 10
     },
     "e": {
       "type": "metric",
@@ -110,7 +110,7 @@
       "subscribers": [
         "c"
       ],
-      "interval": 1
+      "interval": 10
     }
   },
   "client": {

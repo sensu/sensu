@@ -11,7 +11,7 @@
       "subscribers": [
         "b"
       ],
-      "interval": 1,
+      "interval": 10,
       "auto_resolve": false
     }
   }

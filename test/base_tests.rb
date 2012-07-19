@@ -13,7 +13,7 @@ class TestSensuBase < TestCase
     assert(settings.check_exists?('a'))
     assert(settings.handler_exists?('new_handler'))
     assert(settings[:checks][:b][:subscribers] == ['a', 'b'])
-    assert(settings[:checks][:b][:interval] == 1)
+    assert(settings[:checks][:b][:interval] == 10)
     assert(settings[:checks][:b][:auto_resolve] == false)
     done
   end

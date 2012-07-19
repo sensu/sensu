@@ -423,8 +423,7 @@ module Sensu
         unless check[:publish] == false || check[:standalone]
           check_count += 1
           @timers << EM::Timer.new(stagger * check_count) do
-            interval = testing? ? 0.5 : check[:interval]
-            @timers << EM::PeriodicTimer.new(interval) do
+            @timers << EM::PeriodicTimer.new(check[:interval]) do
               unless check_subdued?(check, :publisher)
                 if @rabbitmq.connected?
                   payload = {
