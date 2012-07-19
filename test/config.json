@@ -51,6 +51,13 @@
         "port": 1234
       }
     },
+    "udp_socket": {
+      "type": "udp",
+      "socket": {
+        "host": "localhost",
+        "port": 1234
+      }
+    },
     "graphite": {
       "type": "amqp",
       "mutator": "only_check_output",

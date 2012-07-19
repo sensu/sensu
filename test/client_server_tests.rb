@@ -72,6 +72,26 @@ class TestSensuClientServer < TestCase
     EM::defer(socket, callback)
   end
 
+  def test_udp_handler
+    server = Sensu::Server.new(@options)
+    event = @example_event
+    event[:check][:handler] = 'udp_socket'
+    socket = Proc.new do
+      udp_socket = UDPSocket.new
+      udp_socket.bind('127.0.0.1', 1234)
+      udp_socket.recv(1024)
+    end
+    callback = Proc.new do |response|
+      output = JSON.parse(response, :symbolize_names => true)
+      assert_equal(event, output)
+      done
+    end
+    EM::Timer.new(2) do
+      server.handle_event(event)
+    end
+    EM::defer(socket, callback)
+  end
+
   def test_publish_subscribe
     server = Sensu::Server.new(@options)
     client = Sensu::Client.new(@options)
