@@ -5,20 +5,20 @@ Gem::Specification.new do |s|
   s.version     = Sensu::VERSION
   s.platform    = Gem::Platform::RUBY
   s.authors     = ['Sean Porter', 'Justin Kolberg']
-  s.email       = ['sean.porter@sonian.net', 'justin.kolberg@sonian.net']
+  s.email       = ['portertech@gmail.com', 'justin.kolberg@sonian.net']
   s.homepage    = 'https://github.com/sensu/sensu'
   s.summary     = 'A monitoring framework'
   s.description = 'A monitoring framework that aims to be simple, malleable, and scalable. Uses the publish/subscribe model.'
   s.license     = 'MIT'
   s.has_rdoc    = false
 
-  s.add_dependency('eventmachine', '~> 1.0.0.beta.4')
+  s.add_dependency('eventmachine', '1.0.0.rc.4')
   s.add_dependency('amqp', '0.7.4')
-  s.add_dependency('json')
+  s.add_dependency('json', '1.7.3')
   s.add_dependency('cabin', '0.4.4')
-  s.add_dependency('ruby-redis')
+  s.add_dependency('ruby-redis', '0.0.2')
   s.add_dependency('async_sinatra', '1.0.0')
-  s.add_dependency('thin')
+  s.add_dependency('thin', '1.4.1')
 
   s.add_development_dependency('rake')
   s.add_development_dependency('em-spec')
