@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   s.version     = Sensu::VERSION
   s.platform    = Gem::Platform::RUBY
   s.authors     = ['Sean Porter', 'Justin Kolberg']
-  s.email       = ['sean.porter@sonian.net', 'justin.kolberg@sonian.net']
+  s.email       = ['portertech@gmail.com', 'justin.kolberg@sonian.net']
   s.homepage    = 'https://github.com/sensu/sensu'
   s.summary     = 'A monitoring framework'
   s.description = 'A monitoring framework that aims to be simple, malleable, and scalable. Uses the publish/subscribe model.'
