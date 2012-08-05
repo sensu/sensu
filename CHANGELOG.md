@@ -13,8 +13,8 @@ instead have access to the built-in mutators `"mutator": "only_check_output"` an
 
 ### Other
 
-Improved graceful process termination
+Improved graceful process termination.
 
-Improved client socket ping/pong
+Improved client socket ping/pong.
 
-Strict dependency version locking
+Strict dependency version locking.
