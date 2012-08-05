@@ -176,7 +176,7 @@ module Sensu
                 io.close_write
                 mutated = io.read
               end
-              unless $?.exitstatus == 0
+              if $?.exitstatus != 0
                 @logger.warn('mutator had a non-zero exit status', {
                   :event => event,
                   :mutator => mutator
