@@ -241,14 +241,11 @@ module Sensu
       if @rabbitmq.connected?
         @logger.warn('unsubscribing from client subscriptions')
         @check_request_queue.unsubscribe do
-          if block
-            block.call
-          end
+          @logger.debug('unsubscribed from client subscriptions')
         end
-      else
-        if block
-          block.call
-        end
+      end
+      if block
+        block.call
       end
     end
 
