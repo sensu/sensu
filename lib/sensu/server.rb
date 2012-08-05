@@ -28,7 +28,7 @@ module Sensu
       base = Sensu::Base.new(options)
       @settings = base.settings
       @timers = Array.new
-      @handlers_in_progress = 0
+      @handlers_in_progress_count = 0
     end
 
     def setup_redis
@@ -176,7 +176,7 @@ module Sensu
                 io.close_write
                 mutated = io.read
               end
-              unless $?.exitstatus == 0
+              if $?.exitstatus != 0
                 @logger.warn('mutator had a non-zero exit status', {
                   :event => event,
                   :mutator => mutator
@@ -211,7 +211,7 @@ module Sensu
             :event => event,
             :handler => handler
           })
-          @handlers_in_progress += 1
+          @handlers_in_progress_count += 1
           case handler[:type]
           when 'pipe'
             execute = Proc.new do
@@ -235,7 +235,7 @@ module Sensu
               end
             end
             complete = Proc.new do
-              @handlers_in_progress -= 1
+              @handlers_in_progress_count -= 1
             end
             EM::defer(execute, complete)
           when 'tcp', 'udp'
@@ -263,7 +263,7 @@ module Sensu
                   :error => error.to_s
                 })
               end
-              @handlers_in_progress -= 1
+              @handlers_in_progress_count -= 1
             end
             EM::defer(data, write)
           when 'amqp'
@@ -281,14 +281,14 @@ module Sensu
                   @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
                 end
               end
-              @handlers_in_progress -= 1
+              @handlers_in_progress_count -= 1
             end
             EM::defer(payloads, publish)
           when 'set'
             @logger.error('handler sets cannot be nested', {
               :handler => handler
             })
-            @handlers_in_progress -= 1
+            @handlers_in_progress_count -= 1
           end
         end
       end
@@ -528,8 +528,19 @@ module Sensu
       if @redis.connected? && @is_master
         @redis.del('lock:master').callback do
           @logger.warn('resigned as master')
-          if block
-            block.call
+          @is_master = false
+        end
+        if block
+          timestamp = Time.now.to_i
+          retry_until_true do
+            if !@is_master
+              block.call
+              true
+            elsif Time.now.to_i - timestamp >= 5
+              @logger.warn('failed to resign as master')
+              block.call
+              true
+            end
           end
         end
       else
@@ -573,11 +584,19 @@ module Sensu
     def unsubscribe(&block)
       if @rabbitmq.connected?
         @logger.warn('unsubscribing from keepalives')
-        @keepalive_queue.unsubscribe do
-          @logger.warn('unsubscribing from results')
-          @result_queue.unsubscribe do
-            if block
+        @keepalive_queue.unsubscribe
+        @logger.warn('unsubscribing from results')
+        @result_queue.unsubscribe
+        if block
+          timestamp = Time.now.to_i
+          retry_until_true do
+            if !@keepalive_queue.subscribed? && !@result_queue.subscribed?
               block.call
+              true
+            elsif Time.now.to_i - timestamp >= 5
+              @logger.warn('failed to unsubscribe from keepalives and results')
+              block.call
+              true
             end
           end
         end
@@ -590,16 +609,14 @@ module Sensu
 
     def complete_handlers_in_progress(&block)
       @logger.info('completing handlers in progress', {
-        :handlers_in_progress => @handlers_in_progress
+        :handlers_in_progress_count => @handlers_in_progress_count
       })
-      complete = EM::tick_loop do
-        if @handlers_in_progress == 0
-          :stop
-        end
-      end
-      complete.on_stop do
-        if block
-          block.call
+      if block
+        retry_until_true do
+          if @handlers_in_progress_count == 0
+            block.call
+            true
+          end
         end
       end
     end
@@ -627,6 +644,14 @@ module Sensu
 
     def testing?
       File.basename($0) == 'rake'
+    end
+
+    def retry_until_true(wait=0.5, &block)
+      EM::add_timer(wait) do
+        unless block.call
+          retry_until_true(wait, &block)
+        end
+      end
     end
   end
 end
