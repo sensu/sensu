@@ -28,7 +28,7 @@ module Sensu
       base = Sensu::Base.new(options)
       @settings = base.settings
       @timers = Array.new
-      @handlers_in_progress = 0
+      @handlers_in_progress_count = 0
     end
 
     def setup_redis
@@ -211,7 +211,7 @@ module Sensu
             :event => event,
             :handler => handler
           })
-          @handlers_in_progress += 1
+          @handlers_in_progress_count += 1
           case handler[:type]
           when 'pipe'
             execute = Proc.new do
@@ -235,7 +235,7 @@ module Sensu
               end
             end
             complete = Proc.new do
-              @handlers_in_progress -= 1
+              @handlers_in_progress_count -= 1
             end
             EM::defer(execute, complete)
           when 'tcp', 'udp'
@@ -263,7 +263,7 @@ module Sensu
                   :error => error.to_s
                 })
               end
-              @handlers_in_progress -= 1
+              @handlers_in_progress_count -= 1
             end
             EM::defer(data, write)
           when 'amqp'
@@ -281,14 +281,14 @@ module Sensu
                   @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
                 end
               end
-              @handlers_in_progress -= 1
+              @handlers_in_progress_count -= 1
             end
             EM::defer(payloads, publish)
           when 'set'
             @logger.error('handler sets cannot be nested', {
               :handler => handler
             })
-            @handlers_in_progress -= 1
+            @handlers_in_progress_count -= 1
           end
         end
       end
@@ -588,10 +588,10 @@ module Sensu
 
     def complete_handlers_in_progress(&block)
       @logger.info('completing handlers in progress', {
-        :handlers_in_progress => @handlers_in_progress
+        :handlers_in_progress_count => @handlers_in_progress_count
       })
       complete = EM::tick_loop do
-        if @handlers_in_progress == 0
+        if @handlers_in_progress_count == 0
           :stop
         end
       end
