@@ -386,7 +386,9 @@ module Sensu
               $redis.sadd('stashes', 'test/test').callback do
                 Thin::Logging.silent = true
                 Thin::Server.start(self, $settings[:api][:port])
-                block.call
+                EM::add_timer(0.5) do
+                  block.call
+                end
               end
             end
           end
