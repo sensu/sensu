@@ -570,19 +570,36 @@ module Sensu
       end
     end
 
+    def retry_until_true(wait=0.5, &block)
+      EM::add_timer(wait) do
+        unless block.call
+          retry_until_true(wait, &block)
+        end
+      end
+    end
+
     def unsubscribe(&block)
       if @rabbitmq.connected?
         @logger.warn('unsubscribing from keepalives')
-        @keepalive_queue.unsubscribe do
-          @logger.debug('unsubscribed from keepalives')
-        end
+        @keepalive_queue.unsubscribe
         @logger.warn('unsubscribing from results')
-        @result_queue.unsubscribe do
-          @logger.debug('unsubscribed from results')
+        @result_queue.unsubscribe
+        if block
+          timestamp = Time.now.to_i
+          retry_until_true do
+            if !@keepalive_queue.subscribed? && !@result_queue.subscribed?
+              block.call
+              true
+            elsif Time.now.to_i - timestamp >= 5
+              block.call
+              true
+            end
+          end
         end
-      end
-      if block
-        block.call
+      else
+        if block
+          block.call
+        end
       end
     end
 
@@ -590,14 +607,12 @@ module Sensu
       @logger.info('completing handlers in progress', {
         :handlers_in_progress_count => @handlers_in_progress_count
       })
-      complete = EM::tick_loop do
-        if @handlers_in_progress_count == 0
-          :stop
-        end
-      end
-      complete.on_stop do
-        if block
-          block.call
+      if block
+        retry_until_true do
+          if @handlers_in_progress_count == 0
+            block.call
+            true
+          end
         end
       end
     end
