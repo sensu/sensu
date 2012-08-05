@@ -528,8 +528,19 @@ module Sensu
       if @redis.connected? && @is_master
         @redis.del('lock:master').callback do
           @logger.warn('resigned as master')
-          if block
-            block.call
+          @is_master = false
+        end
+        if block
+          timestamp = Time.now.to_i
+          retry_until_true do
+            if !@is_master
+              block.call
+              true
+            elsif Time.now.to_i - timestamp >= 5
+              @logger.warn('failed to resign as master')
+              block.call
+              true
+            end
           end
         end
       else
@@ -570,14 +581,6 @@ module Sensu
       end
     end
 
-    def retry_until_true(wait=0.5, &block)
-      EM::add_timer(wait) do
-        unless block.call
-          retry_until_true(wait, &block)
-        end
-      end
-    end
-
     def unsubscribe(&block)
       if @rabbitmq.connected?
         @logger.warn('unsubscribing from keepalives')
@@ -591,6 +594,7 @@ module Sensu
               block.call
               true
             elsif Time.now.to_i - timestamp >= 5
+              @logger.warn('failed to unsubscribe from keepalives and results')
               block.call
               true
             end
@@ -640,6 +644,14 @@ module Sensu
 
     def testing?
       File.basename($0) == 'rake'
+    end
+
+    def retry_until_true(wait=0.5, &block)
+      EM::add_timer(wait) do
+        unless block.call
+          retry_until_true(wait, &block)
+        end
+      end
     end
   end
 end

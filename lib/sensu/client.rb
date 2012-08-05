@@ -247,14 +247,6 @@ module Sensu
       end
     end
 
-    def retry_until_true(wait=0.5, &block)
-      EM::add_timer(wait) do
-        unless block.call
-          retry_until_true(wait, &block)
-        end
-      end
-    end
-
     def complete_checks_in_progress(&block)
       @logger.info('completing checks in progress', {
         :checks_in_progress => @checks_in_progress
@@ -289,6 +281,14 @@ module Sensu
 
     def testing?
       File.basename($0) == 'rake'
+    end
+
+    def retry_until_true(wait=0.5, &block)
+      EM::add_timer(wait) do
+        unless block.call
+          retry_until_true(wait, &block)
+        end
+      end
     end
   end
 end
