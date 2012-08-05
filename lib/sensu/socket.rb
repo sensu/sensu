@@ -9,7 +9,7 @@ module Sensu
     end
 
     def receive_data(data)
-      if data == 'ping'
+      if data.strip == 'ping'
         @logger.debug('socket received ping')
         reply('pong')
       else
