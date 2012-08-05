@@ -240,12 +240,18 @@ module Sensu
     def unsubscribe(&block)
       if @rabbitmq.connected?
         @logger.warn('unsubscribing from client subscriptions')
-        @check_request_queue.unsubscribe do
-          @logger.debug('unsubscribed from client subscriptions')
-        end
+        @check_request_queue.unsubscribe
       end
       if block
         block.call
+      end
+    end
+
+    def retry_until_true(wait=0.5, &block)
+      EM::add_timer(wait) do
+        unless block.call
+          retry_until_true(wait, &block)
+        end
       end
     end
 
@@ -253,14 +259,12 @@ module Sensu
       @logger.info('completing checks in progress', {
         :checks_in_progress => @checks_in_progress
       })
-      complete = EM::tick_loop do
-        if @checks_in_progress.empty?
-          :stop
-        end
-      end
-      complete.on_stop do
-        if block
-          block.call
+      if block
+        retry_until_true do
+          if @checks_in_progress.empty?
+            block.call
+            true
+          end
         end
       end
     end
