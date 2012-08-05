@@ -10,3 +10,11 @@ sending to a handler.
 AMQP handlers can no longer use `"send_only_check_output": true`, but
 instead have access to the built-in mutators `"mutator": "only_check_output"` and
 `"mutator": "only_check_output_split"`.
+
+### Other
+
+Improved gracefull process termination
+
+Improved client socket ping/pong
+
+Strict dependency version locking
