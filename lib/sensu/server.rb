@@ -574,17 +574,15 @@ module Sensu
       if @rabbitmq.connected?
         @logger.warn('unsubscribing from keepalives')
         @keepalive_queue.unsubscribe do
-          @logger.warn('unsubscribing from results')
-          @result_queue.unsubscribe do
-            if block
-              block.call
-            end
-          end
+          @logger.debug('unsubscribed from keepalives')
         end
-      else
-        if block
-          block.call
+        @logger.warn('unsubscribing from results')
+        @result_queue.unsubscribe do
+          @logger.debug('unsubscribed from results')
         end
+      end
+      if block
+        block.call
       end
     end
 
