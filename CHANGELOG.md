@@ -18,3 +18,5 @@ Improved graceful process termination.
 Improved client socket ping/pong.
 
 Strict dependency version locking.
+
+Adjusted logging level for metric check results and events.
