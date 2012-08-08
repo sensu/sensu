@@ -5,6 +5,8 @@
 Event data mutators, manipulate event data and its format prior to
 sending to a handler.
 
+TCP and UDP handler types, for writing event data to sockets.
+
 ### Non-backwards compatible changes
 
 AMQP handlers can no longer use `"send_only_check_output": true`, but
