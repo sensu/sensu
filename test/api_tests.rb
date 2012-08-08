@@ -88,7 +88,7 @@ class TestSensuAPI < TestCase
         expected = {
           :client => @settings[:client][:name],
           :check => 'test',
-          :output => "CRITICAL\n",
+          :output => 'CRITICAL',
           :status => 2,
           :flapping => false,
           :occurrences => 1
@@ -138,6 +138,22 @@ class TestSensuAPI < TestCase
     Sensu::API.run_test(@options) do
       options = {
         :body => 'malformed'
+      }
+      request_options = @request_options.merge(options)
+      http = EM::HttpRequest.new(@api_url + '/event/resolve').post(request_options)
+      http.callback do
+        assert_equal(400, http.response_header.status)
+        done
+      end
+    end
+  end
+
+  def test_resolve_event_missing_data
+    Sensu::API.run_test(@options) do
+      options = {
+        :body => {
+          :client => @settings[:client][:name]
+        }.to_json
       }
       request_options = @request_options.merge(options)
       http = EM::HttpRequest.new(@api_url + '/event/resolve').post(request_options)
@@ -239,6 +255,22 @@ class TestSensuAPI < TestCase
         :body => {
           :check => 'a',
           :subscribers => 'malformed'
+        }.to_json
+      }
+      request_options = @request_options.merge(options)
+      http = EM::HttpRequest.new(@api_url + '/check/request').post(request_options)
+      http.callback do
+        assert_equal(400, http.response_header.status)
+        done
+      end
+    end
+  end
+
+  def test_check_request_missing_data
+    Sensu::API.run_test(@options) do
+      options = {
+        :body => {
+          :check => 'a'
         }.to_json
       }
       request_options = @request_options.merge(options)

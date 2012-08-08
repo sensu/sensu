@@ -205,20 +205,22 @@ module Sensu
     apost '/check/request' do
       begin
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
-      rescue JSON::ParserError
+        check_name = post_body[:check]
+        subscribers = post_body[:subscribers]
+      rescue JSON::ParserError, TypeError
         status 400
         body ''
       end
-      if post_body.is_a?(Hash) && post_body[:check].is_a?(String) && post_body[:subscribers].is_a?(Array)
+      if check_name.is_a?(String) && subscribers.is_a?(Array)
         payload = {
-          :name => post_body[:check],
+          :name => check_name,
           :issued => Time.now.to_i
         }
         $logger.info('publishing check request', {
           :payload => payload,
-          :subscribers => post_body[:subscribers]
+          :subscribers => subscribers
         })
-        post_body[:subscribers].uniq.each do |exchange_name|
+        subscribers.uniq.each do |exchange_name|
           $amq.fanout(exchange_name).publish(payload.to_json)
         end
         status 201
@@ -264,17 +266,19 @@ module Sensu
     apost '/event/resolve' do
       begin
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
-      rescue JSON::ParserError
+        client_name = post_body[:client]
+        check_name = post_body[:check]
+      rescue JSON::ParserError, TypeError
         status 400
         body ''
       end
-      if post_body.is_a?(Hash) && post_body[:client].is_a?(String) && post_body[:check].is_a?(String)
-        $redis.hgetall('events:' + post_body[:client]).callback do |events|
-          if events.include?(post_body[:check])
+      if client_name.is_a?(String) && check_name.is_a?(String)
+        $redis.hgetall('events:' + client_name).callback do |events|
+          if events.include?(check_name)
             payload = {
-              :client => post_body[:client],
+              :client => client_name,
               :check => {
-                :name => post_body[:check],
+                :name => check_name,
                 :output => 'Resolving on request of the API',
                 :status => 0,
                 :issued => Time.now.to_i,
@@ -376,13 +380,13 @@ module Sensu
       $redis.set('client:' + $settings[:client][:name], $settings[:client].to_json).callback do
         $redis.sadd('clients', $settings[:client][:name]).callback do
           $redis.hset('events:' + $settings[:client][:name], 'test', {
-            :output => "CRITICAL\n",
+            :output => 'CRITICAL',
             :status => 2,
             :issued => Time.now.to_i,
             :flapping => false,
             :occurrences => 1
           }.to_json).callback do
-            $redis.set('stash:test/test', '{"key": "value"}').callback do
+            $redis.set('stash:test/test', {:key => 'value'}.to_json).callback do
               $redis.sadd('stashes', 'test/test').callback do
                 Thin::Logging.silent = true
                 Thin::Server.start(self, $settings[:api][:port])
