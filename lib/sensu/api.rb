@@ -132,7 +132,7 @@ module Sensu
       end
     end
 
-    aget '/client/:name' do |client_name|
+    aget %r{/clients?/([\w\.-]+)$} do |client_name|
       $redis.get('client:' + client_name).callback do |client_json|
         unless client_json.nil?
           body client_json
@@ -143,7 +143,7 @@ module Sensu
       end
     end
 
-    adelete '/client/:name' do |client_name|
+    adelete %r{/clients?/([\w\.-]+)$} do |client_name|
       $redis.get('client:' + client_name).callback do |client_json|
         unless client_json.nil?
           client = JSON.parse(client_json, :symbolize_names => true)
@@ -192,7 +192,7 @@ module Sensu
       body $settings.checks.to_json
     end
 
-    aget '/check/:name' do |check_name|
+    aget %r{/checks?/([\w\.-]+)$} do |check_name|
       if $settings.check_exists?(check_name)
         response = $settings[:checks][check_name].merge(:name => check_name)
         body response.to_json
@@ -202,7 +202,7 @@ module Sensu
       end
     end
 
-    apost '/check/request' do
+    apost %r{/(?:check/)?request$} do
       begin
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
         check_name = post_body[:check]
@@ -250,7 +250,17 @@ module Sensu
       end
     end
 
-    aget '/event/:client/:check' do |client_name, check_name|
+    aget %r{/events?/([\w\.-]+)$} do |client_name|
+      response = Array.new
+      $redis.hgetall('events:' + client_name).callback do |events|
+        events.each do |check_name, event_json|
+          response.push(JSON.parse(event_json).merge(:client => client_name, :check => check_name))
+        end
+        body response.to_json
+      end
+    end
+
+    aget %r{/events?/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
       $redis.hgetall('events:' + client_name).callback do |events|
         event_json = events[check_name]
         unless event_json.nil?
@@ -263,7 +273,7 @@ module Sensu
       end
     end
 
-    apost '/event/resolve' do
+    apost %r{/(?:event/)?resolve$} do
       begin
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
         client_name = post_body[:client]
@@ -301,7 +311,7 @@ module Sensu
       end
     end
 
-    apost '/stash/*' do |path|
+    apost %r{/stash(?:es)?/(.*)} do |path|
       begin
         post_body = JSON.parse(request.body.read)
       rescue JSON::ParserError
@@ -316,7 +326,7 @@ module Sensu
       end
     end
 
-    aget '/stash/*' do |path|
+    aget %r{/stash(?:es)?/(.*)} do |path|
       $redis.get('stash:' + path).callback do |stash_json|
         if stash_json.nil?
           status 404
@@ -327,7 +337,7 @@ module Sensu
       end
     end
 
-    adelete '/stash/*' do |path|
+    adelete %r{/stash(?:es)?/(.*)} do |path|
       $redis.exists('stash:' + path).callback do |stash_exists|
         if stash_exists
           $redis.srem('stashes', path).callback do
