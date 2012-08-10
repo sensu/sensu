@@ -126,9 +126,9 @@ class TestSensuAPI < TestCase
         }.to_json
       }
       request_options = @request_options.merge(options)
-      http = EM::HttpRequest.new(@api_url + '/event/resolve').post(request_options)
+      http = EM::HttpRequest.new(@api_url + '/resolve').post(request_options)
       http.callback do
-        assert_equal(201, http.response_header.status)
+        assert_equal(202, http.response_header.status)
         done
       end
     end
@@ -143,7 +143,7 @@ class TestSensuAPI < TestCase
         }.to_json
       }
       request_options = @request_options.merge(options)
-      http = EM::HttpRequest.new(@api_url + '/event/resolve').post(request_options)
+      http = EM::HttpRequest.new(@api_url + '/resolve').post(request_options)
       http.callback do
         assert_equal(404, http.response_header.status)
         done
@@ -157,7 +157,7 @@ class TestSensuAPI < TestCase
         :body => 'malformed'
       }
       request_options = @request_options.merge(options)
-      http = EM::HttpRequest.new(@api_url + '/event/resolve').post(request_options)
+      http = EM::HttpRequest.new(@api_url + '/resolve').post(request_options)
       http.callback do
         assert_equal(400, http.response_header.status)
         done
@@ -173,7 +173,7 @@ class TestSensuAPI < TestCase
         }.to_json
       }
       request_options = @request_options.merge(options)
-      http = EM::HttpRequest.new(@api_url + '/event/resolve').post(request_options)
+      http = EM::HttpRequest.new(@api_url + '/resolve').post(request_options)
       http.callback do
         assert_equal(400, http.response_header.status)
         done
@@ -207,7 +207,7 @@ class TestSensuAPI < TestCase
     Sensu::API.run_test(@options) do
       http = EM::HttpRequest.new(@api_url + '/client/' + @settings[:client][:name]).delete(@request_options)
       http.callback do
-        assert_equal(204, http.response_header.status)
+        assert_equal(202, http.response_header.status)
         done
       end
     end
@@ -258,7 +258,7 @@ class TestSensuAPI < TestCase
         }.to_json
       }
       request_options = @request_options.merge(options)
-      http = EM::HttpRequest.new(@api_url + '/check/request').post(request_options)
+      http = EM::HttpRequest.new(@api_url + '/request').post(request_options)
       http.callback do
         assert_equal(201, http.response_header.status)
         done
@@ -275,7 +275,7 @@ class TestSensuAPI < TestCase
         }.to_json
       }
       request_options = @request_options.merge(options)
-      http = EM::HttpRequest.new(@api_url + '/check/request').post(request_options)
+      http = EM::HttpRequest.new(@api_url + '/request').post(request_options)
       http.callback do
         assert_equal(400, http.response_header.status)
         done
@@ -291,7 +291,7 @@ class TestSensuAPI < TestCase
         }.to_json
       }
       request_options = @request_options.merge(options)
-      http = EM::HttpRequest.new(@api_url + '/check/request').post(request_options)
+      http = EM::HttpRequest.new(@api_url + '/request').post(request_options)
       http.callback do
         assert_equal(400, http.response_header.status)
         done

@@ -63,25 +63,6 @@ module Sensu
       end
     end
 
-    def healthy?
-      unless $redis.connected?
-        unless env['REQUEST_PATH'] == '/info'
-          halt 500
-        end
-      end
-    end
-
-    def request_log
-      $logger.info([env['REQUEST_METHOD'], env['REQUEST_PATH']].join(' '), {
-        :remote_address => env['REMOTE_ADDR'],
-        :user_agent => env['HTTP_USER_AGENT'],
-        :request_method => env['REQUEST_METHOD'],
-        :request_uri => env['REQUEST_URI'],
-        :request_body =>  env['rack.input'].read
-      })
-      env['rack.input'].rewind
-    end
-
     configure do
       disable :protection
       disable :show_exceptions
@@ -97,8 +78,46 @@ module Sensu
 
     before do
       content_type 'application/json'
-      request_log
-      healthy?
+      request_log_line
+      health_filter
+    end
+
+    helpers do
+      def request_log_line
+        $logger.info([env['REQUEST_METHOD'], env['REQUEST_PATH']].join(' '), {
+          :remote_address => env['REMOTE_ADDR'],
+          :user_agent => env['HTTP_USER_AGENT'],
+          :request_method => env['REQUEST_METHOD'],
+          :request_uri => env['REQUEST_URI'],
+          :request_body =>  env['rack.input'].read
+        })
+        env['rack.input'].rewind
+      end
+
+      def health_filter
+        unless $redis.connected?
+          unless env['REQUEST_PATH'] == '/info'
+            halt 500
+          end
+        end
+      end
+
+      def resolve_event(client_name, check_name)
+        payload = {
+          :client => client_name,
+          :check => {
+            :name => check_name,
+            :output => 'Resolving on request of the API',
+            :status => 0,
+            :issued => Time.now.to_i,
+            :force_resolve => true
+          }
+        }
+        $logger.info('publishing check result', {
+          :payload => payload
+        })
+        $amq.queue('results').publish(payload.to_json)
+      end
     end
 
     aget '/info' do
@@ -152,20 +171,7 @@ module Sensu
           })
           $redis.hgetall('events:' + client_name).callback do |events|
             events.each_key do |check_name|
-              payload = {
-                :client => client_name,
-                :check => {
-                  :name => check_name,
-                  :output => 'Client is being removed on request of the API',
-                  :status => 0,
-                  :issued => Time.now.to_i,
-                  :force_resolve => true
-                }
-              }
-              $logger.info('publishing check result', {
-                :payload => payload
-              })
-              $amq.queue('results').publish(payload.to_json)
+              resolve_event(client_name, check_name)
             end
             EM::Timer.new(5) do
               $redis.srem('clients', client_name)
@@ -178,7 +184,7 @@ module Sensu
                 $redis.del('history:' + client_name)
               end
             end
-            status 204
+            status 202
             body ''
           end
         else
@@ -273,6 +279,18 @@ module Sensu
       end
     end
 
+    adelete %r{/events?/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
+      $redis.hgetall('events:' + client_name).callback do |events|
+        if events.include?(check_name)
+          resolve_event(client_name, check_name)
+          status 202
+        else
+          status 404
+        end
+        body ''
+      end
+    end
+
     apost %r{/(?:event/)?resolve$} do
       begin
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
@@ -285,21 +303,8 @@ module Sensu
       if client_name.is_a?(String) && check_name.is_a?(String)
         $redis.hgetall('events:' + client_name).callback do |events|
           if events.include?(check_name)
-            payload = {
-              :client => client_name,
-              :check => {
-                :name => check_name,
-                :output => 'Resolving on request of the API',
-                :status => 0,
-                :issued => Time.now.to_i,
-                :force_resolve => true
-              }
-            }
-            $logger.info('publishing check result', {
-              :payload => payload
-            })
-            $amq.queue('results').publish(payload.to_json)
-            status 201
+            resolve_event(client_name, check_name)
+            status 202
           else
             status 404
           end
