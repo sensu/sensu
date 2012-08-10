@@ -250,7 +250,7 @@ module Sensu
       end
     end
 
-    aget %r{/events?/([\w\.-]+)$} do |client_name|
+    aget %r{/events/([\w\.-]+)$} do |client_name|
       response = Array.new
       $redis.hgetall('events:' + client_name).callback do |events|
         events.each do |check_name, event_json|

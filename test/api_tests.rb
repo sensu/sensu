@@ -51,6 +51,23 @@ class TestSensuAPI < TestCase
     end
   end
 
+  def test_get_client_events
+    Sensu::API.run_test(@options) do
+      http = EM::HttpRequest.new(@api_url + '/events/' + @settings[:client][:name]).get(@request_options)
+      http.callback do
+        assert_equal(200, http.response_header.status)
+        events = JSON.parse(http.response, :symbolize_names => true)
+        assert(events.is_a?(Array))
+        assert_block "Response didn't contain the test event" do
+          events.any? do |event|
+            event[:check] == 'test'
+          end
+        end
+        done
+      end
+    end
+  end
+
   def test_get_clients
     Sensu::API.run_test(@options) do
       http = EM::HttpRequest.new(@api_url + '/clients').get(@request_options)
