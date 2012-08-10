@@ -102,6 +102,13 @@ module Sensu
         end
       end
 
+      def event_hash(event_json, client_name, check_name)
+        JSON.parse(event_json, :symbolize_names => true).merge(
+          :client => client_name,
+          :check => check_name
+        )
+      end
+
       def resolve_event(client_name, check_name)
         payload = {
           :client => client_name,
@@ -243,7 +250,7 @@ module Sensu
           clients.each_with_index do |client_name, index|
             $redis.hgetall('events:' + client_name).callback do |events|
               events.each do |check_name, event_json|
-                response.push(JSON.parse(event_json).merge(:client => client_name, :check => check_name))
+                response.push(event_hash(event_json, client_name, check_name))
               end
               if index == clients.size - 1
                 body response.to_json
@@ -260,7 +267,7 @@ module Sensu
       response = Array.new
       $redis.hgetall('events:' + client_name).callback do |events|
         events.each do |check_name, event_json|
-          response.push(JSON.parse(event_json).merge(:client => client_name, :check => check_name))
+          response.push(event_hash(event_json, client_name, check_name))
         end
         body response.to_json
       end
@@ -270,8 +277,7 @@ module Sensu
       $redis.hgetall('events:' + client_name).callback do |events|
         event_json = events[check_name]
         unless event_json.nil?
-          response = JSON.parse(event_json).merge(:client => client_name, :check => check_name)
-          body response.to_json
+          body event_hash(event_json, client_name, check_name).to_json
         else
           status 404
           body ''
