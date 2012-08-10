@@ -117,6 +117,16 @@ class TestSensuAPI < TestCase
     end
   end
 
+  def test_delete_event
+    Sensu::API.run_test(@options) do
+      http = EM::HttpRequest.new(@api_url + '/event/' + @settings[:client][:name] + '/test').delete(@request_options)
+      http.callback do
+        assert_equal(202, http.response_header.status)
+        done
+      end
+    end
+  end
+
   def test_resolve_event
     Sensu::API.run_test(@options) do
       options = {
