@@ -172,15 +172,15 @@ module Sensu
     adelete %r{/clients?/([\w\.-]+)$} do |client_name|
       $redis.get('client:' + client_name).callback do |client_json|
         unless client_json.nil?
-          client = JSON.parse(client_json, :symbolize_names => true)
-          $logger.info('deleting client', {
-            :client => client
-          })
           $redis.hgetall('events:' + client_name).callback do |events|
             events.each_key do |check_name|
               resolve_event(client_name, check_name)
             end
             EM::Timer.new(5) do
+              client = JSON.parse(client_json, :symbolize_names => true)
+              $logger.info('deleting client', {
+                :client => client
+              })
               $redis.srem('clients', client_name)
               $redis.del('events:' + client_name)
               $redis.del('client:' + client_name)
