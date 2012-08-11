@@ -7,6 +7,8 @@ sending to a handler.
 
 TCP and UDP handler types, for writing event data to sockets.
 
+API resources now support singular & plural, Rails friendly.
+
 ### Non-backwards compatible changes
 
 AMQP handlers can no longer use `"send_only_check_output": true`, but
@@ -14,6 +16,8 @@ instead have access to the built-in mutators `"mutator": "only_check_output"` an
 `"mutator": "only_check_output_split"`.
 
 ### Other
+
+Redis client connection heartbeat.
 
 Improved graceful process termination.
 
