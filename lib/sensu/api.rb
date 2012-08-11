@@ -83,7 +83,7 @@ module Sensu
           :user_agent => env['HTTP_USER_AGENT'],
           :request_method => env['REQUEST_METHOD'],
           :request_uri => env['REQUEST_URI'],
-          :request_body =>  env['rack.input'].read
+          :request_body => env['rack.input'].read
         })
         env['rack.input'].rewind
       end
