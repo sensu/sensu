@@ -76,12 +76,6 @@ module Sensu
       ''
     end
 
-    before do
-      content_type 'application/json'
-      request_log_line
-      health_filter
-    end
-
     helpers do
       def request_log_line
         $logger.info([env['REQUEST_METHOD'], env['REQUEST_PATH']].join(' '), {
@@ -125,6 +119,12 @@ module Sensu
         })
         $amq.queue('results').publish(payload.to_json)
       end
+    end
+
+    before do
+      content_type 'application/json'
+      request_log_line
+      health_filter
     end
 
     aget '/info' do
@@ -411,7 +411,7 @@ module Sensu
               $redis.sadd('stashes', 'test/test').callback do
                 Thin::Logging.silent = true
                 Thin::Server.start(self, $settings[:api][:port])
-                EM::add_timer(0.5) do
+                EM::Timer.new(0.5) do
                   block.call
                 end
               end
