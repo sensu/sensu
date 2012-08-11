@@ -12,6 +12,14 @@ module Sensu
       @closing_connection = false
     end
 
+    def setup_heartbeat
+      @heartbeat ||= EM::PeriodicTimer.new(10) do
+        if connected?
+          ping
+        end
+      end
+    end
+
     def connection_completed
       @connection_established = true
       @connected = true
@@ -30,6 +38,7 @@ module Sensu
           close_connection
         end
       end
+      setup_heartbeat
     end
 
     def reconnect!

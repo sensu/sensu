@@ -647,7 +647,7 @@ module Sensu
     end
 
     def retry_until_true(wait=0.5, &block)
-      EM::add_timer(wait) do
+      EM::Timer.new(wait) do
         unless block.call
           retry_until_true(wait, &block)
         end
