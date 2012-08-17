@@ -386,7 +386,7 @@ module Sensu
             unless stash_json.nil?
               begin
                 response[path] = JSON.parse(stash_json)
-              rescue JSON::ParserError, TypeError
+              rescue JSON::ParserError
                 $logger.warn("Stash #{path} is not JSON parsable, removing it.")
                 $redis.del('stash:' + path)
                 $redis.srem('stashes', path)
