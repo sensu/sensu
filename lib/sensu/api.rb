@@ -325,17 +325,15 @@ module Sensu
     apost %r{/stash(?:es)?/(.*)} do |path|
       begin
         post_body = JSON.parse(request.body.read)
-      rescue JSON::ParserError
-        status 400
-        body ''
-      end
-      unless status == 400
         $redis.set('stash:' + path, post_body.to_json).callback do
           $redis.sadd('stashes', path).callback do
             status 201
             body ''
           end
         end
+      rescue JSON::ParserError
+        status 400
+        body ''
       end
     end
 
