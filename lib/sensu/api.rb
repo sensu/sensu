@@ -325,15 +325,15 @@ module Sensu
     apost %r{/stash(?:es)?/(.*)} do |path|
       begin
         post_body = JSON.parse(request.body.read)
+        $redis.set('stash:' + path, post_body.to_json).callback do
+          $redis.sadd('stashes', path).callback do
+            status 201
+            body ''
+          end
+        end
       rescue JSON::ParserError
         status 400
         body ''
-      end
-      $redis.set('stash:' + path, post_body.to_json).callback do
-        $redis.sadd('stashes', path).callback do
-          status 201
-          body ''
-        end
       end
     end
 
@@ -382,7 +382,13 @@ module Sensu
         post_body.each_with_index do |path, index|
           $redis.get('stash:' + path).callback do |stash_json|
             unless stash_json.nil?
-              response[path] = JSON.parse(stash_json)
+              begin
+                response[path] = JSON.parse(stash_json)
+              rescue JSON::ParserError
+                $logger.warn("Stash #{path} is not JSON parsable, removing it.")
+                $redis.del('stash:' + path)
+                $redis.srem('stashes', path)
+              end
             end
             if index == post_body.size - 1
               body response.to_json
