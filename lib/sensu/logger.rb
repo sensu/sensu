@@ -2,6 +2,7 @@ module Sensu
   class Logger
     def initialize(options={})
       @logger = Cabin::Channel.get
+      STDOUT.sync = true
       @logger.subscribe(STDOUT)
       @logger.level = options[:verbose] ? :debug : options[:log_level] || :info
       @log_file = options[:log_file]
