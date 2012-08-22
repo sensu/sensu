@@ -96,6 +96,31 @@ module Sensu
         end
       end
 
+      def bad_request!
+        status 400
+        body ''
+      end
+
+      def not_found!
+        status 404
+        body ''
+      end
+
+      def created!
+        status 201
+        body ''
+      end
+
+      def accepted!
+        status 202
+        body ''
+      end
+
+      def no_content!
+        status 204
+        body ''
+      end
+
       def event_hash(event_json, client_name, check_name)
         JSON.parse(event_json, :symbolize_names => true).merge(
           :client => client_name,
@@ -163,8 +188,7 @@ module Sensu
         unless client_json.nil?
           body client_json
         else
-          status 404
-          body ''
+          not_found!
         end
       end
     end
@@ -191,12 +215,10 @@ module Sensu
                 $redis.del('history:' + client_name)
               end
             end
-            status 202
-            body ''
+            accepted!
           end
         else
-          status 404
-          body ''
+          not_found!
         end
       end
     end
@@ -210,8 +232,7 @@ module Sensu
         response = $settings[:checks][check_name].merge(:name => check_name)
         body response.to_json
       else
-        status 404
-        body ''
+        not_found!
       end
     end
 
@@ -220,27 +241,25 @@ module Sensu
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
         check_name = post_body[:check]
         subscribers = post_body[:subscribers]
-      rescue JSON::ParserError, TypeError
-        status 400
-        body ''
-      end
-      if check_name.is_a?(String) && subscribers.is_a?(Array)
-        payload = {
-          :name => check_name,
-          :issued => Time.now.to_i
-        }
-        $logger.info('publishing check request', {
-          :payload => payload,
-          :subscribers => subscribers
-        })
-        subscribers.uniq.each do |exchange_name|
-          $amq.fanout(exchange_name).publish(payload.to_json)
+        if check_name.is_a?(String) && subscribers.is_a?(Array)
+          payload = {
+            :name => check_name,
+            :issued => Time.now.to_i
+          }
+          $logger.info('publishing check request', {
+            :payload => payload,
+            :subscribers => subscribers
+          })
+          subscribers.uniq.each do |exchange_name|
+            $amq.fanout(exchange_name).publish(payload.to_json)
+          end
+          created!
+        else
+          bad_request!
         end
-        status 201
-      else
-        status 400
+      rescue JSON::ParserError, TypeError
+        bad_request!
       end
-      body ''
     end
 
     aget '/events' do
@@ -279,8 +298,7 @@ module Sensu
         unless event_json.nil?
           body event_hash(event_json, client_name, check_name).to_json
         else
-          status 404
-          body ''
+          not_found!
         end
       end
     end
@@ -289,11 +307,10 @@ module Sensu
       $redis.hgetall('events:' + client_name).callback do |events|
         if events.include?(check_name)
           resolve_event(client_name, check_name)
-          status 202
+          accepted!
         else
-          status 404
+          not_found!
         end
-        body ''
       end
     end
 
@@ -302,23 +319,20 @@ module Sensu
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
         client_name = post_body[:client]
         check_name = post_body[:check]
-      rescue JSON::ParserError, TypeError
-        status 400
-        body ''
-      end
-      if client_name.is_a?(String) && check_name.is_a?(String)
-        $redis.hgetall('events:' + client_name).callback do |events|
-          if events.include?(check_name)
-            resolve_event(client_name, check_name)
-            status 202
-          else
-            status 404
+        if client_name.is_a?(String) && check_name.is_a?(String)
+          $redis.hgetall('events:' + client_name).callback do |events|
+            if events.include?(check_name)
+              resolve_event(client_name, check_name)
+              accepted!
+            else
+              not_found!
+            end
           end
-          body ''
+        else
+          bad_request!
         end
-      else
-        status 400
-        body ''
+      rescue JSON::ParserError, TypeError
+        bad_request!
       end
     end
 
@@ -327,23 +341,20 @@ module Sensu
         post_body = JSON.parse(request.body.read)
         $redis.set('stash:' + path, post_body.to_json).callback do
           $redis.sadd('stashes', path).callback do
-            status 201
-            body ''
+            created!
           end
         end
       rescue JSON::ParserError
-        status 400
-        body ''
+        bad_request!
       end
     end
 
     aget %r{/stash(?:es)?/(.*)} do |path|
       $redis.get('stash:' + path).callback do |stash_json|
-        if stash_json.nil?
-          status 404
-          body ''
-        else
+        unless stash_json.nil?
           body stash_json
+        else
+          not_found!
         end
       end
     end
@@ -353,13 +364,11 @@ module Sensu
         if stash_exists
           $redis.srem('stashes', path).callback do
             $redis.del('stash:' + path).callback do
-              status 204
-              body ''
+              no_content!
             end
           end
         else
-          status 404
-          body ''
+          not_found!
         end
       end
     end
@@ -373,31 +382,23 @@ module Sensu
     apost '/stashes' do
       begin
         post_body = JSON.parse(request.body.read)
-      rescue JSON::ParserError
-        status 400
-        body ''
-      end
-      response = Hash.new
-      if post_body.is_a?(Array) && post_body.size > 0
-        post_body.each_with_index do |path, index|
-          $redis.get('stash:' + path).callback do |stash_json|
-            unless stash_json.nil?
-              begin
+        if post_body.is_a?(Array) && post_body.size > 0
+          response = Hash.new
+          post_body.each_with_index do |path, index|
+            $redis.get('stash:' + path).callback do |stash_json|
+              unless stash_json.nil?
                 response[path] = JSON.parse(stash_json)
-              rescue JSON::ParserError
-                $logger.warn("Stash #{path} is not JSON parsable, removing it.")
-                $redis.del('stash:' + path)
-                $redis.srem('stashes', path)
+              end
+              if index == post_body.size - 1
+                body response.to_json
               end
             end
-            if index == post_body.size - 1
-              body response.to_json
-            end
           end
+        else
+          bad_request!
         end
-      else
-        status 400
-        body ''
+      rescue JSON::ParserError
+        bad_request!
       end
     end
 
