@@ -4,8 +4,6 @@ unless $:.include?(File.dirname(__FILE__) + '/../lib/')
   $: << File.dirname(__FILE__) + '/../lib'
 end
 
-$stdout.sync = true
-
 require 'sensu/server'
 
 options = Sensu::CLI.read
