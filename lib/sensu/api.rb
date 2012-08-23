@@ -440,6 +440,7 @@ module Sensu
         :signal => signal
       })
       $logger.warn('stopping')
+      $rabbitmq.close
       $redis.close
       $logger.warn('stopping reactor')
       EM::stop_event_loop
