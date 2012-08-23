@@ -19,7 +19,6 @@ module Sensu
     end
 
     def initialize(options={})
-      @state = nil
       @logger = Cabin::Channel.get
       base = Sensu::Base.new(options)
       @settings = base.settings
@@ -624,6 +623,7 @@ module Sensu
       unsubscribe do
         resign_as_master do
           complete_handlers_in_progress do
+            @rabbitmq.close
             @redis.close
             @logger.warn('stopping reactor')
             EM::stop_event_loop

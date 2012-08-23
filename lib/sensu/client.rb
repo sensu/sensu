@@ -265,6 +265,7 @@ module Sensu
       end
       unsubscribe do
         complete_checks_in_progress do
+          @rabbitmq.close
           @logger.warn('stopping reactor')
           EM::stop_event_loop
         end
