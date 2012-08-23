@@ -8,12 +8,7 @@ module Sensu
     def self.run(options={})
       server = self.new(options)
       EM::run do
-        server.setup_redis
-        server.setup_rabbitmq
-        server.setup_keepalives
-        server.setup_results
-        server.setup_master_monitor
-        server.setup_rabbitmq_monitor
+        server.start
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -24,6 +19,7 @@ module Sensu
     end
 
     def initialize(options={})
+      @state = nil
       @logger = Cabin::Channel.get
       base = Sensu::Base.new(options)
       @settings = base.settings
@@ -56,16 +52,22 @@ module Sensu
       @logger.debug('connecting to rabbitmq', {
         :settings => @settings[:rabbitmq]
       })
-      @rabbitmq = AMQP.connect(@settings[:rabbitmq])
-      @rabbitmq.on_disconnect = Proc.new do
-        @logger.fatal('cannot connect to rabbitmq', {
-          :settings => @settings[:rabbitmq]
-        })
-        @logger.fatal('SENSU NOT RUNNING!')
-        @redis.close
-        exit 2
+      connection_settings = @settings[:rabbitmq].merge(
+        :on_tcp_connection_failure => Proc.new do
+          @logger.fatal('cannot connect to rabbitmq', {
+            :settings => @settings[:rabbitmq]
+          })
+          @logger.fatal('SENSU NOT RUNNING!')
+          exit 2
+        end
+      )
+      @rabbitmq = AMQP.connect(connection_settings)
+      @rabbitmq.on_tcp_connection_loss do |connection, settings|
+        @logger.warn('reconnecting to rabbitmq')
+        connection.periodically_reconnect(10)
       end
       @amq = AMQP::Channel.new(@rabbitmq)
+      @amq.auto_recovery = true
     end
 
     def setup_keepalives
@@ -563,24 +565,6 @@ module Sensu
       end
     end
 
-    def setup_rabbitmq_monitor
-      @logger.debug('monitoring rabbitmq connection')
-      @timers << EM::PeriodicTimer.new(5) do
-        if @rabbitmq.connected?
-          unless @keepalive_queue.subscribed?
-            @logger.warn('re-subscribing to keepalives')
-            setup_keepalives
-          end
-          unless @result_queue.subscribed?
-            @logger.warn('re-subscribing to results')
-            setup_results
-          end
-        else
-          @logger.warn('reconnecting to rabbitmq')
-        end
-      end
-    end
-
     def unsubscribe(&block)
       if @rabbitmq.connected?
         @logger.warn('unsubscribing from keepalives')
@@ -619,6 +603,14 @@ module Sensu
           end
         end
       end
+    end
+
+    def start
+      setup_redis
+      setup_rabbitmq
+      setup_keepalives
+      setup_results
+      setup_master_monitor
     end
 
     def stop(signal)

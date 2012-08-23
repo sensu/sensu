@@ -46,16 +46,23 @@ module Sensu
       $logger.debug('connecting to rabbitmq', {
         :settings => $settings[:rabbitmq]
       })
-      $rabbitmq = AMQP.connect($settings[:rabbitmq])
-      $rabbitmq.on_disconnect = Proc.new do
-        $logger.fatal('cannot connect to rabbitmq', {
-          :settings => $settings[:rabbitmq]
-        })
-        $logger.fatal('SENSU NOT RUNNING!')
-        $redis.close
-        exit 2
+      connection_settings = $settings[:rabbitmq].merge(
+        :on_tcp_connection_failure => Proc.new do
+          $logger.fatal('cannot connect to rabbitmq', {
+            :settings => $settings[:rabbitmq]
+          })
+          $logger.fatal('SENSU NOT RUNNING!')
+          $redis.close
+          exit 2
+        end
+      )
+      $rabbitmq = AMQP.connect(connection_settings)
+      $rabbitmq.on_tcp_connection_loss do |connection, settings|
+        $logger.warn('reconnecting to rabbitmq')
+        connection.periodically_reconnect(10)
       end
       $amq = AMQP::Channel.new($rabbitmq)
+      $amq.auto_recovery = true
       if $settings[:api][:user] && $settings[:api][:password]
         use Rack::Auth::Basic do |user, password|
           user == $settings[:api][:user] && password == $settings[:api][:password]
