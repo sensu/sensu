@@ -59,7 +59,7 @@ module Sensu
       $rabbitmq = AMQP.connect(rabbitmq_settings)
       $rabbitmq.on_tcp_connection_loss do |connection, settings|
         $logger.warn('reconnecting to rabbitmq')
-        connection.periodically_reconnect(10)
+        connection.reconnect(false, 10)
       end
       $amq = AMQP::Channel.new($rabbitmq)
       $amq.auto_recovery = true
