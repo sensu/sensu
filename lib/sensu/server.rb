@@ -51,7 +51,7 @@ module Sensu
       @logger.debug('connecting to rabbitmq', {
         :settings => @settings[:rabbitmq]
       })
-      connection_settings = @settings[:rabbitmq].merge(
+      rabbitmq_settings = @settings[:rabbitmq].merge(
         :on_tcp_connection_failure => Proc.new do
           @logger.fatal('cannot connect to rabbitmq', {
             :settings => @settings[:rabbitmq]
@@ -60,7 +60,7 @@ module Sensu
           exit 2
         end
       )
-      @rabbitmq = AMQP.connect(connection_settings)
+      @rabbitmq = AMQP.connect(rabbitmq_settings)
       @rabbitmq.on_tcp_connection_loss do |connection, settings|
         @logger.warn('reconnecting to rabbitmq')
         connection.periodically_reconnect(10)
@@ -87,16 +87,16 @@ module Sensu
       subdue = false
       if check[:subdue].is_a?(Hash)
         if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
-          start = Time.parse(check[:subdue][:start])
-          stop = Time.parse(check[:subdue][:end])
-          if stop < start
-            if Time.now < stop
-              start = Time.parse('12:00:00 AM')
+          start_time = Time.parse(check[:subdue][:start])
+          stop_time = Time.parse(check[:subdue][:end])
+          if stop_time < start_time
+            if Time.now < stop_time
+              start_time = Time.parse('12:00:00 AM')
             else
-              stop = Time.parse('11:59:59 PM')
+              stop_time = Time.parse('11:59:59 PM')
             end
           end
-          if Time.now >= start && Time.now <= stop
+          if Time.now >= start_time && Time.now <= stop_time
             subdue = true
           end
         end

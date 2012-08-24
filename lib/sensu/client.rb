@@ -28,7 +28,7 @@ module Sensu
       @logger.debug('connecting to rabbitmq', {
         :settings => @settings[:rabbitmq]
       })
-      connection_settings = @settings[:rabbitmq].merge(
+      rabbitmq_settings = @settings[:rabbitmq].merge(
         :on_tcp_connection_failure => Proc.new do
           @logger.fatal('cannot connect to rabbitmq', {
             :settings => @settings[:rabbitmq]
@@ -37,7 +37,7 @@ module Sensu
           exit 2
         end
       )
-      @rabbitmq = AMQP.connect(connection_settings)
+      @rabbitmq = AMQP.connect(rabbitmq_settings)
       @rabbitmq.on_tcp_connection_loss do |connection, settings|
         @logger.warn('reconnecting to rabbitmq')
         connection.periodically_reconnect(10)
