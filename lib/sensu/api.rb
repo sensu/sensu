@@ -46,8 +46,7 @@ module Sensu
       $logger.debug('connecting to rabbitmq', {
         :settings => $settings[:rabbitmq]
       })
-      $rabbitmq = AMQP.connect($settings[:rabbitmq])
-      $rabbitmq.on_disconnect = Proc.new do
+      connection_failure = Proc.new do
         $logger.fatal('cannot connect to rabbitmq', {
           :settings => $settings[:rabbitmq]
         })
@@ -55,7 +54,13 @@ module Sensu
         $redis.close
         exit 2
       end
+      $rabbitmq = AMQP.connect($settings[:rabbitmq], :on_tcp_connection_failure => connection_failure)
+      $rabbitmq.on_tcp_connection_loss do |connection, settings|
+        $logger.warn('reconnecting to rabbitmq')
+        connection.reconnect(false, 10)
+      end
       $amq = AMQP::Channel.new($rabbitmq)
+      $amq.auto_recovery = true
       if $settings[:api][:user] && $settings[:api][:password]
         use Rack::Auth::Basic do |user, password|
           user == $settings[:api][:user] && password == $settings[:api][:password]
@@ -433,6 +438,7 @@ module Sensu
         :signal => signal
       })
       $logger.warn('stopping')
+      $rabbitmq.close
       $redis.close
       $logger.warn('stopping reactor')
       EM::stop_event_loop

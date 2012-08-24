@@ -6,12 +6,7 @@ module Sensu
     def self.run(options={})
       client = self.new(options)
       EM::run do
-        client.setup_rabbitmq
-        client.setup_keepalives
-        client.setup_subscriptions
-        client.setup_rabbitmq_monitor
-        client.setup_standalone
-        client.setup_sockets
+        client.start
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -33,15 +28,20 @@ module Sensu
       @logger.debug('connecting to rabbitmq', {
         :settings => @settings[:rabbitmq]
       })
-      @rabbitmq = AMQP.connect(@settings[:rabbitmq])
-      @rabbitmq.on_disconnect = Proc.new do
+      connection_failure = Proc.new do
         @logger.fatal('cannot connect to rabbitmq', {
           :settings => @settings[:rabbitmq]
         })
         @logger.fatal('SENSU NOT RUNNING!')
         exit 2
       end
+      @rabbitmq = AMQP.connect(@settings[:rabbitmq], :on_tcp_connection_failure => connection_failure)
+      @rabbitmq.on_tcp_connection_loss do |connection, settings|
+        @logger.warn('reconnecting to rabbitmq')
+        connection.reconnect(false, 10)
+      end
       @amq = AMQP::Channel.new(@rabbitmq)
+      @amq.auto_recovery = true
     end
 
     def publish_keepalive
@@ -186,20 +186,6 @@ module Sensu
       end
     end
 
-    def setup_rabbitmq_monitor
-      @logger.debug('monitoring rabbitmq connection')
-      @timers << EM::PeriodicTimer.new(5) do
-        if @rabbitmq.connected?
-          unless @check_request_queue.subscribed?
-            @logger.warn('re-subscribing to client subscriptions')
-            setup_subscriptions
-          end
-        else
-          @logger.warn('reconnecting to rabbitmq')
-        end
-      end
-    end
-
     def setup_standalone
       @logger.debug('scheduling standalone checks')
       standalone_check_count = 0
@@ -238,10 +224,8 @@ module Sensu
     end
 
     def unsubscribe(&block)
-      if @rabbitmq.connected?
-        @logger.warn('unsubscribing from client subscriptions')
-        @check_request_queue.unsubscribe
-      end
+      @logger.warn('unsubscribing from client subscriptions')
+      @check_request_queue.unsubscribe
       if block
         block.call
       end
@@ -251,14 +235,22 @@ module Sensu
       @logger.info('completing checks in progress', {
         :checks_in_progress => @checks_in_progress
       })
-      if block
-        retry_until_true do
-          if @checks_in_progress.empty?
+      retry_until_true do
+        if @checks_in_progress.empty?
+          if block
             block.call
-            true
           end
+          true
         end
       end
+    end
+
+    def start
+      setup_rabbitmq
+      setup_keepalives
+      setup_subscriptions
+      setup_standalone
+      setup_sockets
     end
 
     def stop(signal)
@@ -271,6 +263,7 @@ module Sensu
       end
       unsubscribe do
         complete_checks_in_progress do
+          @rabbitmq.close
           @logger.warn('stopping reactor')
           EM::stop_event_loop
         end

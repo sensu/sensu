@@ -8,12 +8,7 @@ module Sensu
     def self.run(options={})
       server = self.new(options)
       EM::run do
-        server.setup_redis
-        server.setup_rabbitmq
-        server.setup_keepalives
-        server.setup_results
-        server.setup_master_monitor
-        server.setup_rabbitmq_monitor
+        server.start
 
         %w[INT TERM].each do |signal|
           Signal.trap(signal) do
@@ -56,8 +51,7 @@ module Sensu
       @logger.debug('connecting to rabbitmq', {
         :settings => @settings[:rabbitmq]
       })
-      @rabbitmq = AMQP.connect(@settings[:rabbitmq])
-      @rabbitmq.on_disconnect = Proc.new do
+      connection_failure = Proc.new do
         @logger.fatal('cannot connect to rabbitmq', {
           :settings => @settings[:rabbitmq]
         })
@@ -65,7 +59,13 @@ module Sensu
         @redis.close
         exit 2
       end
+      @rabbitmq = AMQP.connect(@settings[:rabbitmq], :on_tcp_connection_failure => connection_failure)
+      @rabbitmq.on_tcp_connection_loss do |connection, settings|
+        @logger.warn('reconnecting to rabbitmq')
+        connection.reconnect(false, 10)
+      end
       @amq = AMQP::Channel.new(@rabbitmq)
+      @amq.auto_recovery = true
     end
 
     def setup_keepalives
@@ -86,16 +86,16 @@ module Sensu
       subdue = false
       if check[:subdue].is_a?(Hash)
         if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
-          start = Time.parse(check[:subdue][:start])
-          stop = Time.parse(check[:subdue][:end])
-          if stop < start
-            if Time.now < stop
-              start = Time.parse('12:00:00 AM')
+          start_time = Time.parse(check[:subdue][:start])
+          stop_time = Time.parse(check[:subdue][:end])
+          if stop_time < start_time
+            if Time.now < stop_time
+              start_time = Time.parse('12:00:00 AM')
             else
-              stop = Time.parse('11:59:59 PM')
+              stop_time = Time.parse('11:59:59 PM')
             end
           end
-          if Time.now >= start && Time.now <= stop
+          if Time.now >= start_time && Time.now <= stop_time
             subdue = true
           end
         end
@@ -563,24 +563,6 @@ module Sensu
       end
     end
 
-    def setup_rabbitmq_monitor
-      @logger.debug('monitoring rabbitmq connection')
-      @timers << EM::PeriodicTimer.new(5) do
-        if @rabbitmq.connected?
-          unless @keepalive_queue.subscribed?
-            @logger.warn('re-subscribing to keepalives')
-            setup_keepalives
-          end
-          unless @result_queue.subscribed?
-            @logger.warn('re-subscribing to results')
-            setup_results
-          end
-        else
-          @logger.warn('reconnecting to rabbitmq')
-        end
-      end
-    end
-
     def unsubscribe(&block)
       if @rabbitmq.connected?
         @logger.warn('unsubscribing from keepalives')
@@ -621,6 +603,14 @@ module Sensu
       end
     end
 
+    def start
+      setup_redis
+      setup_rabbitmq
+      setup_keepalives
+      setup_results
+      setup_master_monitor
+    end
+
     def stop(signal)
       @logger.warn('received signal', {
         :signal => signal
@@ -632,6 +622,7 @@ module Sensu
       unsubscribe do
         resign_as_master do
           complete_handlers_in_progress do
+            @rabbitmq.close
             @redis.close
             @logger.warn('stopping reactor')
             EM::stop_event_loop
