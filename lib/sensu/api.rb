@@ -11,15 +11,9 @@ module Sensu
     def self.run(options={})
       EM::run do
         self.setup(options)
-
+        self.trap_signals
         Thin::Logging.silent = true
         Thin::Server.start(self, $settings[:api][:port])
-
-        %w[INT TERM].each do |signal|
-          Signal.trap(signal) do
-            self.stop(signal)
-          end
-        end
       end
     end
 
@@ -433,15 +427,23 @@ module Sensu
       end
     end
 
-    def self.stop(signal)
-      $logger.warn('received signal', {
-        :signal => signal
-      })
+    def self.stop
       $logger.warn('stopping')
       $rabbitmq.close
       $redis.close
       $logger.warn('stopping reactor')
       EM::stop_event_loop
+    end
+
+    def self.trap_signals
+      %w[INT TERM].each do |signal|
+        Signal.trap(signal) do
+          $logger.warn('received signal', {
+            :signal => signal
+          })
+          self.stop
+        end
+      end
     end
   end
 end
