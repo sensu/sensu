@@ -15,6 +15,10 @@ AMQP handlers can no longer use `"send_only_check_output": true`, but
 instead have access to the built-in mutators `"mutator": "only_check_output"` and
 `"mutator": "only_check_output_split"`.
 
+Ruby 1.8.7-p249 is no longer supported, as the AMQP library no longer
+does. Please use the Sensu APT/YUM packages which contain an embedded
+Ruby.
+
 ### Other
 
 Improved RabbitMQ and Redis connection recovery.
