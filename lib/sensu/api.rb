@@ -8,62 +8,116 @@ module Sensu
   class API < Sinatra::Base
     register Sinatra::Async
 
-    def self.run(options={})
-      EM::run do
-        self.setup(options)
+    class << self
+      def run(options={})
+        EM::run do
+          bootstrap(options)
+          start
+          trap_signals
+        end
+      end
 
-        Thin::Logging.silent = true
-        Thin::Server.start(self, $settings[:api][:port])
-
-        %w[INT TERM].each do |signal|
-          Signal.trap(signal) do
-            self.stop(signal)
+      def bootstrap(options={})
+        $logger = Cabin::Channel.get
+        base = Sensu::Base.new(options)
+        $settings = base.settings
+        if $settings[:api][:user] && $settings[:api][:password]
+          use Rack::Auth::Basic do |user, password|
+            user == $settings[:api][:user] && password == $settings[:api][:password]
           end
         end
       end
-    end
 
-    def self.setup(options={})
-      $logger = Cabin::Channel.get
-      base = Sensu::Base.new(options)
-      $settings = base.settings
-      $logger.debug('connecting to redis', {
-        :settings => $settings[:redis]
-      })
-      $redis = Sensu::Redis.connect($settings[:redis])
-      $redis.on_disconnect = Proc.new do
-        if $redis.connection_established?
-          $logger.warn('reconnecting to redis')
-          $redis.reconnect!
-        else
+      def setup_redis
+        $logger.debug('connecting to redis', {
+          :settings => $settings[:redis]
+        })
+        connection_failure = Proc.new do
           $logger.fatal('cannot connect to redis', {
             :settings => $settings[:redis]
           })
           $logger.fatal('SENSU NOT RUNNING!')
+          if $rabbitmq
+            $rabbitmq.close
+          end
           exit 2
         end
+        $redis = Sensu::Redis.connect($settings[:redis], :on_tcp_connection_failure => connection_failure)
+        $redis.on_tcp_connection_loss do |connection, settings|
+          $logger.warn('reconnecting to redis')
+          connection.reconnect(false, 10)
+        end
       end
-      $logger.debug('connecting to rabbitmq', {
-        :settings => $settings[:rabbitmq]
-      })
-      connection_failure = Proc.new do
-        $logger.fatal('cannot connect to rabbitmq', {
+
+      def setup_rabbitmq
+        $logger.debug('connecting to rabbitmq', {
           :settings => $settings[:rabbitmq]
         })
-        $logger.fatal('SENSU NOT RUNNING!')
+        connection_failure = Proc.new do
+          $logger.fatal('cannot connect to rabbitmq', {
+            :settings => $settings[:rabbitmq]
+          })
+          $logger.fatal('SENSU NOT RUNNING!')
+          $redis.close
+          exit 2
+        end
+        $rabbitmq = AMQP.connect($settings[:rabbitmq], :on_tcp_connection_failure => connection_failure)
+        $rabbitmq.on_tcp_connection_loss do |connection, settings|
+          $logger.warn('reconnecting to rabbitmq')
+          connection.reconnect(false, 10)
+        end
+        $amq = AMQP::Channel.new($rabbitmq)
+        $amq.auto_recovery = true
+      end
+
+      def start
+        setup_redis
+        setup_rabbitmq
+        Thin::Logging.silent = true
+        Thin::Server.start(self, $settings[:api][:port])
+      end
+
+      def stop
+        $logger.warn('stopping')
+        $rabbitmq.close
         $redis.close
-        exit 2
+        $logger.warn('stopping reactor')
+        EM::stop_event_loop
       end
-      $rabbitmq = AMQP.connect($settings[:rabbitmq], :on_tcp_connection_failure => connection_failure)
-      $rabbitmq.on_tcp_connection_loss do |connection, settings|
-        $logger.warn('reconnecting to rabbitmq')
-        connection.reconnect(false, 10)
+
+      def trap_signals
+        %w[INT TERM].each do |signal|
+          Signal.trap(signal) do
+            $logger.warn('received signal', {
+              :signal => signal
+            })
+            stop
+          end
+        end
       end
-      $amq = AMQP::Channel.new($rabbitmq)
-      $amq.auto_recovery = true
-      if $settings[:api][:user] && $settings[:api][:password]
-        use Rack::Auth::Basic do |user, password|
-          user == $settings[:api][:user] && password == $settings[:api][:password]
+
+      def run_test(options={}, &block)
+        bootstrap(options)
+        start
+        $settings[:client][:timestamp] = Time.now.to_i
+        $redis.set('client:' + $settings[:client][:name], $settings[:client].to_json).callback do
+          $redis.sadd('clients', $settings[:client][:name]).callback do
+            $redis.hset('events:' + $settings[:client][:name], 'test', {
+              :output => 'CRITICAL',
+              :status => 2,
+              :issued => Time.now.to_i,
+              :flapping => false,
+              :occurrences => 1
+            }.to_json).callback do
+              $redis.set('stash:test/test', {:key => 'value'}.to_json).callback do
+                $redis.sadd('stashes', 'test/test').callback do
+                  EM::Timer.new(0.5) do
+                    block.call
+                  end
+                end
+              end
+            end
+          end
         end
       end
     end
@@ -405,43 +459,6 @@ module Sensu
       rescue JSON::ParserError
         bad_request!
       end
-    end
-
-    def self.run_test(options={}, &block)
-      self.setup(options)
-      $settings[:client][:timestamp] = Time.now.to_i
-      $redis.set('client:' + $settings[:client][:name], $settings[:client].to_json).callback do
-        $redis.sadd('clients', $settings[:client][:name]).callback do
-          $redis.hset('events:' + $settings[:client][:name], 'test', {
-            :output => 'CRITICAL',
-            :status => 2,
-            :issued => Time.now.to_i,
-            :flapping => false,
-            :occurrences => 1
-          }.to_json).callback do
-            $redis.set('stash:test/test', {:key => 'value'}.to_json).callback do
-              $redis.sadd('stashes', 'test/test').callback do
-                Thin::Logging.silent = true
-                Thin::Server.start(self, $settings[:api][:port])
-                EM::Timer.new(0.5) do
-                  block.call
-                end
-              end
-            end
-          end
-        end
-      end
-    end
-
-    def self.stop(signal)
-      $logger.warn('received signal', {
-        :signal => signal
-      })
-      $logger.warn('stopping')
-      $rabbitmq.close
-      $redis.close
-      $logger.warn('stopping reactor')
-      EM::stop_event_loop
     end
   end
 end
