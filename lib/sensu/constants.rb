@@ -1,6 +1,6 @@
 module Sensu
   unless defined?(Sensu::VERSION)
-    VERSION = '0.9.7.beta.2'
+    VERSION = '0.9.7.beta.3'
   end
 
   unless defined?(Sensu::DEFAULT_OPTIONS)
