@@ -12,6 +12,7 @@ module Sensu
       @settings = Hash.new
       @connection_established = false
       @connected = false
+      @reconnecting = false
       @closing_connection = false
     end
 
@@ -26,6 +27,7 @@ module Sensu
     def connection_completed
       @connection_established = true
       @connected = true
+      @reconnecting = false
       if @settings[:password]
         auth(@settings[:password]).callback do |reply|
           unless reply == 'OK'
@@ -45,11 +47,12 @@ module Sensu
     end
 
     def reconnect(immediate=false, wait=10)
-      unless immediate
+      if @reconnecting && !immediate
         EM::Timer.new(wait) do
           em_reconnect(@settings[:host], @settings[:port])
         end
       else
+        @reconnecting = true
         em_reconnect(@settings[:host], @settings[:port])
       end
     end
