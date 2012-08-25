@@ -11,9 +11,9 @@ module Sensu
     def self.run(options={})
       EM::run do
         self.setup(options)
-        self.trap_signals
         Thin::Logging.silent = true
         Thin::Server.start(self, $settings[:api][:port])
+        self.trap_signals
       end
     end
 
@@ -24,18 +24,20 @@ module Sensu
       $logger.debug('connecting to redis', {
         :settings => $settings[:redis]
       })
-      $redis = Sensu::Redis.connect($settings[:redis])
-      $redis.on_disconnect = Proc.new do
-        if $redis.connection_established?
-          $logger.warn('reconnecting to redis')
-          $redis.reconnect!
-        else
-          $logger.fatal('cannot connect to redis', {
-            :settings => $settings[:redis]
-          })
-          $logger.fatal('SENSU NOT RUNNING!')
-          exit 2
+      connection_failure = Proc.new do
+        $logger.fatal('cannot connect to redis', {
+          :settings => $settings[:redis]
+        })
+        $logger.fatal('SENSU NOT RUNNING!')
+        if $rabbitmq
+          $rabbitmq.close
         end
+        exit 2
+      end
+      $redis = Sensu::Redis.connect($settings[:redis], :on_tcp_connection_failure => connection_failure)
+      $redis.on_tcp_connection_loss do |connection, settings|
+        $logger.warn('reconnecting to redis')
+        connection.reconnect(false, 10)
       end
       $logger.debug('connecting to rabbitmq', {
         :settings => $settings[:rabbitmq]

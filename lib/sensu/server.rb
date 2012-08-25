@@ -27,19 +27,21 @@ module Sensu
       @logger.debug('connecting to redis', {
         :settings => @settings[:redis]
       })
-      @redis = Sensu::Redis.connect(@settings[:redis])
-      unless testing?
-        @redis.on_disconnect = Proc.new do
-          if @redis.connection_established?
-            @logger.fatal('redis connection closed')
-            stop
-          else
-            @logger.fatal('cannot connect to redis', {
-              :settings => @settings[:redis]
-            })
-            @logger.fatal('SENSU NOT RUNNING!')
-            exit 2
-          end
+      connection_failure = Proc.new do
+        @logger.fatal('cannot connect to redis', {
+          :settings => @settings[:redis]
+        })
+        @logger.fatal('SENSU NOT RUNNING!')
+        if @rabbitmq
+          @rabbitmq.close
+        end
+        exit 2
+      end
+      @redis = Sensu::Redis.connect(@settings[:redis], :on_tcp_connection_failure => connection_failure)
+      @redis.on_tcp_connection_loss do
+        unless testing?
+          @logger.fatal('redis connection closed')
+          stop
         end
       end
     end
@@ -86,15 +88,15 @@ module Sensu
       if check[:subdue].is_a?(Hash)
         if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
           start_time = Time.parse(check[:subdue][:start])
-          stop_time = Time.parse(check[:subdue][:end])
-          if stop_time < start_time
-            if Time.now < stop_time
+          end_time = Time.parse(check[:subdue][:end])
+          if end_time < start_time
+            if Time.now < end_time
               start_time = Time.parse('12:00:00 AM')
             else
-              stop_time = Time.parse('11:59:59 PM')
+              end_time = Time.parse('11:59:59 PM')
             end
           end
-          if Time.now >= start_time && Time.now <= stop_time
+          if Time.now >= start_time && Time.now <= end_time
             subdue = true
           end
         end
