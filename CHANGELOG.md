@@ -17,6 +17,10 @@ instead have access to the built-in mutators `"mutator": "only_check_output"` an
 
 ### Other
 
+Improved RabbitMQ and Redis connection recovery.
+
+Fixed API POST input validation.
+
 Redis client connection heartbeat.
 
 Improved graceful process termination.
