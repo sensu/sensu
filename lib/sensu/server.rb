@@ -9,12 +9,7 @@ module Sensu
       server = self.new(options)
       EM::run do
         server.start
-
-        %w[INT TERM].each do |signal|
-          Signal.trap(signal) do
-            server.stop(signal)
-          end
-        end
+        server.trap_signals
       end
     end
 
@@ -23,26 +18,30 @@ module Sensu
       base = Sensu::Base.new(options)
       @settings = base.settings
       @timers = Array.new
+      @master_timers = Array.new
       @handlers_in_progress_count = 0
+      @is_master = false
     end
 
     def setup_redis
       @logger.debug('connecting to redis', {
         :settings => @settings[:redis]
       })
-      @redis = Sensu::Redis.connect(@settings[:redis])
-      unless testing?
-        @redis.on_disconnect = Proc.new do
-          if @redis.connection_established?
-            @logger.fatal('redis connection closed')
-            stop('TERM')
-          else
-            @logger.fatal('cannot connect to redis', {
-              :settings => @settings[:redis]
-            })
-            @logger.fatal('SENSU NOT RUNNING!')
-            exit 2
-          end
+      connection_failure = Proc.new do
+        @logger.fatal('cannot connect to redis', {
+          :settings => @settings[:redis]
+        })
+        @logger.fatal('SENSU NOT RUNNING!')
+        if @rabbitmq
+          @rabbitmq.close
+        end
+        exit 2
+      end
+      @redis = Sensu::Redis.connect(@settings[:redis], :on_tcp_connection_failure => connection_failure)
+      @redis.on_tcp_connection_loss do
+        unless testing?
+          @logger.fatal('redis connection closed')
+          stop
         end
       end
     end
@@ -62,7 +61,9 @@ module Sensu
       @rabbitmq = AMQP.connect(@settings[:rabbitmq], :on_tcp_connection_failure => connection_failure)
       @rabbitmq.on_tcp_connection_loss do |connection, settings|
         @logger.warn('reconnecting to rabbitmq')
-        connection.reconnect(false, 10)
+        resign_as_master do
+          connection.reconnect(false, 10)
+        end
       end
       @amq = AMQP::Channel.new(@rabbitmq)
       @amq.auto_recovery = true
@@ -87,15 +88,15 @@ module Sensu
       if check[:subdue].is_a?(Hash)
         if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
           start_time = Time.parse(check[:subdue][:start])
-          stop_time = Time.parse(check[:subdue][:end])
-          if stop_time < start_time
-            if Time.now < stop_time
+          end_time = Time.parse(check[:subdue][:end])
+          if end_time < start_time
+            if Time.now < end_time
               start_time = Time.parse('12:00:00 AM')
             else
-              stop_time = Time.parse('11:59:59 PM')
+              end_time = Time.parse('11:59:59 PM')
             end
           end
-          if Time.now >= start_time && Time.now <= stop_time
+          if Time.now >= start_time && Time.now <= end_time
             subdue = true
           end
         end
@@ -422,22 +423,20 @@ module Sensu
       @settings.checks.each do |check|
         unless check[:publish] == false || check[:standalone]
           check_count += 1
-          @timers << EM::Timer.new(stagger * check_count) do
+          @master_timers << EM::Timer.new(stagger * check_count) do
             interval = testing? ? 0.5 : check[:interval]
-            @timers << EM::PeriodicTimer.new(interval) do
+            @master_timers << EM::PeriodicTimer.new(interval) do
               unless check_subdued?(check, :publisher)
-                if @rabbitmq.connected?
-                  payload = {
-                    :name => check[:name],
-                    :issued => Time.now.to_i
-                  }
-                  @logger.info('publishing check request', {
-                    :payload => payload,
-                    :subscribers => check[:subscribers]
-                  })
-                  check[:subscribers].uniq.each do |exchange_name|
-                    @amq.fanout(exchange_name).publish(payload.to_json)
-                  end
+                payload = {
+                  :name => check[:name],
+                  :issued => Time.now.to_i
+                }
+                @logger.info('publishing check request', {
+                  :payload => payload,
+                  :subscribers => check[:subscribers]
+                })
+                check[:subscribers].uniq.each do |exchange_name|
+                  @amq.fanout(exchange_name).publish(payload.to_json)
                 end
               end
             end
@@ -459,34 +458,32 @@ module Sensu
 
     def setup_keepalive_monitor
       @logger.debug('monitoring client keepalives')
-      @timers << EM::PeriodicTimer.new(30) do
-        if @rabbitmq.connected?
-          @logger.debug('checking for stale client info')
-          @redis.smembers('clients').callback do |clients|
-            clients.each do |client_name|
-              @redis.get('client:' + client_name).callback do |client_json|
-                client = JSON.parse(client_json, :symbolize_names => true)
-                check = {
-                  :name => 'keepalive',
-                  :issued => Time.now.to_i
-                }
-                time_since_last_keepalive = Time.now.to_i - client[:timestamp]
-                case
-                when time_since_last_keepalive >= 180
-                  check[:output] = 'No keep-alive sent from client in over 180 seconds'
-                  check[:status] = 2
-                  publish_result(client, check)
-                when time_since_last_keepalive >= 120
-                  check[:output] = 'No keep-alive sent from client in over 120 seconds'
-                  check[:status] = 1
-                  publish_result(client, check)
-                else
-                  @redis.hexists('events:' + client[:name], 'keepalive').callback do |exists|
-                    if exists
-                      check[:output] = 'Keep-alive sent from client'
-                      check[:status] = 0
-                      publish_result(client, check)
-                    end
+      @master_timers << EM::PeriodicTimer.new(30) do
+        @logger.debug('checking for stale client info')
+        @redis.smembers('clients').callback do |clients|
+          clients.each do |client_name|
+            @redis.get('client:' + client_name).callback do |client_json|
+              client = JSON.parse(client_json, :symbolize_names => true)
+              check = {
+                :name => 'keepalive',
+                :issued => Time.now.to_i
+              }
+              time_since_last_keepalive = Time.now.to_i - client[:timestamp]
+              case
+              when time_since_last_keepalive >= 180
+                check[:output] = 'No keep-alive sent from client in over 180 seconds'
+                check[:status] = 2
+                publish_result(client, check)
+              when time_since_last_keepalive >= 120
+                check[:output] = 'No keep-alive sent from client in over 120 seconds'
+                check[:status] = 1
+                publish_result(client, check)
+              else
+                @redis.hexists('events:' + client[:name], 'keepalive').callback do |exists|
+                  if exists
+                    check[:output] = 'Keep-alive sent from client'
+                    check[:status] = 0
+                    publish_result(client, check)
                   end
                 end
               end
@@ -502,7 +499,6 @@ module Sensu
     end
 
     def request_master_election
-      @is_master ||= false
       @redis.setnx('lock:master', Time.now.to_i).callback do |created|
         if created
           @is_master = true
@@ -524,32 +520,6 @@ module Sensu
       end
     end
 
-    def resign_as_master(&block)
-      if @redis.connected? && @is_master
-        @redis.del('lock:master').callback do
-          @logger.warn('resigned as master')
-          @is_master = false
-        end
-        if block
-          timestamp = Time.now.to_i
-          retry_until_true do
-            if !@is_master
-              block.call
-              true
-            elsif Time.now.to_i - timestamp >= 5
-              @logger.warn('failed to resign as master')
-              block.call
-              true
-            end
-          end
-        end
-      else
-        if block
-          block.call
-        end
-      end
-    end
-
     def setup_master_monitor
       request_master_election
       @timers << EM::PeriodicTimer.new(20) do
@@ -557,35 +527,59 @@ module Sensu
           @redis.set('lock:master', Time.now.to_i).callback do
             @logger.debug('updated master lock timestamp')
           end
-        else
+        elsif @rabbitmq.connected?
           request_master_election
         end
       end
     end
 
-    def unsubscribe(&block)
-      if @rabbitmq.connected?
-        @logger.warn('unsubscribing from keepalives')
-        @keepalive_queue.unsubscribe
-        @logger.warn('unsubscribing from results')
-        @result_queue.unsubscribe
-        if block
-          timestamp = Time.now.to_i
-          retry_until_true do
-            if !@keepalive_queue.subscribed? && !@result_queue.subscribed?
-              block.call
-              true
-            elsif Time.now.to_i - timestamp >= 5
-              @logger.warn('failed to unsubscribe from keepalives and results')
-              block.call
-              true
-            end
+    def resign_as_master(&block)
+      if @is_master
+        @logger.warn('resigning as master')
+        @master_timers.each do |timer|
+          timer.cancel
+        end
+        @master_timers = Array.new
+        @redis.del('lock:master').callback do
+          @logger.info('removed master lock')
+          @is_master = false
+        end
+        timestamp = Time.now.to_i
+        retry_until_true do
+          if !@is_master
+            block.call
+            true
+          elsif !@redis.connected? || Time.now.to_i - timestamp >= 5
+            @logger.warn('failed to remove master lock')
+            @is_master = false
+            block.call
+            true
           end
         end
       else
-        if block
-          block.call
+        @logger.debug('not currently master')
+        block.call
+      end
+    end
+
+    def unsubscribe(&block)
+      @logger.warn('unsubscribing from keepalive and result queues')
+      @keepalive_queue.unsubscribe
+      @result_queue.unsubscribe
+      if @rabbitmq.connected?
+        timestamp = Time.now.to_i
+        retry_until_true do
+          if !@keepalive_queue.subscribed? && !@result_queue.subscribed?
+            block.call
+            true
+          elsif Time.now.to_i - timestamp >= 5
+            @logger.warn('failed to unsubscribe from keepalive and result queues')
+            block.call
+            true
+          end
         end
+      else
+        block.call
       end
     end
 
@@ -593,12 +587,10 @@ module Sensu
       @logger.info('completing handlers in progress', {
         :handlers_in_progress_count => @handlers_in_progress_count
       })
-      if block
-        retry_until_true do
-          if @handlers_in_progress_count == 0
-            block.call
-            true
-          end
+      retry_until_true do
+        if @handlers_in_progress_count == 0
+          block.call
+          true
         end
       end
     end
@@ -611,10 +603,7 @@ module Sensu
       setup_master_monitor
     end
 
-    def stop(signal)
-      @logger.warn('received signal', {
-        :signal => signal
-      })
+    def stop
       @logger.warn('stopping')
       @timers.each do |timer|
         timer.cancel
@@ -627,6 +616,17 @@ module Sensu
             @logger.warn('stopping reactor')
             EM::stop_event_loop
           end
+        end
+      end
+    end
+
+    def trap_signals
+      %w[INT TERM].each do |signal|
+        Signal.trap(signal) do
+          @logger.warn('received signal', {
+            :signal => signal
+          })
+          stop
         end
       end
     end

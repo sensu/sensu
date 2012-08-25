@@ -7,12 +7,7 @@ module Sensu
       client = self.new(options)
       EM::run do
         client.start
-
-        %w[INT TERM].each do |signal|
-          Signal.trap(signal) do
-            client.stop(signal)
-          end
-        end
+        client.trap_signals
       end
     end
 
@@ -226,9 +221,7 @@ module Sensu
     def unsubscribe(&block)
       @logger.warn('unsubscribing from client subscriptions')
       @check_request_queue.unsubscribe
-      if block
-        block.call
-      end
+      block.call
     end
 
     def complete_checks_in_progress(&block)
@@ -237,9 +230,7 @@ module Sensu
       })
       retry_until_true do
         if @checks_in_progress.empty?
-          if block
-            block.call
-          end
+          block.call
           true
         end
       end
@@ -253,10 +244,7 @@ module Sensu
       setup_sockets
     end
 
-    def stop(signal)
-      @logger.warn('received signal', {
-        :signal => signal
-      })
+    def stop
       @logger.warn('stopping')
       @timers.each do |timer|
         timer.cancel
@@ -266,6 +254,17 @@ module Sensu
           @rabbitmq.close
           @logger.warn('stopping reactor')
           EM::stop_event_loop
+        end
+      end
+    end
+
+    def trap_signals
+      %w[INT TERM].each do |signal|
+        Signal.trap(signal) do
+          @logger.warn('received signal', {
+            :signal => signal
+          })
+          stop
         end
       end
     end
