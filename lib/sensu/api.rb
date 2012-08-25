@@ -12,8 +12,6 @@ module Sensu
       def run(options={})
         EM::run do
           bootstrap(options)
-          setup_redis
-          setup_rabbitmq
           start
           trap_signals
         end
@@ -73,6 +71,8 @@ module Sensu
       end
 
       def start
+        setup_redis
+        setup_rabbitmq
         Thin::Logging.silent = true
         Thin::Server.start(self, $settings[:api][:port])
       end
@@ -98,8 +98,7 @@ module Sensu
 
       def run_test(options={}, &block)
         bootstrap(options)
-        setup_redis
-        setup_rabbitmq
+        start
         $settings[:client][:timestamp] = Time.now.to_i
         $redis.set('client:' + $settings[:client][:name], $settings[:client].to_json).callback do
           $redis.sadd('clients', $settings[:client][:name]).callback do
@@ -112,7 +111,6 @@ module Sensu
             }.to_json).callback do
               $redis.set('stash:test/test', {:key => 'value'}.to_json).callback do
                 $redis.sadd('stashes', 'test/test').callback do
-                  start
                   EM::Timer.new(0.5) do
                     block.call
                   end
