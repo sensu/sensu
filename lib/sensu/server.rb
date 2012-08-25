@@ -541,7 +541,7 @@ module Sensu
         end
         @master_timers = Array.new
         @redis.del('lock:master').callback do
-          @logger.info('removed the master lock')
+          @logger.info('removed master lock')
           @is_master = false
         end
         timestamp = Time.now.to_i
@@ -550,7 +550,7 @@ module Sensu
             block.call
             true
           elsif !@redis.connected? || Time.now.to_i - timestamp >= 5
-            @logger.warn('failed to remove the master lock')
+            @logger.warn('failed to remove master lock')
             @is_master = false
             block.call
             true
@@ -573,7 +573,7 @@ module Sensu
             block.call
             true
           elsif Time.now.to_i - timestamp >= 5
-            @logger.warn('failed to unsubscribe from keepalives and results')
+            @logger.warn('failed to unsubscribe from keepalive and result queues')
             block.call
             true
           end
