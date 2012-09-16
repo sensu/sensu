@@ -1,12 +1,13 @@
-branches:
-  except:
-    - hacking
-notifications:
-  irc:
-    - "irc.freenode.net#sensu"
-env:
-  - RACK_ENV=development
+language: ruby
 rvm:
   - 1.8.7
   - 1.9.2
   - 1.9.3
+services:
+  - rabbitmq
+  - redis
+env:
+  - RACK_ENV=development
+notifications:
+  irc:
+    - "irc.freenode.net#sensu"
