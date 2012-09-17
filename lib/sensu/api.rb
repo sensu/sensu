@@ -66,6 +66,9 @@ module Sensu
           $logger.warn('reconnecting to rabbitmq')
           connection.reconnect(false, 10)
         end
+        $rabbitmq.on_skipped_heartbeats do
+          $logger.warn('skipped rabbitmq connection heartbeat')
+        end
         $amq = AMQP::Channel.new($rabbitmq)
         $amq.auto_recovery = true
       end
