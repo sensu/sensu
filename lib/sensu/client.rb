@@ -78,74 +78,62 @@ module Sensu
       @logger.debug('attempting to execute check', {
         :check => check
       })
-      if @settings.check_exists?(check[:name])
-        unless @checks_in_progress.include?(check[:name])
-          @logger.debug('executing check', {
-            :check => check
-          })
-          @checks_in_progress.push(check[:name])
-          unmatched_tokens = Array.new
-          command = @settings[:checks][check[:name]][:command].gsub(/:::(.*?):::/) do
-            token = $1.to_s
-            matched = token.split('.').inject(@settings[:client]) do |client, attribute|
-              client[attribute]
-            end
-            if matched.nil?
-              unmatched_tokens.push(token)
-            end
-            matched
-          end
-          if unmatched_tokens.empty?
-            execute = Proc.new do
-              check = check.dup
-              started = Time.now.to_f
-              begin
-                IO.popen(command + ' 2>&1') do |io|
-                  check[:output] = io.read
-                end
-                check[:status] = $?.exitstatus
-              rescue => error
-                @logger.warn('unexpected error', {
-                  :error => error.to_s
-                })
-                check[:output] = 'Unexpected error: ' + error.to_s
-                check[:status] = 2
-              end
-              check[:duration] = ('%.3f' % (Time.now.to_f - started)).to_f
-              check
-            end
-            publish = Proc.new do |check|
-              unless check[:status].nil?
-                publish_result(check)
-              end
-              @checks_in_progress.delete(check[:name])
-            end
-            EM::defer(execute, publish)
-          else
-            @logger.warn('missing client attributes', {
-              :check => check,
-              :unmatched_tokens => unmatched_tokens
-            })
-            check[:output] = 'Missing client attributes: ' + unmatched_tokens.join(', ')
-            check[:status] = 3
-            check[:handle] = false
-            publish_result(check)
-            @checks_in_progress.delete(check[:name])
-          end
-        else
-          @logger.warn('previous check execution in progress', {
-            :check => check
-          })
-        end
-      else
-        @logger.warn('unknown check', {
+      unless @checks_in_progress.include?(check[:name])
+        @logger.debug('executing check', {
           :check => check
         })
-        check[:output] = 'Unknown check'
-        check[:status] = 3
-        check[:handle] = false
-        publish_result(check)
-        @checks_in_progress.delete(check[:name])
+        @checks_in_progress.push(check[:name])
+        unmatched_tokens = Array.new
+        command = check[:command].gsub(/:::(.*?):::/) do
+          token = $1.to_s
+          matched = token.split('.').inject(@settings[:client]) do |client, attribute|
+            client[attribute]
+          end
+          if matched.nil?
+            unmatched_tokens.push(token)
+          end
+          matched
+        end
+        if unmatched_tokens.empty?
+          execute = Proc.new do
+            started = Time.now.to_f
+            begin
+              IO.popen(command + ' 2>&1') do |io|
+                check[:output] = io.read
+              end
+              check[:status] = $?.exitstatus
+            rescue => error
+              @logger.warn('unexpected error', {
+                :error => error.to_s
+              })
+              check[:output] = 'Unexpected error: ' + error.to_s
+              check[:status] = 2
+            end
+            check[:duration] = ('%.3f' % (Time.now.to_f - started)).to_f
+            check
+          end
+          publish = Proc.new do |check|
+            unless check[:status].nil?
+              publish_result(check)
+            end
+            @checks_in_progress.delete(check[:name])
+          end
+          EM::defer(execute, publish)
+        else
+          @logger.warn('missing client attributes', {
+            :check => check,
+            :unmatched_tokens => unmatched_tokens
+          })
+          check[:output] = 'Missing client attributes: ' + unmatched_tokens.join(', ')
+          check[:status] = 3
+          check[:handle] = false
+          publish_result(check)
+          @checks_in_progress.delete(check[:name])
+        end
+      else
+        @logger.warn('previous check execution in progress', {
+          :check => check
+        })
       end
     end
 
@@ -169,7 +157,22 @@ module Sensu
           @logger.info('received check request', {
             :check => check
           })
-          execute_check(check)
+          if @settings[:client][:safe_mode]
+            if @settings.check_exists?(check[:name])
+              check.merge!(@settings[:checks][check[:name]])
+              execute_check(check)
+            else
+              @logger.warn('check is not defined', {
+                :check => check
+              })
+              check[:output] = 'Check is not defined'
+              check[:status] = 3
+              check[:handle] = false
+              publish_result(check)
+            end
+          else
+            execute_check(check)
+          end
         rescue JSON::ParserError => error
           @logger.warn('check request payload must be valid json', {
             :payload => payload,
