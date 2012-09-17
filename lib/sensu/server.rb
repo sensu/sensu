@@ -429,6 +429,7 @@ module Sensu
               unless check_subdued?(check, :publisher)
                 payload = {
                   :name => check[:name],
+                  :command => check[:command],
                   :issued => Time.now.to_i
                 }
                 @logger.info('publishing check request', {
