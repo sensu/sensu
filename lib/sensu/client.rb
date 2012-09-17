@@ -81,7 +81,7 @@ module Sensu
         command = check[:command].gsub(/:::(.*?):::/) do
           token = $1.to_s
           matched = token.split('.').inject(@settings[:client]) do |client, attribute|
-            client[attribute]
+            client[attribute].nil? ? break : client[attribute]
           end
           if matched.nil?
             unmatched_tokens.push(token)
