@@ -87,15 +87,13 @@ module Sensu
           unmatched_tokens = Array.new
           command = @settings[:checks][check[:name]][:command].gsub(/:::(.*?):::/) do
             token = $1.to_s
-            begin
-              substitute = @settings[:client].instance_eval(token)
-            rescue NameError, NoMethodError
-              substitute = nil
+            matched = token.split('.').inject(@settings[:client]) do |client, attribute|
+              client[attribute]
             end
-            if substitute.nil?
+            if matched.nil?
               unmatched_tokens.push(token)
             end
-            substitute
+            matched
           end
           if unmatched_tokens.empty?
             execute = Proc.new do
