@@ -25,7 +25,7 @@ class TestSensuClientServer < TestCase
 
   def example_event(check_options={})
     event = {
-      :client => @settings[:client].sanitize_keys,
+      :client => @settings[:client],
       :check => {
         :name => 'example',
         :issued => Time.now.to_i,
@@ -44,7 +44,7 @@ class TestSensuClientServer < TestCase
     server, client = bootstrap
     EM::Timer.new(1) do
       server.redis.get('client:' + @settings[:client][:name]).callback do |client_json|
-        client_attributes = JSON.parse(client_json, :symbolize_names => true).sanitize_keys
+        client_attributes = sanitize_keys(JSON.parse(client_json, :symbolize_names => true))
         assert_equal(@settings[:client], client_attributes)
         done
       end
@@ -118,7 +118,7 @@ class TestSensuClientServer < TestCase
             :status => index + 1,
             :flapping => false
           }
-          event = JSON.parse(event_json, :symbolize_names => true).sanitize_keys
+          event = sanitize_keys(JSON.parse(event_json, :symbolize_names => true))
           assert(event.delete(:occurrences) > 0)
           assert_equal(expected, event)
         end
@@ -131,12 +131,38 @@ class TestSensuClientServer < TestCase
     end
   end
 
-  def test_client_safe_mode
+  def test_client_safe_mode_default
     server, client = bootstrap
     EM::Timer.new(1) do
       check = {
         :name => 'foobar',
-        :command => 'true',
+        :command => 'exit 1',
+        :subscribers => ['a']
+      }
+      server.publish_check_request(check)
+      EM::Timer.new(3) do
+        server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+          assert(events.include?('foobar'))
+          event = JSON.parse(events['foobar'], :symbolize_names => true)
+          assert_equal(1, event[:status])
+          done
+        end
+      end
+    end
+  end
+
+  def test_client_safe_mode_enabled
+    enable_safe_mode = {
+      :client => {
+        :safe_mode => true
+      }
+    }
+    create_config_snippet('safe_mode', enable_safe_mode)
+    server, client = bootstrap
+    EM::Timer.new(1) do
+      check = {
+        :name => 'foobar',
+        :command => 'exit',
         :subscribers => ['a']
       }
       server.publish_check_request(check)

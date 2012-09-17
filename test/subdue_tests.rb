@@ -115,7 +115,7 @@ class TestSensuSubdue < TestCase
 
   def test_handler_subdue
     server = Sensu::Server.new(@options)
-    client = @settings[:client].sanitize_keys
+    client = @settings[:client]
     @settings.checks.each do |check|
       file_path = '/tmp/sensu_' + check[:name]
       if File.exists?(file_path)

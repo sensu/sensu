@@ -3,8 +3,23 @@ require 'em-spec/test'
 require 'em-http-request'
 
 module TestUtil
+  def sanitize_keys(hash)
+    hash.reject do |key, value|
+      [:timestamp, :issued].include?(key)
+    end
+  end
+
+  def create_config_snippet(name, content)
+    File.open(File.join(File.dirname(__FILE__), 'conf.d', name + '.tmp.json'), 'w') do |file|
+      file.write((content.is_a?(Hash) ? content.to_json : content))
+    end
+  end
+
   def teardown
     Dir.glob('/tmp/sensu_*').each do |file|
+      File.delete(file)
+    end
+    Dir.glob(File.dirname(__FILE__) + '/conf.d/*.tmp.json').each do |file|
       File.delete(file)
     end
   end
@@ -27,14 +42,6 @@ else
   class TestCase < MiniTest::Unit::TestCase
     include ::EM::Test
     include TestUtil
-  end
-end
-
-class Hash
-  def sanitize_keys
-    reject do |key, value|
-      [:timestamp, :issued].include?(key)
-    end
   end
 end
 
