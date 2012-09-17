@@ -23,7 +23,7 @@ does. Please use the Sensu APT/YUM packages which contain an embedded
 Ruby.
 
 Client expects check requests to contain a command, be sure to upgrade
-Servers prior to upgrading clients.
+servers prior to upgrading clients.
 
 ### Other
 
