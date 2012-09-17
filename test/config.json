@@ -114,6 +114,7 @@
     }
   },
   "client": {
+    "safe_mode": true,
     "name": "i-424242",
     "address": "127.0.0.1",
     "subscriptions": [
