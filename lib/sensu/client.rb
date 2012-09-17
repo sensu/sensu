@@ -62,13 +62,7 @@ module Sensu
         :client => @settings[:client][:name],
         :check => check
       }
-      log_level = :info
-      if @settings.check_exists?(check[:name])
-        if @settings[:checks][check[:name]][:type] == 'metric'
-          log_level = :debug
-        end
-      end
-      @logger.send(log_level, 'publishing check result', {
+      @logger.info('publishing check result', {
         :payload => payload
       })
       @amq.queue('results').publish(payload.to_json)
@@ -145,8 +139,7 @@ module Sensu
         @logger.debug('binding queue to exchange', {
           :queue => @uniq_queue_name,
           :exchange => {
-            :name => exchange_name,
-            :type => 'fanout'
+            :name => exchange_name
           }
         })
         @check_request_queue.bind(@amq.fanout(exchange_name))
