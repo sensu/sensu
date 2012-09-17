@@ -157,7 +157,7 @@ module Sensu
             @logger.warn('check is not defined', {
               :check => check
             })
-            check[:output] = 'Check is not defined'
+            check[:output] = 'Check is not defined (safe mode)'
             check[:status] = 3
             check[:handle] = false
             publish_result(check)
