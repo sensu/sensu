@@ -157,19 +157,17 @@ module Sensu
           @logger.info('received check request', {
             :check => check
           })
-          if @settings[:client][:safe_mode]
-            if @settings.check_exists?(check[:name])
-              check.merge!(@settings[:checks][check[:name]])
-              execute_check(check)
-            else
-              @logger.warn('check is not defined', {
-                :check => check
-              })
-              check[:output] = 'Check is not defined'
-              check[:status] = 3
-              check[:handle] = false
-              publish_result(check)
-            end
+          if @settings.check_exists?(check[:name])
+            check.merge!(@settings[:checks][check[:name]])
+            execute_check(check)
+          elsif @settings[:client][:safe_mode]
+            @logger.warn('check is not defined', {
+              :check => check
+            })
+            check[:output] = 'Check is not defined'
+            check[:status] = 3
+            check[:handle] = false
+            publish_result(check)
           else
             execute_check(check)
           end
