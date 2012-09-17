@@ -208,7 +208,8 @@ module Sensu
       unless check_subdued?(event[:check], :handler)
         handlers = check_handlers(event[:check])
         handlers.each do |handler|
-          @logger.send(event[:check][:type] == 'metric' ? :debug : :info, 'handling event', {
+          log_level = event[:check][:type] == 'metric' ? :debug : :info
+          @logger.send(log_level, 'handling event', {
             :event => event,
             :handler => handler
           })
@@ -416,6 +417,21 @@ module Sensu
       end
     end
 
+    def publish_check_request(check)
+      payload = {
+        :name => check[:name],
+        :command => check[:command],
+        :issued => Time.now.to_i
+      }
+      @logger.info('publishing check request', {
+        :payload => payload,
+        :subscribers => check[:subscribers]
+      })
+      check[:subscribers].uniq.each do |exchange_name|
+        @amq.fanout(exchange_name).publish(payload.to_json)
+      end
+    end
+
     def setup_publisher
       @logger.debug('scheduling check requests')
       check_count = 0
@@ -427,17 +443,7 @@ module Sensu
             interval = testing? ? 0.5 : check[:interval]
             @master_timers << EM::PeriodicTimer.new(interval) do
               unless check_subdued?(check, :publisher)
-                payload = {
-                  :name => check[:name],
-                  :issued => Time.now.to_i
-                }
-                @logger.info('publishing check request', {
-                  :payload => payload,
-                  :subscribers => check[:subscribers]
-                })
-                check[:subscribers].uniq.each do |exchange_name|
-                  @amq.fanout(exchange_name).publish(payload.to_json)
-                end
+                publish_check_request(check)
               end
             end
           end
