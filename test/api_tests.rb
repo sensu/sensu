@@ -110,7 +110,7 @@ class TestSensuAPI < TestCase
           :flapping => false,
           :occurrences => 1
         }
-        event = JSON.parse(http.response, :symbolize_names => true).sanitize_keys
+        event = sanitize_keys(JSON.parse(http.response, :symbolize_names => true))
         assert_equal(expected, event)
         done
       end
@@ -196,7 +196,7 @@ class TestSensuAPI < TestCase
       http = EM::HttpRequest.new(@api_url + '/client/' + @settings[:client][:name]).get(@request_options)
       http.callback do
         assert_equal(200, http.response_header.status)
-        client = JSON.parse(http.response, :symbolize_names => true).sanitize_keys
+        client = sanitize_keys(JSON.parse(http.response, :symbolize_names => true))
         assert_equal(@settings[:client], client)
         done
       end

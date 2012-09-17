@@ -7,8 +7,25 @@ class TestSensuClientServer < TestCase
     }
     base = Sensu::Base.new(@options)
     @settings = base.settings
-    @example_event = {
-      :client => @settings[:client].sanitize_keys,
+  end
+
+  def bootstrap
+    server = Sensu::Server.new(@options)
+    client = Sensu::Client.new(@options)
+    server.setup_redis
+    server.redis.flushall
+    server.setup_rabbitmq
+    server.setup_keepalives
+    server.setup_results
+    client.setup_rabbitmq
+    client.setup_keepalives
+    client.setup_subscriptions
+    [server, client]
+  end
+
+  def example_event(check_options={})
+    event = {
+      :client => @settings[:client],
       :check => {
         :name => 'example',
         :issued => Time.now.to_i,
@@ -19,20 +36,16 @@ class TestSensuClientServer < TestCase
       :occurrences => 1,
       :action => 'create'
     }
+    event[:check].merge!(check_options)
+    event
   end
 
   def test_keepalives
-    server = Sensu::Server.new(@options)
-    client = Sensu::Client.new(@options)
-    server.setup_redis
-    server.setup_rabbitmq
-    server.setup_keepalives
-    client.setup_rabbitmq
-    client.setup_keepalives
+    server, client = bootstrap
     EM::Timer.new(1) do
       server.redis.get('client:' + @settings[:client][:name]).callback do |client_json|
-        client = JSON.parse(client_json, :symbolize_names => true).sanitize_keys
-        assert_equal(@settings[:client], client)
+        client_attributes = sanitize_keys(JSON.parse(client_json, :symbolize_names => true))
+        assert_equal(@settings[:client], client_attributes)
         done
       end
     end
@@ -40,8 +53,7 @@ class TestSensuClientServer < TestCase
 
   def test_pipe_handler
     server = Sensu::Server.new(@options)
-    event = @example_event
-    event[:check][:handler] = 'file'
+    event = example_event(:handler => 'file')
     server.handle_event(event)
     EM::Timer.new(2) do
       assert(File.exists?('/tmp/sensu_example'))
@@ -54,8 +66,7 @@ class TestSensuClientServer < TestCase
 
   def test_tcp_handler
     server = Sensu::Server.new(@options)
-    event = @example_event
-    event[:check][:handler] = 'tcp_socket'
+    event = example_event(:handler => 'tcp_socket')
     socket = Proc.new do
       tcp_server = TCPServer.open(1234)
       data = tcp_server.accept.gets
@@ -75,8 +86,7 @@ class TestSensuClientServer < TestCase
 
   def test_udp_handler
     server = Sensu::Server.new(@options)
-    event = @example_event
-    event[:check][:handler] = 'udp_socket'
+    event = example_event(:handler => 'udp_socket')
     socket = Proc.new do
       udp_socket = UDPSocket.new
       udp_socket.bind('127.0.0.1', 1234)
@@ -96,16 +106,7 @@ class TestSensuClientServer < TestCase
   end
 
   def test_publish_subscribe
-    server = Sensu::Server.new(@options)
-    client = Sensu::Client.new(@options)
-    server.setup_redis
-    server.setup_rabbitmq
-    server.redis.flushall
-    server.setup_keepalives
-    server.setup_results
-    client.setup_rabbitmq
-    client.setup_keepalives
-    client.setup_subscriptions
+    server, client = bootstrap
     client.setup_standalone
     server.setup_publisher
     EM::Timer.new(3) do
@@ -117,7 +118,7 @@ class TestSensuClientServer < TestCase
             :status => index + 1,
             :flapping => false
           }
-          event = JSON.parse(event_json, :symbolize_names => true).sanitize_keys
+          event = sanitize_keys(JSON.parse(event_json, :symbolize_names => true))
           assert(event.delete(:occurrences) > 0)
           assert_equal(expected, event)
         end
@@ -130,16 +131,55 @@ class TestSensuClientServer < TestCase
     end
   end
 
+  def test_client_safe_mode_default
+    server, client = bootstrap
+    EM::Timer.new(1) do
+      check = {
+        :name => 'foobar',
+        :command => 'exit 1',
+        :subscribers => ['a']
+      }
+      server.publish_check_request(check)
+      EM::Timer.new(3) do
+        server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+          assert(events.include?('foobar'))
+          event = JSON.parse(events['foobar'], :symbolize_names => true)
+          assert_equal(1, event[:status])
+          done
+        end
+      end
+    end
+  end
+
+  def test_client_safe_mode_enabled
+    enable_safe_mode = {
+      :client => {
+        :safe_mode => true
+      }
+    }
+    create_config_snippet('safe_mode', enable_safe_mode)
+    server, client = bootstrap
+    EM::Timer.new(1) do
+      check = {
+        :name => 'foobar',
+        :command => 'exit',
+        :subscribers => ['a']
+      }
+      server.publish_check_request(check)
+      EM::Timer.new(3) do
+        server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+          assert(events.include?('foobar'))
+          event = JSON.parse(events['foobar'], :symbolize_names => true)
+          assert(event[:output] =~ /safe mode/)
+          assert_equal(3, event[:status])
+          done
+        end
+      end
+    end
+  end
+
   def test_client_sockets
-    server = Sensu::Server.new(@options)
-    client = Sensu::Client.new(@options)
-    server.setup_redis
-    server.setup_rabbitmq
-    server.redis.flushall
-    server.setup_keepalives
-    client.setup_rabbitmq
-    client.setup_keepalives
-    server.setup_results
+    server, client = bootstrap
     client.setup_sockets
     EM::Timer.new(1) do
       EM::connect('127.0.0.1', 3030, nil) do |socket|
