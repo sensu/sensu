@@ -40,17 +40,6 @@ class TestSensuClientServer < TestCase
     event
   end
 
-  def test_keepalives
-    server, client = bootstrap
-    EM::Timer.new(1) do
-      server.redis.get('client:' + @settings[:client][:name]).callback do |client_json|
-        client_attributes = sanitize_keys(JSON.parse(client_json, :symbolize_names => true))
-        assert_equal(@settings[:client], client_attributes)
-        done
-      end
-    end
-  end
-
   def test_pipe_handler
     server = Sensu::Server.new(@options)
     event = example_event(:handler => 'file')
@@ -105,28 +94,100 @@ class TestSensuClientServer < TestCase
     EM::defer(socket, callback)
   end
 
-  def test_publish_subscribe
+  def test_amqp_handler
+    server = Sensu::Server.new(@options)
+    server.setup_rabbitmq
+    event = example_event(:handler => 'amqp_exchange')
+    EM::Timer.new(2) do
+      server.handle_event(event)
+    end
+    server.amq.direct('events')
+    server.amq.queue('', :auto_delete => true).bind('events').subscribe do |event_json|
+      assert(event.to_json, event_json)
+      done
+    end
+  end
+
+  def test_mutators
+    server = Sensu::Server.new(@options)
+    event = example_event(:handler => 'tagged')
+    server.handle_event(event)
+    EM::Timer.new(2) do
+      assert(File.exists?('/tmp/sensu_example'))
+      expected = event.merge(:mutated => true)
+      output_file = File.open('/tmp/sensu_example', 'r')
+      output = JSON.parse(output_file.read, :symbolize_names => true)
+      assert_equal(expected, output)
+      done
+    end
+  end
+
+  def test_missing_mutator
+    server = Sensu::Server.new(@options)
+    event = example_event(:handler => 'missing_mutator')
+    server.handle_event(event)
+    EM::Timer.new(2) do
+      assert(!File.exists?('/tmp/sensu_example'))
+      done
+    end
+  end
+
+  def test_only_output_built_in_mutator
+    server = Sensu::Server.new(@options)
+    handler = @settings[:handlers][:only_output]
+    event = example_event(:output => "foo\nbar")
+    assert_equal("foo\nbar", server.mutate_event_data(handler, event))
+    done
+  end
+
+  def test_amqp_only_output_split_built_in_mutator
+    server = Sensu::Server.new(@options)
+    handler = @settings[:handlers][:only_output_split]
+    event = example_event(:output => "foo\nbar")
+    assert_equal(['foo', 'bar'], server.mutate_event_data(handler, event))
+    done
+  end
+
+  def test_keepalives
+    server, client = bootstrap
+    EM::Timer.new(1) do
+      server.redis.get('client:' + @settings[:client][:name]).callback do |client_json|
+        client_attributes = sanitize_keys(JSON.parse(client_json, :symbolize_names => true))
+        assert_equal(@settings[:client], client_attributes)
+        done
+      end
+    end
+  end
+
+  def test_standalone_checks
     server, client = bootstrap
     client.setup_standalone
+    EM::Timer.new(3) do
+      server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+        assert(events.has_key?('standalone'))
+        event = JSON.parse(events['standalone'], :symbolize_names => true)
+        assert_equal(@settings[:client][:name], event[:output])
+        assert_equal(1, event[:status])
+        done
+      end
+    end
+  end
+
+  def test_check_command_tokens
+    server, client = bootstrap
     server.setup_publisher
     EM::Timer.new(3) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
-        sorted_events = events.sort_by { |check_name, event_json| check_name }
-        sorted_events.each_with_index do |(check_name, event_json), index|
-          expected = {
-            :output => @settings[:client][:name] + ' ' + @settings[:client][:nested][:attribute].to_s + "\n",
-            :status => index + 1,
-            :flapping => false
-          }
-          event = sanitize_keys(JSON.parse(event_json, :symbolize_names => true))
-          assert(event.delete(:occurrences) > 0)
-          assert_equal(expected, event)
-        end
-        server.amq.queue('', :auto_delete => true).bind('graphite', :key => 'sensu.*').subscribe do |metric|
-          assert(metric.is_a?(String))
-          assert_equal(['sensu', @settings[:client][:name], 'diceroll'].join('.'), metric.split(/\s/).first)
-          done
-        end
+        assert(events.has_key?('tokens'))
+        expected = [@settings[:client][:name], @settings[:client][:nested][:attribute]].join(' ')
+        tokens = JSON.parse(events['tokens'], :symbolize_names => true)
+        assert_equal(expected, tokens[:output])
+        assert_equal(2, tokens[:status])
+        assert(events.has_key?('tokens_fail'))
+        tokens_fail = JSON.parse(events['tokens_fail'], :symbolize_names => true)
+        assert(tokens_fail[:output] =~ /missing/i)
+        assert_equal(3, tokens_fail[:status])
+        done
       end
     end
   end
@@ -135,16 +196,16 @@ class TestSensuClientServer < TestCase
     server, client = bootstrap
     EM::Timer.new(1) do
       check = {
-        :name => 'foobar',
-        :command => 'exit 1',
-        :subscribers => ['a']
+        :name => 'arbitrary',
+        :command => 'exit 255',
+        :subscribers => ['test']
       }
       server.publish_check_request(check)
       EM::Timer.new(3) do
         server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
-          assert(events.include?('foobar'))
-          event = JSON.parse(events['foobar'], :symbolize_names => true)
-          assert_equal(1, event[:status])
+          assert(events.include?('arbitrary'))
+          event = JSON.parse(events['arbitrary'], :symbolize_names => true)
+          assert_equal(255, event[:status])
           done
         end
       end
@@ -161,15 +222,15 @@ class TestSensuClientServer < TestCase
     server, client = bootstrap
     EM::Timer.new(1) do
       check = {
-        :name => 'foobar',
-        :command => 'exit',
-        :subscribers => ['a']
+        :name => 'arbitrary',
+        :command => 'exit 255',
+        :subscribers => ['test']
       }
       server.publish_check_request(check)
       EM::Timer.new(3) do
         server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
-          assert(events.include?('foobar'))
-          event = JSON.parse(events['foobar'], :symbolize_names => true)
+          assert(events.include?('arbitrary'))
+          event = JSON.parse(events['arbitrary'], :symbolize_names => true)
           assert(event[:output] =~ /safe mode/)
           assert_equal(3, event[:status])
           done

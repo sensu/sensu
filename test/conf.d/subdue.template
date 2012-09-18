@@ -1,0 +1,74 @@
+{
+  "checks": {
+    "subdue_time": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "nonsubdue_time": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "subdue_time_wrap": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "nonsubdue_time_wrap": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "subdue_day": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "nonsubdue_day": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "subdue_days": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "nonsubdue_days": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "subdue_exception": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "nonsubdue_exception": {
+      "command": "echo -n test && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    }
+  }
+}
