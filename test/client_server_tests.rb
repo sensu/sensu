@@ -101,7 +101,8 @@ class TestSensuClientServer < TestCase
     EM::Timer.new(2) do
       server.handle_event(event)
     end
-    server.amq.queue('', :auto_delete => true).bind('sensu').subscribe do |event_json|
+    server.amq.direct('events')
+    server.amq.queue('', :auto_delete => true).bind('events').subscribe do |event_json|
       assert(event.to_json, event_json)
       done
     end
