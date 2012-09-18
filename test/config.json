@@ -53,9 +53,14 @@
         "name": "events"
       }
     },
-    "mutated": {
+    "tagged": {
       "type": "pipe",
       "mutator": "tag",
+      "command": "./test/handlers/file.rb"
+    },
+    "missing_mutator": {
+      "type": "pipe",
+      "mutator": "missing",
       "command": "./test/handlers/file.rb"
     },
     "only_output": {

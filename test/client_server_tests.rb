@@ -110,7 +110,7 @@ class TestSensuClientServer < TestCase
 
   def test_mutators
     server = Sensu::Server.new(@options)
-    event = example_event(:handler => 'mutated')
+    event = example_event(:handler => 'tagged')
     server.handle_event(event)
     EM::Timer.new(2) do
       assert(File.exists?('/tmp/sensu_example'))
@@ -118,6 +118,16 @@ class TestSensuClientServer < TestCase
       output_file = File.open('/tmp/sensu_example', 'r')
       output = JSON.parse(output_file.read, :symbolize_names => true)
       assert_equal(expected, output)
+      done
+    end
+  end
+
+  def test_missing_mutator
+    server = Sensu::Server.new(@options)
+    event = example_event(:handler => 'missing_mutator')
+    server.handle_event(event)
+    EM::Timer.new(2) do
+      assert(!File.exists?('/tmp/sensu_example'))
       done
     end
   end
