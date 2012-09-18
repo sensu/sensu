@@ -89,9 +89,8 @@
       ],
       "interval": 1
     },
-    "blank": {
-      "type": "pipe",
-      "command": "true",
+    "merger": {
+      "command": "exit",
       "subscribers": [
         "test"
       ],

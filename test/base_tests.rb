@@ -25,24 +25,25 @@ class TestSensuBase < TestCase
         }
       }
     }
-    merge_blank_check = {
+    merge_check = {
       :checks => {
-        :blank => {
+        :merger => {
           :interval => 60,
           :auto_resolve => false
         }
       }
     }
     create_config_snippet('new_handler', new_handler)
-    create_config_snippet('merge_blank_check', merge_blank_check)
+    create_config_snippet('merge_check', merge_check)
     base = Sensu::Base.new(@options)
     settings = base.settings
     assert(settings.handler_exists?(:new_handler))
     assert_equal('pipe', settings[:handlers][:new_handler][:type])
     assert_equal('cat', settings[:handlers][:new_handler][:command])
-    assert(settings.check_exists?(:blank))
-    assert_equal(60, settings[:checks][:blank][:interval])
-    assert_equal(false, settings[:checks][:blank][:auto_resolve])
+    assert(settings.check_exists?(:merger))
+    assert('exit', settings[:checks][:merger][:command])
+    assert_equal(60, settings[:checks][:merger][:interval])
+    assert_equal(false, settings[:checks][:merger][:auto_resolve])
     done
   end
 
