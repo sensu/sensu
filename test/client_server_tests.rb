@@ -180,9 +180,13 @@ class TestSensuClientServer < TestCase
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
         assert(events.has_key?('tokens'))
         expected = [@settings[:client][:name], @settings[:client][:nested][:attribute]].join(' ')
-        event = JSON.parse(events['tokens'], :symbolize_names => true)
-        assert_equal(expected, event[:output])
-        assert_equal(2, event[:status])
+        tokens = JSON.parse(events['tokens'], :symbolize_names => true)
+        assert_equal(expected, tokens[:output])
+        assert_equal(2, tokens[:status])
+        assert(events.has_key?('tokens_fail'))
+        tokens_fail = JSON.parse(events['tokens_fail'], :symbolize_names => true)
+        assert(tokens_fail[:output] =~ /missing/i)
+        assert_equal(3, tokens_fail[:status])
         done
       end
     end

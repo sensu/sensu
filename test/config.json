@@ -89,6 +89,13 @@
       ],
       "interval": 1
     },
+    "tokens_fail": {
+      "command": "echo -n :::name::: :::nested.foo.bar::: && exit 2",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
     "merger": {
       "command": "exit",
       "subscribers": [
