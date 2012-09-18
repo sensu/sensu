@@ -86,7 +86,7 @@
     },
     "blank": {
       "type": "pipe",
-      "command": "cat",
+      "command": "true",
       "subscribers": [
         "test"
       ],
