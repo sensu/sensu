@@ -14,7 +14,7 @@ module Sensu
     end
 
     def initialize(options={})
-      @logger = Cabin::Channel.get
+      @logger = Sensu::Logger.get
       base = Sensu::Base.new(options)
       @settings = base.settings
       @timers = Array.new
@@ -59,11 +59,15 @@ module Sensu
         exit 2
       end
       @rabbitmq = AMQP.connect(@settings[:rabbitmq], :on_tcp_connection_failure => connection_failure)
+      @rabbitmq.logger = Sensu::NullLogger.get
       @rabbitmq.on_tcp_connection_loss do |connection, settings|
         @logger.warn('reconnecting to rabbitmq')
         resign_as_master do
           connection.reconnect(false, 10)
         end
+      end
+      @rabbitmq.on_skipped_heartbeats do
+        @logger.warn('skipped rabbitmq heartbeat')
       end
       @amq = AMQP::Channel.new(@rabbitmq)
       @amq.auto_recovery = true

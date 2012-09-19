@@ -8,7 +8,7 @@ module Sensu
 
     def initialize(*arguments)
       super
-      @logger = Cabin::Channel.get
+      @logger = Sensu::Logger.get
       @settings = Hash.new
       @connection_established = false
       @connected = false
