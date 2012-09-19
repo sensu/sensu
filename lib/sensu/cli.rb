@@ -1,3 +1,5 @@
+require 'optparse'
+
 module Sensu
   class CLI
     def self.read(arguments=ARGV)

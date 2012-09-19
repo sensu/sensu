@@ -2,11 +2,9 @@ require 'rubygems'
 
 gem 'eventmachine', '1.0.0.rc.4'
 
-require 'optparse'
 require 'json'
 require 'time'
 require 'uri'
-require 'cabin'
 require 'amqp'
 
 require File.join(File.dirname(__FILE__), 'patches', 'ruby')
@@ -29,8 +27,9 @@ module Sensu
     end
 
     def setup_logging
-      logger = Sensu::Logger.new(@options)
-      logger.reopen
+      logger = Sensu::Logger.new
+      logger.level = @options[:verbose] ? :debug : @options[:log_level] || :info
+      logger.reopen(@options[:log_file])
       logger.setup_traps
     end
 

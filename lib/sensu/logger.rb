@@ -1,11 +1,16 @@
+require 'cabin'
+
 module Sensu
   class Logger
-    def initialize(options={})
+    def initialize
       @logger = Cabin::Channel.get
       STDOUT.sync = true
+      STDERR.reopen(STDOUT)
       @logger.subscribe(STDOUT)
-      @logger.level = options[:verbose] ? :debug : options[:log_level] || :info
-      @log_file = options[:log_file]
+    end
+
+    def level=(log_level)
+      @logger.level = log_level
     end
 
     def reopen(file=nil)
@@ -14,8 +19,8 @@ module Sensu
         @log_file = file
         if File.writable?(file) || !File.exist?(file) && File.writable?(File.dirname(file))
           STDOUT.reopen(file, 'a')
-          STDERR.reopen(STDOUT)
           STDOUT.sync = true
+          STDERR.reopen(STDOUT)
         else
           @logger.error('log file is not writable', {
             :log_file => file
@@ -35,6 +40,21 @@ module Sensu
           reopen(@log_file)
         end
       end
+    end
+
+    def self.get
+      Cabin::Channel.get
+    end
+  end
+
+  class NullLogger
+    [:debug, :info, :warn, :error, :fatal].each do |method|
+      define_method(method) do |*arguments|
+      end
+    end
+
+    def self.get
+      self.new
     end
   end
 end
