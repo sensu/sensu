@@ -90,17 +90,17 @@ module Sensu
     def check_subdued?(check, subdue_at)
       subdue = false
       if check[:subdue].is_a?(Hash)
-        if check[:subdue].has_key?(:start) && check[:subdue].has_key?(:end)
-          start_time = Time.parse(check[:subdue][:start])
+        if check[:subdue].has_key?(:begin) && check[:subdue].has_key?(:end)
+          begin_time = Time.parse(check[:subdue][:begin])
           end_time = Time.parse(check[:subdue][:end])
-          if end_time < start_time
+          if end_time < begin_time
             if Time.now < end_time
-              start_time = Time.parse('12:00:00 AM')
+              begin_time = Time.parse('12:00:00 AM')
             else
               end_time = Time.parse('11:59:59 PM')
             end
           end
-          if Time.now >= start_time && Time.now <= end_time
+          if Time.now >= begin_time && Time.now <= end_time
             subdue = true
           end
         end
@@ -112,13 +112,12 @@ module Sensu
         end
         if subdue && check[:subdue].has_key?(:exceptions)
           subdue = check[:subdue][:exceptions].none? do |exception|
-            Time.now >= Time.parse(exception[:start]) && Time.now <= Time.parse(exception[:end])
+            Time.now >= Time.parse(exception[:begin]) && Time.now <= Time.parse(exception[:end])
           end
         end
       end
       if subdue
-        (!check[:subdue].has_key?(:at) && subdue_at == :handler) ||
-          (check[:subdue].has_key?(:at) && check[:subdue][:at].to_sym == subdue_at)
+        subdue_at == (check[:subdue][:at] || 'handler').to_sym
       else
         false
       end

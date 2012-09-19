@@ -25,6 +25,8 @@ Ruby.
 Client expects check requests to contain a command, be sure to upgrade
 servers prior to upgrading clients.
 
+Check subdue options have been modified, "start" is now "begin".
+
 ### Other
 
 Improved RabbitMQ and Redis connection recovery.
