@@ -117,8 +117,7 @@ module Sensu
         end
       end
       if subdue
-        (!check[:subdue].has_key?(:at) && subdue_at == :handler) ||
-          (check[:subdue].has_key?(:at) && check[:subdue][:at].to_sym == subdue_at)
+        subdue_at == (check[:subdue][:at] || 'handler').to_sym
       else
         false
       end
