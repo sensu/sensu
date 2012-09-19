@@ -13,15 +13,9 @@
     "user": "foo",
     "password": "bar"
   },
-  "dashboard": {
-    "host": "localhost",
-    "port": 8080,
-    "user": "admin",
-    "password": "secret"
-  },
   "mutators": {
-    "noop": {
-      "command": "./test/mutators/noop.rb"
+    "tag": {
+      "command": "./test/mutators/tag.rb"
     }
   },
   "handlers": {
@@ -39,11 +33,6 @@
       "type": "pipe",
       "command": "./test/handlers/file.rb"
     },
-    "mutated": {
-      "type": "pipe",
-      "mutator": "noop",
-      "command": "./test/handlers/stdout.rb"
-    },
     "tcp_socket": {
       "type": "tcp",
       "socket": {
@@ -58,57 +47,59 @@
         "port": 1234
       }
     },
-    "graphite": {
+    "amqp_exchange": {
       "type": "amqp",
-      "mutator": "only_check_output",
       "exchange": {
-        "type": "topic",
-        "name": "graphite",
-        "key": "sensu.test"
+        "name": "events"
+      }
+    },
+    "tagged": {
+      "type": "pipe",
+      "mutator": "tag",
+      "command": "./test/handlers/file.rb"
+    },
+    "missing_mutator": {
+      "type": "pipe",
+      "mutator": "missing",
+      "command": "./test/handlers/file.rb"
+    },
+    "only_output": {
+      "type": "pipe",
+      "mutator": "only_check_output",
+      "command": "cat"
+    },
+    "only_output_split": {
+      "type": "amqp",
+      "mutator": "only_check_output_split",
+      "exchange": {
+        "name": "sensu"
       }
     }
   },
   "checks": {
-    "a": {
-      "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 1\"",
-      "subscribers": [
-        "a"
-      ],
-      "interval": 1
-    },
-    "b": {
-      "handler": "default",
-      "command": "will be overridden by a config snippet",
-      "subscribers": [
-        "a"
-      ],
-      "interval": 60,
-      "auto_resolve": true
-    },
-    "c": {
-      "handlers": [
-        "default"
-      ],
-      "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 3\"",
+    "standalone": {
+      "command": "echo -n :::name::: && exit 1",
       "standalone": true,
       "interval": 1
     },
-    "d": {
-      "handler": "mutated",
-      "command": "ruby -e \"puts ':::name::: :::nested.attribute:::'; exit 4\"",
+    "tokens": {
+      "command": "echo -n :::name::: :::nested.attribute::: && exit 2",
       "subscribers": [
-        "a",
-        "b",
-        "c"
+        "test"
       ],
       "interval": 1
     },
-    "e": {
-      "type": "metric",
-      "handler": "graphite",
-      "command": "echo sensu.:::name:::.diceroll 4 `date +%s`",
+    "tokens_fail": {
+      "command": "echo -n :::name::: :::nested.foo.bar::: && exit 2",
       "subscribers": [
-        "c"
+        "test"
+      ],
+      "interval": 1
+    },
+    "merger": {
+      "command": "exit",
+      "subscribers": [
+        "test"
       ],
       "interval": 1
     }
@@ -117,9 +108,7 @@
     "name": "i-424242",
     "address": "127.0.0.1",
     "subscriptions": [
-      "a",
-      "b",
-      "c"
+      "test"
     ],
     "nested": {
       "attribute": true

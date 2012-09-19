@@ -191,7 +191,7 @@ module Sensu
               })
             end
           else
-            @logger.error('unknown mutator', {
+            @logger.warn('unknown mutator', {
               :mutator => {
                 :name => handler[:mutator]
               }
