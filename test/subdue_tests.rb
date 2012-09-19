@@ -16,22 +16,22 @@ class TestSensuSubdue < TestCase
     subdue_config = JSON.parse(template_contents, :symbolize_names => true)
     subdue_config[:checks][:subdue_time][:subdue] = {
       :at => 'publisher',
-      :start => (Time.now - 3600).strftime('%l:00 %p').strip,
+      :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
       :end => (Time.now + 3600).strftime('%l:00 %p').strip
     }
     subdue_config[:checks][:nonsubdue_time][:subdue] = {
       :at => 'publisher',
-      :start => (Time.now + 3600).strftime('%l:00 %p').strip,
+      :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
       :end => (Time.now + 7200).strftime('%l:00 %p').strip
     }
     subdue_config[:checks][:subdue_time_wrap][:subdue] = {
       :at => 'publisher',
-      :start => (Time.now - 3600).strftime('%l:00 %p').strip,
+      :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
       :end => (Time.now - 7200).strftime('%l:00 %p').strip
     }
     subdue_config[:checks][:nonsubdue_time_wrap][:subdue] = {
       :at => 'publisher',
-      :start => (Time.now + 3600).strftime('%l:00 %p').strip,
+      :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
       :end => (Time.now - 7200).strftime('%l:00 %p').strip
     }
     subdue_config[:checks][:subdue_day][:subdue] = {
@@ -65,7 +65,7 @@ class TestSensuSubdue < TestCase
       :days => %w[sunday monday tuesday wednesday thursday friday saturday],
       :exceptions => [
         {
-          :start => (Time.now + 3600).rfc2822,
+          :begin => (Time.now + 3600).rfc2822,
           :end => (Time.now + 7200)
         }
       ]
@@ -75,7 +75,7 @@ class TestSensuSubdue < TestCase
       :days => %w[sunday monday tuesday wednesday thursday friday saturday],
       :exceptions => [
         {
-          :start => (Time.now - 3600).rfc2822,
+          :begin => (Time.now - 3600).rfc2822,
           :end => (Time.now + 3600).rfc2822
         }
       ]

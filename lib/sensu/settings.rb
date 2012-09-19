@@ -224,12 +224,12 @@ module Sensu
               :check => check
             })
           end
-          if check[:subdue].has_key?(:start) || check[:subdue].has_key?(:end)
+          if check[:subdue].has_key?(:begin) || check[:subdue].has_key?(:end)
             begin
-              Time.parse(check[:subdue][:start])
+              Time.parse(check[:subdue][:begin])
               Time.parse(check[:subdue][:end])
             rescue
-              invalid('check subdue start & end times must be valid', {
+              invalid('check subdue begin & end times must be valid', {
                 :check => check
               })
             end
@@ -261,12 +261,12 @@ module Sensu
                   :check => check
                 })
               end
-              if exception.has_key?(:start) || exception.has_key?(:end)
+              if exception.has_key?(:begin) || exception.has_key?(:end)
                 begin
-                  Time.parse(exception[:start])
+                  Time.parse(exception[:begin])
                   Time.parse(exception[:end])
                 rescue
-                  invalid('check subdue exception start & end times must be valid', {
+                  invalid('check subdue exception begin & end times must be valid', {
                     :check => check
                   })
                 end
