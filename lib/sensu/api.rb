@@ -400,8 +400,16 @@ module Sensu
     end
 
     aget '/aggregates' do
+      response = Hash.new
       $redis.smembers('aggregates').callback do |checks|
-        body checks.to_json
+        checks.each_with_index do |check_name, index|
+          $redis.lrange('aggregates:' + check_name, -10, -1).callback do |aggregates|
+            response[check_name] = aggregates
+            if index == checks.size - 1
+              body response.to_json
+            end
+          end
+        end
       end
     end
 
