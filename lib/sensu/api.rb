@@ -406,7 +406,7 @@ module Sensu
     end
 
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
-      $redis.lrange('aggregates:' + check_name, -5, -1).callback do |aggregates|
+      $redis.lrange('aggregates:' + check_name, -10, -1).callback do |aggregates|
         body aggregates.to_json
       end
     end
