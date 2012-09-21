@@ -519,9 +519,36 @@ module Sensu
       end
     end
 
+    def setup_results_pruner
+      @logger.debug('pruning old results')
+      @master_timers << EM::PeriodicTimer.new(30) do
+        @redis.smembers('results').callback do |checks|
+          checks.each do |check_name|
+            @redis.smembers('results:' + check_name).callback do |issues|
+              if issues.size > 5
+                until issues.size <= 5
+                  issued = issues.shift
+                  results_key = 'results:' + check_name + ':' + issued.to_s
+                  @redis.del(results_key).callback do
+                    @logger.debug('pruned results', {
+                      :check => {
+                        :name => check_name,
+                        :issued => issued
+                      }
+                    })
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
     def master_duties
       setup_publisher
       setup_keepalive_monitor
+      setup_results_pruner
     end
 
     def request_master_election
@@ -531,7 +558,7 @@ module Sensu
           @logger.info('i am the master')
           master_duties
         else
-          @redis.get('lock:master') do |timestamp|
+          @redis.get('lock:master').callback do |timestamp|
             if Time.now.to_i - timestamp.to_i >= 60
               @redis.getset('lock:master', Time.now.to_i).callback do |previous|
                 if previous == timestamp
