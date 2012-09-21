@@ -399,26 +399,26 @@ module Sensu
       end
     end
 
-    aget '/aggregations' do
-      $redis.smembers('aggregations').callback do |checks|
+    aget '/aggregates' do
+      $redis.smembers('aggregates').callback do |checks|
         body checks.to_json
       end
     end
 
-    aget %r{/aggregations?/([\w\.-]+)$} do |check_name|
-      $redis.lrange('aggregations:' + check_name, -5, -1).callback do |issues|
+    aget %r{/aggregates?/([\w\.-]+)$} do |check_name|
+      $redis.lrange('aggregates:' + check_name, -5, -1).callback do |issues|
         body issues.to_json
       end
     end
 
-    aget %r{/aggregations?/([\w\.-]+)/([\w\.-]+)$} do |check_name, issued|
-      aggregation_key = 'aggregation:' + check_name + ':' + issued
-      $redis.hgetall(aggregation_key).callback do |results|
-        aggregation = results.inject({}) do |result, (client_name, check_json)|
-          result[client_name] = JSON.parse(check_json)
-          result
+    aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)$} do |check_name, check_issued|
+      response = Hash.new
+      result_set = check_name + ':' + check_issued
+      $redis.hgetall('aggregation:' + result_set).callback do |results|
+        response.merge!(results)
+        $redis.hgetall('aggregate:' + result_set).callback do |aggregate|
+          body response.merge(aggregate).to_json
         end
-        body aggregation.to_json
       end
     end
 

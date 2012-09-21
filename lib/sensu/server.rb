@@ -300,16 +300,25 @@ module Sensu
         :result => result
       })
       check = result[:check]
-      @redis.sadd('aggregations', check[:name]).callback do
-        @redis.rpush('aggregations:' + check[:name], check[:issued]).callback do
-          aggregation_key = 'aggregation:' + check[:name] + ':' + check[:issued].to_s
-          @redis.hset(aggregation_key, result[:client], {
+      result_set = check[:name] + ':' + check[:issued].to_s
+      @redis.sadd('aggregates', check[:name]).callback do
+        @redis.rpush('aggregates:' + check[:name], check[:issued]).callback do
+          @redis.hset('aggregation:' + result_set, result[:client], {
             :output => check[:output],
             :status => check[:status]
           }.to_json).callback do
-            @logger.debug('saved result', {
-              :result => result
-            })
+            statuses = %w[OK WARNING CRITICAL UNKNOWN]
+            statuses.each do |status_key|
+              @redis.hsetnx('aggregate:' + result_set, status_key, 0)
+            end
+            status_key = (statuses[check[:status]] || 'UNKNOWN')
+            @redis.hincrby('aggregate:' + result_set, status_key, 1).callback do
+              @redis.hincrby('aggregate:' + result_set, 'TOTAL', 1).callback do
+                @logger.debug('stored result', {
+                  :result => result
+                })
+              end
+            end
           end
         end
       end
@@ -485,7 +494,6 @@ module Sensu
     def setup_keepalive_monitor
       @logger.debug('monitoring client keepalives')
       @master_timers << EM::PeriodicTimer.new(30) do
-        @logger.debug('checking for stale client info')
         @redis.smembers('clients').callback do |clients|
           clients.each do |client_name|
             @redis.get('client:' + client_name).callback do |client_json|
@@ -522,20 +530,21 @@ module Sensu
     def setup_aggregation_pruner
       @logger.debug('pruning aggregations')
       @master_timers << EM::PeriodicTimer.new(20) do
-        @logger.debug('pruning stale aggregations')
-        @redis.smembers('aggregations').callback do |checks|
+        @redis.smembers('aggregates').callback do |checks|
           checks.each do |check_name|
-            @redis.llen('aggregations:' + check_name).callback do |count|
+            @redis.llen('aggregates:' + check_name).callback do |count|
               (count - 5).times do
-                @redis.lpop('aggregations:' + check_name).callback do |check_issued|
-                  aggregation_key = 'aggregation:' + check_name + ':' + check_issued.to_s
-                  @redis.del(aggregation_key).callback do
-                    @logger.debug('pruned aggregation', {
-                      :check => {
-                        :name => check_name,
-                        :issued => check_issued
-                      }
-                    })
+                @redis.lpop('aggregates:' + check_name).callback do |check_issued|
+                  result_set = check_name + ':' + check_issued.to_s
+                  @redis.del('aggregate:' + result_set).callback do
+                    @redis.del('aggregation:' + result_set).callback do
+                      @logger.debug('pruned aggregation', {
+                        :check => {
+                          :name => check_name,
+                          :issued => check_issued
+                        }
+                      })
+                    end
                   end
                 end
               end
