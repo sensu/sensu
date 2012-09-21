@@ -300,10 +300,10 @@ module Sensu
         :result => result
       })
       check = result[:check]
-      @redis.sadd('results', check[:name]).callback do
-        @redis.sadd('results:' + check[:name], check[:issued]).callback do
-          results_key = 'results:' + check[:name] + ':' + check[:issued].to_s
-          @redis.hset(results_key, result[:client], {
+      @redis.sadd('aggregations', check[:name]).callback do
+        @redis.rpush('aggregations:' + check[:name], check[:issued]).callback do
+          aggregation_key = 'aggregation:' + check[:name] + ':' + check[:issued].to_s
+          @redis.hset(aggregation_key, result[:client], {
             :output => check[:output],
             :status => check[:status]
           }.to_json).callback do
@@ -519,21 +519,21 @@ module Sensu
       end
     end
 
-    def setup_results_pruner
-      @logger.debug('pruning old results')
-      @master_timers << EM::PeriodicTimer.new(30) do
-        @redis.smembers('results').callback do |checks|
+    def setup_aggregation_pruner
+      @logger.debug('pruning aggregations')
+      @master_timers << EM::PeriodicTimer.new(20) do
+        @logger.debug('pruning stale aggregations')
+        @redis.smembers('aggregations').callback do |checks|
           checks.each do |check_name|
-            @redis.smembers('results:' + check_name).callback do |issues|
-              if issues.size > 5
-                until issues.size <= 5
-                  issued = issues.shift
-                  results_key = 'results:' + check_name + ':' + issued.to_s
-                  @redis.del(results_key).callback do
-                    @logger.debug('pruned results', {
+            @redis.llen('aggregations:' + check_name).callback do |count|
+              (count - 5).times do
+                @redis.lpop('aggregations:' + check_name).callback do |check_issued|
+                  aggregation_key = 'aggregation:' + check_name + ':' + check_issued.to_s
+                  @redis.del(aggregation_key).callback do
+                    @logger.debug('pruned aggregation', {
                       :check => {
                         :name => check_name,
-                        :issued => issued
+                        :issued => check_issued
                       }
                     })
                   end
@@ -548,7 +548,7 @@ module Sensu
     def master_duties
       setup_publisher
       setup_keepalive_monitor
-      setup_results_pruner
+      setup_aggregation_pruner
     end
 
     def request_master_election

@@ -399,6 +399,29 @@ module Sensu
       end
     end
 
+    aget '/aggregations' do
+      $redis.smembers('aggregations').callback do |checks|
+        body checks.to_json
+      end
+    end
+
+    aget %r{/aggregations?/([\w\.-]+)$} do |check_name|
+      $redis.lrange('aggregations:' + check_name, -5, -1).callback do |issues|
+        body issues.to_json
+      end
+    end
+
+    aget %r{/aggregations?/([\w\.-]+)/([\w\.-]+)$} do |check_name, issued|
+      aggregation_key = 'aggregation:' + check_name + ':' + issued
+      $redis.hgetall(aggregation_key).callback do |results|
+        aggregation = results.inject({}) do |result, (client_name, check_json)|
+          result[client_name] = JSON.parse(check_json)
+          result
+        end
+        body aggregation.to_json
+      end
+    end
+
     apost %r{/stash(?:es)?/(.*)} do |path|
       begin
         post_body = JSON.parse(request.body.read)
