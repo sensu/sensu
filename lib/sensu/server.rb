@@ -308,11 +308,11 @@ module Sensu
             :status => check[:status]
           }.to_json).callback do
             statuses = %w[OK WARNING CRITICAL UNKNOWN]
-            statuses.each do |status_key|
-              @redis.hsetnx('aggregate:' + result_set, status_key, 0)
+            statuses.each do |status|
+              @redis.hsetnx('aggregate:' + result_set, status, 0)
             end
-            status_key = (statuses[check[:status]] || 'UNKNOWN')
-            @redis.hincrby('aggregate:' + result_set, status_key, 1).callback do
+            status = (statuses[check[:status]] || 'UNKNOWN')
+            @redis.hincrby('aggregate:' + result_set, status, 1).callback do
               @redis.hincrby('aggregate:' + result_set, 'TOTAL', 1).callback do
                 @logger.debug('stored result', {
                   :result => result
@@ -330,13 +330,15 @@ module Sensu
       })
       @redis.get('client:' + result[:client]).callback do |client_json|
         unless client_json.nil?
-          store_result(result)
           client = JSON.parse(client_json, :symbolize_names => true)
           check = case
           when @settings.check_exists?(result[:check][:name])
             @settings[:checks][result[:check][:name]].merge(result[:check])
           else
             result[:check]
+          end
+          if check[:aggregate]
+            store_result(result)
           end
           event = {
             :client => client,
@@ -533,7 +535,7 @@ module Sensu
         @redis.smembers('aggregates').callback do |checks|
           checks.each do |check_name|
             @redis.llen('aggregates:' + check_name).callback do |count|
-              (count - 5).times do
+              (count - 10).times do
                 @redis.lpop('aggregates:' + check_name).callback do |check_issued|
                   result_set = check_name + ':' + check_issued.to_s
                   @redis.del('aggregate:' + result_set).callback do
