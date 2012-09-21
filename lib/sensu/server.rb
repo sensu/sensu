@@ -295,6 +295,10 @@ module Sensu
       end
     end
 
+    def store_result(result)
+      # do nothing
+    end
+
     def process_result(result)
       @logger.debug('processing result', {
         :result => result
@@ -302,6 +306,7 @@ module Sensu
       @redis.get('client:' + result[:client]).callback do |client_json|
         unless client_json.nil?
           client = JSON.parse(client_json, :symbolize_names => true)
+          store_result(result)
           check = case
           when @settings.check_exists?(result[:check][:name])
             @settings[:checks][result[:check][:name]].merge(result[:check])
