@@ -402,13 +402,17 @@ module Sensu
     aget '/aggregates' do
       response = Hash.new
       $redis.smembers('aggregates').callback do |checks|
-        checks.each_with_index do |check_name, index|
-          $redis.lrange('aggregates:' + check_name, -10, -1).callback do |aggregates|
-            response[check_name] = aggregates
-            if index == checks.size - 1
-              body response.to_json
+        unless checks.empty?
+          checks.each_with_index do |check_name, index|
+            $redis.lrange('aggregates:' + check_name, -10, -1).callback do |aggregates|
+              response[check_name] = aggregates
+              if index == checks.size - 1
+                body response.to_json
+              end
             end
           end
+        else
+          body response.to_json
         end
       end
     end
