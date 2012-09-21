@@ -116,11 +116,7 @@ module Sensu
           end
         end
       end
-      if subdue
-        subdue_at == (check[:subdue][:at] || 'handler').to_sym
-      else
-        false
-      end
+      subdue && subdue_at == (check[:subdue][:at] || 'handler').to_sym
     end
 
     def check_handlers(check)
