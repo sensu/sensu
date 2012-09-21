@@ -73,6 +73,15 @@ module Sensu
       @amq.auto_recovery = true
     end
 
+    def store_client(client)
+      @logger.debug('storing client', {
+        :client => client
+      })
+      @redis.set('client:' + client[:name], client.to_json).callback do
+        @redis.sadd('clients', client[:name])
+      end
+    end
+
     def setup_keepalives
       @logger.debug('subscribing to keepalives')
       @keepalive_queue = @amq.queue('keepalives')
@@ -81,9 +90,7 @@ module Sensu
         @logger.debug('received keepalive', {
           :client => client
         })
-        @redis.set('client:' + client[:name], client.to_json).callback do
-          @redis.sadd('clients', client[:name])
-        end
+        store_client(client)
       end
     end
 
@@ -301,23 +308,19 @@ module Sensu
       })
       check = result[:check]
       result_set = check[:name] + ':' + check[:issued].to_s
-      @redis.sadd('aggregates', check[:name]).callback do
-        @redis.rpush('aggregates:' + check[:name], check[:issued]).callback do
-          @redis.hset('aggregation:' + result_set, result[:client], {
-            :output => check[:output],
-            :status => check[:status]
-          }.to_json).callback do
-            statuses = %w[OK WARNING CRITICAL UNKNOWN]
-            statuses.each do |status|
-              @redis.hsetnx('aggregate:' + result_set, status, 0)
-            end
-            status = (statuses[check[:status]] || 'UNKNOWN')
-            @redis.hincrby('aggregate:' + result_set, status, 1).callback do
-              @redis.hincrby('aggregate:' + result_set, 'TOTAL', 1).callback do
-                @logger.debug('stored result', {
-                  :result => result
-                })
-              end
+      @redis.hset('aggregation:' + result_set, result[:client], {
+        :output => check[:output],
+        :status => check[:status]
+      }.to_json).callback do
+        statuses = %w[OK WARNING CRITICAL UNKNOWN]
+        statuses.each do |status|
+          @redis.hsetnx('aggregate:' + result_set, status, 0)
+        end
+        status = (statuses[check[:status]] || 'UNKNOWN')
+        @redis.hincrby('aggregate:' + result_set, status, 1).callback do
+          @redis.hincrby('aggregate:' + result_set, 'TOTAL', 1).callback do
+            @redis.rpush('aggregates:' + check[:name], check[:issued]).callback do
+              @redis.sadd('aggregates', check[:name])
             end
           end
         end
