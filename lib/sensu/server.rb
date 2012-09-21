@@ -296,7 +296,23 @@ module Sensu
     end
 
     def store_result(result)
-      # do nothing
+      @logger.debug('storing result', {
+        :result => result
+      })
+      check = result[:check]
+      @redis.sadd('results', check[:name]).callback do
+        @redis.sadd('results:' + check[:name], check[:issued]).callback do
+          results_key = 'results:' + check[:name] + ':' + check[:issued].to_s
+          @redis.hset(results_key, result[:client], {
+            :output => check[:output],
+            :status => check[:status]
+          }.to_json).callback do
+            @logger.debug('saved result', {
+              :result => result
+            })
+          end
+        end
+      end
     end
 
     def process_result(result)
@@ -305,8 +321,8 @@ module Sensu
       })
       @redis.get('client:' + result[:client]).callback do |client_json|
         unless client_json.nil?
-          client = JSON.parse(client_json, :symbolize_names => true)
           store_result(result)
+          client = JSON.parse(client_json, :symbolize_names => true)
           check = case
           when @settings.check_exists?(result[:check][:name])
             @settings[:checks][result[:check][:name]].merge(result[:check])
