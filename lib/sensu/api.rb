@@ -404,8 +404,8 @@ module Sensu
       $redis.smembers('aggregates').callback do |checks|
         unless checks.empty?
           checks.each_with_index do |check_name, index|
-            $redis.lrange('aggregates:' + check_name, -10, -1).callback do |aggregates|
-              response[check_name] = aggregates
+            $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+              response[check_name] = aggregates.sort.reverse.take(10)
               if index == checks.size - 1
                 body response.to_json
               end
@@ -418,8 +418,12 @@ module Sensu
     end
 
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
-      $redis.lrange('aggregates:' + check_name, -10, -1).callback do |aggregates|
-        body aggregates.to_json
+      $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+        unless aggregates.empty?
+          body aggregates.sort.reverse.take(10).to_json
+        else
+          not_found!
+        end
       end
     end
 

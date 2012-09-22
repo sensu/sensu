@@ -37,7 +37,6 @@ class TestSensuAggregate < TestCase
             assert_equal(200, http.response_header.status)
             aggregates = JSON.parse(http.response, :symbolize_names => true)
             assert(aggregates.is_a?(Hash))
-            puts aggregates.inspect
             done
           end
         end

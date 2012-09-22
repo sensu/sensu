@@ -319,7 +319,7 @@ module Sensu
         status = (statuses[check[:status]] || 'UNKNOWN')
         @redis.hincrby('aggregate:' + result_set, status, 1).callback do
           @redis.hincrby('aggregate:' + result_set, 'TOTAL', 1).callback do
-            @redis.rpush('aggregates:' + check[:name], check[:issued]).callback do
+            @redis.sadd('aggregates:' + check[:name], check[:issued]).callback do
               @redis.sadd('aggregates', check[:name])
             end
           end
@@ -340,9 +340,9 @@ module Sensu
           else
             result[:check]
           end
-          if check[:aggregate]
+#          if check[:aggregate]
             store_result(result)
-          end
+#          end
           event = {
             :client => client,
             :check => check,
@@ -537,9 +537,11 @@ module Sensu
       @master_timers << EM::PeriodicTimer.new(20) do
         @redis.smembers('aggregates').callback do |checks|
           checks.each do |check_name|
-            @redis.llen('aggregates:' + check_name).callback do |count|
-              (count - 10).times do
-                @redis.lpop('aggregates:' + check_name).callback do |check_issued|
+            @redis.smembers('aggregates:' + check_name).callback do |aggregates|
+              aggregates.sort!
+              until aggregates.size <= 10
+                check_issued = aggregates.shift
+                @redis.srem('aggregates:' + check_name, check_issued).callback do
                   result_set = check_name + ':' + check_issued.to_s
                   @redis.del('aggregate:' + result_set).callback do
                     @redis.del('aggregation:' + result_set).callback do
