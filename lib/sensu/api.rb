@@ -419,48 +419,48 @@ module Sensu
 
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
       $redis.smembers('aggregates:' + check_name).callback do |aggregates|
-        unless aggregates.empty?
-          body aggregates.sort.reverse.take(10).to_json
-        else
-          not_found!
-        end
+        body aggregates.sort.reverse.take(10).to_json
       end
     end
 
     aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)$} do |check_name, check_issued|
       result_set = check_name + ':' + check_issued
       $redis.hgetall('aggregate:' + result_set).callback do |aggregate|
-        response = aggregate.inject(Hash.new) do |formatted, (status, count)|
-          formatted[status] = Integer(count)
-          formatted
-        end
-        if params[:summarize]
-          options = params[:summarize].split(',')
-          $redis.hgetall('aggregation:' + result_set).callback do |results|
-            formatted_results = results.inject(Hash.new) do |formatted, (client_name, check_json)|
-              formatted[client_name] = JSON.parse(check_json, :symbolize_names => true)
-              formatted
-            end
-            if options.include?('output')
-              outputs = Hash.new(0)
-              formatted_results.each do |client_name, check|
-                outputs[check[:output]] += 1
+        unless aggregate['TOTAL'].nil?
+          response = aggregate.inject(Hash.new) do |formatted, (status, count)|
+            formatted[status] = Integer(count)
+            formatted
+          end
+          if params[:summarize]
+            options = params[:summarize].split(',')
+            $redis.hgetall('aggregation:' + result_set).callback do |results|
+              formatted_results = results.inject(Hash.new) do |formatted, (client_name, check_json)|
+                formatted[client_name] = JSON.parse(check_json, :symbolize_names => true)
+                formatted
               end
-              response['OUTPUTS'] = outputs
-            end
-            if options.include?('status')
-              statuses = Hash.new do |hash, key|
-                hash[key] = Array.new
+              if options.include?('output')
+                outputs = Hash.new(0)
+                formatted_results.each do |client_name, check|
+                  outputs[check[:output]] += 1
+                end
+                response['OUTPUTS'] = outputs
               end
-              formatted_results.each do |client_name, check|
-                statuses[check[:status]].push(client_name)
+              if options.include?('status')
+                statuses = Hash.new do |hash, key|
+                  hash[key] = Array.new
+                end
+                formatted_results.each do |client_name, check|
+                  statuses[check[:status]].push(client_name)
+                end
+                response['STATUSES'] = statuses
               end
-              response['STATUSES'] = statuses
+              body response.to_json
             end
+          else
             body response.to_json
           end
         else
-          body response.to_json
+          not_found!
         end
       end
     end

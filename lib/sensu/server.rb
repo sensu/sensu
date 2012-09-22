@@ -340,9 +340,9 @@ module Sensu
           else
             result[:check]
           end
-#          if check[:aggregate]
+          if check[:aggregate]
             store_result(result)
-#          end
+          end
           event = {
             :client => client,
             :check => check,
