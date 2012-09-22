@@ -1,12 +1,6 @@
 class TestSensuAPI < TestCase
   def setup
-    @options = {
-      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
-      :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
-      :log_level => :error
-    }
-    base = Sensu::Base.new(@options)
-    @settings = base.settings
+    super
     @api_uri = 'http://' + @settings[:api][:host] + ':' + @settings[:api][:port].to_s
     @request_options = {
       :head => {
