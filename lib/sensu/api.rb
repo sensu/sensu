@@ -430,7 +430,7 @@ module Sensu
     aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)$} do |check_name, check_issued|
       result_set = check_name + ':' + check_issued
       $redis.hgetall('aggregate:' + result_set).callback do |aggregate|
-        unless aggregate['TOTAL'].nil?
+        unless aggregate.empty?
           response = aggregate.inject(Hash.new) do |formatted, (status, count)|
             formatted[status] = Integer(count)
             formatted
@@ -447,16 +447,7 @@ module Sensu
                 formatted_results.each do |client_name, check|
                   outputs[check[:output]] += 1
                 end
-                response['OUTPUTS'] = outputs
-              end
-              if options.include?('status')
-                statuses = Hash.new do |hash, key|
-                  hash[key] = Array.new
-                end
-                formatted_results.each do |client_name, check|
-                  statuses[check[:status]].push(client_name)
-                end
-                response['STATUSES'] = statuses
+                response[:outputs] = outputs
               end
               body response.to_json
             end

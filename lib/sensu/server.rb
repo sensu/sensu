@@ -312,13 +312,13 @@ module Sensu
         :output => check[:output],
         :status => check[:status]
       }.to_json).callback do
-        statuses = %w[OK WARNING CRITICAL UNKNOWN]
+        statuses = %w[ok warning critical unknown]
         statuses.each do |status|
           @redis.hsetnx('aggregate:' + result_set, status, 0)
         end
-        status = (statuses[check[:status]] || 'UNKNOWN')
+        status = (statuses[check[:status]] || 'unknown')
         @redis.hincrby('aggregate:' + result_set, status, 1).callback do
-          @redis.hincrby('aggregate:' + result_set, 'TOTAL', 1).callback do
+          @redis.hincrby('aggregate:' + result_set, 'total', 1).callback do
             @redis.sadd('aggregates:' + check[:name], check[:issued]).callback do
               @redis.sadd('aggregates', check[:name])
             end
