@@ -399,6 +399,76 @@ module Sensu
       end
     end
 
+    aget '/aggregates' do
+      response = Array.new
+      $redis.smembers('aggregates').callback do |checks|
+        unless checks.empty?
+          checks.each_with_index do |check_name, index|
+            $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+              collection = {
+                :check => check_name,
+                :issued => aggregates.sort.reverse.take(10)
+              }
+              response.push(collection)
+              if index == checks.size - 1
+                body response.to_json
+              end
+            end
+          end
+        else
+          body response.to_json
+        end
+      end
+    end
+
+    aget %r{/aggregates/([\w\.-]+)$} do |check_name|
+      $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+        body aggregates.sort.reverse.take(10).to_json
+      end
+    end
+
+    aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)$} do |check_name, check_issued|
+      result_set = check_name + ':' + check_issued
+      $redis.hgetall('aggregate:' + result_set).callback do |aggregate|
+        unless aggregate['TOTAL'].nil?
+          response = aggregate.inject(Hash.new) do |formatted, (status, count)|
+            formatted[status] = Integer(count)
+            formatted
+          end
+          if params[:summarize]
+            options = params[:summarize].split(',')
+            $redis.hgetall('aggregation:' + result_set).callback do |results|
+              formatted_results = results.inject(Hash.new) do |formatted, (client_name, check_json)|
+                formatted[client_name] = JSON.parse(check_json, :symbolize_names => true)
+                formatted
+              end
+              if options.include?('output')
+                outputs = Hash.new(0)
+                formatted_results.each do |client_name, check|
+                  outputs[check[:output]] += 1
+                end
+                response['OUTPUTS'] = outputs
+              end
+              if options.include?('status')
+                statuses = Hash.new do |hash, key|
+                  hash[key] = Array.new
+                end
+                formatted_results.each do |client_name, check|
+                  statuses[check[:status]].push(client_name)
+                end
+                response['STATUSES'] = statuses
+              end
+              body response.to_json
+            end
+          else
+            body response.to_json
+          end
+        else
+          not_found!
+        end
+      end
+    end
+
     apost %r{/stash(?:es)?/(.*)} do |path|
       begin
         post_body = JSON.parse(request.body.read)

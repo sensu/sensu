@@ -1,12 +1,4 @@
 class TestSensuBase < TestCase
-  def setup
-    @options = {
-      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
-      :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
-      :log_level => :error
-    }
-  end
-
   def test_read_config_files
     base = Sensu::Base.new(@options)
     settings = base.settings

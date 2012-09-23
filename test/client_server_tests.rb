@@ -1,48 +1,7 @@
 class TestSensuClientServer < TestCase
-  def setup
-    @options = {
-      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
-      :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
-      :log_level => :error
-    }
-    base = Sensu::Base.new(@options)
-    @settings = base.settings
-  end
-
-  def bootstrap
-    server = Sensu::Server.new(@options)
-    client = Sensu::Client.new(@options)
-    server.setup_redis
-    server.redis.flushall
-    server.setup_rabbitmq
-    server.setup_keepalives
-    server.setup_results
-    client.setup_rabbitmq
-    client.setup_keepalives
-    client.setup_subscriptions
-    [server, client]
-  end
-
-  def example_event(check_options={})
-    event = {
-      :client => @settings[:client],
-      :check => {
-        :name => 'example',
-        :issued => Time.now.to_i,
-        :output => 'WARNING',
-        :status => 1,
-        :history => [1]
-      },
-      :occurrences => 1,
-      :action => 'create'
-    }
-    event[:check].merge!(check_options)
-    event
-  end
-
   def test_pipe_handler
     server = Sensu::Server.new(@options)
-    event = example_event(:handler => 'file')
+    event = event_template(:handler => 'file')
     server.handle_event(event)
     EM::Timer.new(2) do
       assert(File.exists?('/tmp/sensu_example'))
@@ -55,7 +14,7 @@ class TestSensuClientServer < TestCase
 
   def test_tcp_handler
     server = Sensu::Server.new(@options)
-    event = example_event(:handler => 'tcp_socket')
+    event = event_template(:handler => 'tcp_socket')
     socket = Proc.new do
       tcp_server = TCPServer.open(1234)
       data = tcp_server.accept.gets
@@ -75,7 +34,7 @@ class TestSensuClientServer < TestCase
 
   def test_udp_handler
     server = Sensu::Server.new(@options)
-    event = example_event(:handler => 'udp_socket')
+    event = event_template(:handler => 'udp_socket')
     socket = Proc.new do
       udp_socket = UDPSocket.new
       udp_socket.bind('127.0.0.1', 1234)
@@ -97,7 +56,7 @@ class TestSensuClientServer < TestCase
   def test_amqp_handler
     server = Sensu::Server.new(@options)
     server.setup_rabbitmq
-    event = example_event(:handler => 'amqp_exchange')
+    event = event_template(:handler => 'amqp_exchange')
     EM::Timer.new(2) do
       server.handle_event(event)
     end
@@ -110,7 +69,7 @@ class TestSensuClientServer < TestCase
 
   def test_mutators
     server = Sensu::Server.new(@options)
-    event = example_event(:handler => 'tagged')
+    event = event_template(:handler => 'tagged')
     server.handle_event(event)
     EM::Timer.new(2) do
       assert(File.exists?('/tmp/sensu_example'))
@@ -124,7 +83,7 @@ class TestSensuClientServer < TestCase
 
   def test_missing_mutator
     server = Sensu::Server.new(@options)
-    event = example_event(:handler => 'missing_mutator')
+    event = event_template(:handler => 'missing_mutator')
     server.handle_event(event)
     EM::Timer.new(2) do
       assert(!File.exists?('/tmp/sensu_example'))
@@ -132,24 +91,24 @@ class TestSensuClientServer < TestCase
     end
   end
 
-  def test_only_output_built_in_mutator
+  def test_built_in_mutator_only_output
     server = Sensu::Server.new(@options)
     handler = @settings[:handlers][:only_output]
-    event = example_event(:output => "foo\nbar")
+    event = event_template(:output => "foo\nbar")
     assert_equal("foo\nbar", server.mutate_event_data(handler, event))
     done
   end
 
-  def test_amqp_only_output_split_built_in_mutator
+  def test_built_in_amqp_mutator_only_output_split
     server = Sensu::Server.new(@options)
     handler = @settings[:handlers][:only_output_split]
-    event = example_event(:output => "foo\nbar")
+    event = event_template(:output => "foo\nbar")
     assert_equal(['foo', 'bar'], server.mutate_event_data(handler, event))
     done
   end
 
   def test_keepalives
-    server, client = bootstrap
+    server, client = base_server_client
     EM::Timer.new(1) do
       server.redis.get('client:' + @settings[:client][:name]).callback do |client_json|
         client_attributes = sanitize_keys(JSON.parse(client_json, :symbolize_names => true))
@@ -160,7 +119,7 @@ class TestSensuClientServer < TestCase
   end
 
   def test_standalone_checks
-    server, client = bootstrap
+    server, client = base_server_client
     client.setup_standalone
     EM::Timer.new(3) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
@@ -174,7 +133,7 @@ class TestSensuClientServer < TestCase
   end
 
   def test_check_command_tokens
-    server, client = bootstrap
+    server, client = base_server_client
     server.setup_publisher
     EM::Timer.new(3) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
@@ -193,7 +152,7 @@ class TestSensuClientServer < TestCase
   end
 
   def test_client_safe_mode_default
-    server, client = bootstrap
+    server, client = base_server_client
     EM::Timer.new(1) do
       check = {
         :name => 'arbitrary',
@@ -219,7 +178,7 @@ class TestSensuClientServer < TestCase
       }
     }
     create_config_snippet('safe_mode', enable_safe_mode)
-    server, client = bootstrap
+    server, client = base_server_client
     EM::Timer.new(1) do
       check = {
         :name => 'arbitrary',
@@ -240,7 +199,7 @@ class TestSensuClientServer < TestCase
   end
 
   def test_client_sockets
-    server, client = bootstrap
+    server, client = base_server_client
     client.setup_sockets
     EM::Timer.new(1) do
       EM::connect('127.0.0.1', 3030, nil) do |socket|

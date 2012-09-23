@@ -1,19 +1,38 @@
 class TestSensuSubdue < TestCase
   def setup
-    generate_snippet
-    @options = {
-      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
-      :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
-      :log_level => :error
-    }
-    base = Sensu::Base.new(@options)
-    @settings = base.settings
+    generate_config_snippet
+    super
   end
 
-  def generate_snippet
-    template_file = File.join(File.dirname(__FILE__), 'conf.d', 'subdue.template')
-    template_contents = File.read(template_file)
-    subdue_config = JSON.parse(template_contents, :symbolize_names => true)
+  def check_definition_template(check_name)
+    {
+      check_name.to_sym => {
+        :command => 'echo -n test && exit 1',
+        :subscribers => ['test'],
+        :interval => 1
+      }
+    }
+  end
+
+  def subdue_check_names
+    check_names = Array.new
+    %w[time time_wrap day days exception].each do |word|
+      check_names.push('subdue_' + word)
+      check_names.push('nonsubdue_' + word)
+    end
+    check_names
+  end
+
+  def subdue_config_template
+    subdue_checks = Hash.new
+    subdue_check_names.each do |check_name|
+      subdue_checks.merge!(check_definition_template(check_name))
+    end
+    {:checks => subdue_checks}
+  end
+
+  def generate_config_snippet
+    subdue_config = subdue_config_template
     subdue_config[:checks][:subdue_time][:subdue] = {
       :at => 'publisher',
       :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
@@ -83,17 +102,8 @@ class TestSensuSubdue < TestCase
     create_config_snippet('subdue', subdue_config)
   end
 
-  def test_publish_subscribe_subdue
-    server = Sensu::Server.new(@options)
-    client = Sensu::Client.new(@options)
-    server.setup_redis
-    server.setup_rabbitmq
-    server.redis.flushall
-    server.setup_keepalives
-    server.setup_results
-    client.setup_rabbitmq
-    client.setup_keepalives
-    client.setup_subscriptions
+  def test_subdue_at_publisher
+    server, client = base_server_client
     server.setup_publisher
     EM::Timer.new(4) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
@@ -107,24 +117,13 @@ class TestSensuSubdue < TestCase
     end
   end
 
-  def test_handler_subdue
+  def test_subdue_at_handler
     server = Sensu::Server.new(@options)
     subdue_test_checks = @settings.checks.select do |check|
       check[:name] =~ /subdue/
     end
     subdue_test_checks.each do |check|
-      event = {
-        :client => @settings[:client],
-        :check => check.merge(
-          :handler => 'file',
-          :issued => Time.now.to_i,
-          :output => 'foobar',
-          :status => 1,
-          :history => [1]
-        ),
-        :occurrences => 1,
-        :action => 'create'
-      }
+      event = event_template(check.merge(:handler => 'file'))
       event[:check][:subdue].delete(:at)
       server.handle_event(event)
     end

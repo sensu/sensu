@@ -102,6 +102,14 @@
         "test"
       ],
       "interval": 1
+    },
+    "aggregated": {
+      "command": "echo -n foobar.local",
+      "subscribers": [
+        "test"
+      ],
+      "aggregate": true,
+      "interval": 1
     }
   },
   "client": {

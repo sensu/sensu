@@ -1,11 +1,4 @@
 class TestSensuCLI < TestCase
-  def setup
-    @options = {
-      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
-      :config_dir => File.join(File.dirname(__FILE__), 'conf.d')
-    }
-  end
-
   def test_cli_arguments
     options = Sensu::CLI.read([
       '-c', @options[:config_file],

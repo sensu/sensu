@@ -73,6 +73,15 @@ module Sensu
       @amq.auto_recovery = true
     end
 
+    def store_client(client)
+      @logger.debug('storing client', {
+        :client => client
+      })
+      @redis.set('client:' + client[:name], client.to_json).callback do
+        @redis.sadd('clients', client[:name])
+      end
+    end
+
     def setup_keepalives
       @logger.debug('subscribing to keepalives')
       @keepalive_queue = @amq.queue('keepalives')
@@ -81,9 +90,7 @@ module Sensu
         @logger.debug('received keepalive', {
           :client => client
         })
-        @redis.set('client:' + client[:name], client.to_json).callback do
-          @redis.sadd('clients', client[:name])
-        end
+        store_client(client)
       end
     end
 
@@ -116,11 +123,7 @@ module Sensu
           end
         end
       end
-      if subdue
-        subdue_at == (check[:subdue][:at] || 'handler').to_sym
-      else
-        false
-      end
+      subdue && subdue_at == (check[:subdue][:at] || 'handler').to_sym
     end
 
     def check_handlers(check)
@@ -299,6 +302,31 @@ module Sensu
       end
     end
 
+    def store_result(result)
+      @logger.debug('storing result', {
+        :result => result
+      })
+      check = result[:check]
+      result_set = check[:name] + ':' + check[:issued].to_s
+      @redis.hset('aggregation:' + result_set, result[:client], {
+        :output => check[:output],
+        :status => check[:status]
+      }.to_json).callback do
+        statuses = %w[OK WARNING CRITICAL UNKNOWN]
+        statuses.each do |status|
+          @redis.hsetnx('aggregate:' + result_set, status, 0)
+        end
+        status = (statuses[check[:status]] || 'UNKNOWN')
+        @redis.hincrby('aggregate:' + result_set, status, 1).callback do
+          @redis.hincrby('aggregate:' + result_set, 'TOTAL', 1).callback do
+            @redis.sadd('aggregates:' + check[:name], check[:issued]).callback do
+              @redis.sadd('aggregates', check[:name])
+            end
+          end
+        end
+      end
+    end
+
     def process_result(result)
       @logger.debug('processing result', {
         :result => result
@@ -311,6 +339,9 @@ module Sensu
             @settings[:checks][result[:check][:name]].merge(result[:check])
           else
             result[:check]
+          end
+          if check[:aggregate]
+            store_result(result)
           end
           event = {
             :client => client,
@@ -468,7 +499,6 @@ module Sensu
     def setup_keepalive_monitor
       @logger.debug('monitoring client keepalives')
       @master_timers << EM::PeriodicTimer.new(30) do
-        @logger.debug('checking for stale client info')
         @redis.smembers('clients').callback do |clients|
           clients.each do |client_name|
             @redis.get('client:' + client_name).callback do |client_json|
@@ -502,9 +532,39 @@ module Sensu
       end
     end
 
+    def setup_aggregation_pruner
+      @logger.debug('pruning aggregations')
+      @master_timers << EM::PeriodicTimer.new(20) do
+        @redis.smembers('aggregates').callback do |checks|
+          checks.each do |check_name|
+            @redis.smembers('aggregates:' + check_name).callback do |aggregates|
+              aggregates.sort!
+              until aggregates.size <= 10
+                check_issued = aggregates.shift
+                @redis.srem('aggregates:' + check_name, check_issued).callback do
+                  result_set = check_name + ':' + check_issued.to_s
+                  @redis.del('aggregate:' + result_set).callback do
+                    @redis.del('aggregation:' + result_set).callback do
+                      @logger.debug('pruned aggregation', {
+                        :check => {
+                          :name => check_name,
+                          :issued => check_issued
+                        }
+                      })
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
     def master_duties
       setup_publisher
       setup_keepalive_monitor
+      setup_aggregation_pruner
     end
 
     def request_master_election
@@ -514,7 +574,7 @@ module Sensu
           @logger.info('i am the master')
           master_duties
         else
-          @redis.get('lock:master') do |timestamp|
+          @redis.get('lock:master').callback do |timestamp|
             if Time.now.to_i - timestamp.to_i >= 60
               @redis.getset('lock:master', Time.now.to_i).callback do |previous|
                 if previous == timestamp
