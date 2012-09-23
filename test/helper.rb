@@ -2,7 +2,28 @@ require 'rubygems'
 require 'em-spec/test'
 require 'em-http-request'
 
+Dir.glob(File.dirname(__FILE__) + '/../lib/sensu/*.rb', &method(:require))
+
 module TestUtil
+  def setup
+    @options = {
+      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
+      :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
+      :log_level => :error
+    }
+    base = Sensu::Base.new(@options)
+    @settings = base.settings
+  end
+
+  def teardown
+    Dir.glob('/tmp/sensu_*').each do |file|
+      File.delete(file)
+    end
+    Dir.glob(File.dirname(__FILE__) + '/conf.d/*.tmp.json').each do |file|
+      File.delete(file)
+    end
+  end
+
   def sanitize_keys(hash)
     hash.reject do |key, value|
       [:timestamp, :issued].include?(key)
@@ -15,13 +36,35 @@ module TestUtil
     end
   end
 
-  def teardown
-    Dir.glob('/tmp/sensu_*').each do |file|
-      File.delete(file)
-    end
-    Dir.glob(File.dirname(__FILE__) + '/conf.d/*.tmp.json').each do |file|
-      File.delete(file)
-    end
+  def base_server_client
+    server = Sensu::Server.new(@options)
+    client = Sensu::Client.new(@options)
+    server.setup_redis
+    server.redis.flushall
+    server.setup_rabbitmq
+    server.setup_keepalives
+    server.setup_results
+    client.setup_rabbitmq
+    client.setup_keepalives
+    client.setup_subscriptions
+    [server, client]
+  end
+
+  def event_template(check_options={})
+    event = {
+      :client => @settings[:client],
+      :check => {
+        :name => 'example',
+        :issued => Time.now.to_i,
+        :output => 'WARNING',
+        :status => 1,
+        :history => [1]
+      },
+      :occurrences => 1,
+      :action => 'create'
+    }
+    event[:check].merge!(check_options)
+    event
   end
 end
 
@@ -44,5 +87,3 @@ else
     include TestUtil
   end
 end
-
-Dir.glob(File.dirname(__FILE__) + '/../lib/sensu/*.rb', &method(:require))
