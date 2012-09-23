@@ -400,12 +400,16 @@ module Sensu
     end
 
     aget '/aggregates' do
-      response = Hash.new
+      response = Array.new
       $redis.smembers('aggregates').callback do |checks|
         unless checks.empty?
           checks.each_with_index do |check_name, index|
             $redis.smembers('aggregates:' + check_name).callback do |aggregates|
-              response[check_name] = aggregates.sort.reverse.take(10)
+              collection = {
+                :check => check_name,
+                :issued => aggregates.sort.reverse.take(10)
+              }
+              response.push(collection)
               if index == checks.size - 1
                 body response.to_json
               end

@@ -35,10 +35,11 @@ class TestSensuAggregate < TestCase
           http.callback do
             assert_equal(200, http.response_header.status)
             aggregates = JSON.parse(http.response, :symbolize_names => true)
-            assert(aggregates.is_a?(Hash))
-            assert(aggregates.has_key?(:check_http))
-            assert(aggregates[:check_http].is_a?(Array))
-            check_issued = aggregates[:check_http].first
+            assert(aggregates.is_a?(Array))
+            assert(aggregates.first.is_a?(Hash))
+            assert_equal('check_http', aggregates.first[:check])
+            assert(aggregates.first[:issued].is_a?(Array))
+            check_issued = aggregates.first[:issued].first
             url = @api_uri + '/aggregates/check_http/' + check_issued + '?summarize=output,status'
             http = EM::HttpRequest.new(url).get(@request_options)
             http.callback do
