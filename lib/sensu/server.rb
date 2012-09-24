@@ -302,7 +302,7 @@ module Sensu
       end
     end
 
-    def store_result(result)
+    def aggregate_result(result)
       @logger.debug('storing result', {
         :result => result
       })
@@ -341,7 +341,7 @@ module Sensu
             result[:check]
           end
           if check[:aggregate]
-            store_result(result)
+            aggregate_result(result)
           end
           @redis.sadd('history:' + client[:name], check[:name])
           history_key = 'history:' + client[:name] + ':' + check[:name]

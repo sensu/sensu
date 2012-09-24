@@ -27,7 +27,7 @@ class TestSensuAggregate < TestCase
             :aggregate => true
           }
         }
-        server.store_result(result)
+        server.aggregate_result(result)
       end
       EM::Timer.new(3) do
         Sensu::API.run_test(@options) do
