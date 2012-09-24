@@ -73,15 +73,6 @@ module Sensu
       @amq.auto_recovery = true
     end
 
-    def store_client(client)
-      @logger.debug('storing client', {
-        :client => client
-      })
-      @redis.set('client:' + client[:name], client.to_json).callback do
-        @redis.sadd('clients', client[:name])
-      end
-    end
-
     def setup_keepalives
       @logger.debug('subscribing to keepalives')
       @keepalive_queue = @amq.queue('keepalives')
@@ -90,7 +81,9 @@ module Sensu
         @logger.debug('received keepalive', {
           :client => client
         })
-        store_client(client)
+        @redis.set('client:' + client[:name], client.to_json).callback do
+          @redis.sadd('clients', client[:name])
+        end
       end
     end
 
@@ -126,12 +119,12 @@ module Sensu
       subdue && subdue_at == (check[:subdue][:at] || 'handler').to_sym
     end
 
-    def check_handlers(check)
+    def event_handlers(event)
       handler_list = case
-      when check.has_key?(:handler)
-        [check[:handler]]
-      when check.has_key?(:handlers)
-        check[:handlers]
+      when event[:check].has_key?(:handlers)
+        event[:check][:handlers]
+      when event[:check].has_key?(:handler)
+        [event[:check][:handler]]
       else
         ['default']
       end
@@ -144,21 +137,37 @@ module Sensu
       end
       handler_list.flatten!
       handler_list.uniq!
-      handler_list.reject! do |handler_name|
-        unless @settings.handler_exists?(handler_name)
+      handlers = handler_list.map do |handler_name|
+        if @settings.handler_exists?(handler_name)
+          handler = @settings[:handlers][handler_name].merge(:name => handler_name)
+          if handler.has_key?(:severities)
+            event_severity = %w[ok warning critical][event[:check][:status]] || 'unknown'
+            unless handler[:severities].include?(event_severity)
+              @logger.debug('handler does not handle event severity', {
+                :event => event,
+                :handler => handler
+              })
+              next
+            end
+          end
+          if check_subdued?(event[:check], :handler)
+            @logger.info('check is subdued at handler', {
+              :event => event,
+              :handler => handler
+            })
+            next
+          end
+          handler
+        else
           @logger.warn('unknown handler', {
             :handler => {
               :name => handler_name
             }
           })
-          true
-        else
-          false
+          next
         end
       end
-      handler_list.map do |handler_name|
-        @settings[:handlers][handler_name].merge(:name => handler_name)
-      end
+      handlers.compact
     end
 
     def mutate_event_data(handler, event)
@@ -211,93 +220,91 @@ module Sensu
     end
 
     def handle_event(event)
-      unless check_subdued?(event[:check], :handler)
-        handlers = check_handlers(event[:check])
-        handlers.each do |handler|
-          log_level = event[:check][:type] == 'metric' ? :debug : :info
-          @logger.send(log_level, 'handling event', {
-            :event => event,
-            :handler => handler
-          })
-          @handlers_in_progress_count += 1
-          case handler[:type]
-          when 'pipe'
-            execute = Proc.new do
-              begin
-                mutated_event_data = mutate_event_data(handler, event)
-                unless mutated_event_data.nil? || mutated_event_data.empty?
-                  IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
-                    io.write(mutated_event_data)
-                    io.close_write
-                    io.read.split(/\n+/).each do |line|
-                      @logger.info(line)
-                    end
+      handlers = event_handlers(event)
+      handlers.each do |handler|
+        log_level = event[:check][:type] == 'metric' ? :debug : :info
+        @logger.send(log_level, 'handling event', {
+          :event => event,
+          :handler => handler
+        })
+        @handlers_in_progress_count += 1
+        case handler[:type]
+        when 'pipe'
+          execute = Proc.new do
+            begin
+              mutated_event_data = mutate_event_data(handler, event)
+              unless mutated_event_data.nil? || mutated_event_data.empty?
+                IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
+                  io.write(mutated_event_data)
+                  io.close_write
+                  io.read.split(/\n+/).each do |line|
+                    @logger.info(line)
                   end
                 end
-              rescue => error
-                @logger.error('handler error', {
-                  :event => event,
-                  :handler => handler,
-                  :error => error.to_s
-                })
               end
+            rescue => error
+              @logger.error('handler error', {
+                :event => event,
+                :handler => handler,
+                :error => error.to_s
+              })
             end
-            complete = Proc.new do
-              @handlers_in_progress_count -= 1
-            end
-            EM::defer(execute, complete)
-          when 'tcp', 'udp'
-            data = Proc.new do
-              mutate_event_data(handler, event)
-            end
-            write = Proc.new do |data|
-              begin
-                case handler[:type]
-                when 'tcp'
-                  EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
-                    socket.send_data(data)
-                    socket.close_connection_after_writing
-                  end
-                when 'udp'
-                  EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
-                    socket.send_datagram(data, handler[:socket][:host], handler[:socket][:port])
-                    socket.close_connection_after_writing
-                  end
-                end
-              rescue => error
-                @logger.error('handler error', {
-                  :event => event,
-                  :handler => handler,
-                  :error => error.to_s
-                })
-              end
-              @handlers_in_progress_count -= 1
-            end
-            EM::defer(data, write)
-          when 'amqp'
-            exchange_name = handler[:exchange][:name]
-            exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
-            exchange_options = handler[:exchange].reject do |key, value|
-              [:name, :type].include?(key)
-            end
-            payloads = Proc.new do
-              Array(mutate_event_data(handler, event))
-            end
-            publish = Proc.new do |payloads|
-              payloads.each do |payload|
-                unless payload.empty?
-                  @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
-                end
-              end
-              @handlers_in_progress_count -= 1
-            end
-            EM::defer(payloads, publish)
-          when 'set'
-            @logger.error('handler sets cannot be nested', {
-              :handler => handler
-            })
+          end
+          complete = Proc.new do
             @handlers_in_progress_count -= 1
           end
+          EM::defer(execute, complete)
+        when 'tcp', 'udp'
+          data = Proc.new do
+            mutate_event_data(handler, event)
+          end
+          write = Proc.new do |data|
+            begin
+              case handler[:type]
+              when 'tcp'
+                EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
+                  socket.send_data(data)
+                  socket.close_connection_after_writing
+                end
+              when 'udp'
+                EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+                  socket.send_datagram(data, handler[:socket][:host], handler[:socket][:port])
+                  socket.close_connection_after_writing
+                end
+              end
+            rescue => error
+              @logger.error('handler error', {
+                :event => event,
+                :handler => handler,
+                :error => error.to_s
+              })
+            end
+            @handlers_in_progress_count -= 1
+          end
+          EM::defer(data, write)
+        when 'amqp'
+          exchange_name = handler[:exchange][:name]
+          exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
+          exchange_options = handler[:exchange].reject do |key, value|
+            [:name, :type].include?(key)
+          end
+          payloads = Proc.new do
+            Array(mutate_event_data(handler, event))
+          end
+          publish = Proc.new do |payloads|
+            payloads.each do |payload|
+              unless payload.empty?
+                @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
+              end
+            end
+            @handlers_in_progress_count -= 1
+          end
+          EM::defer(payloads, publish)
+        when 'set'
+          @logger.error('handler sets cannot be nested', {
+            :handler => handler
+          })
+          @handlers_in_progress_count -= 1
         end
       end
     end
