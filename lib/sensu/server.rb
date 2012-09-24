@@ -141,7 +141,7 @@ module Sensu
         if @settings.handler_exists?(handler_name)
           handler = @settings[:handlers][handler_name].merge(:name => handler_name)
           if handler.has_key?(:severities)
-            event_severity = %w[ok warning critical][event[:check][:status]] || 'unknown'
+            event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
             unless handler[:severities].include?(event_severity)
               @logger.debug('handler does not handle event severity', {
                 :event => event,
@@ -319,7 +319,7 @@ module Sensu
         :output => check[:output],
         :status => check[:status]
       }.to_json).callback do
-        statuses = %w[ok warning critical unknown]
+        statuses = Sensu::SEVERITIES
         statuses.each do |status|
           @redis.hsetnx('aggregate:' + result_set, status, 0)
         end

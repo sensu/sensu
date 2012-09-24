@@ -334,7 +334,7 @@ module Sensu
             })
           end
           handler[:severities].each do |severity|
-            unless %w[ok warning critical unknown].include?(severity)
+            unless Sensu::SEVERITIES.include?(severity)
               invalid('handler severities are invalid', {
                 :handler => handler
               })

@@ -9,4 +9,8 @@ module Sensu
       :config_dir => '/etc/sensu/conf.d'
     }
   end
+
+  unless defined?(Sensu::SEVERITIES)
+    SEVERITIES = %w[ok warning critical unknown]
+  end
 end
