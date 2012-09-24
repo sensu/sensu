@@ -192,17 +192,17 @@ module Sensu
                 io.close_write
                 mutated = io.read
               end
-              if $?.exitstatus != 0
-                @logger.warn('mutator had a non-zero exit status', {
-                  :event => event,
-                  :mutator => mutator
-                })
-              end
             rescue => error
               @logger.error('mutator error', {
                 :event => event,
                 :mutator => mutator,
                 :error => error.to_s
+              })
+            end
+            if $?.exitstatus != 0
+              @logger.warn('mutator had a non-zero exit status', {
+                :event => event,
+                :mutator => mutator
               })
             end
           else
@@ -232,10 +232,10 @@ module Sensu
         when 'pipe'
           execute = Proc.new do
             begin
-              mutated_event_data = mutate_event_data(handler, event)
-              unless mutated_event_data.nil? || mutated_event_data.empty?
+              event_data = mutate_event_data(handler, event)
+              unless event_data.nil? || event_data.empty?
                 IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
-                  io.write(mutated_event_data)
+                  io.write(event_data)
                   io.close_write
                   io.read.split(/\n+/).each do |line|
                     @logger.info(line)
@@ -255,20 +255,20 @@ module Sensu
           end
           EM::defer(execute, complete)
         when 'tcp', 'udp'
-          data = Proc.new do
+          event_data = Proc.new do
             mutate_event_data(handler, event)
           end
-          write = Proc.new do |data|
+          write = Proc.new do |event_data|
             begin
               case handler[:type]
               when 'tcp'
                 EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
-                  socket.send_data(data)
+                  socket.send_data(event_data)
                   socket.close_connection_after_writing
                 end
               when 'udp'
                 EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
-                  socket.send_datagram(data, handler[:socket][:host], handler[:socket][:port])
+                  socket.send_datagram(event_data, handler[:socket][:host], handler[:socket][:port])
                   socket.close_connection_after_writing
                 end
               end
@@ -281,7 +281,7 @@ module Sensu
             end
             @handlers_in_progress_count -= 1
           end
-          EM::defer(data, write)
+          EM::defer(event_data, write)
         when 'amqp'
           exchange_name = handler[:exchange][:name]
           exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
@@ -310,7 +310,7 @@ module Sensu
     end
 
     def aggregate_result(result)
-      @logger.debug('storing result', {
+      @logger.debug('adding result to aggregate', {
         :result => result
       })
       check = result[:check]
