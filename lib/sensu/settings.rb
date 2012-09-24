@@ -287,7 +287,7 @@ module Sensu
       unless @settings[:client][:address].is_a?(String)
         invalid('client must have an address')
       end
-      unless @settings[:client][:subscriptions].is_a?(Array) && @settings[:client][:subscriptions].count > 0
+      unless @settings[:client][:subscriptions].is_a?(Array) && !@settings[:client][:subscriptions].empty?
         invalid('client must have subscriptions')
       end
       @settings[:client][:subscriptions].each do |subscription|
@@ -326,6 +326,20 @@ module Sensu
           invalid('handler is missing type', {
             :handler => handler
           })
+        end
+        if handler.has_key?(:severities)
+          unless handler[:severities].is_a?(Array) && !handler[:severities].empty?
+            invalid('handler severities must be an array and not empty', {
+              :handler => handler
+            })
+          end
+          handler[:severities].each do |severity|
+            unless %w[ok warning critical unknown].include?(severity)
+              invalid('handler severities are invalid', {
+                :handler => handler
+              })
+            end
+          end
         end
         case handler[:type]
         when 'pipe'
