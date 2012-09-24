@@ -357,8 +357,8 @@ module Sensu
               unless history.count < 21
                 state_changes = 0
                 change_weight = 0.8
+                previous_status = history.first
                 history.each do |status|
-                  previous_status ||= status
                   unless status == previous_status
                     state_changes += change_weight
                   end
@@ -366,7 +366,7 @@ module Sensu
                   previous_status = status
                 end
                 total_state_change = (state_changes.fdiv(20) * 100).to_i
-                @redis.lpop(history_key)
+                @redis.ltrim(history_key, -21, -1)
               end
               @redis.hget('events:' + client[:name], check[:name]).callback do |event_json|
                 previous_occurrence = event_json ? JSON.parse(event_json, :symbolize_names => true) : false
