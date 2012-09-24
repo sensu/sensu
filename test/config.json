@@ -27,7 +27,7 @@
     },
     "stdout": {
       "type": "pipe",
-      "command": "./test/handlers/stdout.rb"
+      "command": "cat"
     },
     "file": {
       "type": "pipe",
@@ -53,7 +53,14 @@
         "name": "events"
       }
     },
-    "tagged": {
+    "filter_severity": {
+      "type": "pipe",
+      "command": "./test/handlers/file.rb",
+      "severities": [
+        "critical"
+      ]
+    },
+    "mutated": {
       "type": "pipe",
       "mutator": "tag",
       "command": "./test/handlers/file.rb"
