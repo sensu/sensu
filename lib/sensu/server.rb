@@ -343,16 +343,11 @@ module Sensu
           if check[:aggregate]
             store_result(result)
           end
-          event = {
-            :client => client,
-            :check => check,
-            :occurrences => 1
-          }
           @redis.sadd('history:' + client[:name], check[:name])
           history_key = 'history:' + client[:name] + ':' + check[:name]
           @redis.rpush(history_key, check[:status]).callback do
             @redis.lrange(history_key, -21, -1).callback do |history|
-              event[:check][:history] = history
+              check[:history] = history
               total_state_change = 0
               unless history.count < 21
                 state_changes = 0
@@ -382,6 +377,11 @@ module Sensu
                     was_flapping
                   end
                 end
+                event = {
+                  :client => client,
+                  :check => check,
+                  :occurrences => 1
+                }
                 if check[:status] != 0 || is_flapping
                   if previous_occurrence && check[:status] == previous_occurrence[:status]
                     event[:occurrences] = previous_occurrence[:occurrences] += 1
@@ -393,15 +393,9 @@ module Sensu
                     :flapping => is_flapping,
                     :occurrences => event[:occurrences]
                   }.to_json).callback do
-                    unless check[:handle] == false
-                      unless is_flapping
-                        event[:action] = :create
-                        handle_event(event)
-                      end
-                    else
-                      @logger.debug('handling disabled', {
-                        :event => event
-                      })
+                    unless check[:handle] == false || is_flapping
+                      event[:action] = :create
+                      handle_event(event)
                     end
                   end
                 elsif previous_occurrence
@@ -411,10 +405,6 @@ module Sensu
                         event[:occurrences] = previous_occurrence[:occurrences]
                         event[:action] = :resolve
                         handle_event(event)
-                      else
-                        @logger.debug('handling disabled', {
-                          :event => event
-                        })
                       end
                     end
                   end
