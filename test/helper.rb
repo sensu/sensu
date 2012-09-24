@@ -54,7 +54,7 @@ module TestUtil
     event = {
       :client => @settings[:client],
       :check => {
-        :name => 'example',
+        :name => 'event',
         :issued => Time.now.to_i,
         :output => 'WARNING',
         :status => 1,
