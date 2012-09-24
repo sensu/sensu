@@ -382,7 +382,7 @@ module Sensu
                     was_flapping
                   end
                 end
-                if check[:status] != 0
+                if check[:status] != 0 || is_flapping
                   if previous_occurrence && check[:status] == previous_occurrence[:status]
                     event[:occurrences] = previous_occurrence[:occurrences] += 1
                   end
@@ -394,9 +394,10 @@ module Sensu
                     :occurrences => event[:occurrences]
                   }.to_json).callback do
                     unless check[:handle] == false
-                      event[:check][:flapping] = is_flapping
-                      event[:action] = 'create'
-                      handle_event(event)
+                      unless is_flapping
+                        event[:action] = :create
+                        handle_event(event)
+                      end
                     else
                       @logger.debug('handling disabled', {
                         :event => event
@@ -404,28 +405,16 @@ module Sensu
                     end
                   end
                 elsif previous_occurrence
-                  unless is_flapping
-                    unless check[:auto_resolve] == false && !check[:force_resolve]
-                      @redis.hdel('events:' + client[:name], check[:name]).callback do
-                        unless check[:handle] == false
-                          event[:occurrences] = previous_occurrence[:occurrences]
-                          event[:action] = 'resolve'
-                          handle_event(event)
-                        else
-                          @logger.debug('handling disabled', {
-                            :event => event
-                          })
-                        end
-                      end
-                    end
-                  else
-                    @logger.debug('check is flapping', {
-                      :event => event
-                    })
-                    @redis.hset('events:' + client[:name], check[:name], previous_occurrence.merge(:flapping => true).to_json).callback do
-                      if check[:type] == 'metric'
-                        event[:check][:flapping] = is_flapping
+                  unless check[:auto_resolve] == false && !check[:force_resolve]
+                    @redis.hdel('events:' + client[:name], check[:name]).callback do
+                      unless check[:handle] == false
+                        event[:occurrences] = previous_occurrence[:occurrences]
+                        event[:action] = :resolve
                         handle_event(event)
+                      else
+                        @logger.debug('handling disabled', {
+                          :event => event
+                        })
                       end
                     end
                   end
