@@ -1,20 +1,4 @@
 class TestSensuClientServer < TestCase
-  def test_built_in_mutator_only_output
-    server = Sensu::Server.new(@options)
-    handler = @settings[:handlers][:only_output]
-    event = event_template(:output => "foo\nbar")
-    assert_equal("foo\nbar", server.mutate_event_data(handler, event))
-    done
-  end
-
-  def test_built_in_amqp_mutator_only_output_split
-    server = Sensu::Server.new(@options)
-    handler = @settings[:handlers][:only_output_split]
-    event = event_template(:output => "foo\nbar")
-    assert_equal(['foo', 'bar'], server.mutate_event_data(handler, event))
-    done
-  end
-
   def test_keepalives
     server, client = base_server_client
     EM::Timer.new(1) do
@@ -102,65 +86,6 @@ class TestSensuClientServer < TestCase
           assert_equal(3, event[:status])
           done
         end
-      end
-    end
-  end
-
-  def test_client_sockets
-    server, client = base_server_client
-    client.setup_sockets
-    EM::Timer.new(1) do
-      EM::connect('127.0.0.1', 3030, nil) do |socket|
-        socket.send_data('{"name": "tcp_socket", "output": "tcp", "status": 1}')
-        socket.close_connection_after_writing
-      end
-      EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
-        data = '{"name": "udp_socket", "output": "udp", "status": 1}'
-        2.times do
-          socket.send_datagram(data, '127.0.0.1', 3030)
-        end
-        socket.close_connection_after_writing
-      end
-    end
-    EM::Timer.new(3) do
-      server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
-        assert(events.include?('tcp_socket'))
-        assert(events.include?('udp_socket'))
-        done
-      end
-    end
-  end
-
-  def test_first_master_election
-    server1 = Sensu::Server.new(@options)
-    server2 = Sensu::Server.new(@options)
-    server1.setup_redis
-    server2.setup_redis
-    server1.setup_rabbitmq
-    server2.setup_rabbitmq
-    server1.redis.flushall.callback do
-      server1.setup_master_monitor
-      server2.setup_master_monitor
-      EM::Timer.new(1) do
-        assert([server1.is_master, server2.is_master].uniq.count == 2)
-        done
-      end
-    end
-  end
-
-  def test_failover_master_election
-    server1 = Sensu::Server.new(@options)
-    server2 = Sensu::Server.new(@options)
-    server1.setup_redis
-    server2.setup_redis
-    server1.setup_rabbitmq
-    server2.setup_rabbitmq
-    server1.redis.set('lock:master', Time.now.to_i - 60).callback do
-      server1.setup_master_monitor
-      server2.setup_master_monitor
-      EM::Timer.new(1) do
-        assert([server1.is_master, server2.is_master].uniq.count == 2)
-        done
       end
     end
   end
