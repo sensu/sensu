@@ -1,30 +1,4 @@
 class TestSensuAPI < TestCase
-  def setup
-    super
-    @api_uri = 'http://' + @settings[:api][:host] + ':' + @settings[:api][:port].to_s
-    @request_options = {
-      :head => {
-        :authorization => [
-          @settings[:api][:user],
-          @settings[:api][:password]
-        ]
-      }
-    }
-  end
-
-  def api_request(uri, method=:get, options={}, &block)
-    request_options = @request_options.merge(options)
-    http = EM::HttpRequest.new(@api_uri + uri).send(method, request_options)
-    http.callback do
-      body = begin
-        JSON.parse(http.response, :symbolize_names => true)
-      rescue JSON::ParserError
-        http.response
-      end
-      block.call(http, body)
-    end
-  end
-
   def test_get_info
     Sensu::API.run_test(@options) do
       api_request('/info') do |http, body|
