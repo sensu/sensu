@@ -1,4 +1,4 @@
-class TestSensuSubdue < TestCase
+class TestSensuSubdueCheck < TestCase
   def setup
     generate_config_snippet
     super
