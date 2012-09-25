@@ -1,4 +1,4 @@
-class TestSensuMutateEvent < TestCase
+class TestSensuMutateEventData < TestCase
   def test_built_in_mutator_only_output
     server = Sensu::Server.new(@options)
     handler = @settings[:handlers][:only_output]

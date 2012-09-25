@@ -1,4 +1,4 @@
-class TestSensuClientServer < TestCase
+class TestSensuPublishSubscribe < TestCase
   def test_keepalives
     server, client = base_server_client
     EM::Timer.new(1) do
