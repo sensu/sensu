@@ -1,17 +1,4 @@
 class TestSensuAggregate < TestCase
-  def setup
-    super
-    @api_uri = 'http://' + @settings[:api][:host] + ':' + @settings[:api][:port].to_s
-    @request_options = {
-      :head => {
-        :authorization => [
-          @settings[:api][:user],
-          @settings[:api][:password]
-        ]
-      }
-    }
-  end
-
   def test_check_aggregate
     server = Sensu::Server.new(@options)
     server.setup_redis
@@ -31,26 +18,22 @@ class TestSensuAggregate < TestCase
       end
       EM::Timer.new(3) do
         Sensu::API.run_test(@options) do
-          http = EM::HttpRequest.new(@api_uri + '/aggregates').get(@request_options)
-          http.callback do
+          api_request('/aggregates') do |http, body|
             assert_equal(200, http.response_header.status)
-            aggregates = JSON.parse(http.response, :symbolize_names => true)
-            assert(aggregates.is_a?(Array))
-            assert(aggregates.first.is_a?(Hash))
-            assert_equal('check_http', aggregates.first[:check])
-            assert(aggregates.first[:issued].is_a?(Array))
-            check_issued = aggregates.first[:issued].first
-            url = @api_uri + '/aggregates/check_http/' + check_issued + '?summarize=output'
-            http = EM::HttpRequest.new(url).get(@request_options)
-            http.callback do
+            assert(body.is_a?(Array))
+            assert(body.first.is_a?(Hash))
+            assert_equal('check_http', body.first[:check])
+            assert(body.first[:issued].is_a?(Array))
+            check_issued = body.first[:issued].first
+            uri = '/aggregates/check_http/' + check_issued + '?summarize=output'
+            api_request(uri) do |http, body|
               assert_equal(200, http.response_header.status)
-              aggregate = JSON.parse(http.response, :symbolize_names => true)
-              assert(aggregate.is_a?(Hash))
-              assert_equal(2, aggregate[:total])
-              assert_equal(1, aggregate[:ok])
-              assert_equal(1, aggregate[:warning])
-              assert(aggregate[:outputs].is_a?(Hash))
-              assert_equal(2, aggregate[:outputs].size)
+              assert(body.is_a?(Hash))
+              assert_equal(2, body[:total])
+              assert_equal(1, body[:ok])
+              assert_equal(1, body[:warning])
+              assert(body[:outputs].is_a?(Hash))
+              assert_equal(2, body[:outputs].size)
               done
             end
           end
@@ -61,9 +44,7 @@ class TestSensuAggregate < TestCase
 
   def test_nonexistent_aggregate
     Sensu::API.run_test(@options) do
-      url = @api_uri + '/aggregates/nonexistent/1348376207'
-      http = EM::HttpRequest.new(url).get(@request_options)
-      http.callback do
+      api_request('/aggregates/nonexistent/1348376207') do |http, body|
         assert_equal(404, http.response_header.status)
         done
       end

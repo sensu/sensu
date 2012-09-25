@@ -66,6 +66,28 @@ module TestUtil
     event[:check].merge!(check_options)
     event
   end
+
+  def api_request(uri, method=:get, options={}, &block)
+    api = 'http://' + @settings[:api][:host] + ':' + @settings[:api][:port].to_s
+    default_options = {
+      :head => {
+        :authorization => [
+          @settings[:api][:user],
+          @settings[:api][:password]
+        ]
+      }
+    }
+    request_options = default_options.merge(options)
+    http = EM::HttpRequest.new(api + uri).send(method, request_options)
+    http.callback do
+      body = begin
+        JSON.parse(http.response, :symbolize_names => true)
+      rescue JSON::ParserError
+        http.response
+      end
+      block.call(http, body)
+    end
+  end
 end
 
 if RUBY_VERSION < '1.9.0'
