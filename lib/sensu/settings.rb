@@ -281,7 +281,7 @@ module Sensu
       unless @settings[:client].is_a?(Hash)
         invalid('missing client configuration')
       end
-      unless @settings[:client][:name].is_a?(String)
+      unless @settings[:client][:name].is_a?(String) && !@settings[:client][:name].empty?
         invalid('client must have a name')
       end
       unless @settings[:client][:address].is_a?(String)
