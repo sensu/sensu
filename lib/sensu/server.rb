@@ -208,13 +208,11 @@ module Sensu
       when nil
         block.call(event.to_json)
       when /^only_check_output/
-        if mutator_name =~ /split$/
-          mutated = Array.new
-          event[:check][:output].split(/\n+/).each do |line|
-            mutated.push(line)
-          end
+        mutated = case mutator_name
+        when /split$/
+          event[:check][:output].split(/\n+/)
         else
-          mutated = event[:check][:output]
+          event[:check][:output]
         end
         block.call(mutated)
       else
@@ -262,7 +260,7 @@ module Sensu
             :handler => handler,
             :error => error.to_s
           })
-          @handlers_in_progress_count += 1
+          @handlers_in_progress_count -= 1
         end
         mutate_event_data(handler[:mutator], event) do |event_data|
           case handler[:type]
