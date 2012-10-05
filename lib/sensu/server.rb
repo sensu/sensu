@@ -184,8 +184,8 @@ module Sensu
           IO.popen(command + ' 2>&1', 'r+') do |io|
             unless data.nil?
               io.write(data.to_s)
-              io.close_write
             end
+            io.close_write
             output = io.read
           end
           status = $?.exitstatus
