@@ -170,9 +170,37 @@ module Sensu
       handlers.compact
     end
 
-    def mutate_event_data(handler, event)
+    def execute_command(command, data=nil, on_error=nil, &block)
+      execute = Proc.new do
+        output = ''
+        status = 0
+        begin
+          IO.popen(command + ' 2>&1', 'r+') do |io|
+            unless data.nil?
+              io.write(data)
+              io.close_write
+            end
+            output = io.read
+          end
+          status = $?.exitstatus
+        rescue => error
+          status = 2
+          if on_error.respond_to?(:call)
+            on_error.call(error)
+          end
+        end
+        [output, status]
+      end
+      complete = Proc.new do |output, status|
+        if block
+          block.call(output, status)
+        end
+      end
+      EM::defer(execute, complete)
+    end
+
+    def mutate_event_data(handler, event, &block)
       if handler.has_key?(:mutator)
-        mutated = nil
         case handler[:mutator]
         when /^only_check_output/
           if handler[:type] == 'amqp' && handler[:mutator] =~ /split$/
@@ -183,27 +211,25 @@ module Sensu
           else
             mutated = event[:check][:output]
           end
+          block.call(mutated)
         else
           if @settings.mutator_exists?(handler[:mutator])
             mutator = @settings[:mutators][handler[:mutator]]
-            begin
-              IO.popen(mutator[:command], 'r+') do |io|
-                io.write(event.to_json)
-                io.close_write
-                mutated = io.read
-              end
-            rescue => error
+            on_error = Proc.new do |error|
               @logger.error('mutator error', {
                 :event => event,
                 :mutator => mutator,
                 :error => error.to_s
               })
             end
-            if $?.exitstatus != 0
-              @logger.warn('mutator had a non-zero exit status', {
-                :event => event,
-                :mutator => mutator
-              })
+            execute_command(mutator[:command], event.to_json, on_error) do |output, status|
+              if status != 0
+                @logger.warn('mutator had a non-zero exit status', {
+                  :event => event,
+                  :mutator => mutator
+                })
+              end
+              block.call(output)
             end
           else
             @logger.warn('unknown mutator', {
@@ -213,9 +239,8 @@ module Sensu
             })
           end
         end
-        mutated
       else
-        event.to_json
+        block.call(event.to_json)
       end
     end
 
@@ -230,35 +255,23 @@ module Sensu
         @handlers_in_progress_count += 1
         case handler[:type]
         when 'pipe'
-          execute = Proc.new do
-            begin
-              event_data = mutate_event_data(handler, event)
-              unless event_data.nil? || event_data.empty?
-                IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
-                  io.write(event_data)
-                  io.close_write
-                  io.read.split(/\n+/).each do |line|
-                    @logger.info(line)
-                  end
-                end
-              end
-            rescue => error
+          mutate_event_data(handler, event) do |event_data|
+            on_error = Proc.new do |error|
               @logger.error('handler error', {
                 :event => event,
                 :handler => handler,
                 :error => error.to_s
               })
             end
+            execute_command(handler[:command], event_data, on_error) do |output, status|
+              output.split(/\n+/).each do |line|
+                @logger.info(line)
+              end
+              @handlers_in_progress_count -= 1
+            end
           end
-          complete = Proc.new do
-            @handlers_in_progress_count -= 1
-          end
-          EM::defer(execute, complete)
         when 'tcp', 'udp'
-          event_data = Proc.new do
-            mutate_event_data(handler, event)
-          end
-          write = Proc.new do |event_data|
+          mutate_event_data(handler, event) do |event_data|
             begin
               case handler[:type]
               when 'tcp'
@@ -279,19 +292,16 @@ module Sensu
                 :error => error.to_s
               })
             end
-            @handlers_in_progress_count -= 1
+            @handlers_in_progress_count -= 1            
           end
-          EM::defer(event_data, write)
         when 'amqp'
           exchange_name = handler[:exchange][:name]
           exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
           exchange_options = handler[:exchange].reject do |key, value|
             [:name, :type].include?(key)
           end
-          payloads = Proc.new do
-            Array(mutate_event_data(handler, event))
-          end
-          publish = Proc.new do |payloads|
+          mutate_event_data(handler, event) do |event_data|
+            payloads = Array(event_data)
             payloads.each do |payload|
               unless payload.empty?
                 @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
@@ -299,7 +309,6 @@ module Sensu
             end
             @handlers_in_progress_count -= 1
           end
-          EM::defer(payloads, publish)
         when 'set'
           @logger.error('handler sets cannot be nested', {
             :handler => handler
