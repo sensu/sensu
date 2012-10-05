@@ -35,7 +35,7 @@ module Sensu
         :on_possible_authentication_failure => connection_failure
       })
       @rabbitmq.logger = Sensu::NullLogger.get
-      @rabbitmq.on_tcp_connection_loss do |connection|
+      @rabbitmq.on_tcp_connection_loss do |connection, settings|
         unless connection.reconnecting?
           @logger.warn('reconnecting to rabbitmq')
           connection.periodically_reconnect(5)
