@@ -128,40 +128,14 @@ module Sensu
       else
         ['default']
       end
-      handler_list.map! do |handler_name|
-        if @settings.handler_exists?(handler_name) && @settings[:handlers][handler_name][:type] == 'set'
-          @settings[:handlers][handler_name][:handlers]
-        else
-          handler_name
-        end
-      end
-      handlers = handler_list.flatten.uniq.map do |handler_name|
+      handlers = handler_list.inject(Array.new) do |handlers, handler_name|
         if @settings.handler_exists?(handler_name)
-          handler = @settings[:handlers][handler_name].merge(:name => handler_name)
-          if handler.has_key?(:severities)
-            event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
-            unless handler[:severities].include?(event_severity)
-              @logger.debug('handler does not handle event severity', {
-                :event => event,
-                :handler => handler
-              })
-              next
-            end
-          end
+          handler = @settings[:handlers][handler_name]
           if handler[:type] == 'set'
-            @logger.error('handler sets cannot be nested', {
-              :event => event,
-              :handler => handler
-            })
-            next
-          elsif check_subdued?(event[:check], :handler)
-            @logger.info('check is subdued at handler', {
-              :event => event,
-              :handler => handler
-            })
-            next
+            handlers + handler[:handlers]
+          else
+            handlers.push(handler)
           end
-          handler
         else
           @logger.warn('unknown handler', {
             :event => event,
@@ -169,10 +143,33 @@ module Sensu
               :name => handler_name
             }
           })
-          next
+        end
+        handlers.uniq
+      end
+      event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
+      handlers.select do |handler|
+        if handler[:type] == 'set'
+          @logger.error('handler sets cannot be nested', {
+            :event => event,
+            :handler => handler
+          })
+          false
+        elsif handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
+          @logger.debug('handler does not handle event severity', {
+            :event => event,
+            :handler => handler
+          })
+          false
+        elsif check_subdued?(event[:check], :handler)
+          @logger.info('check is subdued at handler', {
+            :event => event,
+            :handler => handler
+          })
+          false
+        else
+          true
         end
       end
-      handlers.compact
     end
 
     def execute_command(command, data=nil, on_error=nil, &block)
