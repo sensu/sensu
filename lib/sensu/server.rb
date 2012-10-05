@@ -135,9 +135,7 @@ module Sensu
           handler_name
         end
       end
-      handler_list.flatten!
-      handler_list.uniq!
-      handlers = handler_list.map do |handler_name|
+      handlers = handler_list.flatten.uniq.map do |handler_name|
         if @settings.handler_exists?(handler_name)
           handler = @settings[:handlers][handler_name].merge(:name => handler_name)
           if handler.has_key?(:severities)
@@ -166,6 +164,7 @@ module Sensu
           handler
         else
           @logger.warn('unknown handler', {
+            :event => event,
             :handler => {
               :name => handler_name
             }
