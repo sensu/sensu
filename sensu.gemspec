@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
   s.has_rdoc    = false
 
-  s.add_dependency('eventmachine', '1.0.0.rc.4')
+  s.add_dependency('eventmachine', '1.0.0')
   s.add_dependency('amqp', '0.9.7')
   s.add_dependency('json')
   s.add_dependency('cabin', '0.4.4')
