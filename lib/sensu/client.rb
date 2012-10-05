@@ -30,11 +30,16 @@ module Sensu
         @logger.fatal('SENSU NOT RUNNING!')
         exit 2
       end
-      @rabbitmq = AMQP.connect(@settings[:rabbitmq], :on_tcp_connection_failure => connection_failure)
+      @rabbitmq = AMQP.connect(@settings[:rabbitmq], {
+        :on_tcp_connection_failure => connection_failure,
+        :on_possible_authentication_failure => connection_failure
+      })
       @rabbitmq.logger = Sensu::NullLogger.get
       @rabbitmq.on_tcp_connection_loss do |connection, settings|
-        @logger.warn('reconnecting to rabbitmq')
-        connection.reconnect(false, 10)
+        unless connection.reconnecting?
+          @logger.warn('reconnecting to rabbitmq')
+          connection.periodically_reconnect(5)
+        end
       end
       @rabbitmq.on_skipped_heartbeats do
         @logger.warn('skipped rabbitmq heartbeat')
