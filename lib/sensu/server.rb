@@ -128,94 +128,116 @@ module Sensu
       else
         ['default']
       end
-      handler_list.map! do |handler_name|
-        if @settings.handler_exists?(handler_name) && @settings[:handlers][handler_name][:type] == 'set'
-          @settings[:handlers][handler_name][:handlers]
-        else
-          handler_name
-        end
-      end
-      handler_list.flatten!
-      handler_list.uniq!
-      handlers = handler_list.map do |handler_name|
+      handlers = handler_list.inject(Array.new) do |handlers, handler_name|
         if @settings.handler_exists?(handler_name)
-          handler = @settings[:handlers][handler_name].merge(:name => handler_name)
-          if handler.has_key?(:severities)
-            event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
-            unless handler[:severities].include?(event_severity)
-              @logger.debug('handler does not handle event severity', {
-                :event => event,
-                :handler => handler
-              })
-              next
-            end
+          handler = @settings[:handlers][handler_name]
+          if handler[:type] == 'set'
+            handlers + handler[:handlers]
+          else
+            handlers.push(handler)
           end
-          if check_subdued?(event[:check], :handler)
-            @logger.info('check is subdued at handler', {
-              :event => event,
-              :handler => handler
-            })
-            next
-          end
-          handler
         else
           @logger.warn('unknown handler', {
+            :event => event,
             :handler => {
               :name => handler_name
             }
           })
-          next
+        end
+        handlers.uniq
+      end
+      event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
+      handlers.select do |handler|
+        if handler[:type] == 'set'
+          @logger.error('handler sets cannot be nested', {
+            :event => event,
+            :handler => handler
+          })
+          false
+        elsif handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
+          @logger.debug('handler does not handle event severity', {
+            :event => event,
+            :handler => handler
+          })
+          false
+        elsif check_subdued?(event[:check], :handler)
+          @logger.info('check is subdued at handler', {
+            :event => event,
+            :handler => handler
+          })
+          false
+        else
+          true
         end
       end
-      handlers.compact
     end
 
-    def mutate_event_data(handler, event)
-      if handler.has_key?(:mutator)
-        mutated = nil
-        case handler[:mutator]
-        when /^only_check_output/
-          if handler[:type] == 'amqp' && handler[:mutator] =~ /split$/
-            mutated = Array.new
-            event[:check][:output].split(/\n+/).each do |line|
-              mutated.push(line)
+    def execute_command(command, data=nil, on_error=nil, &block)
+      execute = Proc.new do
+        output = ''
+        status = 0
+        begin
+          IO.popen(command + ' 2>&1', 'r+') do |io|
+            unless data.nil?
+              io.write(data.to_s)
             end
-          else
-            mutated = event[:check][:output]
+            io.close_write
+            output = io.read
           end
+          status = $?.exitstatus
+        rescue => error
+          status = 2
+          if on_error.respond_to?(:call)
+            on_error.call(error)
+          end
+        end
+        [output, status]
+      end
+      complete = Proc.new do |output, status|
+        block.call(output, status)
+      end
+      EM::defer(execute, complete)
+    end
+
+    def mutate_event_data(mutator_name, event, &block)
+      case mutator_name
+      when nil
+        block.call(event.to_json)
+      when /^only_check_output/
+        mutated = case mutator_name
+        when /split$/
+          event[:check][:output].split(/\n+/)
         else
-          if @settings.mutator_exists?(handler[:mutator])
-            mutator = @settings[:mutators][handler[:mutator]]
-            begin
-              IO.popen(mutator[:command], 'r+') do |io|
-                io.write(event.to_json)
-                io.close_write
-                mutated = io.read
-              end
-            rescue => error
-              @logger.error('mutator error', {
-                :event => event,
-                :mutator => mutator,
-                :error => error.to_s
-              })
-            end
-            if $?.exitstatus != 0
+          event[:check][:output]
+        end
+        block.call(mutated)
+      else
+        if @settings.mutator_exists?(mutator_name)
+          mutator = @settings[:mutators][mutator_name]
+          on_error = Proc.new do |error|
+            @logger.error('mutator error', {
+              :event => event,
+              :mutator => mutator,
+              :error => error.to_s
+            })
+          end
+          execute_command(mutator[:command], event.to_json, on_error) do |output, status|
+            if status != 0
               @logger.warn('mutator had a non-zero exit status', {
                 :event => event,
                 :mutator => mutator
               })
             end
-          else
-            @logger.warn('unknown mutator', {
-              :mutator => {
-                :name => handler[:mutator]
-              }
-            })
+            block.call(output)
           end
+        else
+          @logger.warn('unknown mutator', {
+            :event => event,
+            :mutator => {
+              :name => mutator_name
+            }
+          })
         end
-        mutated
-      else
-        event.to_json
       end
     end
 
@@ -228,70 +250,50 @@ module Sensu
           :handler => handler
         })
         @handlers_in_progress_count += 1
-        case handler[:type]
-        when 'pipe'
-          execute = Proc.new do
+        on_error = Proc.new do |error|
+          @logger.error('handler error', {
+            :event => event,
+            :handler => handler,
+            :error => error.to_s
+          })
+          @handlers_in_progress_count -= 1
+        end
+        mutate_event_data(handler[:mutator], event) do |event_data|
+          case handler[:type]
+          when 'pipe'
+            execute_command(handler[:command], event_data, on_error) do |output, status|
+              output.split(/\n+/).each do |line|
+                @logger.info(line)
+              end
+              @handlers_in_progress_count -= 1
+            end
+          when 'tcp'
             begin
-              event_data = mutate_event_data(handler, event)
-              unless event_data.nil? || event_data.empty?
-                IO.popen(handler[:command] + ' 2>&1', 'r+') do |io|
-                  io.write(event_data)
-                  io.close_write
-                  io.read.split(/\n+/).each do |line|
-                    @logger.info(line)
-                  end
-                end
+              EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
+                socket.send_data(event_data.to_s)
+                socket.close_connection_after_writing
+                @handlers_in_progress_count -= 1
               end
             rescue => error
-              @logger.error('handler error', {
-                :event => event,
-                :handler => handler,
-                :error => error.to_s
-              })
+              on_error.call(error)
             end
-          end
-          complete = Proc.new do
-            @handlers_in_progress_count -= 1
-          end
-          EM::defer(execute, complete)
-        when 'tcp', 'udp'
-          event_data = Proc.new do
-            mutate_event_data(handler, event)
-          end
-          write = Proc.new do |event_data|
+          when 'udp'
             begin
-              case handler[:type]
-              when 'tcp'
-                EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
-                  socket.send_data(event_data)
-                  socket.close_connection_after_writing
-                end
-              when 'udp'
-                EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
-                  socket.send_datagram(event_data, handler[:socket][:host], handler[:socket][:port])
-                  socket.close_connection_after_writing
-                end
+              EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+                socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
+                socket.close_connection_after_writing
+                @handlers_in_progress_count -= 1
               end
             rescue => error
-              @logger.error('handler error', {
-                :event => event,
-                :handler => handler,
-                :error => error.to_s
-              })
+              on_error.call(error)
             end
-            @handlers_in_progress_count -= 1
-          end
-          EM::defer(event_data, write)
-        when 'amqp'
-          exchange_name = handler[:exchange][:name]
-          exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
-          exchange_options = handler[:exchange].reject do |key, value|
-            [:name, :type].include?(key)
-          end
-          payloads = Proc.new do
-            Array(mutate_event_data(handler, event))
-          end
-          publish = Proc.new do |payloads|
+          when 'amqp'
+            exchange_name = handler[:exchange][:name]
+            exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
+            exchange_options = handler[:exchange].reject do |key, value|
+              [:name, :type].include?(key)
+            end
+            payloads = Array(event_data)
             payloads.each do |payload|
               unless payload.empty?
                 @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
@@ -299,12 +301,6 @@ module Sensu
             end
             @handlers_in_progress_count -= 1
           end
-          EM::defer(payloads, publish)
-        when 'set'
-          @logger.error('handler sets cannot be nested', {
-            :handler => handler
-          })
-          @handlers_in_progress_count -= 1
         end
       end
     end
