@@ -1,3 +1,17 @@
+## 0.9.8 - TBD
+
+### Features
+
+Aggregates, pooling and summarizing check results, very handy for
+monitoring a horizontally scaled or distributed system.
+
+Event handler severities, only handle events that have specific
+severities.
+
+### Other
+
+Fixed flap detection.
+
 ## 0.9.7 - 2012-09-20
 
 ### Features
