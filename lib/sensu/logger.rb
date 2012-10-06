@@ -1,3 +1,5 @@
+gem 'cabin', '0.4.4'
+
 require 'cabin'
 
 module Sensu
