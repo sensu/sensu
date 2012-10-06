@@ -12,6 +12,8 @@ severities.
 
 Fixed flap detection.
 
+Gracefully handle possible failed RabbitMQ authentication.
+
 ## 0.9.7 - 2012-09-20
 
 ### Features
