@@ -1,3 +1,5 @@
+gem 'ruby-redis', '0.0.2'
+
 require 'redis'
 
 module Sensu

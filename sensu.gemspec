@@ -12,13 +12,13 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
   s.has_rdoc    = false
 
-  s.add_dependency('eventmachine', '1.0.0.rc.4')
+  s.add_dependency('eventmachine', '1.0.0')
   s.add_dependency('amqp', '0.9.7')
   s.add_dependency('json')
   s.add_dependency('cabin', '0.4.4')
   s.add_dependency('ruby-redis', '0.0.2')
+  s.add_dependency('thin', '1.5.0')
   s.add_dependency('async_sinatra', '1.0.0')
-  s.add_dependency('thin', '1.4.1')
 
   s.add_development_dependency('rake')
   s.add_development_dependency('em-spec')
