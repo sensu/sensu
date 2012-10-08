@@ -133,7 +133,6 @@ module Sensu
               handlers = handlers + derive_handlers(handler[:handlers], true)
             else
               @logger.error('handler sets cannot be nested', {
-                :event => event,
                 :handler => handler
               })
             end
@@ -142,7 +141,6 @@ module Sensu
           end
         else
           @logger.error('unknown handler', {
-            :event => event,
             :handler => {
               :name => handler_name
             }
@@ -242,7 +240,6 @@ module Sensu
           end
         else
           @logger.error('unknown mutator', {
-            :event => event,
             :mutator => {
               :name => mutator_name
             }
