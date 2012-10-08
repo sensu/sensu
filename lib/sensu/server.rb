@@ -124,6 +124,34 @@ module Sensu
       subdue && subdue_at == (check[:subdue][:at] || 'handler').to_sym
     end
 
+    def derive_handlers(handler_list, nested=false)
+      handler_list.inject(Array.new) do |handlers, handler_name|
+        if @settings.handler_exists?(handler_name)
+          handler = @settings[:handlers][handler_name]
+          if handler[:type] == 'set'
+            unless nested
+              handlers = handlers + derive_handlers(handler[:handlers], true)
+            else
+              @logger.error('handler sets cannot be nested', {
+                :event => event,
+                :handler => handler
+              })
+            end
+          else
+            handlers.push(handler)
+          end
+        else
+          @logger.error('unknown handler', {
+            :event => event,
+            :handler => {
+              :name => handler_name
+            }
+          })
+        end
+        handlers.uniq
+      end
+    end
+
     def event_handlers(event)
       handler_list = case
       when event[:check].has_key?(:handlers)
@@ -133,33 +161,10 @@ module Sensu
       else
         ['default']
       end
-      handlers = handler_list.inject(Array.new) do |handlers, handler_name|
-        if @settings.handler_exists?(handler_name)
-          handler = @settings[:handlers][handler_name]
-          if handler[:type] == 'set'
-            handlers + handler[:handlers]
-          else
-            handlers.push(handler)
-          end
-        else
-          @logger.warn('unknown handler', {
-            :event => event,
-            :handler => {
-              :name => handler_name
-            }
-          })
-        end
-        handlers.uniq
-      end
+      handlers = derive_handlers(handler_list)
       event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
       handlers.select do |handler|
-        if handler[:type] == 'set'
-          @logger.error('handler sets cannot be nested', {
-            :event => event,
-            :handler => handler
-          })
-          false
-        elsif handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
+        if handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
           @logger.debug('handler does not handle event severity', {
             :event => event,
             :handler => handler
@@ -236,7 +241,7 @@ module Sensu
             block.call(output)
           end
         else
-          @logger.warn('unknown mutator', {
+          @logger.error('unknown mutator', {
             :event => event,
             :mutator => {
               :name => mutator_name
