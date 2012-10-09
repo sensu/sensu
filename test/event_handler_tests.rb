@@ -105,4 +105,16 @@ class TestSensuEventHandlers < TestCase
       done
     end
   end
+
+  def test_derive_handlers
+    server = Sensu::Server.new(@options)
+    handler_list = ['default', 'file', 'file', 'nonexistent']
+    expected = [
+      @settings[:handlers][:stdout],
+      @settings[:handlers][:file]
+    ]
+    handlers = server.derive_handlers(handler_list)
+    assert_equal(expected, handlers)
+    done
+  end
 end
