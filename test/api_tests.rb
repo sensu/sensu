@@ -244,11 +244,27 @@ class TestSensuAPI < TestCase
     Sensu::API.run_test(@options) do
       options = {
         :body => {
-          :check => 'tokens'
+          :subscribers => [
+            'test'
+          ]
         }.to_json
       }
       api_request('/request', :post, options) do |http, body|
         assert_equal(400, http.response_header.status)
+        done
+      end
+    end
+  end
+
+  def test_check_request_missing_check
+    Sensu::API.run_test(@options) do
+      options = {
+        :body => {
+          :check => 'nonexistent'
+        }.to_json
+      }
+      api_request('/request', :post, options) do |http, body|
+        assert_equal(404, http.response_header.status)
         done
       end
     end
