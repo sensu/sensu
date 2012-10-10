@@ -320,8 +320,8 @@ module Sensu
             end
             payload = {
               :name => check_name,
-              :issued => Time.now.to_i,
-              :command => check[:command]
+              :command => check[:command],
+              :issued => Time.now.to_i
             }
             $logger.info('publishing check request', {
               :payload => payload,
