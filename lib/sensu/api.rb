@@ -311,20 +311,29 @@ module Sensu
       begin
         post_body = JSON.parse(request.body.read, :symbolize_names => true)
         check_name = post_body[:check]
-        subscribers = post_body[:subscribers]
+        subscribers = post_body[:subscribers] || Array.new
         if check_name.is_a?(String) && subscribers.is_a?(Array)
-          payload = {
-            :name => check_name,
-            :issued => Time.now.to_i
-          }
-          $logger.info('publishing check request', {
-            :payload => payload,
-            :subscribers => subscribers
-          })
-          subscribers.uniq.each do |exchange_name|
-            $amq.fanout(exchange_name).publish(payload.to_json)
+          if $settings.check_exists?(check_name)
+            check = $settings[:checks][check_name]
+            if subscribers.empty?
+              subscribers = check[:subscribers] || Array.new
+            end
+            payload = {
+              :name => check[:name],
+              :issued => Time.now.to_i,
+              :command => check[:command]
+            }
+            $logger.info('publishing check request', {
+              :payload => payload,
+              :subscribers => subscribers
+            })
+            subscribers.uniq.each do |exchange_name|
+              $amq.fanout(exchange_name).publish(payload.to_json)
+            end
+            created!
+          else
+            not_found!
           end
-          created!
         else
           bad_request!
         end
