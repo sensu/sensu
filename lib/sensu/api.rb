@@ -319,7 +319,7 @@ module Sensu
               subscribers = check[:subscribers] || Array.new
             end
             payload = {
-              :name => check[:name],
+              :name => check_name,
               :issued => Time.now.to_i,
               :command => check[:command]
             }
