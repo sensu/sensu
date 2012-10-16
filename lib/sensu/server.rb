@@ -76,6 +76,15 @@ module Sensu
       end
       @amq = AMQP::Channel.new(@rabbitmq)
       @amq.auto_recovery = true
+      @amq.on_error do |channel, channel_close|
+        @logger.fatal('rabbitmq channel closed', {
+          :error => {
+            :reply_code => channel_close.reply_code,
+            :reply_text => channel_close.reply_text
+          }
+        })
+        stop
+      end
     end
 
     def setup_keepalives
