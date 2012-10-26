@@ -199,14 +199,15 @@ module Sensu
         )
       end
 
-      def resolve_event(client_name, check_name)
+      def resolve_event(event)
         payload = {
-          :client => client_name,
+          :client => event[:client],
           :check => {
-            :name => check_name,
+            :name => event[:check],
             :output => 'Resolving on request of the API',
             :status => 0,
             :issued => Time.now.to_i,
+            :handlers => event[:handlers],
             :force_resolve => true
           }
         }
@@ -268,8 +269,8 @@ module Sensu
       $redis.get('client:' + client_name).callback do |client_json|
         unless client_json.nil?
           $redis.hgetall('events:' + client_name).callback do |events|
-            events.each_key do |check_name|
-              resolve_event(client_name, check_name)
+            events.each do |check_name, event_json|
+              resolve_event(event_hash(event_json, client_name, check_name))
             end
             EM::Timer.new(5) do
               client = JSON.parse(client_json, :symbolize_names => true)
@@ -386,7 +387,7 @@ module Sensu
     adelete %r{/events?/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
       $redis.hgetall('events:' + client_name).callback do |events|
         if events.include?(check_name)
-          resolve_event(client_name, check_name)
+          resolve_event(event_hash(events[check_name], client_name, check_name))
           accepted!
         else
           not_found!
@@ -402,7 +403,7 @@ module Sensu
         if client_name.is_a?(String) && check_name.is_a?(String)
           $redis.hgetall('events:' + client_name).callback do |events|
             if events.include?(check_name)
-              resolve_event(client_name, check_name)
+              resolve_event(event_hash(events[check_name], client_name, check_name))
               accepted!
             else
               not_found!
