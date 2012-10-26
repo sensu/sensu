@@ -160,14 +160,7 @@ module Sensu
     end
 
     def event_handlers(event)
-      handler_list = case
-      when event[:check].has_key?(:handlers)
-        event[:check][:handlers]
-      when event[:check].has_key?(:handler)
-        [event[:check][:handler]]
-      else
-        ['default']
-      end
+      handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || 'default')
       handlers = derive_handlers(handler_list)
       event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
       handlers.select do |handler|
@@ -409,6 +402,7 @@ module Sensu
                     :output => check[:output],
                     :status => check[:status],
                     :issued => check[:issued],
+                    :handlers => Array((check[:handlers] || check[:handler]) || 'default'),
                     :flapping => is_flapping,
                     :occurrences => event[:occurrences]
                   }.to_json).callback do
