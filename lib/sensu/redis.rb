@@ -39,7 +39,7 @@ module Sensu
         end
       end
       info.callback do |reply|
-        redis_version = reply.split(/\n/).first.split(/:/).last.chomp
+        redis_version = reply.split(/\n/).select { |v| v =~ /^redis_version/ }.first.split(/:/).last.chomp
         if redis_version < '1.3.14'
           @logger.fatal('redis version must be >= 2.0 RC 1')
           close_connection
