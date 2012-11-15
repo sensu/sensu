@@ -1,4 +1,4 @@
-## 0.9.8 - TBD
+## 0.9.8 - 2012-11-15
 
 ### Features
 
@@ -15,6 +15,11 @@ Fixed flap detection.
 Gracefully handle possible failed RabbitMQ authentication.
 
 Catch and log AMQP channel errors, which cause the channel to close.
+
+Fixed API event resolution handling, for events created by standalone
+checks.
+
+Minor performance improvements.
 
 ## 0.9.7 - 2012-09-20
 
