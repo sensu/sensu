@@ -6,6 +6,10 @@ class TestSensuAPI < TestCase
         assert_equal(Sensu::VERSION, body[:sensu][:version])
         assert_equal('ok', body[:health][:redis])
         assert_equal('ok', body[:health][:rabbitmq])
+        assert(body[:rabbitmq][:keepalives][:messages].is_a?(Integer))
+        assert(body[:rabbitmq][:keepalives][:consumers].is_a?(Integer))
+        assert(body[:rabbitmq][:results][:messages].is_a?(Integer))
+        assert(body[:rabbitmq][:results][:consumers].is_a?(Integer))
         done
       end
     end
