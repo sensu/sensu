@@ -1,3 +1,10 @@
+## 0.9.9 - TBD
+
+### Features
+
+RabbitMQ keepalives & results queue message and consumer counts available
+via the API (/info).
+
 ## 0.9.8 - 2012-11-15
 
 ### Features
