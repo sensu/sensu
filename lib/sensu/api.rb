@@ -229,12 +229,34 @@ module Sensu
         :sensu => {
           :version => Sensu::VERSION
         },
+        :rabbitmq => {
+          :keepalives => {
+            :messages => nil,
+            :consumers => nil
+          },
+          :results => {
+            :messages => nil,
+            :consumers => nil
+          }
+        },
         :health => {
           :redis => $redis.connected? ? 'ok' : 'down',
           :rabbitmq => $rabbitmq.connected? ? 'ok' : 'down'
         }
       }
-      body response.to_json
+      if $rabbitmq.connected?
+        $amq.queue('keepalives').status do |messages, consumers|
+          response[:rabbitmq][:keepalives][:messages] = messages
+          response[:rabbitmq][:keepalives][:consumers] = consumers
+          $amq.queue('results').status do |messages, consumers|
+            response[:rabbitmq][:results][:messages] = messages
+            response[:rabbitmq][:results][:consumers] = consumers
+            body response.to_json
+          end
+        end
+      else
+        body response.to_json
+      end
     end
 
     aget '/clients' do
