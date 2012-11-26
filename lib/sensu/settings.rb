@@ -388,6 +388,13 @@ module Sensu
               :handler => handler
             })
           end
+          handler[:handlers].each do |handler_name|
+            unless handler_name.is_a?(String)
+              invalid('handler set handlers must be strings', {
+                :handler => handler
+              })
+            end
+          end
         else
           invalid('unknown handler type', {
             :handler => handler
