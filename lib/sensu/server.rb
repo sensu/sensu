@@ -186,10 +186,16 @@ module Sensu
     end
 
     def execute_command(command, data=nil, on_error=nil, &block)
+      on_error ||= Proc.new do |error|
+        @logger.error('failed to execute command', {
+          :command => command,
+          :data => data,
+          :error => error.to_s
+        })
+      end
       execute = Proc.new do
-        output = ''
-        status = 0
         begin
+          output = ''
           IO.popen(command + ' 2>&1', 'r+') do |io|
             unless data.nil?
               io.write(data.to_s)
@@ -198,16 +204,16 @@ module Sensu
             output = io.read
           end
           status = $?.exitstatus
+          [true, output, status]
         rescue => error
-          status = 2
-          if on_error.respond_to?(:call)
-            on_error.call(error)
-          end
+          on_error.call(error)
+          [false, nil, nil]
         end
-        [output, status]
       end
-      complete = Proc.new do |output, status|
-        block.call(output, status)
+      complete = Proc.new do |success, output, status|
+        if success
+          block.call(output, status)
+        end
       end
       EM::defer(execute, complete)
     end
