@@ -186,10 +186,10 @@ module Sensu
     def setup_standalone
       @logger.debug('scheduling standalone checks')
       standalone_check_count = 0
-      stagger = testing? ? 0 : 7
+      stagger = testing? ? 0 : 2
       @settings.checks.each do |check|
         if check[:standalone]
-          standalone_check_count += 1
+          standalone_check_count = (standalone_check_count + 1) % 30
           @timers << EM::Timer.new(stagger * standalone_check_count) do
             interval = testing? ? 0.5 : check[:interval]
             @timers << EM::PeriodicTimer.new(interval) do
