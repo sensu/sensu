@@ -76,7 +76,7 @@ module Sensu
       end
       @amq = AMQP::Channel.new(@rabbitmq)
       @amq.auto_recovery = true
-      @amq.prefetch(10)
+      @amq.prefetch(1)
       @amq.on_error do |channel, channel_close|
         @logger.fatal('rabbitmq channel closed', {
           :error => {
@@ -97,10 +97,9 @@ module Sensu
           :client => client
         })
         @redis.set('client:' + client[:name], client.to_json).callback do
-          @redis.sadd('clients', client[:name])
-        end
-        EM::next_tick do
-          header.ack
+          @redis.sadd('clients', client[:name]).callback do
+            header.ack
+          end
         end
       end
     end
