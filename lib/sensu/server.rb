@@ -76,6 +76,7 @@ module Sensu
       end
       @amq = AMQP::Channel.new(@rabbitmq)
       @amq.auto_recovery = true
+      @amq.prefetch(10)
       @amq.on_error do |channel, channel_close|
         @logger.fatal('rabbitmq channel closed', {
           :error => {
@@ -90,13 +91,16 @@ module Sensu
     def setup_keepalives
       @logger.debug('subscribing to keepalives')
       @keepalive_queue = @amq.queue('keepalives')
-      @keepalive_queue.subscribe do |payload|
+      @keepalive_queue.subscribe(:ack => true) do |header, payload|
         client = JSON.parse(payload, :symbolize_names => true)
         @logger.debug('received keepalive', {
           :client => client
         })
         @redis.set('client:' + client[:name], client.to_json).callback do
           @redis.sadd('clients', client[:name])
+        end
+        EM::next_tick do
+          header.ack
         end
       end
     end
@@ -434,12 +438,15 @@ module Sensu
     def setup_results
       @logger.debug('subscribing to results')
       @result_queue = @amq.queue('results')
-      @result_queue.subscribe do |payload|
+      @result_queue.subscribe(:ack => true) do |header, payload|
         result = JSON.parse(payload, :symbolize_names => true)
         @logger.debug('received result', {
           :result => result
         })
         process_result(result)
+        EM::next_tick do
+          header.ack
+        end
       end
     end
 
