@@ -461,10 +461,10 @@ module Sensu
     def setup_publisher
       @logger.debug('scheduling check requests')
       check_count = 0
-      stagger = testing? ? 0 : 7
+      stagger = testing? ? 0 : 2
       @settings.checks.each do |check|
         unless check[:publish] == false || check[:standalone]
-          check_count += 1
+          check_count = (check_count + 1) % 30
           @master_timers << EM::Timer.new(stagger * check_count) do
             interval = testing? ? 0.5 : check[:interval]
             @master_timers << EM::PeriodicTimer.new(interval) do
