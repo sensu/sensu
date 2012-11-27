@@ -5,6 +5,17 @@
 RabbitMQ keepalives & results queue message and consumer counts available
 via the API (/info).
 
+Aggregate results available via the API when using a parameter
+(?results=true).
+
+### Other
+
+Server is now using basic AMQP QoS (prefetch), just enough back pressure.
+
+Fixed server execute command method error handling.
+
+Events with a resolve action bypass handler severity filtering.
+
 ## 0.9.8 - 2012-11-15
 
 ### Features
