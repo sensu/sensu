@@ -167,14 +167,16 @@ module Sensu
       handlers = derive_handlers(handler_list)
       event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
       handlers.select do |handler|
-        if handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
-          @logger.debug('handler does not handle event severity', {
+        if check_subdued?(event[:check], :handler)
+          @logger.info('check is subdued at handler', {
             :event => event,
             :handler => handler
           })
           false
-        elsif check_subdued?(event[:check], :handler)
-          @logger.info('check is subdued at handler', {
+        elsif event[:action] == :resolve
+          true
+        elsif handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
+          @logger.debug('handler does not handle event severity', {
             :event => event,
             :handler => handler
           })
