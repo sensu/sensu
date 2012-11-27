@@ -25,7 +25,7 @@ class TestSensuAggregate < TestCase
             assert_equal('check_http', body.first[:check])
             assert(body.first[:issued].is_a?(Array))
             check_issued = body.first[:issued].first
-            uri = '/aggregates/check_http/' + check_issued + '?summarize=output'
+            uri = '/aggregates/check_http/' + check_issued + '?results=true&summarize=output'
             api_request(uri) do |http, body|
               assert_equal(200, http.response_header.status)
               assert(body.is_a?(Hash))
@@ -34,6 +34,8 @@ class TestSensuAggregate < TestCase
               assert_equal(1, body[:warning])
               assert(body[:outputs].is_a?(Hash))
               assert_equal(2, body[:outputs].size)
+              assert(body[:results].is_a?(Array))
+              assert_equal(2, body[:results].size)
               done
             end
           end

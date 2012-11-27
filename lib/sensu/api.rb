@@ -471,27 +471,28 @@ module Sensu
       result_set = check_name + ':' + check_issued
       $redis.hgetall('aggregate:' + result_set).callback do |aggregate|
         unless aggregate.empty?
-          response = aggregate.inject(Hash.new) do |formatted, (status, count)|
-            formatted[status] = Integer(count)
-            formatted
+          response = aggregate.inject(Hash.new) do |totals, (status, count)|
+            totals[status] = Integer(count)
+            totals
           end
-          if params[:summarize]
-            options = params[:summarize].split(',')
-            $redis.hgetall('aggregation:' + result_set).callback do |results|
-              formatted_results = results.inject(Hash.new) do |formatted, (client_name, check_json)|
-                formatted[client_name] = JSON.parse(check_json, :symbolize_names => true)
-                formatted
-              end
+          $redis.hgetall('aggregation:' + result_set).callback do |results|
+            parsed_results = results.inject(Array.new) do |parsed, (client_name, check_json)|
+              check = JSON.parse(check_json, :symbolize_names => true)
+              parsed.push(check.merge(:client => client_name))
+            end
+            if params[:summarize]
+              options = params[:summarize].split(',')
               if options.include?('output')
                 outputs = Hash.new(0)
-                formatted_results.each do |client_name, check|
-                  outputs[check[:output]] += 1
+                parsed_results.each do |result|
+                  outputs[result[:output]] += 1
                 end
                 response[:outputs] = outputs
               end
-              body response.to_json
             end
-          else
+            if params[:results]
+              response[:results] = parsed_results
+            end
             body response.to_json
           end
         else
