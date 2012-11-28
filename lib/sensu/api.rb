@@ -443,11 +443,12 @@ module Sensu
       response = Array.new
       $redis.smembers('aggregates').callback do |checks|
         unless checks.empty?
+          params[:last] ? last = params[:last].to_i : last = 10
           checks.each_with_index do |check_name, index|
             $redis.smembers('aggregates:' + check_name).callback do |aggregates|
               collection = {
                 :check => check_name,
-                :issued => aggregates.sort.reverse.take(10)
+                :issued => aggregates.sort.reverse.take(last)
               }
               response.push(collection)
               if index == checks.size - 1
@@ -463,7 +464,12 @@ module Sensu
 
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
       $redis.smembers('aggregates:' + check_name).callback do |aggregates|
-        body aggregates.sort.reverse.take(10).to_json
+        unless aggregates.empty?
+          params[:last] ? last = params[:last].to_i : last = 10
+          body aggregates.sort.reverse.take(last).to_json
+        else
+          not_found!
+        end
       end
     end
 
