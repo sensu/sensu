@@ -467,6 +467,24 @@ module Sensu
       end
     end
 
+    adelete %r{/aggregates/([\w\.-]+)$} do |check_name|
+      $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+        unless aggregates.empty?
+          aggregates.each do |check_issued|
+            $redis.del('aggregation:' + check_name + ':' + check_issued)
+            $redis.del('aggregate:' + check_name + ':' + check_issued)
+          end
+          $redis.del('aggregates:' + check_name).callback do
+            $redis.srem('aggregates', check_name).callback do
+              no_content!
+            end
+          end
+        else
+          not_found!
+        end
+      end
+    end
+
     aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)$} do |check_name, check_issued|
       result_set = check_name + ':' + check_issued
       $redis.hgetall('aggregate:' + result_set).callback do |aggregate|
