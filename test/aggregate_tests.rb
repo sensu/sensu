@@ -42,7 +42,10 @@ class TestSensuAggregate < TestCase
                 assert_equal(2, body[:outputs].size)
                 assert(body[:results].is_a?(Array))
                 assert_equal(2, body[:results].size)
-                done
+                api_request('/aggregates/check_http', :delete) do |http, body|
+                  assert_equal(204, http.response_header.status)
+                  done
+                end
               end
             end
           end
