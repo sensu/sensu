@@ -443,17 +443,23 @@ module Sensu
       response = Array.new
       $redis.smembers('aggregates').callback do |checks|
         unless checks.empty?
-          checks.each_with_index do |check_name, index|
-            $redis.smembers('aggregates:' + check_name).callback do |aggregates|
-              collection = {
-                :check => check_name,
-                :issued => aggregates.sort.reverse.take(10)
-              }
-              response.push(collection)
-              if index == checks.size - 1
-                body response.to_json
+          limit = 10
+          params[:limit] and params[:limit] == params[:limit].gsub(/[^0-9]/,'') ? limit = params[:limit].to_i : limit = nil
+          if limit
+            checks.each_with_index do |check_name, index|
+              $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+                collection = {
+                  :check => check_name,
+                  :issued => aggregates.sort.reverse.take(limit)
+                }
+                response.push(collection)
+                if index == checks.size - 1
+                  body response.to_json
+                end
               end
             end
+          else
+            bad_request!
           end
         else
           body response.to_json
@@ -463,7 +469,35 @@ module Sensu
 
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
       $redis.smembers('aggregates:' + check_name).callback do |aggregates|
-        body aggregates.sort.reverse.take(10).to_json
+        unless aggregates.empty?
+          limit = 10
+          params[:limit] and params[:limit] == params[:limit].gsub(/[^0-9]/,'') ? limit = params[:limit].to_i : limit = nil
+          if limit
+            body aggregates.sort.reverse.take(limit).to_json
+          else
+            bad_request!
+          end
+        else
+          not_found!
+        end
+      end
+    end
+
+    adelete %r{/aggregates/([\w\.-]+)$} do |check_name|
+      $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+        unless aggregates.empty?
+          aggregates.each do |check_issued|
+            $redis.del('aggregation:' + check_name + ':' + check_issued)
+            $redis.del('aggregate:' + check_name + ':' + check_issued)
+          end
+          $redis.del('aggregates:' + check_name).callback do
+            $redis.srem('aggregates', check_name).callback do
+              no_content!
+            end
+          end
+        else
+          not_found!
+        end
       end
     end
 
