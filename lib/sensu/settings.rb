@@ -218,6 +218,20 @@ module Sensu
             })
           end
         end
+        if check.has_key?(:low_flap_threshold)
+          unless check[:low_flap_threshold].is_a?(Integer)
+            invalid('flap thresholds must be integers', {
+              :check => check
+            })
+          end
+        end
+        if check.has_key?(:high_flap_threshold)
+          unless check[:high_flap_threshold].is_a?(Integer)
+            invalid('flap thresholds must be integers', {
+              :check => check
+            })
+          end
+        end
         if check.has_key?(:subdue)
           unless check[:subdue].is_a?(Hash)
             invalid('check subdue must be a hash', {
