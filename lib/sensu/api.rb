@@ -444,8 +444,10 @@ module Sensu
       $redis.smembers('aggregates').callback do |checks|
         unless checks.empty?
           limit = 10
-          params[:limit] and params[:limit] == params[:limit].gsub(/[^0-9]/,'') ? limit = params[:limit].to_i : limit = nil
-          if limit
+          if params[:limit]
+            limit = params[:limit] =~ /^[0-9]+$/ ? params[:limit].to_i : nil
+          end
+          unless limit.nil?
             checks.each_with_index do |check_name, index|
               $redis.smembers('aggregates:' + check_name).callback do |aggregates|
                 collection = {
@@ -471,8 +473,10 @@ module Sensu
       $redis.smembers('aggregates:' + check_name).callback do |aggregates|
         unless aggregates.empty?
           limit = 10
-          params[:limit] and params[:limit] == params[:limit].gsub(/[^0-9]/,'') ? limit = params[:limit].to_i : limit = nil
-          if limit
+          if params[:limit]
+            limit = params[:limit] =~ /^[0-9]+$/ ? params[:limit].to_i : nil
+          end
+          unless limit.nil?
             body aggregates.sort.reverse.take(limit).to_json
           else
             bad_request!
