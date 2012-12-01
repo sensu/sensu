@@ -491,8 +491,9 @@ module Sensu
       $redis.smembers('aggregates:' + check_name).callback do |aggregates|
         unless aggregates.empty?
           aggregates.each do |check_issued|
-            $redis.del('aggregation:' + check_name + ':' + check_issued)
-            $redis.del('aggregate:' + check_name + ':' + check_issued)
+            result_set = check_name + ':' + check_issued
+            $redis.del('aggregation:' + result_set)
+            $redis.del('aggregate:' + result_set)
           end
           $redis.del('aggregates:' + check_name).callback do
             $redis.srem('aggregates', check_name).callback do

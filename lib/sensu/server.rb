@@ -545,7 +545,7 @@ module Sensu
           checks.each do |check_name|
             @redis.smembers('aggregates:' + check_name).callback do |aggregates|
               aggregates.sort!
-              until aggregates.size <= 10
+              until aggregates.size <= 20
                 check_issued = aggregates.shift
                 @redis.srem('aggregates:' + check_name, check_issued).callback do
                   result_set = check_name + ':' + check_issued.to_s
