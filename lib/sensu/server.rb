@@ -417,7 +417,7 @@ module Sensu
                     :flapping => is_flapping,
                     :occurrences => event[:occurrences]
                   }.to_json).callback do
-                    unless check[:handle] == false || is_flapping
+                    if check[:handle] != false && !is_flapping || check[:type] == 'metric'
                       event[:action] = :create
                       handle_event(event)
                     end
