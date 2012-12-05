@@ -136,7 +136,7 @@ module Sensu
       subdue && subdue_at == (check[:subdue][:at] || 'handler').to_sym
     end
 
-    event_flapping?(event)
+    def event_flapping?(event, handler)
       flapping = false
       if event[:action] == :flapping
         flapping = handler.has_key?(:handle_flapping) && handler[:handle_flapping] ? true : false
