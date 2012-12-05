@@ -341,6 +341,11 @@ module Sensu
             :handler => handler
           })
         end
+        if handler.has_key?(:handle_flapping) && !handler[:handle_flapping].is_a?(TrueClass) && !handler[:handle_flapping].is_a?(FalseClass)
+          invalid('handler handle_flapping must be boolean', {
+            :handler => handler
+          })
+        end
         if handler.has_key?(:severities)
           unless handler[:severities].is_a?(Array) && !handler[:severities].empty?
             invalid('handler severities must be an array and not empty', {

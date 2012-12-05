@@ -265,61 +265,73 @@ module Sensu
       handlers = event_handlers(event)
       handlers.each do |handler|
         log_level = event[:check][:type] == 'metric' ? :debug : :info
-        @logger.send(log_level, 'handling event', {
-          :event => event,
-          :handler => handler
-        })
-        @handlers_in_progress_count += 1
-        on_error = Proc.new do |error|
-          @logger.error('handler error', {
-            :event => event,
-            :handler => handler,
-            :error => error.to_s
-          })
-          @handlers_in_progress_count -= 1
+        handle = true
+        if event[:action] == :flapping
+          unless handler.has_key?(:handle_flapping) && handler[:handle_flapping] == true
+            handle = false
+            @logger.send(log_level, 'ignoring flapping event', {
+              :event => event,
+              :handler => handler
+            })
+          end
         end
-        mutate_event_data(handler[:mutator], event) do |event_data|
-          case handler[:type]
-          when 'pipe'
-            execute_command(handler[:command], event_data, on_error) do |output, status|
-              output.split(/\n+/).each do |line|
-                @logger.info(line)
+        if handle
+          @logger.send(log_level, 'handling event', {
+            :event => event,
+            :handler => handler
+          })
+          @handlers_in_progress_count += 1
+          on_error = Proc.new do |error|
+            @logger.error('handler error', {
+              :event => event,
+              :handler => handler,
+              :error => error.to_s
+            })
+            @handlers_in_progress_count -= 1
+          end
+          mutate_event_data(handler[:mutator], event) do |event_data|
+            case handler[:type]
+            when 'pipe'
+              execute_command(handler[:command], event_data, on_error) do |output, status|
+                output.split(/\n+/).each do |line|
+                  @logger.info(line)
+                end
+                @handlers_in_progress_count -= 1
+              end
+            when 'tcp'
+              begin
+                EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
+                  socket.send_data(event_data.to_s)
+                  socket.close_connection_after_writing
+                  @handlers_in_progress_count -= 1
+                end
+              rescue => error
+                on_error.call(error)
+              end
+            when 'udp'
+              begin
+                EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+                  socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
+                  socket.close_connection_after_writing
+                  @handlers_in_progress_count -= 1
+                end
+              rescue => error
+                on_error.call(error)
+              end
+            when 'amqp'
+              exchange_name = handler[:exchange][:name]
+              exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
+              exchange_options = handler[:exchange].reject do |key, value|
+                [:name, :type].include?(key)
+              end
+              payloads = Array(event_data)
+              payloads.each do |payload|
+                unless payload.empty?
+                  @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
+                end
               end
               @handlers_in_progress_count -= 1
             end
-          when 'tcp'
-            begin
-              EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
-                socket.send_data(event_data.to_s)
-                socket.close_connection_after_writing
-                @handlers_in_progress_count -= 1
-              end
-            rescue => error
-              on_error.call(error)
-            end
-          when 'udp'
-            begin
-              EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
-                socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
-                socket.close_connection_after_writing
-                @handlers_in_progress_count -= 1
-              end
-            rescue => error
-              on_error.call(error)
-            end
-          when 'amqp'
-            exchange_name = handler[:exchange][:name]
-            exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
-            exchange_options = handler[:exchange].reject do |key, value|
-              [:name, :type].include?(key)
-            end
-            payloads = Array(event_data)
-            payloads.each do |payload|
-              unless payload.empty?
-                @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
-              end
-            end
-            @handlers_in_progress_count -= 1
           end
         end
       end
@@ -417,8 +429,11 @@ module Sensu
                     :flapping => is_flapping,
                     :occurrences => event[:occurrences]
                   }.to_json).callback do
-                    unless check[:handle] == false || is_flapping
+                    if check[:handle] != false && !is_flapping
                       event[:action] = :create
+                      handle_event(event)
+                    elsif check[:handle] != false && is_flapping && check[:type] == 'metric'
+                      event[:action] = :flapping
                       handle_event(event)
                     end
                   end
