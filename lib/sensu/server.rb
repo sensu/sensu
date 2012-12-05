@@ -139,7 +139,7 @@ module Sensu
     def event_flapping?(event, handler)
       flapping = false
       if event[:action] == :flapping
-        flapping = handler.has_key?(:handle_flapping) && handler[:handle_flapping] ? true : false
+        flapping = handler.has_key?(:handle_flapping) && handler[:handle_flapping] ? false : true
       end
       flapping
     end
