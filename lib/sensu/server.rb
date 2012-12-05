@@ -136,14 +136,6 @@ module Sensu
       subdue && subdue_at == (check[:subdue][:at] || 'handler').to_sym
     end
 
-    def event_flapping?(event, handler)
-      flapping = false
-      if event[:action] == :flapping
-        flapping = handler.has_key?(:handle_flapping) && handler[:handle_flapping] ? false : true
-      end
-      flapping
-    end
-
     def derive_handlers(handler_list, nested=false)
       handler_list.inject(Array.new) do |handlers, handler_name|
         if @settings.handler_exists?(handler_name)
@@ -189,12 +181,13 @@ module Sensu
             :handler => handler
           })
           false
-        elsif event_flapping?(event, handler)
+        elsif event[:action] == :flapping
+          handle_flapping = handler[:handle_flapping] ? true : false
           @logger.info('ignoring flapping event', {
             :event => event,
             :handler => handler
-          })
-          false
+          }) unless handle_flapping
+          handle_flapping
         else
           true
         end
@@ -431,11 +424,8 @@ module Sensu
                     :flapping => is_flapping,
                     :occurrences => event[:occurrences]
                   }.to_json).callback do
-                    if check[:handle] != false && !is_flapping
-                      event[:action] = :create
-                      handle_event(event)
-                    elsif check[:handle] != false && is_flapping && check[:type] == 'metric'
-                      event[:action] = :flapping
+                    unless check[:handle] == false
+                      event[:action] = is_flapping ? :flapping : :create
                       handle_event(event)
                     end
                   end
