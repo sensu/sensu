@@ -181,6 +181,13 @@ module Sensu
             :handler => handler
           })
           false
+        elsif event[:action] == :flapping
+          handle_flapping = handler[:handle_flapping] ? true : false
+          @logger.info('ignoring flapping event', {
+            :event => event,
+            :handler => handler
+          }) unless handle_flapping
+          handle_flapping
         else
           true
         end
@@ -417,8 +424,8 @@ module Sensu
                     :flapping => is_flapping,
                     :occurrences => event[:occurrences]
                   }.to_json).callback do
-                    unless check[:handle] == false || is_flapping
-                      event[:action] = :create
+                    unless check[:handle] == false
+                      event[:action] = is_flapping ? :flapping : :create
                       handle_event(event)
                     end
                   end
