@@ -181,13 +181,12 @@ module Sensu
             :handler => handler
           })
           false
-        elsif event[:action] == :flapping
-          handle_flapping = handler[:handle_flapping] ? true : false
-          @logger.info('ignoring flapping event', {
+        elsif event[:action] == :flapping && handler[:handle_flapping] == false
+          @logger.info('handler does not handle flapping events', {
             :event => event,
             :handler => handler
-          }) unless handle_flapping
-          handle_flapping
+          })
+          false
         else
           true
         end
