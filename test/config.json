@@ -20,6 +20,12 @@
       },
       "negate": false
     },
+    "action_negated": {
+      "attributes": {
+        "action": "create"
+      },
+      "negate": true
+    },
     "status": {
       "attributes": {
         "check": {
