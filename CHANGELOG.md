@@ -8,13 +8,20 @@ via the API (/info).
 Aggregate results available via the API when using a parameter
 (?results=true).
 
+Event filters; filtering events for handlers, using event attribute
+matching.
+
 ### Other
 
 Server is now using basic AMQP QoS (prefetch), just enough back pressure.
 
+Improved check execution scheduling.
+
 Fixed server execute command method error handling.
 
 Events with a resolve action bypass handler severity filtering.
+
+Check flap detection configuration validation.
 
 ## 0.9.8 - 2012-11-15
 
