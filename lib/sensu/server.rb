@@ -136,6 +136,21 @@ module Sensu
       subdue && subdue_at == (check[:subdue][:at] || 'handler').to_sym
     end
 
+    def event_filtered?(filter_name, event)
+      if @settings.filter_exists?(filter_name)
+        filter = @settings[:filters][filter_name]
+        matched = hash_values_equal?(filter[:attributes], event)
+        filter[:negate] ? matched : !matched
+      else
+        @logger.error('unknown filter', {
+          :filter => {
+            :name => filter_name
+          }
+        })
+        false
+      end
+    end
+
     def derive_handlers(handler_list, nested=false)
       handler_list.inject(Array.new) do |handlers, handler_name|
         if @settings.handler_exists?(handler_name)
@@ -159,21 +174,6 @@ module Sensu
           })
         end
         handlers.uniq
-      end
-    end
-
-    def event_filtered?(filter_name, event)
-      if @settings.filter_exists?(filter_name)
-        filter = @settings[:filters][filter_name]
-        matched = hash_values_equal?(filter[:attributes], event)
-        filter[:negate] ? matched : !matched
-      else
-        @logger.error('unknown filter', {
-          :filter => {
-            :name => filter_name
-          }
-        })
-        false
       end
     end
 
