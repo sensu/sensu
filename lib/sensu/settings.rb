@@ -341,10 +341,12 @@ module Sensu
             :handler => handler
           })
         end
-        if handler.has_key?(:handle_flapping) && !!handler[:handle_flapping] != handler[:handle_flapping]
-          invalid('handler handle_flapping must be boolean', {
-            :handler => handler
-          })
+        if handler.has_key?(:handle_flapping)
+          unless !!handler[:handle_flapping] == handler[:handle_flapping]
+            invalid('handler handle_flapping must be boolean', {
+              :handler => handler
+            })
+          end
         end
         if handler.has_key?(:severities)
           unless handler[:severities].is_a?(Array) && !handler[:severities].empty?
