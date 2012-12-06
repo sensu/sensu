@@ -368,27 +368,6 @@ module Sensu
             :handler => handler
           })
         end
-        if handler.has_key?(:handle_flapping)
-          unless !!handler[:handle_flapping] == handler[:handle_flapping]
-            invalid('handler handle_flapping must be boolean', {
-              :handler => handler
-            })
-          end
-        end
-        if handler.has_key?(:severities)
-          unless handler[:severities].is_a?(Array) && !handler[:severities].empty?
-            invalid('handler severities must be an array and not empty', {
-              :handler => handler
-            })
-          end
-          handler[:severities].each do |severity|
-            unless Sensu::SEVERITIES.include?(severity)
-              invalid('handler severities are invalid', {
-                :handler => handler
-              })
-            end
-          end
-        end
         case handler[:type]
         when 'pipe'
           unless handler[:command].is_a?(String)
@@ -447,6 +426,41 @@ module Sensu
           invalid('unknown handler type', {
             :handler => handler
           })
+        end
+        if handler.has_key?(:filter)
+          unless handler[:filter].is_a?(String)
+            invalid('handler filter must be a string', {
+              :handler => handler
+            })
+          end
+        end
+        if handler.has_key?(:mutator)
+          unless handler[:mutator].is_a?(String)
+            invalid('handler mutator must be a string', {
+              :handler => handler
+            })
+          end
+        end
+        if handler.has_key?(:handle_flapping)
+          unless !!handler[:handle_flapping] == handler[:handle_flapping]
+            invalid('handler handle_flapping must be boolean', {
+              :handler => handler
+            })
+          end
+        end
+        if handler.has_key?(:severities)
+          unless handler[:severities].is_a?(Array) && !handler[:severities].empty?
+            invalid('handler severities must be an array and not empty', {
+              :handler => handler
+            })
+          end
+          handler[:severities].each do |severity|
+            unless Sensu::SEVERITIES.include?(severity)
+              invalid('handler severities are invalid', {
+                :handler => handler
+              })
+            end
+          end
         end
       end
     end
