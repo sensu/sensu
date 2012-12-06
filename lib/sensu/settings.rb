@@ -5,7 +5,7 @@ module Sensu
     def initialize
       @logger = Sensu::Logger.get
       @settings = Hash.new
-      [:checks, :handlers, :mutators].each do |key|
+      [:checks, :filters, :mutators, :handlers].each do |key|
         @settings[key] = Hash.new
       end
       @indifferent_access = false
@@ -89,7 +89,7 @@ module Sensu
       ENV['SENSU_CONFIG_FILES'] = @loaded_files.join(':')
     end
 
-    [:checks, :handlers, :mutators].each do |key|
+    [:checks, :filters, :mutators, :handlers].each do |key|
       define_method(key) do
         @settings[key].map do |name, details|
           details.merge(:name => name.to_s)
@@ -329,6 +329,33 @@ module Sensu
     end
 
     def validate_server
+      unless @settings[:filters].is_a?(Hash)
+        invalid('filters must be a hash')
+      end
+      filters.each do |filter|
+        unless filter[:attributes].is_a?(Hash)
+          invalid('filter attributes must be a hash', {
+            :filter => filter
+          })
+        end
+        if filter.has_key?(:negate)
+          unless !!filter[:negate] == filter[:negate]
+            invalid('filter negate must be boolean', {
+              :filter => filter
+            })
+          end
+        end
+      end
+      unless @settings[:mutators].is_a?(Hash)
+        invalid('mutators must be a hash')
+      end
+      mutators.each do |mutator|
+        unless mutator[:command].is_a?(String)
+          invalid('mutator is missing command', {
+            :mutator => mutator
+          })
+        end
+      end
       unless @settings[:handlers].is_a?(Hash)
         invalid('handlers must be a hash')
       end
@@ -419,16 +446,6 @@ module Sensu
         else
           invalid('unknown handler type', {
             :handler => handler
-          })
-        end
-      end
-      unless @settings[:mutators].is_a?(Hash)
-        invalid('mutators must be a hash')
-      end
-      mutators.each do |mutator|
-        unless mutator[:command].is_a?(String)
-          invalid('mutator is missing command', {
-            :mutator => mutator
           })
         end
       end
