@@ -86,7 +86,7 @@ class TestSensuEventHandlers < TestCase
     server = Sensu::Server.new(@options)
     event = event_template(:handler => 'mutated')
     server.handle_event(event)
-    EM::Timer.new(2) do
+    EM::Timer.new(3) do
       assert(File.exists?('/tmp/sensu_event'))
       expected = event.merge(:mutated => true)
       output_file = File.open('/tmp/sensu_event', 'r')
