@@ -179,7 +179,8 @@ module Sensu
     def event_filtered?(filter_name, event)
       if @settings.filter_exists?(filter_name)
         filter = @settings[:filters][filter_name]
-        equal_hash_values?(filter[:attributes], event) && (filter[:negate] || false)
+        matched = equal_hash_values?(filter[:attributes], event)
+        filter[:negate] ? matched : !matched
       else
         @logger.error('unknown filter', {
           :filter => {
