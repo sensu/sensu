@@ -162,34 +162,70 @@ module Sensu
       end
     end
 
+    def equal_hash_values?(hash_one, hash_two)
+      hash_one.keys.all? do |key|
+        if hash_one[key] == hash_two[key]
+          true
+        else
+          if hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
+            equal_hash_values?(hash_one[key], hash_two[key])
+          else
+            false
+          end
+        end
+      end
+    end
+
+    def event_filtered?(filter_name, event)
+      if @settings.filter_exists?(filter_name)
+        filter = @settings[:filters][filter_name]
+        equal_hash_values?(filter[:attributes], event) && (filter[:negate] || false)
+      else
+        @logger.error('unknown filter', {
+          :filter => {
+            :name => filter_name
+          }
+        })
+        false
+      end
+    end
+
     def event_handlers(event)
       handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || 'default')
       handlers = derive_handlers(handler_list)
       event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
       handlers.select do |handler|
+        if event[:action] == :flapping && !handler[:handle_flapping]
+          @logger.info('handler does not handle flapping events', {
+            :event => event,
+            :handler => handler
+          })
+          next
+        end
         if check_subdued?(event[:check], :handler)
           @logger.info('check is subdued at handler', {
             :event => event,
             :handler => handler
           })
-          false
-        elsif event[:action] == :resolve
-          true
-        elsif handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
-          @logger.debug('handler does not handle event severity', {
-            :event => event,
-            :handler => handler
-          })
-          false
-        elsif event[:action] == :flapping && !handler[:handle_flapping]
-          @logger.info('handler does not handle flapping events', {
-            :event => event,
-            :handler => handler
-          })
-          false
-        else
-          true
+          next
         end
+        if handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
+          unless event[:action] == :resolve
+            @logger.debug('handler does not handle event severity', {
+              :event => event,
+              :handler => handler
+            })
+            next
+          end
+        end
+        if handler.has_key?(:filter) && event_filtered?(handler[:filter], event)
+          @logger.debug('event filtered for handler', {
+            :event => event,
+            :handler => handler
+          })
+          next
+        end
+        true
       end
     end
 
