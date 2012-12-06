@@ -3,8 +3,11 @@ class TestSensuFilterEventData < TestCase
     server = Sensu::Server.new(@options)
     event = event_template
     assert(!server.event_filtered?('action', event))
+    assert(!server.event_filtered?('status', event))
     event[:action] = 'resolve'
     assert(server.event_filtered?('action', event))
+    event[:check][:status] = 2
+    assert(server.event_filtered?('status', event))
     done
   end
 end

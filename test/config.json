@@ -19,6 +19,14 @@
         "action": "create"
       },
       "negate": false
+    },
+    "status": {
+      "attributes": {
+        "check": {
+          "status": 1
+        }
+      },
+      "negate": false
     }
   },
   "mutators": {
