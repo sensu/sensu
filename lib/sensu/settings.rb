@@ -217,6 +217,13 @@ module Sensu
               :check => check
             })
           end
+          check[:handlers].each do |handler_name|
+            unless handler_name.is_a?(String)
+              invalid('check handlers items must be strings', {
+                :check => check
+              })
+            end
+          end
         end
         if check.has_key?(:low_flap_threshold)
           unless check[:low_flap_threshold].is_a?(Integer)
@@ -410,14 +417,14 @@ module Sensu
             end
           end
         when 'set'
-          unless handler[:handlers].is_a?(Array) && handler[:handlers].count > 0
-            invalid('handler set is missing handlers', {
+          unless handler[:handlers].is_a?(Array)
+            invalid('handler set handlers must be an array', {
               :handler => handler
             })
           end
           handler[:handlers].each do |handler_name|
             unless handler_name.is_a?(String)
-              invalid('handler set handlers must be strings', {
+              invalid('handler set handlers items must be strings', {
                 :handler => handler
               })
             end
@@ -432,6 +439,20 @@ module Sensu
             invalid('handler filter must be a string', {
               :handler => handler
             })
+          end
+        end
+        if handler.has_key?(:filters)
+          unless handler[:filters].is_a?(Array)
+            invalid('handler filters must be an array', {
+              :handler => handler
+            })
+          end
+          handler[:filters].each do |filter_name|
+            unless filter_name.is_a?(String)
+              invalid('handler filters items must be strings', {
+                :handler => handler
+              })
+            end
           end
         end
         if handler.has_key?(:mutator)

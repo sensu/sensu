@@ -17,8 +17,7 @@
     "action": {
       "attributes": {
         "action": "create"
-      },
-      "negate": false
+      }
     },
     "action_negated": {
       "attributes": {
@@ -31,8 +30,7 @@
         "check": {
           "status": 1
         }
-      },
-      "negate": false
+      }
     }
   },
   "mutators": {
@@ -81,6 +79,29 @@
       "severities": [
         "critical"
       ]
+    },
+    "filter_action": {
+      "type": "pipe",
+      "filter": "action",
+      "command": "cat"
+    },
+    "filter_status": {
+      "type": "pipe",
+      "filter": "status",
+      "command": "cat"
+    },
+    "filter_action_status": {
+      "type": "pipe",
+      "filters": [
+        "action",
+        "status"
+      ],
+      "command": "cat"
+    },
+    "filter_nonexistent": {
+      "type": "pipe",
+      "filter": "nonexistent",
+      "command": "cat"
     },
     "mutated": {
       "type": "pipe",

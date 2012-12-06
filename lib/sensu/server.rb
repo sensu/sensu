@@ -205,12 +205,18 @@ module Sensu
             next
           end
         end
-        if handler.has_key?(:filter) && event_filtered?(handler[:filter], event)
-          @logger.debug('event filtered for handler', {
-            :event => event,
-            :handler => handler
-          })
-          next
+        if handler.has_key?(:filters) || handler.has_key?(:filter)
+          filter_list = Array(handler[:filters] || handler[:filter])
+          filtered = filter_list.any? do |filter_name|
+            event_filtered?(filter_name, event)
+          end
+          if filtered
+            @logger.debug('event filtered for handler', {
+              :event => event,
+              :handler => handler
+            })
+            next
+          end
         end
         true
       end
