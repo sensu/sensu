@@ -13,6 +13,26 @@
     "user": "foo",
     "password": "bar"
   },
+  "filters": {
+    "action": {
+      "attributes": {
+        "action": "create"
+      }
+    },
+    "action_negated": {
+      "attributes": {
+        "action": "create"
+      },
+      "negate": true
+    },
+    "status": {
+      "attributes": {
+        "check": {
+          "status": 1
+        }
+      }
+    }
+  },
   "mutators": {
     "tag": {
       "command": "./test/mutators/tag.rb"
@@ -59,6 +79,29 @@
       "severities": [
         "critical"
       ]
+    },
+    "filter_action": {
+      "type": "pipe",
+      "filter": "action",
+      "command": "cat"
+    },
+    "filter_status": {
+      "type": "pipe",
+      "filter": "status",
+      "command": "cat"
+    },
+    "filter_action_status": {
+      "type": "pipe",
+      "filters": [
+        "action",
+        "status"
+      ],
+      "command": "cat"
+    },
+    "filter_nonexistent": {
+      "type": "pipe",
+      "filter": "nonexistent",
+      "command": "cat"
     },
     "mutated": {
       "type": "pipe",

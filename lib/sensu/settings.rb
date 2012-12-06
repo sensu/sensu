@@ -5,7 +5,7 @@ module Sensu
     def initialize
       @logger = Sensu::Logger.get
       @settings = Hash.new
-      [:checks, :handlers, :mutators].each do |key|
+      [:checks, :filters, :mutators, :handlers].each do |key|
         @settings[key] = Hash.new
       end
       @indifferent_access = false
@@ -89,7 +89,7 @@ module Sensu
       ENV['SENSU_CONFIG_FILES'] = @loaded_files.join(':')
     end
 
-    [:checks, :handlers, :mutators].each do |key|
+    [:checks, :filters, :mutators, :handlers].each do |key|
       define_method(key) do
         @settings[key].map do |name, details|
           details.merge(:name => name.to_s)
@@ -217,6 +217,13 @@ module Sensu
               :check => check
             })
           end
+          check[:handlers].each do |handler_name|
+            unless handler_name.is_a?(String)
+              invalid('check handlers items must be strings', {
+                :check => check
+              })
+            end
+          end
         end
         if check.has_key?(:low_flap_threshold)
           unless check[:low_flap_threshold].is_a?(Integer)
@@ -329,6 +336,33 @@ module Sensu
     end
 
     def validate_server
+      unless @settings[:filters].is_a?(Hash)
+        invalid('filters must be a hash')
+      end
+      filters.each do |filter|
+        unless filter[:attributes].is_a?(Hash)
+          invalid('filter attributes must be a hash', {
+            :filter => filter
+          })
+        end
+        if filter.has_key?(:negate)
+          unless !!filter[:negate] == filter[:negate]
+            invalid('filter negate must be boolean', {
+              :filter => filter
+            })
+          end
+        end
+      end
+      unless @settings[:mutators].is_a?(Hash)
+        invalid('mutators must be a hash')
+      end
+      mutators.each do |mutator|
+        unless mutator[:command].is_a?(String)
+          invalid('mutator is missing command', {
+            :mutator => mutator
+          })
+        end
+      end
       unless @settings[:handlers].is_a?(Hash)
         invalid('handlers must be a hash')
       end
@@ -340,27 +374,6 @@ module Sensu
           invalid('handler is missing type', {
             :handler => handler
           })
-        end
-        if handler.has_key?(:handle_flapping)
-          unless !!handler[:handle_flapping] == handler[:handle_flapping]
-            invalid('handler handle_flapping must be boolean', {
-              :handler => handler
-            })
-          end
-        end
-        if handler.has_key?(:severities)
-          unless handler[:severities].is_a?(Array) && !handler[:severities].empty?
-            invalid('handler severities must be an array and not empty', {
-              :handler => handler
-            })
-          end
-          handler[:severities].each do |severity|
-            unless Sensu::SEVERITIES.include?(severity)
-              invalid('handler severities are invalid', {
-                :handler => handler
-              })
-            end
-          end
         end
         case handler[:type]
         when 'pipe'
@@ -404,14 +417,14 @@ module Sensu
             end
           end
         when 'set'
-          unless handler[:handlers].is_a?(Array) && handler[:handlers].count > 0
-            invalid('handler set is missing handlers', {
+          unless handler[:handlers].is_a?(Array)
+            invalid('handler set handlers must be an array', {
               :handler => handler
             })
           end
           handler[:handlers].each do |handler_name|
             unless handler_name.is_a?(String)
-              invalid('handler set handlers must be strings', {
+              invalid('handler set handlers items must be strings', {
                 :handler => handler
               })
             end
@@ -421,15 +434,54 @@ module Sensu
             :handler => handler
           })
         end
-      end
-      unless @settings[:mutators].is_a?(Hash)
-        invalid('mutators must be a hash')
-      end
-      mutators.each do |mutator|
-        unless mutator[:command].is_a?(String)
-          invalid('mutator is missing command', {
-            :mutator => mutator
-          })
+        if handler.has_key?(:filter)
+          unless handler[:filter].is_a?(String)
+            invalid('handler filter must be a string', {
+              :handler => handler
+            })
+          end
+        end
+        if handler.has_key?(:filters)
+          unless handler[:filters].is_a?(Array)
+            invalid('handler filters must be an array', {
+              :handler => handler
+            })
+          end
+          handler[:filters].each do |filter_name|
+            unless filter_name.is_a?(String)
+              invalid('handler filters items must be strings', {
+                :handler => handler
+              })
+            end
+          end
+        end
+        if handler.has_key?(:mutator)
+          unless handler[:mutator].is_a?(String)
+            invalid('handler mutator must be a string', {
+              :handler => handler
+            })
+          end
+        end
+        if handler.has_key?(:handle_flapping)
+          unless !!handler[:handle_flapping] == handler[:handle_flapping]
+            invalid('handler handle_flapping must be boolean', {
+              :handler => handler
+            })
+          end
+        end
+        if handler.has_key?(:severities)
+          unless handler[:severities].is_a?(Array) && !handler[:severities].empty?
+            invalid('handler severities must be an array and not empty', {
+              :handler => handler
+            })
+          end
+          handler[:severities].each do |severity|
+            unless Sensu::SEVERITIES.include?(severity)
+              invalid('handler severities are invalid', {
+                :handler => handler
+              })
+            end
+          end
         end
       end
     end
