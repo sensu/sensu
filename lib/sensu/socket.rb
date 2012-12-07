@@ -54,13 +54,13 @@ module Sensu
     attr_accessor :on_success, :on_error
 
     def connection_completed
-      @connected = Time.now.to_f
+      @connected_at = Time.now.to_f
       @inactivity_timeout = comm_inactivity_timeout
     end
 
     def unbind
-      if @connected
-        elapsed_time = Time.now.to_f - @connected
+      if @connected_at
+        elapsed_time = Time.now.to_f - @connected_at
         if elapsed_time >= @inactivity_timeout
           @on_error.call('socket inactivity timeout')
         else
