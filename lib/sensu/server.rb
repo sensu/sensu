@@ -325,6 +325,9 @@ module Sensu
           when 'tcp'
             begin
               EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
+                timeout = handler[:socket][:timeout] || 10
+                socket.pending_connect_timeout = timeout
+                socket.comm_inactivity_timeout = timeout
                 socket.send_data(event_data.to_s)
                 socket.close_connection_after_writing
                 @handlers_in_progress_count -= 1
@@ -335,6 +338,9 @@ module Sensu
           when 'udp'
             begin
               EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+                timeout = handler[:socket][:timeout] || 10
+                socket.pending_connect_timeout = timeout
+                socket.comm_inactivity_timeout = timeout
                 socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
                 socket.close_connection_after_writing
                 @handlers_in_progress_count -= 1
