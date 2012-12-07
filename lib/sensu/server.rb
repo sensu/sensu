@@ -324,24 +324,30 @@ module Sensu
               @handlers_in_progress_count -= 1
             end
           when 'tcp'
-            EM::connect(handler[:socket][:host], handler[:socket][:port], Sensu::SocketHandler) do |socket|
-              socket.on_error = on_error
-              timeout = handler[:socket][:timeout] || 10
-              socket.pending_connect_timeout = timeout
-              socket.comm_inactivity_timeout = timeout
-              socket.send_data(event_data.to_s)
-              socket.close_connection_after_writing
-              @handlers_in_progress_count -= 1
+            begin
+              EM::connect(handler[:socket][:host], handler[:socket][:port], Sensu::SocketHandler) do |socket|
+                socket.on_success = Proc.new do
+                  @handlers_in_progress_count -= 1
+                end
+                socket.on_error = on_error
+                timeout = handler[:socket][:timeout] || 10
+                socket.pending_connect_timeout = timeout
+                socket.comm_inactivity_timeout = timeout
+                socket.send_data(event_data.to_s)
+                socket.close_connection_after_writing
+              end
+            rescue => error
+              on_error.call(error)
             end
           when 'udp'
-            EM::open_datagram_socket('127.0.0.1', 0, Sensu::SocketHandler) do |socket|
-              socket.on_error = on_error
-              timeout = handler[:socket][:timeout] || 10
-              socket.pending_connect_timeout = timeout
-              socket.comm_inactivity_timeout = timeout
-              socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
-              socket.close_connection_after_writing
-              @handlers_in_progress_count -= 1
+            begin
+              EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+                socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
+                socket.close_connection_after_writing
+                @handlers_in_progress_count -= 1
+              end
+            rescue => error
+              on_error.call(error)
             end
           when 'amqp'
             exchange_name = handler[:exchange][:name]
