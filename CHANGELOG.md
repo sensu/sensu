@@ -11,6 +11,8 @@ Aggregate results available via the API when using a parameter
 Event filters; filtering events for handlers, using event attribute
 matching.
 
+TCP handler socket timeout, which defaults to 10 seconds.
+
 ### Other
 
 Server is now using basic AMQP QoS (prefetch), just enough back pressure.

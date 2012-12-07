@@ -1,5 +1,6 @@
 require File.join(File.dirname(__FILE__), 'base')
 require File.join(File.dirname(__FILE__), 'redis')
+require File.join(File.dirname(__FILE__), 'socket')
 
 module Sensu
   class Server
@@ -324,10 +325,16 @@ module Sensu
             end
           when 'tcp'
             begin
-              EM::connect(handler[:socket][:host], handler[:socket][:port], nil) do |socket|
+              EM::connect(handler[:socket][:host], handler[:socket][:port], Sensu::SocketHandler) do |socket|
+                socket.on_success = Proc.new do
+                  @handlers_in_progress_count -= 1
+                end
+                socket.on_error = on_error
+                timeout = handler[:socket][:timeout] || 10
+                socket.pending_connect_timeout = timeout
+                socket.comm_inactivity_timeout = timeout
                 socket.send_data(event_data.to_s)
                 socket.close_connection_after_writing
-                @handlers_in_progress_count -= 1
               end
             rescue => error
               on_error.call(error)

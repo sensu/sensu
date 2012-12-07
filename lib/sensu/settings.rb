@@ -398,6 +398,13 @@ module Sensu
               :handler => handler
             })
           end
+          if handler[:socket].has_key?(:timeout)
+            unless handler[:socket][:timeout].is_a?(Integer)
+              invalid('handler socket timeout must be an integer', {
+                :handler => handler
+              })
+            end
+          end
         when 'amqp'
           unless handler[:exchange].is_a?(Hash)
             invalid('handler is missing exchange hash', {
