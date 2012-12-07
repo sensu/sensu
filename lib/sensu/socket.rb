@@ -49,4 +49,24 @@ module Sensu
       end
     end
   end
+
+  class SocketHandler < EM::Connection
+    attr_accessor :on_error
+
+    def connection_completed
+      @connected = Time.now.to_f
+      @inactivity_timeout = comm_inactivity_timeout
+    end
+
+    def unbind
+      if @connected
+        elapsed_time = Time.now.to_f - @connected
+        if elapsed_time >= @inactivity_timeout
+          @on_error.call('socket inactivity timeout')
+        end
+      else
+        @on_error.call('failed to connect to socket')
+      end
+    end
+  end
 end
