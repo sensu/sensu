@@ -133,7 +133,7 @@
       "interval": 1
     },
     "timed": {
-      "command": "sleep 10 && exit 1",
+      "command": "sleep 1 && echo -n :::name::: && exit 1",
       "standalone": true,
       "timeout": 0.25,
       "interval": 1

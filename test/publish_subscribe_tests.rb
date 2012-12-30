@@ -21,8 +21,13 @@ class TestSensuPublishSubscribe < TestCase
         assert_equal(1, standalone[:status])
         assert(events.has_key?('timed'))
         timed = JSON.parse(events['timed'], :symbolize_names => true)
-        assert_equal('Execution timed out', timed[:output])
-        assert_equal(2, timed[:status])
+        if RUBY_VERSION < '1.9.0'
+          assert_equal(@settings[:client][:name], timed[:output])
+          assert_equal(1, timed[:status])
+        else
+          assert_equal('Execution timed out', timed[:output])
+          assert_equal(2, timed[:status])
+        end
         done
       end
     end
