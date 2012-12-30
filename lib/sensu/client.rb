@@ -101,18 +101,7 @@ module Sensu
         if unmatched_tokens.empty?
           execute = Proc.new do
             started = Time.now.to_f
-            begin
-              IO.popen(command + ' 2>&1') do |io|
-                check[:output] = io.read
-              end
-              check[:status] = $?.exitstatus
-            rescue => error
-              @logger.warn('unexpected error', {
-                :error => error.to_s
-              })
-              check[:output] = 'Unexpected error: ' + error.to_s
-              check[:status] = 2
-            end
+            check[:output], check[:status] = Sensu::IO.popen(command, 'r', check[:timeout])
             check[:duration] = ('%.3f' % (Time.now.to_f - started)).to_f
             check
           end

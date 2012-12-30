@@ -33,7 +33,7 @@ class TestSensuBase < TestCase
     assert_equal('pipe', settings[:handlers][:new_handler][:type])
     assert_equal('cat', settings[:handlers][:new_handler][:command])
     assert(settings.check_exists?(:merger))
-    assert('exit', settings[:checks][:merger][:command])
+    assert('echo', settings[:checks][:merger][:command])
     assert_equal(60, settings[:checks][:merger][:interval])
     assert_equal(false, settings[:checks][:merger][:auto_resolve])
     done

@@ -16,9 +16,13 @@ class TestSensuPublishSubscribe < TestCase
     EM::Timer.new(3) do
       server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
         assert(events.has_key?('standalone'))
-        event = JSON.parse(events['standalone'], :symbolize_names => true)
-        assert_equal(@settings[:client][:name], event[:output])
-        assert_equal(1, event[:status])
+        standalone = JSON.parse(events['standalone'], :symbolize_names => true)
+        assert_equal(@settings[:client][:name], standalone[:output])
+        assert_equal(1, standalone[:status])
+        assert(events.has_key?('timed'))
+        timed = JSON.parse(events['timed'], :symbolize_names => true)
+        assert_equal('Execution timed out', timed[:output])
+        assert_equal(2, timed[:status])
         done
       end
     end
@@ -48,7 +52,7 @@ class TestSensuPublishSubscribe < TestCase
     EM::Timer.new(1) do
       check = {
         :name => 'arbitrary',
-        :command => 'exit 255',
+        :command => 'echo && exit 255',
         :subscribers => ['test']
       }
       server.publish_check_request(check)
@@ -74,7 +78,7 @@ class TestSensuPublishSubscribe < TestCase
     EM::Timer.new(1) do
       check = {
         :name => 'arbitrary',
-        :command => 'exit 255',
+        :command => 'echo && exit 255',
         :subscribers => ['test']
       }
       server.publish_check_request(check)

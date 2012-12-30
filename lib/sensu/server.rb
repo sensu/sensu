@@ -233,15 +233,12 @@ module Sensu
       end
       execute = Proc.new do
         begin
-          output = ''
-          IO.popen(command + ' 2>&1', 'r+') do |io|
+          output, status = Sensu::IO.popen(command, 'r+') do |child|
             unless data.nil?
-              io.write(data.to_s)
+              child.write(data.to_s)
             end
-            io.close_write
-            output = io.read
+            child.close_write
           end
-          status = $?.exitstatus
           [true, output, status]
         rescue => error
           on_error.call(error)
