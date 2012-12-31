@@ -4,12 +4,21 @@ module Sensu
       def popen(command, mode='r', timeout=nil, &block)
         block ||= Proc.new {}
         begin
-          if RUBY_VERSION < '1.9.0'
+          if RUBY_VERSION < '1.9.3'
             child = ::IO.popen(command + ' 2>&1', mode)
             block.call(child)
             wait_on_process(child)
           else
-            child = ::IO.popen(['sh', '-c', command, :err => [:child, :out], :pgroup => true], mode)
+            options = {
+              :err => [:child, :out]
+            }
+            case RUBY_PLATFORM
+            when /(ms|cyg|bcc)win|mingw|win32/
+              options[:new_pgroup] = true
+            else
+              options[:pgroup] = true
+            end
+            child = ::IO.popen(['sh', '-c', command, options], mode)
             unless timeout.nil?
               Timeout.timeout(timeout) do
                 block.call(child)
