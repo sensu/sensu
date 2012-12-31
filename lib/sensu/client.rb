@@ -106,9 +106,7 @@ module Sensu
             check
           end
           publish = Proc.new do |check|
-            unless check[:status].nil?
-              publish_result(check)
-            end
+            publish_result(check)
             @checks_in_progress.delete(check[:name])
           end
           EM::defer(execute, publish)
