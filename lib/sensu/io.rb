@@ -27,8 +27,8 @@ module Sensu
               ::Process.wait2(-child.pid)
             end
           rescue Errno::ESRCH, Errno::ECHILD
+            ['Execution timed out', 2]
           end
-          ['Execution timed out', 2]
         rescue Errno::ENOENT => error
           [error.to_s, 127]
         rescue => error
