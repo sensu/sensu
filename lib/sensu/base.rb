@@ -4,6 +4,7 @@ gem 'eventmachine', '1.0.0'
 gem 'amqp', '0.9.7'
 
 require 'json'
+require 'timeout'
 require 'time'
 require 'uri'
 require 'amqp'
@@ -13,6 +14,7 @@ require File.join(File.dirname(__FILE__), 'cli')
 require File.join(File.dirname(__FILE__), 'logger')
 require File.join(File.dirname(__FILE__), 'settings')
 require File.join(File.dirname(__FILE__), 'process')
+require File.join(File.dirname(__FILE__), 'io')
 
 module Sensu
   class Base

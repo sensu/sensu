@@ -233,15 +233,12 @@ module Sensu
       end
       execute = Proc.new do
         begin
-          output = ''
-          IO.popen(command + ' 2>&1', 'r+') do |io|
+          output, status = Sensu::IO.popen(command, 'r+') do |child|
             unless data.nil?
-              io.write(data.to_s)
+              child.write(data.to_s)
             end
-            io.close_write
-            output = io.read
+            child.close_write
           end
-          status = $?.exitstatus
           [true, output, status]
         rescue => error
           on_error.call(error)
@@ -279,13 +276,11 @@ module Sensu
             })
           end
           execute_command(mutator[:command], event.to_json, on_error) do |output, status|
-            if status != 0
-              @logger.warn('mutator had a non-zero exit status', {
-                :event => event,
-                :mutator => mutator
-              })
+            if status == 0
+              block.call(output)
+            else
+              on_error.call('non-zero exit status (' + status + '): ' + output)
             end
-            block.call(output)
           end
         else
           @logger.error('unknown mutator', {

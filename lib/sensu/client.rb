@@ -102,10 +102,7 @@ module Sensu
           execute = Proc.new do
             started = Time.now.to_f
             begin
-              IO.popen(command + ' 2>&1') do |io|
-                check[:output] = io.read
-              end
-              check[:status] = $?.exitstatus
+              check[:output], check[:status] = Sensu::IO.popen(command, 'r', check[:timeout])
             rescue => error
               @logger.warn('unexpected error', {
                 :error => error.to_s
@@ -117,9 +114,7 @@ module Sensu
             check
           end
           publish = Proc.new do |check|
-            unless check[:status].nil?
-              publish_result(check)
-            end
+            publish_result(check)
             @checks_in_progress.delete(check[:name])
           end
           EM::defer(execute, publish)
