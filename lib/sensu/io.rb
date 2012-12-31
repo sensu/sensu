@@ -14,11 +14,11 @@ module Sensu
             }
             case RUBY_PLATFORM
             when /(ms|cyg|bcc)win|mingw|win32/
-              options[:new_pgroup] = true
               shell = ['cmd', '/c']
+              options[:new_pgroup] = true
             else
-              options[:pgroup] = true
               shell = ['sh', '-c']
+              options[:pgroup] = true
             end
             child = ::IO.popen([*shell, command, options], mode)
             unless timeout.nil?
