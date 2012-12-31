@@ -21,7 +21,7 @@ class TestSensuPublishSubscribe < TestCase
         assert_equal(1, standalone[:status])
         assert(events.has_key?('timed'))
         timed = JSON.parse(events['timed'], :symbolize_names => true)
-        if RUBY_VERSION < '1.9.0'
+        if RUBY_VERSION < '1.9.3'
           assert_equal(@settings[:client][:name], timed[:output])
           assert_equal(1, timed[:status])
         else

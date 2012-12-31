@@ -8,7 +8,7 @@ class TestSensuIO < TestCase
 
   def test_popen_timed_out_command
     output, status = Sensu::IO.popen('sleep 1 && echo -n "Ruby 1.8"', 'r', 0.25)
-    if RUBY_VERSION < '1.9.0'
+    if RUBY_VERSION < '1.9.3'
       assert_equal('Ruby 1.8', output)
       assert_equal(0, status)
     else
