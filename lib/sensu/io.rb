@@ -20,7 +20,7 @@ module Sensu
               shell = ['sh', '-c']
               options[:pgroup] = true
             end
-            child = ::IO.popen([*shell, command, options], mode)
+            child = ::IO.popen(shell + [command, options], mode)
             unless timeout.nil?
               Timeout.timeout(timeout) do
                 block.call(child)
