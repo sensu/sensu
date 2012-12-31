@@ -21,7 +21,7 @@ module Sensu
               options[:pgroup] = true
             end
             child = ::IO.popen(shell + [command, options], mode)
-            unless timeout.nil?
+            if timeout
               Timeout.timeout(timeout) do
                 block.call(child)
                 wait_on_process(child)
