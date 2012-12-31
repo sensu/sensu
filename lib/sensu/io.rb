@@ -40,10 +40,6 @@ module Sensu
           rescue Errno::ESRCH, Errno::ECHILD
             ['Execution timed out', 2]
           end
-        rescue Errno::ENOENT => error
-          [error.to_s, 127]
-        rescue => error
-          ['Unexpected error: ' + error.to_s, 2]
         end
       end
 

@@ -276,13 +276,11 @@ module Sensu
             })
           end
           execute_command(mutator[:command], event.to_json, on_error) do |output, status|
-            if status != 0
-              @logger.warn('mutator had a non-zero exit status', {
-                :event => event,
-                :mutator => mutator
-              })
+            if status == 0
+              block.call(output)
+            else
+              on_error.call('non-zero exit status (' + status + '): ' + output)
             end
-            block.call(output)
           end
         else
           @logger.error('unknown mutator', {
