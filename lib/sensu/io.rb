@@ -9,7 +9,7 @@ module Sensu
             block.call(child)
             wait_on_process(child)
           else
-            child = ::IO.popen(command, mode, :err => [:child, :out])
+            child = ::IO.popen(['sh', '-c', command, :err => [:child, :out], :pgroup => true], mode)
             unless timeout.nil?
               Timeout.timeout(timeout) do
                 block.call(child)
@@ -22,9 +22,11 @@ module Sensu
           end
         rescue Timeout::Error
           begin
-            ::Process.kill(9, child.pid)
-            ::Process.wait2(child.pid)
-          rescue Errno::ESRCH
+            ::Process.kill(9, -child.pid)
+            loop do
+              ::Process.wait2(-child.pid)
+            end
+          rescue Errno::ESRCH, Errno::ECHILD
           end
           ['Execution timed out', 2]
         rescue Errno::ENOENT => error
