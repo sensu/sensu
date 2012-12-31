@@ -57,7 +57,7 @@ class TestSensuPublishSubscribe < TestCase
     EM::Timer.new(1) do
       check = {
         :name => 'arbitrary',
-        :command => 'echo && exit 255',
+        :command => 'exit 255',
         :subscribers => ['test']
       }
       server.publish_check_request(check)
@@ -83,7 +83,7 @@ class TestSensuPublishSubscribe < TestCase
     EM::Timer.new(1) do
       check = {
         :name => 'arbitrary',
-        :command => 'echo && exit 255',
+        :command => 'exit 255',
         :subscribers => ['test']
       }
       server.publish_check_request(check)
