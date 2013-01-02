@@ -13,6 +13,8 @@ matching.
 
 TCP handler socket timeout, which defaults to 10 seconds.
 
+Check execution timeout.
+
 ### Other
 
 Server is now using basic AMQP QoS (prefetch), just enough back pressure.
