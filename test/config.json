@@ -132,6 +132,12 @@
       "standalone": true,
       "interval": 1
     },
+    "timed": {
+      "command": "sleep 1 && echo -n :::name::: && exit 1",
+      "standalone": true,
+      "timeout": 0.25,
+      "interval": 1
+    },
     "tokens": {
       "command": "echo -n :::name::: :::nested.attribute::: && exit 2",
       "subscribers": [
@@ -147,7 +153,7 @@
       "interval": 1
     },
     "merger": {
-      "command": "exit",
+      "command": "echo",
       "subscribers": [
         "test"
       ],

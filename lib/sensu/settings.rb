@@ -204,6 +204,13 @@ module Sensu
             end
           end
         end
+        if check.has_key?(:timeout)
+          unless check[:timeout].is_a?(Numeric)
+            invalid('check timeout must be numeric', {
+              :check => check
+            })
+          end
+        end
         if check.has_key?(:handler)
           unless check[:handler].is_a?(String)
             invalid('check handler must be a string', {
