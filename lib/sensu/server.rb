@@ -169,7 +169,7 @@ module Sensu
             handlers.push(handler)
           end
         elsif @extensions.handler_exists?(handler_name)
-          handler = @extensions.handlers[handler_name]
+          handler = @extensions[:handlers][handler_name]
           handlers.push(handler)
         else
           @logger.error('unknown handler', {
@@ -278,7 +278,7 @@ module Sensu
           end
         end
       when @extensions.mutator_exists?(mutator_name)
-        @extensions.mutators[mutator_name].run(event) do |output, status|
+        @extensions[:mutators][mutator_name].run(event) do |output, status|
           if status == 0
             block.call(output)
           else

@@ -1,37 +1,49 @@
 module Sensu
   class Extensions
-    attr_reader :mutators, :handlers
-
     def initialize
       @logger = Sensu::Logger.get
-      @mutators = Hash.new
-      @handlers = Hash.new
+      @extensions = Hash.new
+      Sensu::EXTENSION_CATEGORIES.each do |category|
+        @extensions[category] = Hash.new
+      end
     end
 
-    def mutator_exists?(mutator_name)
-      @mutators.include?(mutator_name)
+    def [](key)
+      @extensions[key.to_sym]
     end
 
-    def handler_exists?(handler_name)
-      @handlers.include?(handler_name)
+    Sensu::EXTENSION_CATEGORIES.each do |category|
+      define_method(category.to_s.chop + '_exists?') do |extension_name|
+        @extensions[category].has_key?(extension_name)
+      end
     end
 
     def load_all
-      extensions_glob = File.join(File.dirname(__FILE__), 'extensions/**/*.rb')
-      Dir.glob(extensions_glob, &method(:require))
-      Sensu::Extension::Mutator.descendants.each do |klass|
-        mutator = klass.new
-        @mutators[mutator.name] = mutator
-        loaded('mutator', mutator.name, mutator.description)
-      end
-      Sensu::Extension::Handler.descendants.each do |klass|
-        handler = klass.new
-        @handlers[handler.name] = handler
-        loaded('handler', handler.name, handler.description)
+      require_all(File.join(File.dirname(__FILE__), 'extensions'))
+      Sensu::EXTENSION_CATEGORIES.each do |category|
+        extension_type = category.to_s.chop
+        Sensu::Extension.const_get(extension_type.capitalize).descendants.each do |klass|
+          extension = klass.new
+          @extensions[category][extension.name] = extension
+          loaded(extension_type, extension.name, extension.description)
+        end
       end
     end
 
     private
+
+    def require_all(directory)
+      Dir.glob(File.join(directory, '**/*.rb')).each do |file|
+        begin
+          require file
+        rescue ScriptError => error
+          @logger.error('failed to require extension', {
+            :file => file,
+            :error => error
+          })
+        end
+      end
+    end
 
     def loaded(type, name, description)
       @logger.info('loaded extension', {

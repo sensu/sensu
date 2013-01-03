@@ -13,4 +13,8 @@ module Sensu
   unless defined?(Sensu::SEVERITIES)
     SEVERITIES = %w[ok warning critical unknown]
   end
+
+  unless defined?(Sensu::EXTENSION_CATEGORIES)
+    EXTENSION_CATEGORIES = [:mutators, :handlers]
+  end
 end
