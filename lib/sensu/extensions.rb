@@ -18,8 +18,24 @@ module Sensu
       end
     end
 
+    def require_directory(directory)
+      Dir.glob(File.join(directory, '**/*.rb')).each do |file|
+        begin
+          require file
+        rescue ScriptError => error
+          @logger.error('failed to require extension', {
+            :extension_file => file,
+            :error => error
+          })
+          @logger.warn('ignoring extension', {
+            :extension_file => file
+          })
+        end
+      end
+    end
+
     def load_all
-      require_all(File.join(File.dirname(__FILE__), 'extensions'))
+      require_directory(File.join(File.dirname(__FILE__), 'extensions'))
       Sensu::EXTENSION_CATEGORIES.each do |category|
         extension_type = category.to_s.chop
         Sensu::Extension.const_get(extension_type.capitalize).descendants.each do |klass|
@@ -31,19 +47,6 @@ module Sensu
     end
 
     private
-
-    def require_all(directory)
-      Dir.glob(File.join(directory, '**/*.rb')).each do |file|
-        begin
-          require file
-        rescue ScriptError => error
-          @logger.error('failed to require extension', {
-            :file => file,
-            :error => error
-          })
-        end
-      end
-    end
 
     def loaded(type, name, description)
       @logger.info('loaded extension', {
@@ -79,7 +82,7 @@ module Sensu
         definition.has_key?(key.to_sym)
       end
 
-      def run(data=nil, &block)
+      def run(event=nil, &block)
         block.call('noop', 0)
       end
 

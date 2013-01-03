@@ -40,7 +40,7 @@ module Sensu
       @settings = Sensu::Settings.new
       @settings.load_env
       @settings.load_file(@options[:config_file])
-      Dir[@options[:config_dir] + '/**/*.json'].each do |file|
+      Dir.glob(File.join(@options[:config_dir], '**/*.json')).each do |file|
         @settings.load_file(file)
       end
       @settings.validate
@@ -49,6 +49,9 @@ module Sensu
 
     def setup_extensions
       @extensions = Sensu::Extensions.new
+      unless @options[:extension_dir].nil?
+        @extensions.require_directory(@options[:extension_dir])
+      end
       @extensions.load_all
     end
 
