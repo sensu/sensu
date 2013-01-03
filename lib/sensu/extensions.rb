@@ -9,7 +9,7 @@ module Sensu
     end
 
     def [](key)
-      @extensions[key.to_sym]
+      @extensions[key]
     end
 
     Sensu::EXTENSION_CATEGORIES.each do |category|
@@ -90,7 +90,9 @@ module Sensu
       end
     end
 
-    class Mutator < Base; end
-    class Handler < Base; end
+    Sensu::EXTENSION_CATEGORIES.each do |category|
+      extension_type = category.to_s.chop
+      Object.const_set(extension_type.capitalize, Class.new(Base))
+    end
   end
 end
