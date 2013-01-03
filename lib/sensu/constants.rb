@@ -1,20 +1,14 @@
 module Sensu
-  unless defined?(Sensu::VERSION)
-    VERSION = '0.9.9.beta.2'
-  end
+  VERSION ||= '0.9.9.beta.2'
 
-  unless defined?(Sensu::DEFAULT_OPTIONS)
-    DEFAULT_OPTIONS = {
-      :config_file => '/etc/sensu/config.json',
-      :config_dir => '/etc/sensu/conf.d'
-    }
-  end
+  DEFAULT_OPTIONS ||= {
+    :config_file => '/etc/sensu/config.json',
+    :config_dir => '/etc/sensu/conf.d'
+  }
 
-  unless defined?(Sensu::SEVERITIES)
-    SEVERITIES = %w[ok warning critical unknown]
-  end
+  SETTINGS_CATEGORIES ||= [:checks, :filters, :mutators, :handlers]
 
-  unless defined?(Sensu::EXTENSION_CATEGORIES)
-    EXTENSION_CATEGORIES = [:mutators, :handlers]
-  end
+  EXTENSION_CATEGORIES ||= [:mutators, :handlers]
+
+  SEVERITIES ||= %w[ok warning critical unknown]
 end
