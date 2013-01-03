@@ -7,25 +7,29 @@ module Sensu
     end
 
     def load!
-      Dir.glob('sensu/extensions/*.rb', &method(:require))
-      Sensu::Extension::Mutator.descendents.each do |klass|
+      extensions_glob = File.join(File.dirname(__FILE__), 'extensions/**/*.rb')
+      Dir.glob(extensions_glob, &method(:require))
+      Sensu::Extension::Mutator.descendants.each do |klass|
         mutator = klass.new
         @mutators[mutator.name] = mutator
       end
+    end
+
+    def self.get
+      extensions = self.new
+      extensions.load!
+      extensions
     end
   end
 
   module Extension
     class Base
-      attr_reader :type, :name
-
-      def initialize
-        @type = 'base'
-        @name = 'base'
+      def name
+        'base'
       end
 
-      def run(data=nil)
-        ['noop', 0]
+      def run(data=nil, &block)
+        block.call('noop', 0)
       end
 
       def self.descendants
@@ -35,11 +39,6 @@ module Sensu
       end
     end
 
-    class Mutator < Base
-      def initialize
-        super
-        @type = :mutator
-      end
-    end
+    class Mutator < Base; end
   end
 end

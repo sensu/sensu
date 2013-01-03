@@ -15,6 +15,7 @@ module Sensu
     end
 
     def initialize(options={})
+      @extensions = Sensu::Extensions.get
       @logger = Sensu::Logger.get
       base = Sensu::Base.new(options)
       @settings = base.settings
@@ -254,41 +255,39 @@ module Sensu
     end
 
     def mutate_event_data(mutator_name, event, &block)
-      case mutator_name
-      when nil
+      on_error = Proc.new do |error|
+        @logger.error('mutator error', {
+          :event => event,
+          :mutator => mutator,
+          :error => error.to_s
+        })
+      end
+      case
+      when mutator_name.nil?
         block.call(event.to_json)
-      when /^only_check_output/
-        mutated = case mutator_name
-        when /split$/
-          event[:check][:output].split(/\n+/)
-        else
-          event[:check][:output]
+      when @settings.mutator_exists?(mutator_name)
+        mutator = @settings[:mutators][mutator_name]
+        execute_command(mutator[:command], event.to_json, on_error) do |output, status|
+          if status == 0
+            block.call(output)
+          else
+            on_error.call('non-zero exit status (' + status + '): ' + output)
+          end
         end
-        block.call(mutated)
+      when @extensions.mutators.include?(mutator_name)
+        @extensions.mutators[mutator_name].run(event) do |output, status|
+          if status == 0
+            block.call(output)
+          else
+            on_error.call('non-zero exit status (' + status + '): ' + output)
+          end
+        end
       else
-        if @settings.mutator_exists?(mutator_name)
-          mutator = @settings[:mutators][mutator_name]
-          on_error = Proc.new do |error|
-            @logger.error('mutator error', {
-              :event => event,
-              :mutator => mutator,
-              :error => error.to_s
-            })
-          end
-          execute_command(mutator[:command], event.to_json, on_error) do |output, status|
-            if status == 0
-              block.call(output)
-            else
-              on_error.call('non-zero exit status (' + status + '): ' + output)
-            end
-          end
-        else
-          @logger.error('unknown mutator', {
-            :mutator => {
-              :name => mutator_name
-            }
-          })
-        end
+        @logger.error('unknown mutator', {
+          :mutator => {
+            :name => mutator_name
+          }
+        })
       end
     end
 

@@ -10,6 +10,7 @@ require 'uri'
 require 'amqp'
 
 require File.join(File.dirname(__FILE__), 'constants')
+require File.join(File.dirname(__FILE__), 'extensions')
 require File.join(File.dirname(__FILE__), 'cli')
 require File.join(File.dirname(__FILE__), 'logger')
 require File.join(File.dirname(__FILE__), 'settings')
