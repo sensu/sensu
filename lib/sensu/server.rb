@@ -15,10 +15,10 @@ module Sensu
     end
 
     def initialize(options={})
-      @extensions = Sensu::Extensions.get
       @logger = Sensu::Logger.get
       base = Sensu::Base.new(options)
       @settings = base.settings
+      @extensions = base.extensions
       @timers = Array.new
       @master_timers = Array.new
       @handlers_in_progress_count = 0
@@ -168,6 +168,9 @@ module Sensu
           else
             handlers.push(handler)
           end
+        elsif @extensions.handler_exists?(handler_name)
+          handler = @extensions.handlers[handler_name]
+          handlers.push(handler)
         else
           @logger.error('unknown handler', {
             :handler => {
@@ -274,7 +277,7 @@ module Sensu
             on_error.call('non-zero exit status (' + status + '): ' + output)
           end
         end
-      when @extensions.mutators.include?(mutator_name)
+      when @extensions.mutator_exists?(mutator_name)
         @extensions.mutators[mutator_name].run(event) do |output, status|
           if status == 0
             block.call(output)
@@ -349,13 +352,17 @@ module Sensu
             exchange_options = handler[:exchange].reject do |key, value|
               [:name, :type].include?(key)
             end
-            payloads = Array(event_data)
-            payloads.each do |payload|
-              unless payload.empty?
-                @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
-              end
+            unless event_data.empty?
+              @amq.method(exchange_type).call(exchange_name, exchange_options).publish(event_data)
             end
             @handlers_in_progress_count -= 1
+          when 'extension'
+            handler.run(event_data) do |output, status|
+              output.split(/\n+/).each do |line|
+                @logger.info(line)
+              end
+              @handlers_in_progress_count -= 1
+            end
           end
         end
       end

@@ -10,21 +10,22 @@ require 'uri'
 require 'amqp'
 
 require File.join(File.dirname(__FILE__), 'constants')
-require File.join(File.dirname(__FILE__), 'extensions')
 require File.join(File.dirname(__FILE__), 'cli')
 require File.join(File.dirname(__FILE__), 'logger')
 require File.join(File.dirname(__FILE__), 'settings')
+require File.join(File.dirname(__FILE__), 'extensions')
 require File.join(File.dirname(__FILE__), 'process')
 require File.join(File.dirname(__FILE__), 'io')
 
 module Sensu
   class Base
-    attr_reader :options, :settings
+    attr_reader :options, :settings, :extensions
 
     def initialize(options={})
       @options = Sensu::DEFAULT_OPTIONS.merge(options)
       setup_logging
       setup_settings
+      setup_extensions
       setup_process
     end
 
@@ -44,6 +45,11 @@ module Sensu
       end
       @settings.validate
       @settings.set_env
+    end
+
+    def setup_extensions
+      @extensions = Sensu::Extensions.new
+      @extensions.load_all
     end
 
     def setup_process

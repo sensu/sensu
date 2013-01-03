@@ -1,16 +1,16 @@
 module Sensu
   module Extension
-    class OnlyCheckOutput < Mutator
+    class Debug < Handler
       def name
-        'only_check_output'
+        'debug'
       end
 
       def description
-        'only returns check output'
+        'outputs json event data'
       end
 
       def run(event, &block)
-        block.call(event[:check][:output], 0)
+        block.call(event.to_json, 0)
       end
     end
   end
