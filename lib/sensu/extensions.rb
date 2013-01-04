@@ -1,7 +1,7 @@
 module Sensu
   class Extensions
     def initialize
-      @logger = Sensu::Logger.get
+      @logger = Logger.get
       @extensions = Hash.new
       EXTENSION_CATEGORIES.each do |category|
         @extensions[category] = Hash.new

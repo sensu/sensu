@@ -10,7 +10,7 @@ module Sensu
 
     def initialize(*arguments)
       super
-      @logger = Sensu::Logger.get
+      @logger = Logger.get
       @settings = Hash.new
       @connection_established = false
       @connected = false

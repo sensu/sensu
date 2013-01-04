@@ -3,7 +3,7 @@ module Sensu
     attr_reader :indifferent_access, :loaded_env, :loaded_files
 
     def initialize
-      @logger = Sensu::Logger.get
+      @logger = Logger.get
       @settings = Hash.new
       SETTINGS_CATEGORIES.each do |category|
         @settings[category] = Hash.new
@@ -496,7 +496,7 @@ module Sensu
             })
           end
           handler[:severities].each do |severity|
-            unless Sensu::SEVERITIES.include?(severity)
+            unless SEVERITIES.include?(severity)
               invalid('handler severities are invalid', {
                 :handler => handler
               })
