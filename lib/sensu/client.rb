@@ -161,8 +161,9 @@ module Sensu
       stagger = testing? ? 0 : 2
       @settings.checks.each do |check|
         if check[:standalone]
-          standalone_check_count = (standalone_check_count + 1) % 30
-          @timers << EM::Timer.new(stagger * standalone_check_count) do
+          standalone_check_count += 1
+          scheduling_delay = stagger * standalone_check_count % 30
+          @timers << EM::Timer.new(scheduling_delay) do
             interval = testing? ? 0.5 : check[:interval]
             @timers << EM::PeriodicTimer.new(interval) do
               if @rabbitmq.connected?
