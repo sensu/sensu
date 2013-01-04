@@ -12,7 +12,7 @@ module Sensu
     end
 
     def initialize(options={})
-      base = Sensu::Base.new(options)
+      base = Base.new(options)
       @logger = base.logger
       @settings = base.settings
       base.setup_process
@@ -21,33 +21,9 @@ module Sensu
     end
 
     def setup_rabbitmq
-      @logger.debug('connecting to rabbitmq', {
-        :settings => @settings[:rabbitmq]
-      })
-      connection_failure = Proc.new do
-        @logger.fatal('cannot connect to rabbitmq', {
-          :settings => @settings[:rabbitmq]
-        })
-        @logger.fatal('SENSU NOT RUNNING!')
-        exit 2
-      end
-      @rabbitmq = AMQP.connect(@settings[:rabbitmq], {
-        :on_tcp_connection_failure => connection_failure,
-        :on_possible_authentication_failure => connection_failure
-      })
-      @rabbitmq.logger = Sensu::NullLogger.get
-      @rabbitmq.on_tcp_connection_loss do |connection, settings|
-        unless connection.reconnecting?
-          @logger.warn('reconnecting to rabbitmq')
-          connection.periodically_reconnect(5)
-        end
-      end
-      @rabbitmq.on_skipped_heartbeats do
-        @logger.warn('skipped rabbitmq heartbeat')
-        @logger.warn('rabbitmq heartbeats are not recommended for clients')
-      end
-      @amq = AMQP::Channel.new(@rabbitmq)
-      @amq.auto_recovery = true
+      @rabbitmq = RabbitMQ.new
+      @rabbitmq.connect(@settings[:rabbitmq])
+      @amq = @rabbitmq.channel
     end
 
     def publish_keepalive
@@ -103,7 +79,7 @@ module Sensu
           execute = Proc.new do
             started = Time.now.to_f
             begin
-              check[:output], check[:status] = Sensu::IO.popen(command, 'r', check[:timeout])
+              check[:output], check[:status] = IO.popen(command, 'r', check[:timeout])
             rescue => error
               @logger.warn('unexpected error', {
                 :error => error.to_s
@@ -201,14 +177,14 @@ module Sensu
 
     def setup_sockets
       @logger.debug('binding client tcp socket')
-      EM::start_server('127.0.0.1', 3030, Sensu::Socket) do |socket|
+      EM::start_server('127.0.0.1', 3030, Socket) do |socket|
         socket.protocol = :tcp
         socket.logger = @logger
         socket.settings = @settings
         socket.amq = @amq
       end
       @logger.debug('binding client udp socket')
-      EM::open_datagram_socket('127.0.0.1', 3030, Sensu::Socket) do |socket|
+      EM::open_datagram_socket('127.0.0.1', 3030, Socket) do |socket|
         socket.protocol = :udp
         socket.logger = @logger
         socket.settings = @settings

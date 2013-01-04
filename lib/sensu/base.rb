@@ -1,13 +1,11 @@
 require 'rubygems'
 
 gem 'eventmachine', '1.0.0'
-gem 'amqp', '0.9.7'
 
 require 'json'
 require 'timeout'
 require 'time'
 require 'uri'
-require 'amqp'
 
 require File.join(File.dirname(__FILE__), 'constants')
 require File.join(File.dirname(__FILE__), 'cli')
@@ -16,6 +14,7 @@ require File.join(File.dirname(__FILE__), 'settings')
 require File.join(File.dirname(__FILE__), 'extensions')
 require File.join(File.dirname(__FILE__), 'process')
 require File.join(File.dirname(__FILE__), 'io')
+require File.join(File.dirname(__FILE__), 'rabbitmq')
 
 module Sensu
   class Base

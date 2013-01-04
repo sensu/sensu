@@ -36,9 +36,11 @@ module Sensu
           @logger.level = @logger.level == :info ? :debug : :info
         end
       end
-      if @log_file && Signal.list.include?('USR2')
+      if Signal.list.include?('USR2')
         Signal.trap('USR2') do
-          reopen(@log_file)
+          if @logfile
+            reopen(@log_file)
+          end
         end
       end
     end

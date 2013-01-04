@@ -50,45 +50,21 @@ module Sensu
     end
 
     def setup_rabbitmq
-      @logger.debug('connecting to rabbitmq', {
-        :settings => @settings[:rabbitmq]
-      })
-      connection_failure = Proc.new do
-        @logger.fatal('cannot connect to rabbitmq', {
-          :settings => @settings[:rabbitmq]
-        })
-        @logger.fatal('SENSU NOT RUNNING!')
+      @rabbitmq = RabbitMQ.new
+      @rabbitmq.on_failure = Proc.new do
         @redis.close
-        exit 2
       end
-      @rabbitmq = AMQP.connect(@settings[:rabbitmq], {
-        :on_tcp_connection_failure => connection_failure,
-        :on_possible_authentication_failure => connection_failure
-      })
-      @rabbitmq.logger = Sensu::NullLogger.get
-      @rabbitmq.on_tcp_connection_loss do |connection, settings|
-        unless connection.reconnecting?
-          @logger.warn('reconnecting to rabbitmq')
-          resign_as_master do
-            connection.periodically_reconnect(5)
-          end
+      @rabbitmq.on_reconnect = Proc.new do |connection, settings|
+        resign_as_master do
+          connection.periodically_reconnect(5)
         end
       end
-      @rabbitmq.on_skipped_heartbeats do
-        @logger.warn('skipped rabbitmq heartbeat')
-      end
-      @amq = AMQP::Channel.new(@rabbitmq)
-      @amq.auto_recovery = true
-      @amq.prefetch(1)
-      @amq.on_error do |channel, channel_close|
-        @logger.fatal('rabbitmq channel closed', {
-          :error => {
-            :reply_code => channel_close.reply_code,
-            :reply_text => channel_close.reply_text
-          }
-        })
+      @rabbitmq.on_channel_error = Proc.new do
         stop
       end
+      @rabbitmq.connect(@settings[:rabbitmq])
+      @amq = @rabbitmq.channel
+      @amq.prefetch(1)
     end
 
     def setup_keepalives
