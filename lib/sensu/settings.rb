@@ -5,7 +5,7 @@ module Sensu
     def initialize
       @logger = Sensu::Logger.get
       @settings = Hash.new
-      Sensu::SETTINGS_CATEGORIES.each do |category|
+      SETTINGS_CATEGORIES.each do |category|
         @settings[category] = Hash.new
       end
       @indifferent_access = false
@@ -25,7 +25,7 @@ module Sensu
       @settings[key.to_sym]
     end
 
-    Sensu::SETTINGS_CATEGORIES.each do |category|
+    SETTINGS_CATEGORIES.each do |category|
       define_method(category) do
         @settings[category].map do |name, details|
           details.merge(:name => name.to_s)
@@ -94,6 +94,12 @@ module Sensu
         @logger.warn('ignoring config file', {
           :config_file => file
         })
+      end
+    end
+
+    def load_directory(directory)
+      Dir.glob(File.join(directory, '**/*.json')).each do |file|
+        load_file(file)
       end
     end
 

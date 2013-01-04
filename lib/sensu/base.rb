@@ -11,7 +11,7 @@ require 'amqp'
 
 require File.join(File.dirname(__FILE__), 'constants')
 require File.join(File.dirname(__FILE__), 'cli')
-require File.join(File.dirname(__FILE__), 'logger')
+require File.join(File.dirname(__FILE__), 'logstream')
 require File.join(File.dirname(__FILE__), 'settings')
 require File.join(File.dirname(__FILE__), 'extensions')
 require File.join(File.dirname(__FILE__), 'process')
@@ -19,44 +19,41 @@ require File.join(File.dirname(__FILE__), 'io')
 
 module Sensu
   class Base
-    attr_reader :options, :settings, :extensions
-
     def initialize(options={})
-      @options = Sensu::DEFAULT_OPTIONS.merge(options)
-      setup_logging
-      setup_settings
-      setup_extensions
-      setup_process
+      @options = DEFAULT_OPTIONS.merge(options)
     end
 
-    def setup_logging
-      logger = Sensu::Logger.new
-      logger.level = @options[:verbose] ? :debug : @options[:log_level] || :info
-      logger.reopen(@options[:log_file])
-      logger.setup_traps
-    end
-
-    def setup_settings
-      @settings = Sensu::Settings.new
-      @settings.load_env
-      @settings.load_file(@options[:config_file])
-      Dir.glob(File.join(@options[:config_dir], '**/*.json')).each do |file|
-        @settings.load_file(file)
+    def logger
+      stream = LogStream.new
+      stream.level = @options[:log_level]
+      if @options[:log_file]
+        stream.reopen(@options[:log_file])
       end
-      @settings.validate
-      @settings.set_env
+      stream.setup_traps
+      stream.logger
     end
 
-    def setup_extensions
-      @extensions = Sensu::Extensions.new
-      unless @options[:extension_dir].nil?
-        @extensions.require_directory(@options[:extension_dir])
+    def settings
+      settings = Settings.new
+      settings.load_env
+      settings.load_file(@options[:config_file])
+      settings.load_directory(@options[:config_dir])
+      settings.validate
+      settings.set_env
+      settings
+    end
+
+    def extensions
+      extensions = Extensions.new
+      if @options[:extension_dir]
+        extensions.require_directory(@options[:extension_dir])
       end
-      @extensions.load_all
+      extensions.load_all
+      extensions
     end
 
     def setup_process
-      process = Sensu::Process.new
+      process = Process.new
       if @options[:daemonize]
         process.daemonize
       end

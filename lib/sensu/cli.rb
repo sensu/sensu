@@ -26,7 +26,7 @@ module Sensu
           options[:log_file] = file
         end
         opts.on('-v', '--verbose', 'Enable verbose logging') do
-          options[:verbose] = true
+          options[:log_level] = :debug
         end
         opts.on('-b', '--background', 'Fork into the background') do
           options[:daemonize] = true

@@ -3,7 +3,8 @@ module Sensu
 
   DEFAULT_OPTIONS ||= {
     :config_file => '/etc/sensu/config.json',
-    :config_dir => '/etc/sensu/conf.d'
+    :config_dir => '/etc/sensu/conf.d',
+    :log_level => :info
   }
 
   SETTINGS_CATEGORIES ||= [:checks, :filters, :mutators, :handlers]

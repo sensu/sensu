@@ -12,9 +12,10 @@ module Sensu
     end
 
     def initialize(options={})
-      @logger = Sensu::Logger.get
       base = Sensu::Base.new(options)
+      @logger = base.logger
       @settings = base.settings
+      base.setup_process
       @timers = Array.new
       @checks_in_progress = Array.new
     end

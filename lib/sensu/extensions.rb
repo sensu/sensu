@@ -3,7 +3,7 @@ module Sensu
     def initialize
       @logger = Sensu::Logger.get
       @extensions = Hash.new
-      Sensu::EXTENSION_CATEGORIES.each do |category|
+      EXTENSION_CATEGORIES.each do |category|
         @extensions[category] = Hash.new
       end
     end
@@ -12,7 +12,7 @@ module Sensu
       @extensions[key]
     end
 
-    Sensu::EXTENSION_CATEGORIES.each do |category|
+    EXTENSION_CATEGORIES.each do |category|
       define_method(category.to_s.chop + '_exists?') do |extension_name|
         @extensions[category].has_key?(extension_name)
       end
@@ -36,9 +36,9 @@ module Sensu
 
     def load_all
       require_directory(File.join(File.dirname(__FILE__), 'extensions'))
-      Sensu::EXTENSION_CATEGORIES.each do |category|
+      EXTENSION_CATEGORIES.each do |category|
         extension_type = category.to_s.chop
-        Sensu::Extension.const_get(extension_type.capitalize).descendants.each do |klass|
+        Extension.const_get(extension_type.capitalize).descendants.each do |klass|
           extension = klass.new
           @extensions[category][extension.name] = extension
           loaded(extension_type, extension.name, extension.description)
@@ -93,7 +93,7 @@ module Sensu
       end
     end
 
-    Sensu::EXTENSION_CATEGORIES.each do |category|
+    EXTENSION_CATEGORIES.each do |category|
       extension_type = category.to_s.chop
       Object.const_set(extension_type.capitalize, Class.new(Base))
     end

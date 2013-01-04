@@ -13,7 +13,7 @@ class TestSensuCLI < TestCase
       :config_file => @options[:config_file],
       :config_dir => @options[:config_dir],
       :extension_dir => @options[:extension_dir],
-      :verbose => true,
+      :log_level => :debug,
       :log_file => '/tmp/sensu_test.log',
       :pid_file => '/tmp/sensu_test.pid',
       :daemonize => true

@@ -6,7 +6,7 @@ module Sensu
       end
 
       def description
-        'only returns check output'
+        'returns check output'
       end
 
       def run(event, &block)
