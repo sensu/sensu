@@ -60,6 +60,13 @@ class TestSensuBase < TestCase
     done
   end
 
+  def test_load_extensions
+    base = Sensu::Base.new(@options)
+    extensions = base.extensions
+    assert(extensions.mutator_exists?('opentsdb'))
+    done
+  end
+
   def test_write_pid
     pid_file = '/tmp/sensu_write_pid'
     Sensu::Base.new(@options.merge(:pid_file => pid_file))

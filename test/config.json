@@ -117,13 +117,6 @@
       "type": "pipe",
       "mutator": "only_check_output",
       "command": "cat"
-    },
-    "only_output_split": {
-      "type": "amqp",
-      "mutator": "only_check_output_split",
-      "exchange": {
-        "name": "sensu"
-      }
     }
   },
   "checks": {

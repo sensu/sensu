@@ -5,12 +5,17 @@ module Sensu
     def initialize
       @logger = Sensu::Logger.get
       @settings = Hash.new
-      [:checks, :filters, :mutators, :handlers].each do |key|
-        @settings[key] = Hash.new
+      Sensu::SETTINGS_CATEGORIES.each do |category|
+        @settings[category] = Hash.new
       end
       @indifferent_access = false
       @loaded_env = false
       @loaded_files = Array.new
+    end
+
+    def indifferent_access!
+      @settings = indifferent_access(@settings)
+      @indifferent_access = true
     end
 
     def [](key)
@@ -20,9 +25,16 @@ module Sensu
       @settings[key.to_sym]
     end
 
-    def indifferent_access!
-      @settings = indifferent_access(@settings)
-      @indifferent_access = true
+    Sensu::SETTINGS_CATEGORIES.each do |category|
+      define_method(category) do
+        @settings[category].map do |name, details|
+          details.merge(:name => name.to_s)
+        end
+      end
+
+      define_method((category.to_s.chop + '_exists?').to_sym) do |name|
+        @settings[category].has_key?(name.to_sym)
+      end
     end
 
     def load_env
@@ -87,18 +99,6 @@ module Sensu
 
     def set_env
       ENV['SENSU_CONFIG_FILES'] = @loaded_files.join(':')
-    end
-
-    [:checks, :filters, :mutators, :handlers].each do |key|
-      define_method(key) do
-        @settings[key].map do |name, details|
-          details.merge(:name => name.to_s)
-        end
-      end
-
-      define_method((key.to_s.chop + '_exists?').to_sym) do |name|
-        @settings[key].has_key?(name.to_sym)
-      end
     end
 
     def validate
