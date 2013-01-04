@@ -38,7 +38,7 @@ module Sensu
       end
       if Signal.list.include?('USR2')
         Signal.trap('USR2') do
-          if @logfile
+          if @log_file
             reopen(@log_file)
           end
         end
@@ -55,6 +55,7 @@ module Sensu
   class NullLogger
     [:debug, :info, :warn, :error, :fatal].each do |method|
       define_method(method) do |*arguments|
+        true
       end
     end
 
