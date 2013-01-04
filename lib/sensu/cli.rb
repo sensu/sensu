@@ -19,6 +19,9 @@ module Sensu
         opts.on('-d', '--config_dir DIR', 'DIR for supplemental Sensu JSON config files. Default is /etc/sensu/conf.d/') do |dir|
           options[:config_dir] = dir
         end
+        opts.on('-e', '--extension_dir DIR', 'DIR for Sensu extensions (experimental)') do |dir|
+          options[:extension_dir] = dir
+        end
         opts.on('-l', '--log FILE', 'Log to a given FILE. Default is to log to stdout') do |file|
           options[:log_file] = file
         end

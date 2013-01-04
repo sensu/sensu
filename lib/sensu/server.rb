@@ -18,6 +18,7 @@ module Sensu
       @logger = Sensu::Logger.get
       base = Sensu::Base.new(options)
       @settings = base.settings
+      @extensions = base.extensions
       @timers = Array.new
       @master_timers = Array.new
       @handlers_in_progress_count = 0
@@ -167,6 +168,9 @@ module Sensu
           else
             handlers.push(handler)
           end
+        elsif @extensions.handler_exists?(handler_name)
+          handler = @extensions[:handlers][handler_name]
+          handlers.push(handler)
         else
           @logger.error('unknown handler', {
             :handler => {
@@ -254,41 +258,39 @@ module Sensu
     end
 
     def mutate_event_data(mutator_name, event, &block)
-      case mutator_name
-      when nil
+      on_error = Proc.new do |error|
+        @logger.error('mutator error', {
+          :event => event,
+          :mutator => mutator,
+          :error => error.to_s
+        })
+      end
+      case
+      when mutator_name.nil?
         block.call(event.to_json)
-      when /^only_check_output/
-        mutated = case mutator_name
-        when /split$/
-          event[:check][:output].split(/\n+/)
-        else
-          event[:check][:output]
+      when @settings.mutator_exists?(mutator_name)
+        mutator = @settings[:mutators][mutator_name]
+        execute_command(mutator[:command], event.to_json, on_error) do |output, status|
+          if status == 0
+            block.call(output)
+          else
+            on_error.call('non-zero exit status (' + status + '): ' + output)
+          end
         end
-        block.call(mutated)
+      when @extensions.mutator_exists?(mutator_name)
+        @extensions[:mutators][mutator_name].run(event) do |output, status|
+          if status == 0
+            block.call(output)
+          else
+            on_error.call('non-zero exit status (' + status + '): ' + output)
+          end
+        end
       else
-        if @settings.mutator_exists?(mutator_name)
-          mutator = @settings[:mutators][mutator_name]
-          on_error = Proc.new do |error|
-            @logger.error('mutator error', {
-              :event => event,
-              :mutator => mutator,
-              :error => error.to_s
-            })
-          end
-          execute_command(mutator[:command], event.to_json, on_error) do |output, status|
-            if status == 0
-              block.call(output)
-            else
-              on_error.call('non-zero exit status (' + status + '): ' + output)
-            end
-          end
-        else
-          @logger.error('unknown mutator', {
-            :mutator => {
-              :name => mutator_name
-            }
-          })
-        end
+        @logger.error('unknown mutator', {
+          :mutator => {
+            :name => mutator_name
+          }
+        })
       end
     end
 
@@ -350,13 +352,17 @@ module Sensu
             exchange_options = handler[:exchange].reject do |key, value|
               [:name, :type].include?(key)
             end
-            payloads = Array(event_data)
-            payloads.each do |payload|
-              unless payload.empty?
-                @amq.method(exchange_type).call(exchange_name, exchange_options).publish(payload)
-              end
+            unless event_data.empty?
+              @amq.method(exchange_type).call(exchange_name, exchange_options).publish(event_data)
             end
             @handlers_in_progress_count -= 1
+          when 'extension'
+            handler.run(event_data) do |output, status|
+              output.split(/\n+/).each do |line|
+                @logger.info(line)
+              end
+              @handlers_in_progress_count -= 1
+            end
           end
         end
       end

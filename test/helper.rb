@@ -9,6 +9,7 @@ module TestUtil
     @options = {
       :config_file => File.join(File.dirname(__FILE__), 'config.json'),
       :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
+      :extension_dir => File.join(File.dirname(__FILE__), 'extensions'),
       :log_level => :fatal
     }
     base = Sensu::Base.new(@options)
