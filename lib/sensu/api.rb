@@ -265,7 +265,10 @@ module Sensu
         unless clients.empty?
           clients.each_with_index do |client_name, index|
             $redis.get('client:' + client_name).callback do |client_json|
-              response.push(JSON.parse(client_json))
+              begin
+                response.push(JSON.parse(client_json))
+              rescue JSON::ParserError
+              end
               if index == clients.size - 1
                 body response.to_json
               end
