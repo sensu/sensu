@@ -289,30 +289,31 @@ module Sensu
 
     adelete %r{/clients?/([\w\.-]+)$} do |client_name|
       $redis.get('client:' + client_name).callback do |client_json|
-        unless client_json.nil?
-          $redis.hgetall('events:' + client_name).callback do |events|
-            events.each do |check_name, event_json|
-              resolve_event(event_hash(event_json, client_name, check_name))
-            end
-            EM::Timer.new(5) do
-              client = JSON.parse(client_json, :symbolize_names => true)
-              $logger.info('deleting client', {
-                :client => client
-              })
-              $redis.srem('clients', client_name)
-              $redis.del('events:' + client_name)
-              $redis.del('client:' + client_name)
-              $redis.smembers('history:' + client_name).callback do |checks|
-                checks.each do |check_name|
-                  $redis.del('history:' + client_name + ':' + check_name)
-                end
-                $redis.del('history:' + client_name)
-              end
-            end
-            accepted!
+        $redis.hgetall('events:' + client_name).callback do |events|
+          events.each do |check_name, event_json|
+            resolve_event(event_hash(event_json, client_name, check_name))
           end
-        else
-          not_found!
+          EM::Timer.new(5) do
+            client_json ||= ""
+            begin
+              client = JSON.parse(client_json, :symbolize_names => true)
+            rescue JSON::ParserError
+              client = client_json.to_s == "" ? "nonexistent" : "malformed client '#{client_json}'"
+            end
+            $logger.info('deleting client', {
+              :client => client
+            })
+            $redis.srem('clients', client_name)
+            $redis.del('events:' + client_name)
+            $redis.del('client:' + client_name)
+            $redis.smembers('history:' + client_name).callback do |checks|
+              checks.each do |check_name|
+                $redis.del('history:' + client_name + ':' + check_name)
+              end
+              $redis.del('history:' + client_name)
+            end
+          end
+          accepted!
         end
       end
     end
