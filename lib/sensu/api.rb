@@ -24,6 +24,7 @@ module Sensu
         base = Base.new(options)
         $logger = base.logger
         $settings = base.settings
+        base.setup_process
         if $settings[:api][:user] && $settings[:api][:password]
           use Rack::Auth::Basic do |user, password|
             user == $settings[:api][:user] && password == $settings[:api][:password]

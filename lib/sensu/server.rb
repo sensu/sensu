@@ -17,7 +17,7 @@ module Sensu
     end
 
     def initialize(options={})
-      base = Sensu::Base.new(options)
+      base = Base.new(options)
       @logger = base.logger
       @settings = base.settings
       @extensions = base.extensions
@@ -167,7 +167,7 @@ module Sensu
     def event_handlers(event)
       handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || 'default')
       handlers = derive_handlers(handler_list)
-      event_severity = Sensu::SEVERITIES[event[:check][:status]] || 'unknown'
+      event_severity = SEVERITIES[event[:check][:status]] || 'unknown'
       handlers.select do |handler|
         if event[:action] == :flapping && !handler[:handle_flapping]
           @logger.info('handler does not handle flapping events', {
@@ -219,7 +219,7 @@ module Sensu
       end
       execute = Proc.new do
         begin
-          output, status = Sensu::IO.popen(command, 'r+') do |child|
+          output, status = IO.popen(command, 'r+') do |child|
             unless data.nil?
               child.write(data.to_s)
             end
@@ -304,7 +304,7 @@ module Sensu
             end
           when 'tcp'
             begin
-              EM::connect(handler[:socket][:host], handler[:socket][:port], Sensu::SocketHandler) do |socket|
+              EM::connect(handler[:socket][:host], handler[:socket][:port], SocketHandler) do |socket|
                 socket.on_success = Proc.new do
                   @handlers_in_progress_count -= 1
                 end
@@ -360,7 +360,7 @@ module Sensu
         :output => check[:output],
         :status => check[:status]
       }.to_json) do
-        statuses = Sensu::SEVERITIES
+        statuses = SEVERITIES
         statuses.each do |status|
           @redis.hsetnx('aggregate:' + result_set, status, 0)
         end
