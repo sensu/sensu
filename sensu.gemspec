@@ -13,10 +13,10 @@ Gem::Specification.new do |s|
   s.has_rdoc    = false
 
   s.add_dependency('eventmachine', '1.0.0')
-  s.add_dependency('amqp', '0.9.7')
+  s.add_dependency('amqp', '0.9.8')
   s.add_dependency('json')
   s.add_dependency('cabin', '0.4.4')
-  s.add_dependency('ruby-redis', '0.0.2')
+  s.add_dependency('em-redis-unified', '0.4.1')
   s.add_dependency('thin', '1.5.0')
   s.add_dependency('async_sinatra', '1.0.0')
 

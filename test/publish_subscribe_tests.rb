@@ -2,7 +2,7 @@ class TestSensuPublishSubscribe < TestCase
   def test_keepalives
     server, client = base_server_client
     EM::Timer.new(1) do
-      server.redis.get('client:' + @settings[:client][:name]).callback do |client_json|
+      server.redis.get('client:' + @settings[:client][:name]) do |client_json|
         client_attributes = sanitize_keys(JSON.parse(client_json, :symbolize_names => true))
         assert_equal(@settings[:client], client_attributes)
         done
@@ -14,7 +14,7 @@ class TestSensuPublishSubscribe < TestCase
     server, client = base_server_client
     client.setup_standalone
     EM::Timer.new(3) do
-      server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+      server.redis.hgetall('events:' + @settings[:client][:name]) do |events|
         assert(events.has_key?('standalone'))
         standalone = JSON.parse(events['standalone'], :symbolize_names => true)
         assert_equal(@settings[:client][:name], standalone[:output])
@@ -37,7 +37,7 @@ class TestSensuPublishSubscribe < TestCase
     server, client = base_server_client
     server.setup_publisher
     EM::Timer.new(3) do
-      server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+      server.redis.hgetall('events:' + @settings[:client][:name]) do |events|
         assert(events.has_key?('tokens'))
         expected = [@settings[:client][:name], @settings[:client][:nested][:attribute]].join(' ')
         tokens = JSON.parse(events['tokens'], :symbolize_names => true)
@@ -62,7 +62,7 @@ class TestSensuPublishSubscribe < TestCase
       }
       server.publish_check_request(check)
       EM::Timer.new(3) do
-        server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+        server.redis.hgetall('events:' + @settings[:client][:name]) do |events|
           assert(events.include?('arbitrary'))
           event = JSON.parse(events['arbitrary'], :symbolize_names => true)
           assert_equal(255, event[:status])
@@ -88,7 +88,7 @@ class TestSensuPublishSubscribe < TestCase
       }
       server.publish_check_request(check)
       EM::Timer.new(3) do
-        server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+        server.redis.hgetall('events:' + @settings[:client][:name]) do |events|
           assert(events.include?('arbitrary'))
           event = JSON.parse(events['arbitrary'], :symbolize_names => true)
           assert(event[:output] =~ /safe mode/)

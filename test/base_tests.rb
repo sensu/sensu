@@ -69,7 +69,9 @@ class TestSensuBase < TestCase
 
   def test_write_pid
     pid_file = '/tmp/sensu_write_pid'
-    Sensu::Base.new(@options.merge(:pid_file => pid_file))
+    options = @options.merge(:pid_file => pid_file)
+    base = Sensu::Base.new(options)
+    base.setup_process
     assert(File.exists?(pid_file), 'PID file does not exist')
     assert_equal(Process.pid.to_s, File.read(pid_file).chomp)
     done

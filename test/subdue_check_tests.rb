@@ -106,7 +106,7 @@ class TestSensuSubdueCheck < TestCase
     server, client = base_server_client
     server.setup_publisher
     EM::Timer.new(4) do
-      server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+      server.redis.hgetall('events:' + @settings[:client][:name]) do |events|
         assert(events.size > 0, 'Failed to receive events')
         found = events.keys.find_all do |check_name|
           check_name.start_with?('subdue')
