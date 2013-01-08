@@ -360,12 +360,11 @@ module Sensu
         :output => check[:output],
         :status => check[:status]
       }.to_json) do
-        statuses = SEVERITIES
-        statuses.each do |status|
-          @redis.hsetnx('aggregate:' + result_set, status, 0)
+        SEVERITIES.each do |severity|
+          @redis.hsetnx('aggregate:' + result_set, severity, 0)
         end
-        status = (statuses[check[:status]] || 'unknown')
-        @redis.hincrby('aggregate:' + result_set, status, 1) do
+        severity = (SEVERITIES[check[:status]] || 'unknown')
+        @redis.hincrby('aggregate:' + result_set, severity, 1) do
           @redis.hincrby('aggregate:' + result_set, 'total', 1) do
             @redis.sadd('aggregates:' + check[:name], check[:issued]) do
               @redis.sadd('aggregates', check[:name])
