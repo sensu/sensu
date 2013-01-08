@@ -11,7 +11,7 @@ class TestSensuMasterElection < TestCase
 
   def test_master_election
     server1, server2 = two_servers
-    server1.redis.flushall.callback do
+    server1.redis.flushall do
       server1.setup_master_monitor
       server2.setup_master_monitor
       EM::Timer.new(1) do
@@ -23,7 +23,7 @@ class TestSensuMasterElection < TestCase
 
   def test_failover_master_election
     server1, server2 = two_servers
-    server1.redis.set('lock:master', Time.now.to_i - 60).callback do
+    server1.redis.set('lock:master', Time.now.to_i - 60) do
       server1.setup_master_monitor
       server2.setup_master_monitor
       EM::Timer.new(1) do

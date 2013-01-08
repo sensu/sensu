@@ -4,6 +4,8 @@ require File.join(File.dirname(__FILE__), 'socket')
 
 module Sensu
   class Server
+    include Utilities
+
     attr_reader :redis, :amq, :is_master
 
     def self.run(options={})
@@ -23,46 +25,49 @@ module Sensu
       @timers = Array.new
       @master_timers = Array.new
       @handlers_in_progress_count = 0
-      @is_master = false
     end
 
     def setup_redis
       @logger.debug('connecting to redis', {
         :settings => @settings[:redis]
       })
-      connection_failure = Proc.new do
-        @logger.fatal('cannot connect to redis', {
-          :settings => @settings[:redis]
+      @redis = Redis.connect(@settings[:redis])
+      @redis.on_error do |error|
+        @logger.fatal('redis connection error', {
+          :error => error.to_s
         })
-        @logger.fatal('SENSU NOT RUNNING!')
-        if @rabbitmq
-          @rabbitmq.close
-        end
-        exit 2
+        stop
       end
-      @redis = Sensu::Redis.connect(@settings[:redis], :on_tcp_connection_failure => connection_failure)
-      @redis.on_tcp_connection_loss do
+      @redis.before_reconnect do
+        @logger.warn('reconnecting to redis')
         unless testing?
-          @logger.fatal('redis connection closed')
-          stop
+          pause
         end
+      end
+      @redis.after_reconnect do
+        @logger.info('reconnected to redis')
+        resume
       end
     end
 
     def setup_rabbitmq
-      @rabbitmq = RabbitMQ.new
-      @rabbitmq.on_failure = Proc.new do
-        @redis.close
-      end
-      @rabbitmq.on_reconnect = Proc.new do |connection, settings|
-        resign_as_master do
-          connection.periodically_reconnect(5)
-        end
-      end
-      @rabbitmq.on_channel_error = Proc.new do
+      @logger.debug('connecting to rabbitmq', {
+        :settings => @settings[:rabbitmq]
+      })
+      @rabbitmq = RabbitMQ.connect(@settings[:rabbitmq])
+      @rabbitmq.on_error do |error|
+        @logger.fatal('rabbitmq connection error', {
+          :error => error.to_s
+        })
         stop
       end
-      @rabbitmq.connect(@settings[:rabbitmq])
+      @rabbitmq.before_reconnect do
+        @logger.warn('reconnecting to rabbitmq')
+        resign_as_master
+      end
+      @rabbitmq.after_reconnect do
+        @logger.info('reconnected to rabbitmq')
+      end
       @amq = @rabbitmq.channel
       @amq.prefetch(1)
     end
@@ -75,8 +80,8 @@ module Sensu
         @logger.debug('received keepalive', {
           :client => client
         })
-        @redis.set('client:' + client[:name], client.to_json).callback do
-          @redis.sadd('clients', client[:name]).callback do
+        @redis.set('client:' + client[:name], client.to_json) do
+          @redis.sadd('clients', client[:name]) do
             header.ack
           end
         end
@@ -354,15 +359,15 @@ module Sensu
       @redis.hset('aggregation:' + result_set, result[:client], {
         :output => check[:output],
         :status => check[:status]
-      }.to_json).callback do
+      }.to_json) do
         statuses = Sensu::SEVERITIES
         statuses.each do |status|
           @redis.hsetnx('aggregate:' + result_set, status, 0)
         end
         status = (statuses[check[:status]] || 'unknown')
-        @redis.hincrby('aggregate:' + result_set, status, 1).callback do
-          @redis.hincrby('aggregate:' + result_set, 'total', 1).callback do
-            @redis.sadd('aggregates:' + check[:name], check[:issued]).callback do
+        @redis.hincrby('aggregate:' + result_set, status, 1) do
+          @redis.hincrby('aggregate:' + result_set, 'total', 1) do
+            @redis.sadd('aggregates:' + check[:name], check[:issued]) do
               @redis.sadd('aggregates', check[:name])
             end
           end
@@ -374,7 +379,7 @@ module Sensu
       @logger.debug('processing result', {
         :result => result
       })
-      @redis.get('client:' + result[:client]).callback do |client_json|
+      @redis.get('client:' + result[:client]) do |client_json|
         unless client_json.nil?
           client = JSON.parse(client_json, :symbolize_names => true)
           check = case
@@ -388,8 +393,8 @@ module Sensu
           end
           @redis.sadd('history:' + client[:name], check[:name])
           history_key = 'history:' + client[:name] + ':' + check[:name]
-          @redis.rpush(history_key, check[:status]).callback do
-            @redis.lrange(history_key, -21, -1).callback do |history|
+          @redis.rpush(history_key, check[:status]) do
+            @redis.lrange(history_key, -21, -1) do |history|
               check[:history] = history
               total_state_change = 0
               unless history.count < 21
@@ -406,7 +411,7 @@ module Sensu
                 total_state_change = (state_changes.fdiv(20) * 100).to_i
                 @redis.ltrim(history_key, -21, -1)
               end
-              @redis.hget('events:' + client[:name], check[:name]).callback do |event_json|
+              @redis.hget('events:' + client[:name], check[:name]) do |event_json|
                 previous_occurrence = event_json ? JSON.parse(event_json, :symbolize_names => true) : false
                 is_flapping = false
                 if check.has_key?(:low_flap_threshold) && check.has_key?(:high_flap_threshold)
@@ -436,7 +441,7 @@ module Sensu
                     :handlers => Array((check[:handlers] || check[:handler]) || 'default'),
                     :flapping => is_flapping,
                     :occurrences => event[:occurrences]
-                  }.to_json).callback do
+                  }.to_json) do
                     unless check[:handle] == false
                       event[:action] = is_flapping ? :flapping : :create
                       handle_event(event)
@@ -444,7 +449,7 @@ module Sensu
                   end
                 elsif previous_occurrence
                   unless check[:auto_resolve] == false && !check[:force_resolve]
-                    @redis.hdel('events:' + client[:name], check[:name]).callback do
+                    @redis.hdel('events:' + client[:name], check[:name]) do
                       unless check[:handle] == false
                         event[:occurrences] = previous_occurrence[:occurrences]
                         event[:action] = :resolve
@@ -526,9 +531,9 @@ module Sensu
     def setup_keepalive_monitor
       @logger.debug('monitoring client keepalives')
       @master_timers << EM::PeriodicTimer.new(30) do
-        @redis.smembers('clients').callback do |clients|
+        @redis.smembers('clients') do |clients|
           clients.each do |client_name|
-            @redis.get('client:' + client_name).callback do |client_json|
+            @redis.get('client:' + client_name) do |client_json|
               client = JSON.parse(client_json, :symbolize_names => true)
               check = {
                 :name => 'keepalive',
@@ -545,7 +550,7 @@ module Sensu
                 check[:status] = 1
                 publish_result(client, check)
               else
-                @redis.hexists('events:' + client[:name], 'keepalive').callback do |exists|
+                @redis.hexists('events:' + client[:name], 'keepalive') do |exists|
                   if exists
                     check[:output] = 'Keep-alive sent from client'
                     check[:status] = 0
@@ -562,16 +567,16 @@ module Sensu
     def setup_aggregation_pruner
       @logger.debug('pruning aggregations')
       @master_timers << EM::PeriodicTimer.new(20) do
-        @redis.smembers('aggregates').callback do |checks|
+        @redis.smembers('aggregates') do |checks|
           checks.each do |check_name|
-            @redis.smembers('aggregates:' + check_name).callback do |aggregates|
+            @redis.smembers('aggregates:' + check_name) do |aggregates|
               aggregates.sort!
               until aggregates.size <= 20
                 check_issued = aggregates.shift
-                @redis.srem('aggregates:' + check_name, check_issued).callback do
+                @redis.srem('aggregates:' + check_name, check_issued) do
                   result_set = check_name + ':' + check_issued.to_s
-                  @redis.del('aggregate:' + result_set).callback do
-                    @redis.del('aggregation:' + result_set).callback do
+                  @redis.del('aggregate:' + result_set) do
+                    @redis.del('aggregation:' + result_set) do
                       @logger.debug('pruned aggregation', {
                         :check => {
                           :name => check_name,
@@ -595,15 +600,15 @@ module Sensu
     end
 
     def request_master_election
-      @redis.setnx('lock:master', Time.now.to_i).callback do |created|
+      @redis.setnx('lock:master', Time.now.to_i) do |created|
         if created
           @is_master = true
           @logger.info('i am the master')
           master_duties
         else
-          @redis.get('lock:master').callback do |timestamp|
+          @redis.get('lock:master') do |timestamp|
             if Time.now.to_i - timestamp.to_i >= 60
-              @redis.getset('lock:master', Time.now.to_i).callback do |previous|
+              @redis.getset('lock:master', Time.now.to_i) do |previous|
                 if previous == timestamp
                   @is_master = true
                   @logger.info('i am now the master')
@@ -620,7 +625,7 @@ module Sensu
       request_master_election
       @timers << EM::PeriodicTimer.new(20) do
         if @is_master
-          @redis.set('lock:master', Time.now.to_i).callback do
+          @redis.set('lock:master', Time.now.to_i) do
             @logger.debug('updated master lock timestamp')
           end
         elsif @rabbitmq.connected?
@@ -630,22 +635,25 @@ module Sensu
     end
 
     def resign_as_master(&block)
+      block ||= Proc.new {}
       if @is_master
         @logger.warn('resigning as master')
         @master_timers.each do |timer|
           timer.cancel
         end
         @master_timers = Array.new
-        @redis.del('lock:master').callback do
-          @logger.info('removed master lock')
-          @is_master = false
+        if @redis.connected?
+          @redis.del('lock:master') do
+            @logger.info('removed master lock')
+            @is_master = false
+          end
         end
         timestamp = Time.now.to_i
         retry_until_true do
           if !@is_master
             block.call
             true
-          elsif !@redis.connected? || Time.now.to_i - timestamp >= 5
+          elsif Time.now.to_i - timestamp >= 3
             @logger.warn('failed to remove master lock')
             @is_master = false
             block.call
@@ -691,27 +699,56 @@ module Sensu
       end
     end
 
-    def start
-      setup_redis
-      setup_rabbitmq
+    def bootstrap
       setup_keepalives
       setup_results
       setup_master_monitor
+      @state = :running
+      true
+    end
+
+    def start
+      setup_redis
+      setup_rabbitmq
+      bootstrap
+    end
+
+    def pause(&block)
+      unless @state == :pausing || @state == :paused
+        @state = :pausing
+        @timers.each do |timer|
+          timer.cancel
+        end
+        @timers = Array.new
+        unsubscribe do
+          resign_as_master do
+            @state = :paused
+            if block
+              block.call
+            end
+          end
+        end
+      end
+    end
+
+    def resume
+      retry_until_true(1) do
+        if @state == :paused
+          if @redis.connected? && @rabbitmq.connected?
+            bootstrap
+          end
+        end
+      end
     end
 
     def stop
       @logger.warn('stopping')
-      @timers.each do |timer|
-        timer.cancel
-      end
-      unsubscribe do
-        resign_as_master do
-          complete_handlers_in_progress do
-            @rabbitmq.close
-            @redis.close
-            @logger.warn('stopping reactor')
-            EM::stop_event_loop
-          end
+      pause do
+        complete_handlers_in_progress do
+          @redis.close
+          @rabbitmq.close
+          @logger.warn('stopping reactor')
+          EM::stop_event_loop
         end
       end
     end
@@ -723,34 +760,6 @@ module Sensu
             :signal => signal
           })
           stop
-        end
-      end
-    end
-
-    private
-
-    def testing?
-      File.basename($0) == 'rake'
-    end
-
-    def retry_until_true(wait=0.5, &block)
-      EM::Timer.new(wait) do
-        unless block.call
-          retry_until_true(wait, &block)
-        end
-      end
-    end
-
-    def hash_values_equal?(hash_one, hash_two)
-      hash_one.keys.all? do |key|
-        if hash_one[key] == hash_two[key]
-          true
-        else
-          if hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
-            hash_values_equal?(hash_one[key], hash_two[key])
-          else
-            false
-          end
         end
       end
     end

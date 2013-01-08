@@ -8,6 +8,7 @@ require 'time'
 require 'uri'
 
 require File.join(File.dirname(__FILE__), 'constants')
+require File.join(File.dirname(__FILE__), 'utilities')
 require File.join(File.dirname(__FILE__), 'cli')
 require File.join(File.dirname(__FILE__), 'logstream')
 require File.join(File.dirname(__FILE__), 'settings')

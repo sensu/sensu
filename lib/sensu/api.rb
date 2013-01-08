@@ -35,29 +35,38 @@ module Sensu
         $logger.debug('connecting to redis', {
           :settings => $settings[:redis]
         })
-        connection_failure = Proc.new do
-          $logger.fatal('cannot connect to redis', {
-            :settings => $settings[:redis]
+        $redis = Redis.connect($settings[:redis])
+        $redis.on_error do |error|
+          $logger.fatal('redis connection error', {
+            :error => error.to_s
           })
-          $logger.fatal('SENSU NOT RUNNING!')
-          if $rabbitmq
-            $rabbitmq.close
-          end
-          exit 2
+          stop
         end
-        $redis = Redis.connect($settings[:redis], :on_tcp_connection_failure => connection_failure)
-        $redis.on_tcp_connection_loss do |connection, settings|
+        $redis.before_reconnect do
           $logger.warn('reconnecting to redis')
-          connection.reconnect(false, 10)
+        end
+        $redis.after_reconnect do
+          $logger.info('reconnected to redis')
         end
       end
 
       def setup_rabbitmq
-        $rabbitmq = RabbitMQ.new
-        $rabbitmq.on_failure = Proc.new do
-          $redis.close
+        $logger.debug('connecting to rabbitmq', {
+          :settings => $settings[:rabbitmq]
+        })
+        $rabbitmq = RabbitMQ.connect($settings[:rabbitmq])
+        $rabbitmq.on_error do |error|
+          $logger.fatal('rabbitmq connection error', {
+            :error => error.to_s
+          })
+          stop
         end
-        $rabbitmq.connect($settings[:rabbitmq])
+        $rabbitmq.before_reconnect do
+          $logger.warn('reconnecting to rabbitmq')
+        end
+        $rabbitmq.after_reconnect do
+          $logger.info('reconnected to rabbitmq')
+        end
         $amq = $rabbitmq.channel
       end
 
@@ -91,17 +100,17 @@ module Sensu
         bootstrap(options)
         start
         $settings[:client][:timestamp] = Time.now.to_i
-        $redis.set('client:' + $settings[:client][:name], $settings[:client].to_json).callback do
-          $redis.sadd('clients', $settings[:client][:name]).callback do
+        $redis.set('client:' + $settings[:client][:name], $settings[:client].to_json) do
+          $redis.sadd('clients', $settings[:client][:name]) do
             $redis.hset('events:' + $settings[:client][:name], 'test', {
               :output => 'CRITICAL',
               :status => 2,
               :issued => Time.now.to_i,
               :flapping => false,
               :occurrences => 1
-            }.to_json).callback do
-              $redis.set('stash:test/test', {:key => 'value'}.to_json).callback do
-                $redis.sadd('stashes', 'test/test').callback do
+            }.to_json) do
+              $redis.set('stash:test/test', {:key => 'value'}.to_json) do
+                $redis.sadd('stashes', 'test/test') do
                   EM::Timer.new(0.5) do
                     block.call
                   end
@@ -240,10 +249,10 @@ module Sensu
 
     aget '/clients' do
       response = Array.new
-      $redis.smembers('clients').callback do |clients|
+      $redis.smembers('clients') do |clients|
         unless clients.empty?
           clients.each_with_index do |client_name, index|
-            $redis.get('client:' + client_name).callback do |client_json|
+            $redis.get('client:' + client_name) do |client_json|
               response.push(JSON.parse(client_json))
               if index == clients.size - 1
                 body response.to_json
@@ -257,7 +266,7 @@ module Sensu
     end
 
     aget %r{/clients?/([\w\.-]+)$} do |client_name|
-      $redis.get('client:' + client_name).callback do |client_json|
+      $redis.get('client:' + client_name) do |client_json|
         unless client_json.nil?
           body client_json
         else
@@ -267,9 +276,9 @@ module Sensu
     end
 
     adelete %r{/clients?/([\w\.-]+)$} do |client_name|
-      $redis.get('client:' + client_name).callback do |client_json|
+      $redis.get('client:' + client_name) do |client_json|
         unless client_json.nil?
-          $redis.hgetall('events:' + client_name).callback do |events|
+          $redis.hgetall('events:' + client_name) do |events|
             events.each do |check_name, event_json|
               resolve_event(event_hash(event_json, client_name, check_name))
             end
@@ -281,7 +290,7 @@ module Sensu
               $redis.srem('clients', client_name)
               $redis.del('events:' + client_name)
               $redis.del('client:' + client_name)
-              $redis.smembers('history:' + client_name).callback do |checks|
+              $redis.smembers('history:' + client_name) do |checks|
                 checks.each do |check_name|
                   $redis.del('history:' + client_name + ':' + check_name)
                 end
@@ -346,10 +355,10 @@ module Sensu
 
     aget '/events' do
       response = Array.new
-      $redis.smembers('clients').callback do |clients|
+      $redis.smembers('clients') do |clients|
         unless clients.empty?
           clients.each_with_index do |client_name, index|
-            $redis.hgetall('events:' + client_name).callback do |events|
+            $redis.hgetall('events:' + client_name) do |events|
               events.each do |check_name, event_json|
                 response.push(event_hash(event_json, client_name, check_name))
               end
@@ -366,7 +375,7 @@ module Sensu
 
     aget %r{/events/([\w\.-]+)$} do |client_name|
       response = Array.new
-      $redis.hgetall('events:' + client_name).callback do |events|
+      $redis.hgetall('events:' + client_name) do |events|
         events.each do |check_name, event_json|
           response.push(event_hash(event_json, client_name, check_name))
         end
@@ -375,7 +384,7 @@ module Sensu
     end
 
     aget %r{/events?/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
-      $redis.hgetall('events:' + client_name).callback do |events|
+      $redis.hgetall('events:' + client_name) do |events|
         event_json = events[check_name]
         unless event_json.nil?
           body event_hash(event_json, client_name, check_name).to_json
@@ -386,7 +395,7 @@ module Sensu
     end
 
     adelete %r{/events?/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
-      $redis.hgetall('events:' + client_name).callback do |events|
+      $redis.hgetall('events:' + client_name) do |events|
         if events.include?(check_name)
           resolve_event(event_hash(events[check_name], client_name, check_name))
           accepted!
@@ -402,7 +411,7 @@ module Sensu
         client_name = post_body[:client]
         check_name = post_body[:check]
         if client_name.is_a?(String) && check_name.is_a?(String)
-          $redis.hgetall('events:' + client_name).callback do |events|
+          $redis.hgetall('events:' + client_name) do |events|
             if events.include?(check_name)
               resolve_event(event_hash(events[check_name], client_name, check_name))
               accepted!
@@ -420,7 +429,7 @@ module Sensu
 
     aget '/aggregates' do
       response = Array.new
-      $redis.smembers('aggregates').callback do |checks|
+      $redis.smembers('aggregates') do |checks|
         unless checks.empty?
           limit = 10
           if params[:limit]
@@ -428,7 +437,7 @@ module Sensu
           end
           unless limit.nil?
             checks.each_with_index do |check_name, index|
-              $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+              $redis.smembers('aggregates:' + check_name) do |aggregates|
                 collection = {
                   :check => check_name,
                   :issued => aggregates.sort.reverse.take(limit)
@@ -449,7 +458,7 @@ module Sensu
     end
 
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
-      $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+      $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
           limit = 10
           if params[:limit]
@@ -467,15 +476,15 @@ module Sensu
     end
 
     adelete %r{/aggregates/([\w\.-]+)$} do |check_name|
-      $redis.smembers('aggregates:' + check_name).callback do |aggregates|
+      $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
           aggregates.each do |check_issued|
             result_set = check_name + ':' + check_issued
             $redis.del('aggregation:' + result_set)
             $redis.del('aggregate:' + result_set)
           end
-          $redis.del('aggregates:' + check_name).callback do
-            $redis.srem('aggregates', check_name).callback do
+          $redis.del('aggregates:' + check_name) do
+            $redis.srem('aggregates', check_name) do
               no_content!
             end
           end
@@ -487,13 +496,13 @@ module Sensu
 
     aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)$} do |check_name, check_issued|
       result_set = check_name + ':' + check_issued
-      $redis.hgetall('aggregate:' + result_set).callback do |aggregate|
+      $redis.hgetall('aggregate:' + result_set) do |aggregate|
         unless aggregate.empty?
           response = aggregate.inject(Hash.new) do |totals, (status, count)|
             totals[status] = Integer(count)
             totals
           end
-          $redis.hgetall('aggregation:' + result_set).callback do |results|
+          $redis.hgetall('aggregation:' + result_set) do |results|
             parsed_results = results.inject(Array.new) do |parsed, (client_name, check_json)|
               check = JSON.parse(check_json, :symbolize_names => true)
               parsed.push(check.merge(:client => client_name))
@@ -522,8 +531,8 @@ module Sensu
     apost %r{/stash(?:es)?/(.*)} do |path|
       begin
         post_body = JSON.parse(request.body.read)
-        $redis.set('stash:' + path, post_body.to_json).callback do
-          $redis.sadd('stashes', path).callback do
+        $redis.set('stash:' + path, post_body.to_json) do
+          $redis.sadd('stashes', path) do
             created!
           end
         end
@@ -533,7 +542,7 @@ module Sensu
     end
 
     aget %r{/stash(?:es)?/(.*)} do |path|
-      $redis.get('stash:' + path).callback do |stash_json|
+      $redis.get('stash:' + path) do |stash_json|
         unless stash_json.nil?
           body stash_json
         else
@@ -543,10 +552,10 @@ module Sensu
     end
 
     adelete %r{/stash(?:es)?/(.*)} do |path|
-      $redis.exists('stash:' + path).callback do |stash_exists|
+      $redis.exists('stash:' + path) do |stash_exists|
         if stash_exists
-          $redis.srem('stashes', path).callback do
-            $redis.del('stash:' + path).callback do
+          $redis.srem('stashes', path) do
+            $redis.del('stash:' + path) do
               no_content!
             end
           end
@@ -568,7 +577,7 @@ module Sensu
         if post_body.is_a?(Array) && post_body.size > 0
           response = Hash.new
           post_body.each_with_index do |path, index|
-            $redis.get('stash:' + path).callback do |stash_json|
+            $redis.get('stash:' + path) do |stash_json|
               unless stash_json.nil?
                 response[path] = JSON.parse(stash_json)
               end

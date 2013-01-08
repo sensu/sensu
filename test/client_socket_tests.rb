@@ -16,7 +16,7 @@ class TestSensuClientSocket < TestCase
       end
     end
     EM::Timer.new(3) do
-      server.redis.hgetall('events:' + @settings[:client][:name]).callback do |events|
+      server.redis.hgetall('events:' + @settings[:client][:name]) do |events|
         assert(events.include?('tcp_socket'))
         assert(events.include?('udp_socket'))
         done

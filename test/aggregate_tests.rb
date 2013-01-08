@@ -2,7 +2,7 @@ class TestSensuAggregate < TestCase
   def test_check_aggregate
     server = Sensu::Server.new(@options)
     server.setup_redis
-    server.redis.flushall.callback do
+    server.redis.flushall do
       5.times do |seconds|
         issued = Time.now.to_i + seconds
         %w[foo bar].each_with_index do |client_name, index|

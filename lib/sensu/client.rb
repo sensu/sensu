@@ -3,6 +3,8 @@ require File.join(File.dirname(__FILE__), 'socket')
 
 module Sensu
   class Client
+    include Utilities
+
     def self.run(options={})
       client = self.new(options)
       EM::run do
@@ -21,8 +23,22 @@ module Sensu
     end
 
     def setup_rabbitmq
-      @rabbitmq = RabbitMQ.new
-      @rabbitmq.connect(@settings[:rabbitmq])
+      @logger.debug('connecting to rabbitmq', {
+        :settings => @settings[:rabbitmq]
+      })
+      @rabbitmq = RabbitMQ.connect(@settings[:rabbitmq])
+      @rabbitmq.on_error do |error|
+        @logger.fatal('rabbitmq connection error', {
+          :error => error.to_s
+        })
+        stop
+      end
+      @rabbitmq.before_reconnect do
+        @logger.warn('reconnecting to rabbitmq')
+      end
+      @rabbitmq.after_reconnect do
+        @logger.info('reconnected to rabbitmq')
+      end
       @amq = @rabbitmq.channel
     end
 
@@ -240,20 +256,6 @@ module Sensu
             :signal => signal
           })
           stop
-        end
-      end
-    end
-
-    private
-
-    def testing?
-      File.basename($0) == 'rake'
-    end
-
-    def retry_until_true(wait=0.5, &block)
-      EM::Timer.new(wait) do
-        unless block.call
-          retry_until_true(wait, &block)
         end
       end
     end
