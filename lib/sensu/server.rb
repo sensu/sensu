@@ -703,7 +703,6 @@ module Sensu
       setup_results
       setup_master_monitor
       @state = :running
-      true
     end
 
     def start
@@ -735,6 +734,7 @@ module Sensu
         if @state == :paused
           if @redis.connected? && @rabbitmq.connected?
             bootstrap
+            true
           end
         end
       end
@@ -742,6 +742,7 @@ module Sensu
 
     def stop
       @logger.warn('stopping')
+      @state = :stopping
       pause do
         complete_handlers_in_progress do
           @redis.close
