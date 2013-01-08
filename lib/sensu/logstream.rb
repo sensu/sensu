@@ -3,7 +3,9 @@ gem 'cabin', '0.4.4'
 require 'cabin'
 
 module Sensu
-  class Logger
+  class LogStream
+    attr_reader :logger
+
     def initialize
       @logger = Cabin::Channel.get
       STDOUT.sync = true
@@ -15,19 +17,16 @@ module Sensu
       @logger.level = log_level
     end
 
-    def reopen(file=nil)
-      file ||= @log_file
-      unless file.nil?
-        @log_file = file
-        if File.writable?(file) || !File.exist?(file) && File.writable?(File.dirname(file))
-          STDOUT.reopen(file, 'a')
-          STDOUT.sync = true
-          STDERR.reopen(STDOUT)
-        else
-          @logger.error('log file is not writable', {
-            :log_file => file
-          })
-        end
+    def reopen(file)
+      @log_file = file
+      if File.writable?(file) || !File.exist?(file) && File.writable?(File.dirname(file))
+        STDOUT.reopen(file, 'a')
+        STDOUT.sync = true
+        STDERR.reopen(STDOUT)
+      else
+        @logger.error('log file is not writable', {
+          :log_file => file
+        })
       end
     end
 
@@ -39,11 +38,15 @@ module Sensu
       end
       if Signal.list.include?('USR2')
         Signal.trap('USR2') do
-          reopen(@log_file)
+          if @log_file
+            reopen(@log_file)
+          end
         end
       end
     end
+  end
 
+  class Logger
     def self.get
       Cabin::Channel.get
     end
@@ -52,6 +55,7 @@ module Sensu
   class NullLogger
     [:debug, :info, :warn, :error, :fatal].each do |method|
       define_method(method) do |*arguments|
+        true
       end
     end
 

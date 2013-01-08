@@ -1,7 +1,7 @@
 module Sensu
   class Process
     def initialize
-      @logger = Sensu::Logger.get
+      @logger = Logger.get
     end
 
     def write_pid(file)

@@ -1,11 +1,13 @@
 module Sensu
   class Settings
+    include Utilities
+
     attr_reader :indifferent_access, :loaded_env, :loaded_files
 
     def initialize
-      @logger = Sensu::Logger.get
+      @logger = Logger.get
       @settings = Hash.new
-      Sensu::SETTINGS_CATEGORIES.each do |category|
+      SETTINGS_CATEGORIES.each do |category|
         @settings[category] = Hash.new
       end
       @indifferent_access = false
@@ -14,7 +16,7 @@ module Sensu
     end
 
     def indifferent_access!
-      @settings = indifferent_access(@settings)
+      @settings = with_indifferent_access(@settings)
       @indifferent_access = true
     end
 
@@ -25,7 +27,7 @@ module Sensu
       @settings[key.to_sym]
     end
 
-    Sensu::SETTINGS_CATEGORIES.each do |category|
+    SETTINGS_CATEGORIES.each do |category|
       define_method(category) do
         @settings[category].map do |name, details|
           details.merge(:name => name.to_s)
@@ -97,6 +99,12 @@ module Sensu
       end
     end
 
+    def load_directory(directory)
+      Dir.glob(File.join(directory, '**/*.json')).each do |file|
+        load_file(file)
+      end
+    end
+
     def set_env
       ENV['SENSU_CONFIG_FILES'] = @loaded_files.join(':')
     end
@@ -120,52 +128,6 @@ module Sensu
     end
 
     private
-
-    def indifferent_access(hash)
-      hash = indifferent_hash.merge(hash)
-      hash.each do |key, value|
-        if value.is_a?(Hash)
-          hash[key] = indifferent_access(value)
-        end
-      end
-    end
-
-    def indifferent_hash
-      Hash.new do |hash, key|
-        if key.is_a?(String)
-          hash[key.to_sym]
-        end
-      end
-    end
-
-    def deep_merge(hash_one, hash_two)
-      merged = hash_one.dup
-      hash_two.each do |key, value|
-        merged[key] = case
-        when hash_one[key].is_a?(Hash) && value.is_a?(Hash)
-          deep_merge(hash_one[key], value)
-        when hash_one[key].is_a?(Array) && value.is_a?(Array)
-          hash_one[key].concat(value).uniq
-        else
-          value
-        end
-      end
-      merged
-    end
-
-    def deep_diff(hash_one, hash_two)
-      keys = hash_one.keys.concat(hash_two.keys).uniq
-      keys.inject(Hash.new) do |diff, key|
-        unless hash_one[key] == hash_two[key]
-          if hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
-            diff[key] = deep_diff(hash_one[key], hash_two[key])
-          else
-            diff[key] = [hash_one[key], hash_two[key]]
-          end
-        end
-        diff
-      end
-    end
 
     def invalid(reason, details={})
       @logger.fatal('invalid settings', {
@@ -490,7 +452,7 @@ module Sensu
             })
           end
           handler[:severities].each do |severity|
-            unless Sensu::SEVERITIES.include?(severity)
+            unless SEVERITIES.include?(severity)
               invalid('handler severities are invalid', {
                 :handler => handler
               })

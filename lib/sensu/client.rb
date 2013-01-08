@@ -3,6 +3,8 @@ require File.join(File.dirname(__FILE__), 'socket')
 
 module Sensu
   class Client
+    include Utilities
+
     def self.run(options={})
       client = self.new(options)
       EM::run do
@@ -12,9 +14,10 @@ module Sensu
     end
 
     def initialize(options={})
-      @logger = Sensu::Logger.get
-      base = Sensu::Base.new(options)
+      base = Base.new(options)
+      @logger = base.logger
       @settings = base.settings
+      base.setup_process
       @timers = Array.new
       @checks_in_progress = Array.new
     end
@@ -23,30 +26,20 @@ module Sensu
       @logger.debug('connecting to rabbitmq', {
         :settings => @settings[:rabbitmq]
       })
-      connection_failure = Proc.new do
-        @logger.fatal('cannot connect to rabbitmq', {
-          :settings => @settings[:rabbitmq]
+      @rabbitmq = RabbitMQ.connect(@settings[:rabbitmq])
+      @rabbitmq.on_error do |error|
+        @logger.fatal('rabbitmq connection error', {
+          :error => error.to_s
         })
-        @logger.fatal('SENSU NOT RUNNING!')
-        exit 2
+        stop
       end
-      @rabbitmq = AMQP.connect(@settings[:rabbitmq], {
-        :on_tcp_connection_failure => connection_failure,
-        :on_possible_authentication_failure => connection_failure
-      })
-      @rabbitmq.logger = Sensu::NullLogger.get
-      @rabbitmq.on_tcp_connection_loss do |connection, settings|
-        unless connection.reconnecting?
-          @logger.warn('reconnecting to rabbitmq')
-          connection.periodically_reconnect(5)
-        end
+      @rabbitmq.before_reconnect do
+        @logger.warn('reconnecting to rabbitmq')
       end
-      @rabbitmq.on_skipped_heartbeats do
-        @logger.warn('skipped rabbitmq heartbeat')
-        @logger.warn('rabbitmq heartbeats are not recommended for clients')
+      @rabbitmq.after_reconnect do
+        @logger.info('reconnected to rabbitmq')
       end
-      @amq = AMQP::Channel.new(@rabbitmq)
-      @amq.auto_recovery = true
+      @amq = @rabbitmq.channel
     end
 
     def publish_keepalive
@@ -102,7 +95,7 @@ module Sensu
           execute = Proc.new do
             started = Time.now.to_f
             begin
-              check[:output], check[:status] = Sensu::IO.popen(command, 'r', check[:timeout])
+              check[:output], check[:status] = IO.popen(command, 'r', check[:timeout])
             rescue => error
               @logger.warn('unexpected error', {
                 :error => error.to_s
@@ -184,8 +177,9 @@ module Sensu
       stagger = testing? ? 0 : 2
       @settings.checks.each do |check|
         if check[:standalone]
-          standalone_check_count = (standalone_check_count + 1) % 30
-          @timers << EM::Timer.new(stagger * standalone_check_count) do
+          standalone_check_count += 1
+          scheduling_delay = stagger * standalone_check_count % 30
+          @timers << EM::Timer.new(scheduling_delay) do
             interval = testing? ? 0.5 : check[:interval]
             @timers << EM::PeriodicTimer.new(interval) do
               if @rabbitmq.connected?
@@ -200,14 +194,14 @@ module Sensu
 
     def setup_sockets
       @logger.debug('binding client tcp socket')
-      EM::start_server('127.0.0.1', 3030, Sensu::Socket) do |socket|
+      EM::start_server('127.0.0.1', 3030, Socket) do |socket|
         socket.protocol = :tcp
         socket.logger = @logger
         socket.settings = @settings
         socket.amq = @amq
       end
       @logger.debug('binding client udp socket')
-      EM::open_datagram_socket('127.0.0.1', 3030, Sensu::Socket) do |socket|
+      EM::open_datagram_socket('127.0.0.1', 3030, Socket) do |socket|
         socket.protocol = :udp
         socket.logger = @logger
         socket.settings = @settings
@@ -262,20 +256,6 @@ module Sensu
             :signal => signal
           })
           stop
-        end
-      end
-    end
-
-    private
-
-    def testing?
-      File.basename($0) == 'rake'
-    end
-
-    def retry_until_true(wait=0.5, &block)
-      EM::Timer.new(wait) do
-        unless block.call
-          retry_until_true(wait, &block)
         end
       end
     end
