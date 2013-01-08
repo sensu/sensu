@@ -39,7 +39,7 @@ module Sensu
         :on_possible_authentication_failure => on_failure
       })
       @connection.logger = NullLogger.get
-      @connection.on_tcp_connection_loss do |connection|
+      @connection.on_tcp_connection_loss do |connection, settings|
         unless connection.reconnecting?
           @before_reconnect.call
           connection.periodically_reconnect(5)
