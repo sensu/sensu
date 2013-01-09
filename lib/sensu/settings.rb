@@ -113,7 +113,7 @@ module Sensu
       @logger.debug('validating settings')
       validate_checks
       case File.basename($0)
-      when 'rake'
+      when 'rspec'
         validate_client
         validate_api
         validate_server

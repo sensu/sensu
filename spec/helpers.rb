@@ -1,13 +1,26 @@
 require 'rspec'
 
 module Helpers
-  def options
+  def setup_options
     @options = {
       :config_file => File.join(File.dirname(__FILE__), 'config.json'),
       :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
       :extension_dir => File.join(File.dirname(__FILE__), 'extensions'),
       :log_level => :fatal
     }
+  end
+
+  def options
+    @options ? @options : setup_options
+  end
+
+  def setup_redis
+    @redis = EM::Protocols::Redis.connect
+    @redis
+  end
+
+  def redis
+    @redis ? @redis : setup_redis
   end
 
   def setup_amq

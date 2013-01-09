@@ -1,6 +1,61 @@
 {
-  "rabbitmq": {
-    "host": "localhost"
+  "api": {
+    "host": "localhost",
+    "port": 4567,
+    "user": "foo",
+    "password": "bar"
+  },
+  "filters": {
+    "production": {
+      "attributes": {
+        "client": {
+          "environment": "production"
+        }
+      }
+    },
+    "development": {
+      "negate": true,
+      "attributes": {
+        "client": {
+          "environment": "production"
+        }
+      }
+    }
+  },
+  "mutators": {
+    "tag": {
+      "command": "./spec/mutators/tag.rb"
+    }
+  },
+  "handlers": {
+    "default": {
+      "type": "set",
+      "handlers": [
+        "debug"
+      ]
+    },
+    "file": {
+      "type": "pipe",
+      "command": "cat > /tmp/sensu_event"
+    },
+    "filtered": {
+      "type": "pipe",
+      "command": "cat > /tmp/sensu_event",
+      "filter": "development"
+    },
+    "severities": {
+      "type": "pipe",
+      "command": "cat > /tmp/sensu_event",
+      "severities": [
+        "critical",
+        "unknown"
+      ]
+    },
+    "flapping": {
+      "type": "pipe",
+      "command": "cat > /tmp/sensu_event",
+      "handle_flapping": true
+    }
   },
   "checks": {
     "tokens": {

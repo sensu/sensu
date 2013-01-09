@@ -5,8 +5,7 @@ describe "Sensu::Client" do
   include Helpers
 
   before do
-    options
-    @client = Sensu::Client.new(@options)
+    @client = Sensu::Client.new(options)
   end
 
   it "can connect to rabbitmq" do

@@ -65,6 +65,7 @@ module Sensu
     end
 
     def self.connect(options={})
+      options ||= Hash.new
       rabbitmq = self.new
       rabbitmq.connect(options)
       rabbitmq

@@ -1,7 +1,7 @@
 module Sensu
   module Utilities
     def testing?
-      File.basename($0) == 'rake'
+      File.basename($0) == 'rspec'
     end
 
     def retry_until_true(wait=0.5, &block)
