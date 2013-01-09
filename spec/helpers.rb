@@ -33,10 +33,6 @@ module Helpers
     @amq ? @amq : setup_amq
   end
 
-  def epoch
-    Time.now.to_i
-  end
-
   def timer(delay, &block)
     periodic_timer = EM::PeriodicTimer.new(delay) do
       block.call
@@ -55,6 +51,31 @@ module Helpers
 
   def async_done
     EM::stop_event_loop
+  end
+
+  def epoch
+    Time.now.to_i
+  end
+
+  def event_template
+    {
+      :client => {
+        :name => 'i-424242',
+        :address => '127.0.0.1',
+        :subscriptions => [
+          'test'
+        ]
+      },
+      :check => {
+        :name => 'foobar',
+        :issued => epoch,
+        :output => 'WARNING',
+        :status => 1,
+        :history => [1]
+      },
+      :occurrences => 1,
+      :action => :create
+    }
   end
 
   class TestServer < EM::Connection

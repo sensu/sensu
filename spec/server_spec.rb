@@ -129,11 +129,8 @@ describe "Sensu::Server" do
   end
 
   it "can determine if a event is to be filtered" do
-    event = {
-      :client => {
-        :environment => 'production'
-      }
-    }
+    event = event_template
+    event[:client][:environment] = 'production'
     @server.event_filtered?("production", event).should be_false
     @server.event_filtered?("development", event).should be_true
   end
@@ -151,20 +148,9 @@ describe "Sensu::Server" do
   end
 
   it "can determine handlers for an event" do
-    event = {
-      :client => {
-        :environment => 'production'
-      },
-      :check => {
-        :status => 1,
-        :handlers => [
-          'file',
-          'filtered',
-          'severities'
-        ]
-      },
-      :action => :create
-    }
+    event = event_template
+    event[:client][:environment] = 'production'
+    event[:check][:handlers] = ['file', 'filtered', 'severities']
     expected = [
       {
         :name => 'file',
@@ -228,15 +214,11 @@ describe "Sensu::Server" do
 
   it "can mutate event data" do
     async_wrapper do
-      event = {
-        :check => {
-          :output => 'foobar'
-        }
-      }
+      event = event_template
       @server.mutate_event_data(nil, event) do |event_data|
         event_data.should eq(event.to_json)
         @server.mutate_event_data('only_check_output', event) do |event_data|
-          event_data.should eq('foobar')
+          event_data.should eq('WARNING')
           @server.mutate_event_data('tag', event) do |event_data|
             expected = event.merge(:mutated => true).to_json
             event_data.chomp.should eq(expected)
@@ -248,18 +230,8 @@ describe "Sensu::Server" do
   end
 
   it "can handle an event with a pipe handler" do
-    event = {
-      :client => {
-        :name => 'foo'
-      },
-      :check => {
-        :name => 'bar',
-        :output => 'foobar',
-        :status => 3,
-        :handler => 'file'
-      },
-      :action => :create
-    }
+    event = event_template
+    event[:check][:handler] = 'file'
     async_wrapper do
       @server.handle_event(event)
       timer(1) do
@@ -272,18 +244,8 @@ describe "Sensu::Server" do
 
   it "can handle an event with a tcp handler" do
     async_wrapper do
-      event = {
-        :client => {
-          :name => 'foo'
-        },
-        :check => {
-          :name => 'bar',
-          :output => 'foobar',
-          :status => 3,
-          :handler => 'tcp'
-        },
-        :action => :create
-      }
+      event = event_template
+      event[:check][:handler] = 'tcp'
       EM::start_server('127.0.0.1', 1234, Helpers::TestServer) do |server|
         server.expected = event.to_json
       end
@@ -293,18 +255,8 @@ describe "Sensu::Server" do
 
   it "can handle an event with a udp handler" do
     async_wrapper do
-      event = {
-        :client => {
-          :name => 'foo'
-        },
-        :check => {
-          :name => 'bar',
-          :output => 'foobar',
-          :status => 3,
-          :handler => 'udp'
-        },
-        :action => :create
-      }
+      event = event_template
+      event[:check][:handler] = 'udp'
       EM::open_datagram_socket('127.0.0.1', 1234, Helpers::TestServer) do |server|
         server.expected = event.to_json
       end
