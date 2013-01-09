@@ -182,7 +182,7 @@ class TestSensuAPI < TestCase
   def test_delete_nonexistent_client
     Sensu::API.run_test(@options) do
       api_request('/client/nonexistent', :delete) do |http, body|
-        assert_equal(404, http.response_header.status)
+        assert_equal(202, http.response_header.status)
         done
       end
     end
