@@ -21,6 +21,7 @@ Gem::Specification.new do |s|
   s.add_dependency('async_sinatra', '1.0.0')
 
   s.add_development_dependency('rake')
+  s.add_development_dependency('rspec')
   s.add_development_dependency('em-spec')
   s.add_development_dependency('em-http-request')
 

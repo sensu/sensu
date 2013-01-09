@@ -1,0 +1,29 @@
+{
+  "rabbitmq": {
+    "host": "localhost"
+  },
+  "checks": {
+    "tokens": {
+      "command": "echo -n :::name::: :::nested.attribute::: && exit 2",
+      "subscribers": [
+        "test"
+      ],
+      "interval": 1
+    },
+    "standalone": {
+      "command": "echo -n foobar && exit 1",
+      "standalone": true,
+      "interval": 1
+    }
+  },
+  "client": {
+    "name": "i-424242",
+    "address": "127.0.0.1",
+    "subscriptions": [
+      "test"
+    ],
+    "nested": {
+      "attribute": true
+    }
+  }
+}

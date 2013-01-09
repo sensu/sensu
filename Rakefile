@@ -1,8 +1,11 @@
 require 'bundler/gem_tasks'
+require 'rspec/core/rake_task'
 require 'timeout'
 require 'socket'
 
-task :default => 'test'
+RSpec::Core::RakeTask.new(:spec)
+
+task :default => :spec
 
 def test_local_tcp_socket(port)
   begin
