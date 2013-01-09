@@ -242,8 +242,13 @@ module Sensu
       $redis.smembers('clients').callback do |clients|
         unless clients.empty?
           clients.each_with_index do |client_name, index|
-            $redis.get('client:' + client_name).callback do |client_json|
-              response.push(JSON.parse(client_json))
+            client_key = 'client:' + client_name
+            $redis.get(client_key).callback do |client_json|
+              begin
+                response.push(JSON.parse(client_json.to_s))
+              rescue JSON::ParserError
+                $logger.warn("Unable to parse client JSON metadata #{client_key.inspect} : #{client_json.inspect}")
+              end
               if index == clients.size - 1
                 body response.to_json
               end

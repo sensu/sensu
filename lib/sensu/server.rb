@@ -493,30 +493,35 @@ module Sensu
       @master_timers << EM::PeriodicTimer.new(30) do
         @redis.smembers('clients').callback do |clients|
           clients.each do |client_name|
-            @redis.get('client:' + client_name).callback do |client_json|
-              client = JSON.parse(client_json, :symbolize_names => true)
-              check = {
-                :name => 'keepalive',
-                :issued => Time.now.to_i
-              }
-              time_since_last_keepalive = Time.now.to_i - client[:timestamp]
-              case
-              when time_since_last_keepalive >= 180
-                check[:output] = 'No keep-alive sent from client in over 180 seconds'
-                check[:status] = 2
-                publish_result(client, check)
-              when time_since_last_keepalive >= 120
-                check[:output] = 'No keep-alive sent from client in over 120 seconds'
-                check[:status] = 1
-                publish_result(client, check)
-              else
-                @redis.hexists('events:' + client[:name], 'keepalive').callback do |exists|
-                  if exists
-                    check[:output] = 'Keep-alive sent from client'
-                    check[:status] = 0
-                    publish_result(client, check)
+            client_key = 'client:' + client_name
+            @redis.get(client_key).callback do |client_json|
+              begin
+                client = JSON.parse(client_json.to_s, :symbolize_names => true)
+                check = {
+                  :name => 'keepalive',
+                  :issued => Time.now.to_i
+                }
+                time_since_last_keepalive = Time.now.to_i - client[:timestamp]
+                case
+                when time_since_last_keepalive >= 180
+                  check[:output] = 'No keep-alive sent from client in over 180 seconds'
+                  check[:status] = 2
+                  publish_result(client, check)
+                when time_since_last_keepalive >= 120
+                  check[:output] = 'No keep-alive sent from client in over 120 seconds'
+                  check[:status] = 1
+                  publish_result(client, check)
+                else
+                  @redis.hexists('events:' + client[:name], 'keepalive').callback do |exists|
+                    if exists
+                      check[:output] = 'Keep-alive sent from client'
+                      check[:status] = 0
+                      publish_result(client, check)
+                    end
                   end
                 end
+              rescue JSON::ParserError
+                @logger.warn("Unable to parse client entry #{client_key.inspect} : #{client_json.inspect}")
               end
             end
           end
