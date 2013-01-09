@@ -263,4 +263,32 @@ describe "Sensu::Server" do
       @server.handle_event(event)
     end
   end
+
+  it "can handle an event with a amqp handler" do
+    async_wrapper do
+      @server.setup_rabbitmq
+      event = event_template
+      event[:check][:handler] = 'amqp'
+      amq.direct('events') do |exchange, declare_ok|
+        binding = amq.queue('', :auto_delete => true).bind('events') do
+          @server.handle_event(event)
+        end
+        binding.subscribe do |payload|
+          payload.should eq(event.to_json)
+          async_done
+        end
+      end
+    end
+  end
+
+  it "can handle an event with an extension" do
+    async_wrapper do
+      event = event_template
+      event[:check][:handler] = 'debug'
+      @server.handle_event(event)
+      timer(0.5) do
+        async_done
+      end
+    end
+  end
 end

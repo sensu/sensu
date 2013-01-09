@@ -69,6 +69,12 @@
         "host": "localhost",
         "port": 1234
       }
+    },
+    "amqp": {
+      "type": "amqp",
+      "exchange": {
+        "name": "events"
+      }
     }
   },
   "checks": {
