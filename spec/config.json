@@ -55,6 +55,20 @@
       "type": "pipe",
       "command": "cat > /tmp/sensu_event",
       "handle_flapping": true
+    },
+    "tcp": {
+      "type": "tcp",
+      "socket": {
+        "host": "localhost",
+        "port": 1234
+      }
+    },
+    "udp": {
+      "type": "udp",
+      "socket": {
+        "host": "localhost",
+        "port": 1234
+      }
     }
   },
   "checks": {

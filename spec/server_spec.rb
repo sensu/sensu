@@ -247,7 +247,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can handle an event" do
+  it "can handle an event with a pipe handler" do
     event = {
       :client => {
         :name => 'foo'
@@ -268,5 +268,47 @@ describe "Sensu::Server" do
     end
     File.exists?('/tmp/sensu_event').should be_true
     File.delete('/tmp/sensu_event')
+  end
+
+  it "can handle an event with a tcp handler" do
+    async_wrapper do
+      event = {
+        :client => {
+          :name => 'foo'
+        },
+        :check => {
+          :name => 'bar',
+          :output => 'foobar',
+          :status => 3,
+          :handler => 'tcp'
+        },
+        :action => :create
+      }
+      EM::start_server('127.0.0.1', 1234, Helpers::TestServer) do |server|
+        server.expected = event.to_json
+      end
+      @server.handle_event(event)
+    end
+  end
+
+  it "can handle an event with a udp handler" do
+    async_wrapper do
+      event = {
+        :client => {
+          :name => 'foo'
+        },
+        :check => {
+          :name => 'bar',
+          :output => 'foobar',
+          :status => 3,
+          :handler => 'udp'
+        },
+        :action => :create
+      }
+      EM::open_datagram_socket('127.0.0.1', 1234, Helpers::TestServer) do |server|
+        server.expected = event.to_json
+      end
+      @server.handle_event(event)
+    end
   end
 end

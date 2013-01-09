@@ -38,8 +38,9 @@ module Helpers
   end
 
   def timer(delay, &block)
-    EM::Timer.new(delay) do
+    periodic_timer = EM::PeriodicTimer.new(delay) do
       block.call
+      periodic_timer.cancel
     end
   end
 
@@ -54,5 +55,16 @@ module Helpers
 
   def async_done
     EM::stop_event_loop
+  end
+
+  class TestServer < EM::Connection
+    include RSpec::Matchers
+
+    attr_accessor :expected
+
+    def receive_data(data)
+      data.should eq(expected)
+      EM::stop_event_loop
+    end
   end
 end
