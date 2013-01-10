@@ -76,10 +76,12 @@ describe "Sensu::Client" do
     async_wrapper do
       @client.setup_rabbitmq
       @client.setup_subscriptions
-      amq.fanout('test', :passive => true) do |exchange, declare_ok|
-        declare_ok.should be_an_instance_of(AMQ::Protocol::Exchange::DeclareOk)
-        exchange.status.should eq(:opening)
-        async_done
+      timer(1) do
+        amq.fanout('test', :passive => true) do |exchange, declare_ok|
+          declare_ok.should be_an_instance_of(AMQ::Protocol::Exchange::DeclareOk)
+          exchange.status.should eq(:opening)
+          async_done
+        end
       end
     end
   end
