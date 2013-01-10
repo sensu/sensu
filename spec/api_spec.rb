@@ -136,7 +136,13 @@ describe 'Sensu::API' do
       api_request('/event/i-424242/test', :delete) do |http, body|
         http.response_header.status.should eq(202)
         body.should be_empty
-        async_done
+        amq.queue('results').subscribe do |headers, payload|
+          result = JSON.parse(payload, :symbolize_names => true)
+          result[:client].should eq('i-424242')
+          result[:check][:name].should eq('test')
+          result[:check][:status].should eq(0)
+          async_done
+        end
       end
     end
   end
@@ -162,7 +168,13 @@ describe 'Sensu::API' do
       api_request('/resolve', :post, options) do |http, body|
         http.response_header.status.should eq(202)
         body.should be_empty
-        async_done
+        amq.queue('results').subscribe do |headers, payload|
+          result = JSON.parse(payload, :symbolize_names => true)
+          result[:client].should eq('i-424242')
+          result[:check][:name].should eq('test')
+          result[:check][:status].should eq(0)
+          async_done
+        end
       end
     end
   end
