@@ -53,6 +53,15 @@ module Helpers
     EM::stop_event_loop
   end
 
+  def api_test(&block)
+    async_wrapper do
+      Sensu::API.test(options)
+      timer(0.5) do
+        block.call
+      end
+    end
+  end
+
   def epoch
     Time.now.to_i
   end
@@ -98,6 +107,23 @@ module Helpers
       :occurrences => 1,
       :action => :create
     }
+  end
+
+  def api_request(uri, method=:get, options={}, &block)
+    default_options = {
+      :head => {
+        :authorization => [
+          'foo',
+          'bar'
+        ]
+      }
+    }
+    request_options = default_options.merge(options)
+    http = EM::HttpRequest.new('http://localhost:4567' + uri).send(method, request_options)
+    http.callback do
+      body = JSON.parse(http.response, :symbolize_names => true)
+      block.call(http, body)
+    end
   end
 
   class TestServer < EM::Connection
