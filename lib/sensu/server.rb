@@ -6,7 +6,7 @@ module Sensu
   class Server
     include Utilities
 
-    attr_reader :redis, :amq, :is_master
+    attr_reader :is_master
 
     def self.run(options={})
       server = self.new(options)
@@ -25,6 +25,7 @@ module Sensu
       @timers = Array.new
       @master_timers = Array.new
       @handlers_in_progress_count = 0
+      @is_master = false
     end
 
     def setup_redis

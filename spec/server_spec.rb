@@ -434,4 +434,46 @@ describe "Sensu::Server" do
       end
     end
   end
+
+  it "can monitor keepalives for stale clients" do
+  end
+
+  it "can prune aggregations" do
+  end
+
+  it "can be the master and resign" do
+    async_wrapper do
+      @server.setup_redis
+      @server.setup_rabbitmq
+      redis.flushdb do
+        @server.request_master_election
+        timer(1) do
+          @server.is_master.should be_true
+          @server.resign_as_master do
+            @server.is_master.should be_false
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can be the only master" do
+    async_wrapper do
+      server1 = @server.clone
+      server2 = @server.clone
+      server1.setup_redis
+      server2.setup_redis
+      server1.setup_rabbitmq
+      server2.setup_rabbitmq
+      redis.flushdb do
+        server1.request_master_election
+        server2.request_master_election
+        timer(1) do
+          [server1.is_master, server2.is_master].uniq.count.should eq(2)
+          async_done
+        end
+      end
+    end
+  end
 end
