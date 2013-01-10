@@ -27,20 +27,14 @@ describe "Sensu::Server" do
       @server.setup_redis
       @server.setup_rabbitmq
       @server.setup_keepalives
-      keepalive = {
-        :name => 'foo',
-        :address => '127.0.0.1',
-        :subscriptions => [
-          'bar'
-        ],
-        :timestamp => epoch
-      }
+      keepalive = client_template
+      keepalive[:timestamp] = epoch
       redis.flushdb do
         amq.queue('keepalives').publish(keepalive.to_json)
         timer(1) do
-          redis.sismember('clients', 'foo') do |exists|
+          redis.sismember('clients', 'i-424242') do |exists|
             exists.should be_true
-            redis.get('client:foo') do |client_json|
+            redis.get('client:i-424242') do |client_json|
               client = JSON.parse(client_json, :symbolize_names => true)
               client.should eq(keepalive)
               async_done
@@ -385,20 +379,15 @@ describe "Sensu::Server" do
     async_wrapper do
       @server.setup_rabbitmq
       amq.fanout('test') do |exchange, declare_ok|
-        check = {
-          :name => 'foo',
-          :command => 'echo bar',
-          :subscribers => [
-            'test'
-          ]
-        }
+        check = check_template
+        check[:subscribers] = ['test']
         binding = amq.queue('', :auto_delete => true).bind('test') do
           @server.publish_check_request(check)
         end
         binding.subscribe do |payload|
           check_request = JSON.parse(payload, :symbolize_names => true)
-          check_request[:name].should eq('foo')
-          check_request[:command].should eq('echo bar')
+          check_request[:name].should eq('foobar')
+          check_request[:command].should eq('echo -n WARNING && exit 1')
           check_request[:issued].should be_within(10).of(epoch)
           async_done
         end

@@ -63,37 +63,40 @@ module Helpers
       :address => '127.0.0.1',
       :subscriptions => [
         'test'
-      ],
-      :timestamp => epoch
+      ]
     }
   end
 
-  def event_template
+  def check_template
     {
-      :client => client_template,
-      :check => {
-        :name => 'foobar',
-        :command => 'echo -n WARNING && exit 1',
-        :issued => epoch,
-        :output => 'WARNING',
-        :status => 1,
-        :history => [1]
-      },
-      :occurrences => 1,
-      :action => :create
+      :name => 'foobar',
+      :command => 'echo -n WARNING && exit 1',
+      :issued => epoch
     }
   end
 
   def result_template
+    check = check_template
+    check[:output] = 'WARNING'
+    check[:status] = 1
     {
       :client => 'i-424242',
-      :check => {
-        :name => 'foobar',
-        :command => 'echo -n WARNING && exit 1',
-        :issued => epoch,
-        :output => 'WARNING',
-        :status => 1
-      }
+      :check => check
+    }
+  end
+
+  def event_template
+    client = client_template
+    client[:timestamp] = epoch
+    check = check_template
+    check[:output] = 'WARNING'
+    check[:status] = 1
+    check[:history] = [1]
+    {
+      :client => client,
+      :check => check,
+      :occurrences => 1,
+      :action => :create
     }
   end
 

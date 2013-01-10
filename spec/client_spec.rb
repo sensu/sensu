@@ -56,16 +56,11 @@ describe "Sensu::Client" do
   it "can execute a check" do
     async_wrapper do
       @client.setup_rabbitmq
-      check = {
-        :name => 'foo',
-        :command => 'echo -n foobar',
-        :issued => epoch
-      }
-      @client.execute_check(check)
+      @client.execute_check(check_template)
       amq.queue('results').subscribe do |headers, payload|
         result = JSON.parse(payload, :symbolize_names => true)
         result[:client].should eq('i-424242')
-        result[:check][:output].should eq('foobar')
+        result[:check][:output].should eq('WARNING')
         async_done
       end
     end
