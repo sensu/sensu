@@ -332,8 +332,8 @@ describe "Sensu::Server" do
   it "can process results with flap detection" do
     async_wrapper do
       @server.setup_redis
-      client = client_template
       redis.flushdb do
+        client = client_template
         redis.set('client:i-424242', client.to_json) do
           26.times do |index|
             result = result_template
@@ -343,14 +343,94 @@ describe "Sensu::Server" do
             @server.process_result(result)
           end
           timer(1) do
+            redis.llen('history:i-424242:foobar') do |length|
+              length.should eq(21)
+              redis.hget('events:i-424242', 'foobar') do |event_json|
+                event = JSON.parse(event_json, :symbolize_names => true)
+                event[:flapping].should be_true
+                event[:occurrences].should be_within(2).of(1)
+                async_done
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can consume results" do
+    async_wrapper do
+      @server.setup_rabbitmq
+      @server.setup_redis
+      @server.setup_results
+      redis.flushdb do
+        client = client_template
+        redis.set('client:i-424242', client.to_json) do
+          result = result_template
+          amq.queue('results').publish(result.to_json)
+          timer(1) do
             redis.hget('events:i-424242', 'foobar') do |event_json|
               event = JSON.parse(event_json, :symbolize_names => true)
-              event[:flapping].should be_true
-              event[:occurrences].should be_within(2).of(1)
+              event[:status].should eq(1)
+              event[:occurrences].should eq(1)
               async_done
             end
           end
         end
+      end
+    end
+  end
+
+  it "can publish check requests" do
+    async_wrapper do
+      @server.setup_rabbitmq
+      amq.fanout('test') do |exchange, declare_ok|
+        check = {
+          :name => 'foo',
+          :command => 'echo bar',
+          :subscribers => [
+            'test'
+          ]
+        }
+        binding = amq.queue('', :auto_delete => true).bind('test') do
+          @server.publish_check_request(check)
+        end
+        binding.subscribe do |payload|
+          check_request = JSON.parse(payload, :symbolize_names => true)
+          check_request[:name].should eq('foo')
+          check_request[:command].should eq('echo bar')
+          check_request[:issued].should be_within(10).of(epoch)
+          async_done
+        end
+      end
+    end
+  end
+
+  it "can schedule check request publishing" do
+    async_wrapper do
+      @server.setup_rabbitmq
+      @server.setup_publisher
+      amq.fanout('test') do |exchange, declare_ok|
+        amq.queue('', :auto_delete => true).bind('test').subscribe do |payload|
+          check_request = JSON.parse(payload, :symbolize_names => true)
+          check_request[:issued].should be_within(10).of(epoch)
+          async_done
+        end
+      end
+    end
+  end
+
+  it "can send a check result" do
+    async_wrapper do
+      @server.setup_rabbitmq
+      client = client_template
+      check = result_template[:check]
+      @server.publish_result(client, check)
+      amq.queue('results').subscribe do |headers, payload|
+        result = JSON.parse(payload, :symbolize_names => true)
+        result[:client].should eq('i-424242')
+        result[:check][:name].should eq('foobar')
+        async_done
       end
     end
   end

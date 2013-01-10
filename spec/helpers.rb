@@ -63,7 +63,8 @@ module Helpers
       :address => '127.0.0.1',
       :subscriptions => [
         'test'
-      ]
+      ],
+      :timestamp => epoch
     }
   end
 
