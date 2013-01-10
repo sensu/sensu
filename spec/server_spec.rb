@@ -220,8 +220,7 @@ describe "Sensu::Server" do
         @server.mutate_event_data('only_check_output', event) do |event_data|
           event_data.should eq('WARNING')
           @server.mutate_event_data('tag', event) do |event_data|
-            expected = event.merge(:mutated => true).to_json
-            event_data.chomp.should eq(expected)
+            JSON.parse(event_data).should include('mutated')
             async_done
           end
         end
@@ -323,6 +322,32 @@ describe "Sensu::Server" do
                   async_done
                 end
               end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can process results with flap detection" do
+    async_wrapper do
+      @server.setup_redis
+      client = client_template
+      redis.flushdb do
+        redis.set('client:i-424242', client.to_json) do
+          26.times do |index|
+            result = result_template
+            result[:check][:low_flap_threshold] = 5
+            result[:check][:high_flap_threshold] = 20
+            result[:check][:status] = index % 2
+            @server.process_result(result)
+          end
+          timer(1) do
+            redis.hget('events:i-424242', 'foobar') do |event_json|
+              event = JSON.parse(event_json, :symbolize_names => true)
+              event[:flapping].should be_true
+              event[:occurrences].should be_within(2).of(1)
+              async_done
             end
           end
         end

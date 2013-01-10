@@ -57,15 +57,19 @@ module Helpers
     Time.now.to_i
   end
 
+  def client_template
+    {
+      :name => 'i-424242',
+      :address => '127.0.0.1',
+      :subscriptions => [
+        'test'
+      ]
+    }
+  end
+
   def event_template
     {
-      :client => {
-        :name => 'i-424242',
-        :address => '127.0.0.1',
-        :subscriptions => [
-          'test'
-        ]
-      },
+      :client => client_template,
       :check => {
         :name => 'foobar',
         :command => 'echo -n WARNING && exit 1',

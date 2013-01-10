@@ -92,13 +92,15 @@ describe "Sensu::Client" do
         :name => 'tokens',
         :issued => epoch
       }
-      amq.fanout('test').publish(check_request.to_json)
-      amq.queue('results').subscribe do |headers, payload|
-        result = JSON.parse(payload, :symbolize_names => true)
-        result[:client].should eq('i-424242')
-        result[:check][:output].should eq('i-424242 true')
-        result[:check][:status].should eq(2)
-        async_done
+      timer(0.5) do
+        amq.fanout('test').publish(check_request.to_json)
+        amq.queue('results').subscribe do |headers, payload|
+          result = JSON.parse(payload, :symbolize_names => true)
+          result[:client].should eq('i-424242')
+          result[:check][:output].should eq('i-424242 true')
+          result[:check][:status].should eq(2)
+          async_done
+        end
       end
     end
   end
