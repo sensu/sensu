@@ -267,6 +267,28 @@ describe 'Sensu::API' do
     end
   end
 
+  it 'can provide a specific defined check' do
+    api_test do
+      api_request('/check/tokens') do |http, body|
+        http.response_header.status.should eq(200)
+        body.should be_kind_of(Hash)
+        body[:name].should eq('tokens')
+        body[:interval].should eq(1)
+        async_done
+      end
+    end
+  end
+
+  it 'can not provide a nonexistent defined check' do
+    api_test do
+      api_request('/check/nonexistent') do |http, body|
+        http.response_header.status.should eq(404)
+        body.should be_empty
+        async_done
+      end
+    end
+  end
+
   after(:all) do
     async_wrapper do
       amq.queue('results').purge do
