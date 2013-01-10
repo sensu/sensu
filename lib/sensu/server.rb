@@ -564,32 +564,37 @@ module Sensu
       end
     end
 
-    def setup_aggregation_pruner
-      @logger.debug('pruning aggregations')
-      @master_timers << EM::PeriodicTimer.new(20) do
-        @redis.smembers('aggregates') do |checks|
-          checks.each do |check_name|
-            @redis.smembers('aggregates:' + check_name) do |aggregates|
-              aggregates.sort!
-              until aggregates.size <= 20
-                check_issued = aggregates.shift
-                @redis.srem('aggregates:' + check_name, check_issued) do
-                  result_set = check_name + ':' + check_issued.to_s
-                  @redis.del('aggregate:' + result_set) do
-                    @redis.del('aggregation:' + result_set) do
-                      @logger.debug('pruned aggregation', {
-                        :check => {
-                          :name => check_name,
-                          :issued => check_issued
-                        }
-                      })
-                    end
+    def prune_aggregations
+      @logger.info('pruning aggregations')
+      @redis.smembers('aggregates') do |checks|
+        checks.each do |check_name|
+          @redis.smembers('aggregates:' + check_name) do |aggregates|
+            aggregates.sort!
+            until aggregates.size <= 20
+              check_issued = aggregates.shift
+              @redis.srem('aggregates:' + check_name, check_issued) do
+                result_set = check_name + ':' + check_issued.to_s
+                @redis.del('aggregate:' + result_set) do
+                  @redis.del('aggregation:' + result_set) do
+                    @logger.debug('pruned aggregation', {
+                      :check => {
+                        :name => check_name,
+                        :issued => check_issued
+                      }
+                    })
                   end
                 end
               end
             end
           end
         end
+      end
+    end
+
+    def setup_aggregation_pruner
+      @logger.debug('pruning aggregations')
+      @master_timers << EM::PeriodicTimer.new(20) do
+        prune_aggregations
       end
     end
 

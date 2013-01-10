@@ -439,6 +439,36 @@ describe "Sensu::Server" do
   end
 
   it "can prune aggregations" do
+    async_wrapper do
+      @server.setup_redis
+      redis.flushdb do
+        client = client_template
+        redis.set('client:i-424242', client.to_json) do
+          timestamp = epoch - 26
+          26.times do |index|
+            result = result_template
+            result[:check][:issued] = timestamp + index
+            result[:check][:status] = index
+            @server.aggregate_result(result)
+          end
+          timer(1) do
+            redis.smembers('aggregates:foobar') do |aggregates|
+              aggregates.sort!
+              aggregates.count.should eq(26)
+              oldest = aggregates.shift
+              @server.prune_aggregations
+              timer(1) do
+                redis.smembers('aggregates:foobar') do |aggregates|
+                  aggregates.count.should eq(20)
+                  aggregates.should_not include(oldest)
+                  async_done
+                end
+              end
+            end
+          end
+        end
+      end
+    end
   end
 
   it "can be the master and resign" do
