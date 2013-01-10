@@ -121,7 +121,12 @@ module Helpers
     request_options = default_options.merge(options)
     http = EM::HttpRequest.new('http://localhost:4567' + uri).send(method, request_options)
     http.callback do
-      body = JSON.parse(http.response, :symbolize_names => true)
+      body = case
+      when http.response.empty?
+        http.response
+      else
+        JSON.parse(http.response, :symbolize_names => true)
+      end
       block.call(http, body)
     end
   end

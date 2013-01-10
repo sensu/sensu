@@ -1,21 +1,21 @@
 require File.dirname(__FILE__) + '/../lib/sensu/client.rb'
 require File.dirname(__FILE__) + '/helpers.rb'
 
-describe "Sensu::Client" do
+describe 'Sensu::Client' do
   include Helpers
 
   before do
     @client = Sensu::Client.new(options)
   end
 
-  it "can connect to rabbitmq" do
+  it 'can connect to rabbitmq' do
     async_wrapper do
       @client.setup_rabbitmq
       async_done
     end
   end
 
-  it "can send a keepalive" do
+  it 'can send a keepalive' do
     async_wrapper do
       @client.setup_rabbitmq
       @client.publish_keepalive
@@ -27,7 +27,7 @@ describe "Sensu::Client" do
     end
   end
 
-  it "can schedule keepalive publishing" do
+  it 'can schedule keepalive publishing' do
     async_wrapper do
       @client.setup_rabbitmq
       @client.setup_keepalives
@@ -39,7 +39,7 @@ describe "Sensu::Client" do
     end
   end
 
-  it "can send a check result" do
+  it 'can send a check result' do
     async_wrapper do
       @client.setup_rabbitmq
       check = result_template[:check]
@@ -53,7 +53,7 @@ describe "Sensu::Client" do
     end
   end
 
-  it "can execute a check" do
+  it 'can execute a check' do
     async_wrapper do
       @client.setup_rabbitmq
       @client.execute_check(check_template)
@@ -66,7 +66,7 @@ describe "Sensu::Client" do
     end
   end
 
-  it "can setup subscriptions" do
+  it 'can setup subscriptions' do
     async_wrapper do
       @client.setup_rabbitmq
       @client.setup_subscriptions
@@ -80,7 +80,7 @@ describe "Sensu::Client" do
     end
   end
 
-  it "can receive a check request and execute the check (with tokens)" do
+  it 'can receive a check request and execute the check (with tokens)' do
     async_wrapper do
       @client.setup_rabbitmq
       @client.setup_subscriptions
@@ -101,7 +101,7 @@ describe "Sensu::Client" do
     end
   end
 
-  it "can schedule standalone check execution" do
+  it 'can schedule standalone check execution' do
     async_wrapper do
       @client.setup_rabbitmq
       @client.setup_standalone
@@ -116,7 +116,7 @@ describe "Sensu::Client" do
     end
   end
 
-  it "can accept external result input via sockets" do
+  it 'can accept external result input via sockets' do
     async_wrapper do
       @client.setup_rabbitmq
       @client.setup_sockets

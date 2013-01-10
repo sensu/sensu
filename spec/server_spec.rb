@@ -1,28 +1,28 @@
 require File.dirname(__FILE__) + '/../lib/sensu/server.rb'
 require File.dirname(__FILE__) + '/helpers.rb'
 
-describe "Sensu::Server" do
+describe 'Sensu::Server' do
   include Helpers
 
   before do
     @server = Sensu::Server.new(options)
   end
 
-  it "can connect to redis" do
+  it 'can connect to redis' do
     async_wrapper do
       @server.setup_redis
       async_done
     end
   end
 
-  it "can connect to rabbitmq" do
+  it 'can connect to rabbitmq' do
     async_wrapper do
       @server.setup_rabbitmq
       async_done
     end
   end
 
-  it "can consume client keepalives" do
+  it 'can consume client keepalives' do
     async_wrapper do
       @server.setup_redis
       @server.setup_rabbitmq
@@ -45,7 +45,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can determine if a check is subdued" do
+  it 'can determine if a check is subdued' do
     @server.check_subdued?(Hash.new, :handler).should be_false
     check = {
       :subdue => {
@@ -122,15 +122,15 @@ describe "Sensu::Server" do
     @server.check_subdued?(check, :handler).should be_false
   end
 
-  it "can determine if a event is to be filtered" do
+  it 'can determine if a event is to be filtered' do
     event = event_template
     event[:client][:environment] = 'production'
-    @server.event_filtered?("production", event).should be_false
-    @server.event_filtered?("development", event).should be_true
+    @server.event_filtered?('production', event).should be_false
+    @server.event_filtered?('development', event).should be_true
   end
 
-  it "can derive handlers from a handler list" do
-    handler_list = ["default", "file", "missing"]
+  it 'can derive handlers from a handler list' do
+    handler_list = ['default', 'file', 'missing']
     handlers = @server.derive_handlers(handler_list)
     handlers.first.should be_an_instance_of(Sensu::Extension::Debug)
     expected = {
@@ -141,7 +141,7 @@ describe "Sensu::Server" do
     handlers.last.should eq(expected)
   end
 
-  it "can determine handlers for an event" do
+  it 'can determine handlers for an event' do
     event = event_template
     event[:client][:environment] = 'production'
     event[:check][:handlers] = ['file', 'filtered', 'severities']
@@ -190,7 +190,7 @@ describe "Sensu::Server" do
     @server.event_handlers(event).should eq(expected)
   end
 
-  it "can execute a command asynchronously" do
+  it 'can execute a command asynchronously' do
     timestamp = epoch.to_s
     file_name = File.join('/tmp', timestamp)
     on_error = Proc.new do
@@ -206,7 +206,7 @@ describe "Sensu::Server" do
     File.delete(file_name)
   end
 
-  it "can mutate event data" do
+  it 'can mutate event data' do
     async_wrapper do
       event = event_template
       @server.mutate_event_data(nil, event) do |event_data|
@@ -222,7 +222,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can handle an event with a pipe handler" do
+  it 'can handle an event with a pipe handler' do
     event = event_template
     event[:check][:handler] = 'file'
     async_wrapper do
@@ -235,7 +235,7 @@ describe "Sensu::Server" do
     File.delete('/tmp/sensu_event')
   end
 
-  it "can handle an event with a tcp handler" do
+  it 'can handle an event with a tcp handler' do
     async_wrapper do
       event = event_template
       event[:check][:handler] = 'tcp'
@@ -246,7 +246,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can handle an event with a udp handler" do
+  it 'can handle an event with a udp handler' do
     async_wrapper do
       event = event_template
       event[:check][:handler] = 'udp'
@@ -257,7 +257,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can handle an event with a amqp handler" do
+  it 'can handle an event with a amqp handler' do
     async_wrapper do
       @server.setup_rabbitmq
       event = event_template
@@ -274,7 +274,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can handle an event with an extension" do
+  it 'can handle an event with an extension' do
     async_wrapper do
       event = event_template
       event[:check][:handler] = 'debug'
@@ -285,7 +285,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can aggregate results" do
+  it 'can aggregate results' do
     async_wrapper do
       @server.setup_redis
       timestamp = epoch
@@ -323,7 +323,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can process results with flap detection" do
+  it 'can process results with flap detection' do
     async_wrapper do
       @server.setup_redis
       redis.flushdb do
@@ -352,7 +352,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can consume results" do
+  it 'can consume results' do
     async_wrapper do
       @server.setup_rabbitmq
       @server.setup_redis
@@ -375,7 +375,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can publish check requests" do
+  it 'can publish check requests' do
     async_wrapper do
       @server.setup_rabbitmq
       amq.fanout('test') do |exchange, declare_ok|
@@ -395,7 +395,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can schedule check request publishing" do
+  it 'can schedule check request publishing' do
     async_wrapper do
       @server.setup_rabbitmq
       @server.setup_publisher
@@ -409,7 +409,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can send a check result" do
+  it 'can send a check result' do
     async_wrapper do
       @server.setup_rabbitmq
       client = client_template
@@ -424,7 +424,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can determine stale clients and create the appropriate events" do
+  it 'can determine stale clients and create the appropriate events' do
     async_wrapper do
       @server.setup_redis
       @server.setup_rabbitmq
@@ -458,7 +458,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can prune aggregations" do
+  it 'can prune aggregations' do
     async_wrapper do
       @server.setup_redis
       redis.flushdb do
@@ -498,7 +498,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can be the master and resign" do
+  it 'can be the master and resign' do
     async_wrapper do
       @server.setup_redis
       @server.setup_rabbitmq
@@ -515,7 +515,7 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can be the only master" do
+  it 'can be the only master' do
     async_wrapper do
       server1 = @server.clone
       server2 = @server.clone
