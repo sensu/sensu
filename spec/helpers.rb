@@ -68,6 +68,7 @@ module Helpers
       },
       :check => {
         :name => 'foobar',
+        :command => 'echo -n WARNING && exit 1',
         :issued => epoch,
         :output => 'WARNING',
         :status => 1,
@@ -75,6 +76,19 @@ module Helpers
       },
       :occurrences => 1,
       :action => :create
+    }
+  end
+
+  def result_template
+    {
+      :client => 'i-424242',
+      :check => {
+        :name => 'foobar',
+        :command => 'echo -n WARNING && exit 1',
+        :issued => epoch,
+        :output => 'WARNING',
+        :status => 1
+      }
     }
   end
 

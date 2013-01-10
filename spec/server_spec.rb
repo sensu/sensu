@@ -291,4 +291,42 @@ describe "Sensu::Server" do
       end
     end
   end
+
+  it "can aggregate results" do
+    async_wrapper do
+      @server.setup_redis
+      timestamp = epoch
+      clients = ['foo', 'bar', 'baz', 'qux']
+      redis.flushdb do
+        clients.each_with_index do |client_name, index|
+          result = result_template
+          result[:client] = client_name
+          result[:check][:status] = index
+          @server.aggregate_result(result)
+        end
+        timer(1) do
+          result_set = 'foobar:' + timestamp.to_s
+          redis.sismember('aggregates', 'foobar') do |exists|
+            exists.should be_true
+            redis.sismember('aggregates:foobar', timestamp.to_s) do |exists|
+              exists.should be_true
+              redis.hgetall('aggregate:' + result_set) do |aggregate|
+                aggregate['total'].should eq('4')
+                aggregate['ok'].should eq('1')
+                aggregate['warning'].should eq('1')
+                aggregate['critical'].should eq('1')
+                aggregate['unknown'].should eq('1')
+                redis.hgetall('aggregation:' + result_set) do |aggregation|
+                  clients.each do |client_name|
+                    aggregation.should include(client_name)
+                  end
+                  async_done
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
 end

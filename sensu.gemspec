@@ -22,7 +22,6 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency('rake')
   s.add_development_dependency('rspec')
-  s.add_development_dependency('em-spec')
   s.add_development_dependency('em-http-request')
 
   s.files         = Dir.glob('{bin,lib}/**/*') + %w[sensu.gemspec README.md CHANGELOG.md MIT-LICENSE.txt]

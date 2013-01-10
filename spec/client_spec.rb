@@ -42,19 +42,13 @@ describe "Sensu::Client" do
   it "can send a check result" do
     async_wrapper do
       @client.setup_rabbitmq
-      check = {
-        :name => 'foo',
-        :command => 'echo -n foobar',
-        :issued => epoch,
-        :output => 'bar',
-        :status => 2
-      }
+      check = result_template[:check]
       @client.publish_result(check)
       result_queue = amq.queue('results')
       result_queue.subscribe do |headers, payload|
         result = JSON.parse(payload, :symbolize_names => true)
         result[:client].should eq('i-424242')
-        result[:check][:name].should eq('foo')
+        result[:check][:name].should eq('foobar')
         async_done
       end
     end
