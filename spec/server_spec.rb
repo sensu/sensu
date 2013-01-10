@@ -435,7 +435,38 @@ describe "Sensu::Server" do
     end
   end
 
-  it "can monitor keepalives for stale clients" do
+  it "can determine stale clients and create the appropriate events" do
+    async_wrapper do
+      @server.setup_redis
+      @server.setup_rabbitmq
+      @server.setup_results
+      client1 = client_template
+      client1[:name] = 'foo'
+      client1[:timestamp] = epoch - 120
+      client2 = client_template
+      client2[:name] = 'bar'
+      client2[:timestamp] = epoch - 180
+      redis.set('client:foo', client1.to_json) do
+        redis.sadd('clients', 'foo') do
+          redis.set('client:bar', client2.to_json) do
+            redis.sadd('clients', 'bar') do
+              @server.determine_stale_clients
+              timer(1) do
+                redis.hget('events:foo', 'keepalive') do |event_json|
+                  event = JSON.parse(event_json, :symbolize_names => true)
+                  event[:status].should eq(1)
+                  redis.hget('events:bar', 'keepalive') do |event_json|
+                    event = JSON.parse(event_json, :symbolize_names => true)
+                    event[:status].should eq(2)
+                    async_done
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
   end
 
   it "can prune aggregations" do
@@ -454,14 +485,21 @@ describe "Sensu::Server" do
           timer(1) do
             redis.smembers('aggregates:foobar') do |aggregates|
               aggregates.sort!
-              aggregates.count.should eq(26)
+              aggregates.size.should eq(26)
               oldest = aggregates.shift
               @server.prune_aggregations
               timer(1) do
                 redis.smembers('aggregates:foobar') do |aggregates|
-                  aggregates.count.should eq(20)
+                  aggregates.size.should eq(20)
                   aggregates.should_not include(oldest)
-                  async_done
+                  result_set = 'foobar:' + oldest
+                  redis.exists('aggregate:' + result_set) do |exists|
+                    exists.should be_false
+                    redis.exists('aggregation:' + result_set) do |exists|
+                      exists.should be_false
+                      async_done
+                    end
+                  end
                 end
               end
             end
@@ -497,11 +535,13 @@ describe "Sensu::Server" do
       server1.setup_rabbitmq
       server2.setup_rabbitmq
       redis.flushdb do
-        server1.request_master_election
-        server2.request_master_election
-        timer(1) do
-          [server1.is_master, server2.is_master].uniq.count.should eq(2)
-          async_done
+        redis.set('lock:master', epoch - 60) do
+          server1.setup_master_monitor
+          server2.setup_master_monitor
+          timer(1) do
+            [server1.is_master, server2.is_master].uniq.size.should eq(2)
+            async_done
+          end
         end
       end
     end

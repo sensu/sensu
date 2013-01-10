@@ -153,7 +153,7 @@ module Sensu
           })
         end
         unless check[:standalone]
-          unless check[:subscribers].is_a?(Array) && check[:subscribers].count > 0
+          unless check[:subscribers].is_a?(Array) && check[:subscribers].size > 0
             invalid('check is missing subscribers', {
               :check => check
             })
