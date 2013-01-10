@@ -32,7 +32,7 @@ describe "Sensu::API" do
     end
   end
 
-  it "should be able to run" do
+  it "can provide basic version and health information" do
     api_test do
       api_request('/info') do |http, body|
         http.response_header.status.should eq(200)
@@ -43,6 +43,48 @@ describe "Sensu::API" do
         body[:rabbitmq][:keepalives][:consumers].should be_kind_of(Integer)
         body[:rabbitmq][:results][:messages].should be_kind_of(Integer)
         body[:rabbitmq][:results][:consumers].should be_kind_of(Integer)
+        async_done
+      end
+    end
+  end
+
+  it "can provide current events" do
+    api_test do
+      api_request('/events') do |http, body|
+        http.response_header.status.should eq(200)
+        body.should be_kind_of(Array)
+        test_event = Proc.new do |event|
+          event[:check] == 'test'
+        end
+        body.should contain(test_event)
+        async_done
+      end
+    end
+  end
+
+  it "can provide current events for a specific client" do
+    api_test do
+      api_request('/events/i-424242') do |http, body|
+        http.response_header.status.should eq(200)
+        body.should be_kind_of(Array)
+        test_event = Proc.new do |event|
+          event[:check] == 'test'
+        end
+        body.should contain(test_event)
+        async_done
+      end
+    end
+  end
+
+  it "can provide current clients" do
+    api_test do
+      api_request('/clients') do |http, body|
+        http.response_header.status.should eq(200)
+        body.should be_kind_of(Array)
+        test_client = Proc.new do |client|
+          client[:name] == 'i-424242'
+        end
+        body.should contain(test_client)
         async_done
       end
     end

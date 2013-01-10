@@ -137,3 +137,11 @@ module Helpers
     end
   end
 end
+
+RSpec::Matchers.define :contain do |block|
+  match do |actual|
+    actual.any? do |item|
+      block.call(item)
+    end
+  end
+end
