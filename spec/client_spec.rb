@@ -88,12 +88,11 @@ describe "Sensu::Client" do
     async_wrapper do
       @client.setup_rabbitmq
       @client.setup_subscriptions
-      check_request = {
-        :name => 'tokens',
-        :issued => epoch
-      }
-      timer(0.5) do
-        amq.fanout('test').publish(check_request.to_json)
+      timer(1) do
+        check_request = {
+          :name => 'tokens',
+          :issued => epoch
+        }
         amq.queue('results').subscribe do |headers, payload|
           result = JSON.parse(payload, :symbolize_names => true)
           result[:client].should eq('i-424242')
@@ -101,6 +100,7 @@ describe "Sensu::Client" do
           result[:check][:status].should eq(2)
           async_done
         end
+        amq.fanout('test').publish(check_request.to_json)
       end
     end
   end
