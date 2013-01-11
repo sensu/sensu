@@ -1,3 +1,5 @@
+require 'timeout'
+
 module Sensu
   class IO
     class << self

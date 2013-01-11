@@ -3,7 +3,6 @@ require 'rubygems'
 gem 'eventmachine', '1.0.0'
 
 require 'json'
-require 'timeout'
 require 'time'
 require 'uri'
 

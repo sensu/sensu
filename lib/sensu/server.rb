@@ -6,7 +6,7 @@ module Sensu
   class Server
     include Utilities
 
-    attr_reader :redis, :amq, :is_master
+    attr_reader :is_master
 
     def self.run(options={})
       server = self.new(options)
@@ -25,6 +25,7 @@ module Sensu
       @timers = Array.new
       @master_timers = Array.new
       @handlers_in_progress_count = 0
+      @is_master = false
     end
 
     def setup_redis
@@ -138,7 +139,7 @@ module Sensu
     def derive_handlers(handler_list, nested=false)
       handler_list.inject(Array.new) do |handlers, handler_name|
         if @settings.handler_exists?(handler_name)
-          handler = @settings[:handlers][handler_name]
+          handler = @settings[:handlers][handler_name].merge(:name => handler_name)
           if handler[:type] == 'set'
             unless nested
               handlers = handlers + derive_handlers(handler[:handlers], true)
@@ -396,7 +397,7 @@ module Sensu
             @redis.lrange(history_key, -21, -1) do |history|
               check[:history] = history
               total_state_change = 0
-              unless history.count < 21
+              unless history.size < 21
                 state_changes = 0
                 change_weight = 0.8
                 previous_status = history.first
@@ -527,34 +528,32 @@ module Sensu
       @amq.queue('results').publish(payload.to_json)
     end
 
-    def setup_keepalive_monitor
-      @logger.debug('monitoring client keepalives')
-      @master_timers << EM::PeriodicTimer.new(30) do
-        @redis.smembers('clients') do |clients|
-          clients.each do |client_name|
-            @redis.get('client:' + client_name) do |client_json|
-              client = JSON.parse(client_json, :symbolize_names => true)
-              check = {
-                :name => 'keepalive',
-                :issued => Time.now.to_i
-              }
-              time_since_last_keepalive = Time.now.to_i - client[:timestamp]
-              case
-              when time_since_last_keepalive >= 180
-                check[:output] = 'No keep-alive sent from client in over 180 seconds'
-                check[:status] = 2
-                publish_result(client, check)
-              when time_since_last_keepalive >= 120
-                check[:output] = 'No keep-alive sent from client in over 120 seconds'
-                check[:status] = 1
-                publish_result(client, check)
-              else
-                @redis.hexists('events:' + client[:name], 'keepalive') do |exists|
-                  if exists
-                    check[:output] = 'Keep-alive sent from client'
-                    check[:status] = 0
-                    publish_result(client, check)
-                  end
+    def determine_stale_clients
+      @logger.info('determining stale clients')
+      @redis.smembers('clients') do |clients|
+        clients.each do |client_name|
+          @redis.get('client:' + client_name) do |client_json|
+            client = JSON.parse(client_json, :symbolize_names => true)
+            check = {
+              :name => 'keepalive',
+              :issued => Time.now.to_i
+            }
+            time_since_last_keepalive = Time.now.to_i - client[:timestamp]
+            case
+            when time_since_last_keepalive >= 180
+              check[:output] = 'No keep-alive sent from client in over 180 seconds'
+              check[:status] = 2
+              publish_result(client, check)
+            when time_since_last_keepalive >= 120
+              check[:output] = 'No keep-alive sent from client in over 120 seconds'
+              check[:status] = 1
+              publish_result(client, check)
+            else
+              @redis.hexists('events:' + client[:name], 'keepalive') do |exists|
+                if exists
+                  check[:output] = 'Keep-alive sent from client'
+                  check[:status] = 0
+                  publish_result(client, check)
                 end
               end
             end
@@ -563,15 +562,21 @@ module Sensu
       end
     end
 
-    def setup_aggregation_pruner
-      @logger.debug('pruning aggregations')
-      @master_timers << EM::PeriodicTimer.new(20) do
-        @redis.smembers('aggregates') do |checks|
-          checks.each do |check_name|
-            @redis.smembers('aggregates:' + check_name) do |aggregates|
+    def setup_client_monitor
+      @logger.debug('monitoring clients')
+      @master_timers << EM::PeriodicTimer.new(30) do
+        determine_stale_clients
+      end
+    end
+
+    def prune_aggregations
+      @logger.info('pruning aggregations')
+      @redis.smembers('aggregates') do |checks|
+        checks.each do |check_name|
+          @redis.smembers('aggregates:' + check_name) do |aggregates|
+            if aggregates.size > 20
               aggregates.sort!
-              until aggregates.size <= 20
-                check_issued = aggregates.shift
+              aggregates.take(aggregates.size - 20).each do |check_issued|
                 @redis.srem('aggregates:' + check_name, check_issued) do
                   result_set = check_name + ':' + check_issued.to_s
                   @redis.del('aggregate:' + result_set) do
@@ -592,9 +597,16 @@ module Sensu
       end
     end
 
+    def setup_aggregation_pruner
+      @logger.debug('pruning aggregations')
+      @master_timers << EM::PeriodicTimer.new(20) do
+        prune_aggregations
+      end
+    end
+
     def master_duties
       setup_publisher
-      setup_keepalive_monitor
+      setup_client_monitor
       setup_aggregation_pruner
     end
 

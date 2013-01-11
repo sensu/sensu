@@ -97,29 +97,9 @@ module Sensu
         end
       end
 
-      def run_test(options={}, &block)
+      def test(options={})
         bootstrap(options)
         start
-        $settings[:client][:timestamp] = Time.now.to_i
-        $redis.set('client:' + $settings[:client][:name], $settings[:client].to_json) do
-          $redis.sadd('clients', $settings[:client][:name]) do
-            $redis.hset('events:' + $settings[:client][:name], 'test', {
-              :output => 'CRITICAL',
-              :status => 2,
-              :issued => Time.now.to_i,
-              :flapping => false,
-              :occurrences => 1
-            }.to_json) do
-              $redis.set('stash:test/test', {:key => 'value'}.to_json) do
-                $redis.sadd('stashes', 'test/test') do
-                  EM::Timer.new(0.5) do
-                    block.call
-                  end
-                end
-              end
-            end
-          end
-        end
       end
     end
 
