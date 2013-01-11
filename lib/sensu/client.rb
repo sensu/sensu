@@ -5,6 +5,8 @@ module Sensu
   class Client
     include Utilities
 
+    attr_accessor :safe_mode
+
     def self.run(options={})
       client = self.new(options)
       EM::run do
@@ -20,6 +22,7 @@ module Sensu
       base.setup_process
       @timers = Array.new
       @checks_in_progress = Array.new
+      @safe_mode = @settings[:client][:safe_mode] || false
     end
 
     def setup_rabbitmq
@@ -151,7 +154,7 @@ module Sensu
           if @settings.check_exists?(check[:name])
             check.merge!(@settings[:checks][check[:name]])
             execute_check(check)
-          elsif @settings[:client][:safe_mode]
+          elsif @safe_mode
             @logger.warn('check is not defined', {
               :check => check
             })
