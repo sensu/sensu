@@ -403,6 +403,16 @@ describe 'Sensu::API' do
     end
   end
 
+  it 'can not provide a nonexistent stash' do
+    api_test do
+      api_request('/stash/nonexistent') do |http, body|
+        http.response_header.status.should eq(404)
+        body.should be_empty
+        async_done
+      end
+    end
+  end
+
   it 'can provide a list of stashes' do
     api_test do
       api_request('/stashes') do |http, body|
@@ -441,6 +451,16 @@ describe 'Sensu::API' do
           exists.should be_false
           async_done
         end
+      end
+    end
+  end
+
+  it 'can not delete a nonexistent stash' do
+    api_test do
+      api_request('/stash/nonexistent', :delete) do |http, body|
+        http.response_header.status.should eq(404)
+        body.should be_empty
+        async_done
       end
     end
   end
@@ -498,14 +518,26 @@ describe 'Sensu::API' do
           body[:critical].should eq(0)
           body[:unknown].should eq(0)
           body[:total].should eq(1)
-          body[:outputs].should have(1).items
-          body[:outputs][:'WARNING'].should eq(1)
+          body[:results].should be_kind_of(Array)
           body[:results].should have(1).items
           body[:results][0][:client].should eq('i-424242')
           body[:results][0][:output].should eq('WARNING')
           body[:results][0][:status].should eq(1)
+          body[:outputs].should be_kind_of(Hash)
+          body[:outputs].should have(1).items
+          body[:outputs][:'WARNING'].should eq(1)
           async_done
         end
+      end
+    end
+  end
+
+  it 'can not provide a nonexistent aggregate' do
+    api_test do
+      api_request('/aggregates/foobar/' + epoch.to_s) do |http, body|
+        http.response_header.status.should eq(404)
+        body.should be_empty
+        async_done
       end
     end
   end
