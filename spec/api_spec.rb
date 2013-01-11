@@ -1,6 +1,7 @@
 require 'em-http-request'
 
 require File.dirname(__FILE__) + '/../lib/sensu/api.rb'
+require File.dirname(__FILE__) + '/../lib/sensu/server.rb'
 require File.dirname(__FILE__) + '/helpers.rb'
 
 describe 'Sensu::API' do
@@ -438,6 +439,71 @@ describe 'Sensu::API' do
         body.should be_empty
         redis.exists('stash:test/test') do |exists|
           exists.should be_false
+          async_done
+        end
+      end
+    end
+  end
+
+  it 'can provide a list of aggregates' do
+    api_test do
+      server = Sensu::Server.new(options)
+      server.setup_redis
+      server.aggregate_result(result_template)
+      timer(1) do
+        api_request('/aggregates') do |http, body|
+          body.should be_kind_of(Array)
+          test_aggregate = Proc.new do |aggregate|
+            aggregate[:check] == 'foobar'
+          end
+          body.should contain(test_aggregate)
+          async_done
+        end
+      end
+    end
+  end
+
+  it 'can provide an aggregate list' do
+    api_test do
+      server = Sensu::Server.new(options)
+      server.setup_redis
+      result = result_template
+      timestamp = epoch
+      result[:timestamp] = timestamp
+      server.aggregate_result(result)
+      timer(1) do
+        api_request('/aggregates/foobar') do |http, body|
+          body.should be_kind_of(Array)
+          body.should include(timestamp.to_s)
+          async_done
+        end
+      end
+    end
+  end
+
+  it 'can provide a specific aggregate with parameters' do
+    api_test do
+      server = Sensu::Server.new(options)
+      server.setup_redis
+      result = result_template
+      timestamp = epoch
+      result[:timestamp] = timestamp
+      server.aggregate_result(result)
+      timer(1) do
+        parameters = '?results=true&summarize=output'
+        api_request('/aggregates/foobar/' + timestamp.to_s + parameters) do |http, body|
+          body.should be_kind_of(Hash)
+          body[:ok].should eq(0)
+          body[:warning].should eq(1)
+          body[:critical].should eq(0)
+          body[:unknown].should eq(0)
+          body[:total].should eq(1)
+          body[:outputs].should have(1).items
+          body[:outputs][:'WARNING'].should eq(1)
+          body[:results].should have(1).items
+          body[:results][0][:client].should eq('i-424242')
+          body[:results][0][:output].should eq('WARNING')
+          body[:results][0][:status].should eq(1)
           async_done
         end
       end
