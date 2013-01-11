@@ -46,14 +46,17 @@ describe 'Sensu::Settings' do
   end
 
   it 'can validate the configuration' do
+    stdout = STDOUT.clone
+    STDOUT.reopen(File.open('/dev/null', 'w'))
     @settings.load_file(options[:config_file])
     lambda { @settings.validate }.should raise_error SystemExit
     @settings.load_directory(options[:config_dir])
     @settings.validate
+    STDOUT.reopen(stdout)
   end
 
   it 'can set environment variables' do
-    ENV['SENSU_CONFIG_FILES'].should be_nil
+    ENV['SENSU_CONFIG_FILES'] = nil
     @settings.load_file(options[:config_file])
     @settings.set_env
     ENV['SENSU_CONFIG_FILES'].should include(File.expand_path(options[:config_file]))
