@@ -502,6 +502,34 @@ describe 'Sensu::API' do
     end
   end
 
+  it 'can delete aggregates' do
+    api_test do
+      server = Sensu::Server.new(options)
+      server.setup_redis
+      server.aggregate_result(result_template)
+      timer(1) do
+        api_request('/aggregates/foobar', :delete) do |http, body|
+          http.response_header.status.should eq(204)
+          body.should be_empty
+          redis.sismember('aggregates', 'foobar') do |exists|
+            exists.should be_false
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it 'can not delete nonexistent aggregates' do
+    api_test do
+      api_request('/aggregates/nonexistent', :delete) do |http, body|
+        http.response_header.status.should eq(404)
+        body.should be_empty
+        async_done
+      end
+    end
+  end
+
   it 'can provide a specific aggregate with parameters' do
     api_test do
       server = Sensu::Server.new(options)
@@ -513,6 +541,7 @@ describe 'Sensu::API' do
       timer(1) do
         parameters = '?results=true&summarize=output'
         api_request('/aggregates/foobar/' + timestamp.to_s + parameters) do |http, body|
+          http.response_header.status.should eq(200)
           body.should be_kind_of(Hash)
           body[:ok].should eq(0)
           body[:warning].should eq(1)
