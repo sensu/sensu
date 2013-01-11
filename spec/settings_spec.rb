@@ -46,12 +46,12 @@ describe 'Sensu::Settings' do
   end
 
   it 'can validate the configuration' do
+    @settings.load_file(options[:config_file])
     with_stdout_redirect do
-      @settings.load_file(options[:config_file])
       lambda { @settings.validate }.should raise_error(SystemExit)
-      @settings.load_directory(options[:config_dir])
-      @settings.validate
     end
+    @settings.load_directory(options[:config_dir])
+    @settings.validate
   end
 
   it 'can set environment variables' do
