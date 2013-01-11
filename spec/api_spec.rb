@@ -492,8 +492,9 @@ describe 'Sensu::API' do
       result[:timestamp] = timestamp
       server.aggregate_result(result)
       timer(1) do
-        api_request('/aggregates/foobar') do |http, body|
+        api_request('/aggregates/foobar?limit=1') do |http, body|
           body.should be_kind_of(Array)
+          body.should have(1).items
           body.should include(timestamp.to_s)
           async_done
         end
