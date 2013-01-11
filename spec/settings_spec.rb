@@ -10,7 +10,7 @@ describe 'Sensu::Settings' do
 
   it 'can load settings from configuration files' do
     @settings.load_file(options[:config_file])
-    @settings.should respond_to(:check_exists?, :mutator_exists?, :handler_exists?)
+    @settings.should respond_to(:[], :check_exists?, :mutator_exists?, :handler_exists?)
     @settings.check_exists?('tokens').should be_true
     @settings.check_exists?('nonexistent').should be_false
     @settings.mutator_exists?('tag').should be_true
