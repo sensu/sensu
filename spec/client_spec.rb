@@ -66,6 +66,21 @@ describe 'Sensu::Client' do
     end
   end
 
+  it 'can substitute check command tokens with attributes and execute it' do
+    async_wrapper do
+      @client.setup_rabbitmq
+      check = check_template
+      check[:command] = 'echo -n :::nested.attribute:::'
+      @client.execute_check(check)
+      amq.queue('results').subscribe do |headers, payload|
+        result = JSON.parse(payload, :symbolize_names => true)
+        result[:client].should eq('i-424242')
+        result[:check][:output].should eq('true')
+        async_done
+      end
+    end
+  end
+
   it 'can setup subscriptions' do
     async_wrapper do
       @client.setup_rabbitmq
@@ -80,22 +95,36 @@ describe 'Sensu::Client' do
     end
   end
 
-  it 'can receive a check request and execute the check (with tokens)' do
+  it 'can receive a check request and execute the check' do
     async_wrapper do
       @client.setup_rabbitmq
       @client.setup_subscriptions
       timer(1) do
-        check_request = {
-          :name => 'tokens',
-          :issued => epoch
-        }
-        amq.fanout('test').publish(check_request.to_json)
+        amq.fanout('test').publish(check_template.to_json)
       end
       amq.queue('results').subscribe do |headers, payload|
         result = JSON.parse(payload, :symbolize_names => true)
         result[:client].should eq('i-424242')
-        result[:check][:output].should eq('i-424242 true')
-        result[:check][:status].should eq(2)
+        result[:check][:output].should eq('WARNING')
+        result[:check][:status].should eq(1)
+        async_done
+      end
+    end
+  end
+
+  it 'can receive a check request and not execute the check due to safe mode' do
+    async_wrapper do
+      @client.safe_mode = true
+      @client.setup_rabbitmq
+      @client.setup_subscriptions
+      timer(1) do
+        amq.fanout('test').publish(check_template.to_json)
+      end
+      amq.queue('results').subscribe do |headers, payload|
+        result = JSON.parse(payload, :symbolize_names => true)
+        result[:client].should eq('i-424242')
+        result[:check][:output].should include('safe mode')
+        result[:check][:status].should eq(3)
         async_done
       end
     end
@@ -137,6 +166,16 @@ describe 'Sensu::Client' do
         result[:client].should eq('i-424242')
         expected.delete(result[:check][:name]).should_not be_nil
         if expected.empty?
+          async_done
+        end
+      end
+    end
+  end
+
+  after(:all) do
+    async_wrapper do
+      amq.queue('results').purge do
+        amq.queue('keepalives').purge do
           async_done
         end
       end

@@ -535,4 +535,14 @@ describe 'Sensu::Server' do
       end
     end
   end
+
+  after(:all) do
+    async_wrapper do
+      amq.queue('results').purge do
+        amq.queue('keepalives').purge do
+          async_done
+        end
+      end
+    end
+  end
 end
