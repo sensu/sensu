@@ -15,7 +15,7 @@ describe 'Sensu::Process' do
   end
 
   it 'can adjust eventmachine settings (thread pool size)' do
-    EM::threadpool_size.should eq(20)
+    EM::threadpool_size = 20
     @process.setup_eventmachine
     EM::threadpool_size.should eq(14)
   end
