@@ -62,6 +62,13 @@ module Helpers
     end
   end
 
+  def with_stdout_redirect(&block)
+    stdout = STDOUT.clone
+    STDOUT.reopen(File.open('/dev/null', 'w'))
+    block.call
+    STDOUT.reopen(stdout)
+  end
+
   def epoch
     Time.now.to_i
   end

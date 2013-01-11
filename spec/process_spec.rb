@@ -1,6 +1,9 @@
 require File.dirname(__FILE__) + '/../lib/sensu/base.rb'
+require File.dirname(__FILE__) + '/helpers.rb'
 
 describe 'Sensu::Process' do
+  include Helpers
+
   before do
     @process = Sensu::Process.new
   end
@@ -11,7 +14,9 @@ describe 'Sensu::Process' do
   end
 
   it 'can exit if it cannot create a pid file' do
-    lambda { @process.write_pid('/sensu.pid') }.should raise_error(SystemExit)
+    with_stdout_redirect do
+      lambda { @process.write_pid('/sensu.pid') }.should raise_error(SystemExit)
+    end
   end
 
   it 'can adjust eventmachine settings (thread pool size)' do
