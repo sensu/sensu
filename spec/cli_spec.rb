@@ -3,7 +3,7 @@ require File.dirname(__FILE__) + '/../lib/sensu/constants.rb'
 
 describe 'Sensu::CLI' do
   it 'can provide default configuration options' do
-    Sensu::CLI.read.sort.should eq(Sensu::DEFAULT_OPTIONS.sort)
+    Sensu::CLI.read.should eq(Sensu::DEFAULT_OPTIONS)
   end
 
   it 'can parse command line arguments' do
@@ -25,6 +25,6 @@ describe 'Sensu::CLI' do
       :pid_file => '/tmp/sensu_spec.pid',
       :daemonize => true
     }
-    options.sort.should eq(expected.sort)
+    options.should eq(expected)
   end
 end
