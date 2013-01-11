@@ -89,6 +89,10 @@
       "command": "echo -n foobar && exit 1",
       "standalone": true,
       "interval": 1
+    },
+    "merger": {
+      "command": "this will be overwritten",
+      "interval": 60
     }
   },
   "client": {

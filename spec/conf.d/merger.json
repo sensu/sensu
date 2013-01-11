@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "merger": {
+      "command": "echo -n merger",
+      "subscribers": [
+        "test"
+      ]
+    }
+  }
+}
