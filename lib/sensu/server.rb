@@ -1,6 +1,7 @@
 require File.join(File.dirname(__FILE__), 'base')
 require File.join(File.dirname(__FILE__), 'redis')
 require File.join(File.dirname(__FILE__), 'socket')
+require File.join(File.dirname(__FILE__), 'sandbox')
 
 module Sensu
   class Server
@@ -121,10 +122,30 @@ module Sensu
       subdue && subdue_at == (check[:subdue][:at] || 'handler').to_sym
     end
 
+    def filter_attributes_match?(hash_one, hash_two)
+      hash_one.keys.all? do |key|
+        case
+        when hash_one[key] == hash_two[key]
+          true
+        when hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
+          filter_attributes_match?(hash_one[key], hash_two[key])
+        when hash_one[key].is_a?(String) && hash_one[key].start_with?('eval: ')
+          begin
+            expression = hash_one[key].gsub(/^eval:(\s+)?/, '')
+            !!Sandbox.eval(expression, hash_two[key])
+          rescue
+            false
+          end
+        else
+          false
+        end
+      end
+    end
+
     def event_filtered?(filter_name, event)
       if @settings.filter_exists?(filter_name)
         filter = @settings[:filters][filter_name]
-        matched = hash_values_equal?(filter[:attributes], event)
+        matched = filter_attributes_match?(filter[:attributes], event)
         filter[:negate] ? matched : !matched
       else
         @logger.error('unknown filter', {

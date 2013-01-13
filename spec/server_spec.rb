@@ -122,6 +122,23 @@ describe 'Sensu::Server' do
     @server.check_subdued?(check, :handler).should be_false
   end
 
+  it 'can determine if filter attributes match an event' do
+    attributes = {
+      :occurrences => 1
+    }
+    event = event_template
+    @server.filter_attributes_match?(attributes, event).should be_true
+    event[:occurrences] = 2
+    @server.filter_attributes_match?(attributes, event).should be_false
+    attributes[:occurrences] = "eval: value == 1 || value % 60 == 0"
+    event[:occurrences] = 1
+    @server.filter_attributes_match?(attributes, event).should be_true
+    event[:occurrences] = 2
+    @server.filter_attributes_match?(attributes, event).should be_false
+    event[:occurrences] = 120
+    @server.filter_attributes_match?(attributes, event).should be_true
+  end
+
   it 'can determine if a event is to be filtered' do
     event = event_template
     event[:client][:environment] = 'production'

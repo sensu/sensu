@@ -57,19 +57,5 @@ module Sensu
         diff
       end
     end
-
-    def hash_values_equal?(hash_one, hash_two)
-      hash_one.keys.all? do |key|
-        if hash_one[key] == hash_two[key]
-          true
-        else
-          if hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
-            hash_values_equal?(hash_one[key], hash_two[key])
-          else
-            false
-          end
-        end
-      end
-    end
   end
 end
