@@ -69,6 +69,7 @@ module Sensu
       end
       @rabbitmq.after_reconnect do
         @logger.info('reconnected to rabbitmq')
+        @amq.prefetch(1)
       end
       @amq = @rabbitmq.channel
       @amq.prefetch(1)
