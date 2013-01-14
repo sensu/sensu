@@ -9,7 +9,7 @@ module Sensu
           if RUBY_VERSION < '1.9.3'
             child = ::IO.popen(command + ' 2>&1', mode)
             block.call(child)
-            wait_on_process(child)
+            wait_on_process(child, false)
           else
             options = {
               :err => [:child, :out]
@@ -58,10 +58,10 @@ module Sensu
         end
       end
 
-      def wait_on_process(process)
+      def wait_on_process(process, wait_on_group=true)
         output = process.read
         _, status = ::Process.wait2(process.pid)
-        unless RUBY_VERSION < '1.9.3'
+        if wait_on_group
           wait_on_process_group(process.pid)
         end
         [output, status.exitstatus]
