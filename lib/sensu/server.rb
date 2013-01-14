@@ -129,7 +129,7 @@ module Sensu
           true
         when hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
           filter_attributes_match?(hash_one[key], hash_two[key])
-        when hash_one[key].is_a?(String) && hash_one[key].start_with?('eval: ')
+        when hash_one[key].is_a?(String) && hash_one[key].start_with?('eval:')
           begin
             expression = hash_one[key].gsub(/^eval:(\s+)?/, '')
             !!Sandbox.eval(expression, hash_two[key])
@@ -220,7 +220,7 @@ module Sensu
             event_filtered?(filter_name, event)
           end
           if filtered
-            @logger.debug('event filtered for handler', {
+            @logger.info('event filtered for handler', {
               :event => event,
               :handler => handler
             })
