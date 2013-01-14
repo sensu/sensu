@@ -76,7 +76,10 @@ module Sensu
 
     def setup_keepalives
       @logger.debug('subscribing to keepalives')
-      @keepalive_queue = @amq.queue('keepalives')
+      @amq.queue('keepalives').consumers.each do |consumer_tag, consumer|
+        consumer.cancel
+      end
+      @keepalive_queue = @amq.queue!('keepalives')
       @keepalive_queue.subscribe(:ack => true) do |header, payload|
         client = JSON.parse(payload, :symbolize_names => true)
         @logger.debug('received keepalive', {
@@ -490,7 +493,10 @@ module Sensu
 
     def setup_results
       @logger.debug('subscribing to results')
-      @result_queue = @amq.queue('results')
+      @amq.queue('results').consumers.each do |consumer_tag, consumer|
+        consumer.cancel
+      end
+      @result_queue = @amq.queue!('results')
       @result_queue.subscribe(:ack => true) do |header, payload|
         result = JSON.parse(payload, :symbolize_names => true)
         @logger.debug('received result', {
@@ -703,6 +709,7 @@ module Sensu
       @keepalive_queue.unsubscribe
       @result_queue.unsubscribe
       if @rabbitmq.connected?
+        @amq.recover
         timestamp = Time.now.to_i
         retry_until_true do
           if !@keepalive_queue.subscribed? && !@result_queue.subscribed?
