@@ -9,7 +9,7 @@ module Sensu
           if RUBY_VERSION < '1.9.3'
             child = ::IO.popen(command + ' 2>&1', mode)
             block.call(child)
-            wait_on_process(child)
+            wait_on_process(child, false)
           else
             options = {
               :err => [:child, :out]
@@ -34,22 +34,36 @@ module Sensu
             end
           end
         rescue Timeout::Error
-          begin
-            ::Process.kill(9, -child.pid)
-            loop do
-              ::Process.wait2(-child.pid)
-            end
-          rescue Errno::ESRCH, Errno::ECHILD
-            ['Execution timed out', 2]
-          end
+          kill_process_group(child.pid)
+          wait_on_process_group(child.pid)
+          ['Execution timed out', 2]
         end
       end
 
       private
 
-      def wait_on_process(process)
+      def kill_process_group(group_id)
+        begin
+          ::Process.kill(9, -group_id)
+        rescue Errno::ESRCH, Errno::EPERM
+        end
+      end
+
+      def wait_on_process_group(group_id)
+        begin
+          loop do
+            ::Process.wait2(-group_id)
+          end
+        rescue Errno::ECHILD
+        end
+      end
+
+      def wait_on_process(process, wait_on_group=true)
         output = process.read
         _, status = ::Process.wait2(process.pid)
+        if wait_on_group
+          wait_on_process_group(process.pid)
+        end
         [output, status.exitstatus]
       end
     end
