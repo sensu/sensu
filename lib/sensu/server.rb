@@ -553,6 +553,10 @@ module Sensu
             @master_timers << EM::PeriodicTimer.new(interval) do
               unless action_subdued?(check)
                 publish_check_request(check)
+              else
+                @logger.info('action is subdued', {
+                  :check => check
+                })
               end
             end
           end
