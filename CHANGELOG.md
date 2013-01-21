@@ -1,3 +1,11 @@
+## 0.9.10 - TBD
+
+### Other
+
+Client queue names are now determined by the broker (RabbitMQ).
+
+Extensions have access to settings.
+
 ## 0.9.9 - 2013-01-14
 
 ### Features
