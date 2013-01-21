@@ -43,7 +43,7 @@ module Sensu
     end
 
     def extensions
-      extensions = Extensions.new
+      extensions = Extensions.new(settings)
       if @options[:extension_dir]
         extensions.require_directory(@options[:extension_dir])
       end

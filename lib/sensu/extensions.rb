@@ -1,6 +1,7 @@
 module Sensu
   class Extensions
-    def initialize
+    def initialize(settings)
+      @settings = settings
       @logger = Logger.get
       @extensions = Hash.new
       EXTENSION_CATEGORIES.each do |category|
@@ -40,6 +41,7 @@ module Sensu
         extension_type = category.to_s.chop
         Extension.const_get(extension_type.capitalize).descendants.each do |klass|
           extension = klass.new
+          extension.settings = @settings
           @extensions[category][extension.name] = extension
           loaded(extension_type, extension.name, extension.description)
         end
@@ -59,6 +61,8 @@ module Sensu
 
   module Extension
     class Base
+      attr_accessor :settings
+      
       def name
         'base'
       end
