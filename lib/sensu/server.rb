@@ -286,7 +286,7 @@ module Sensu
           end
         end
       when @extensions.mutator_exists?(mutator_name)
-        @extensions[:mutators][mutator_name].run(event) do |output, status|
+        @extensions[:mutators][mutator_name].run(event, @settings.to_hash) do |output, status|
           if status == 0
             block.call(output)
           else
@@ -365,7 +365,7 @@ module Sensu
             end
             @handlers_in_progress_count -= 1
           when 'extension'
-            handler.run(event_data) do |output, status|
+            handler.run(event_data, @settings.to_hash) do |output, status|
               output.split(/\n+/).each do |line|
                 @logger.info(line)
               end

@@ -20,11 +20,15 @@ module Sensu
       @indifferent_access = true
     end
 
-    def [](key)
+    def to_hash
       unless @indifferent_access
         indifferent_access!
       end
-      @settings[key.to_sym]
+      @settings
+    end
+
+    def [](key)
+      to_hash[key]
     end
 
     SETTINGS_CATEGORIES.each do |category|
