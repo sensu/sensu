@@ -9,7 +9,7 @@ module Sensu
         'outputs json event data'
       end
 
-      def run(event, &block)
+      def run(event, settings, &block)
         block.call(event.to_json, 0)
       end
     end

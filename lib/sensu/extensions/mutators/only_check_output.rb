@@ -9,7 +9,7 @@ module Sensu
         'returns check output'
       end
 
-      def run(event, &block)
+      def run(event, settings, &block)
         block.call(event[:check][:output], 0)
       end
     end
