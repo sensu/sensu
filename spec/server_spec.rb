@@ -45,39 +45,40 @@ describe 'Sensu::Server' do
     end
   end
 
-  it 'can determine if a check is subdued' do
-    @server.check_subdued?(Hash.new, :handler).should be_false
+  it 'can determine if an action is subdued' do
+    @server.action_subdued?(Hash.new).should be_false
     check = {
       :subdue => {
         :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
         :end => (Time.now + 3600).strftime('%l:00 %p').strip
       }
     }
-    @server.check_subdued?(check, :handler).should be_true
-    @server.check_subdued?(check, :publisher).should be_false
-    check[:subdue][:at] = :publisher
-    @server.check_subdued?(check, :publisher).should be_true
+    @server.action_subdued?(check).should be_false
+    handler = Hash.new
+    @server.action_subdued?(check, handler).should be_true
+    check[:subdue][:at] = 'publisher'
+    @server.action_subdued?(check).should be_true
     check = {
       :subdue => {
         :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
         :end => (Time.now + 7200).strftime('%l:00 %p').strip
       }
     }
-    @server.check_subdued?(check, :handler).should be_false
+    @server.action_subdued?(check, handler).should be_false
     check = {
       :subdue => {
         :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
         :end => (Time.now - 7200).strftime('%l:00 %p').strip
       }
     }
-    @server.check_subdued?(check, :handler).should be_true
+    @server.action_subdued?(check, handler).should be_true
     check = {
       :subdue => {
         :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
         :end => (Time.now - 7200).strftime('%l:00 %p').strip
       }
     }
-    @server.check_subdued?(check, :handler).should be_false
+    @server.action_subdued?(check, handler).should be_false
     check = {
       :subdue => {
         :days => [
@@ -86,7 +87,7 @@ describe 'Sensu::Server' do
         ]
       }
     }
-    @server.check_subdued?(check, :handler).should be_true
+    @server.action_subdued?(check, handler).should be_true
     check = {
       :subdue => {
         :days => [
@@ -95,7 +96,7 @@ describe 'Sensu::Server' do
         ]
       }
     }
-    @server.check_subdued?(check, :handler).should be_false
+    @server.action_subdued?(check, handler).should be_false
     check = {
       :subdue => {
         :days => %w[sunday monday tuesday wednesday thursday friday saturday],
@@ -107,7 +108,7 @@ describe 'Sensu::Server' do
         ]
       }
     }
-    @server.check_subdued?(check, :handler).should be_true
+    @server.action_subdued?(check, handler).should be_true
     check = {
       :subdue => {
         :days => %w[sunday monday tuesday wednesday thursday friday saturday],
@@ -119,7 +120,36 @@ describe 'Sensu::Server' do
         ]
       }
     }
-    @server.check_subdued?(check, :handler).should be_false
+    @server.action_subdued?(check, handler).should be_false
+    check = Hash.new
+    handler = {
+      :subdue => {
+        :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
+        :end => (Time.now + 3600).strftime('%l:00 %p').strip
+      }
+    }
+    @server.action_subdued?(check, handler).should be_true
+    check = {
+      :subdue => {
+        :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
+        :end => (Time.now + 3600).strftime('%l:00 %p').strip
+      }
+    }
+    @server.action_subdued?(check, handler).should be_true
+    check = {
+      :subdue => {
+        :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
+        :end => (Time.now + 7200).strftime('%l:00 %p').strip
+      }
+    }
+    @server.action_subdued?(check, handler).should be_true
+    handler = {
+      :subdue => {
+        :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
+        :end => (Time.now + 7200).strftime('%l:00 %p').strip
+      }
+    }
+    @server.action_subdued?(check, handler).should be_false
   end
 
   it 'can determine if filter attributes match an event' do

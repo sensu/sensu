@@ -1,5 +1,9 @@
 ## 0.9.10 - TBD
 
+### Features
+
+Handlers can be subdued like checks, suppression windows.
+
 ### Other
 
 Client queue names are now determined by the broker (RabbitMQ).

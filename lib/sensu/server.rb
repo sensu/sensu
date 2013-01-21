@@ -94,12 +94,20 @@ module Sensu
       end
     end
 
-    def check_subdued?(check, subdue_at)
+    def action_subdued?(check, handler=nil)
       subdue = false
-      if check[:subdue].is_a?(Hash)
-        if check[:subdue].has_key?(:begin) && check[:subdue].has_key?(:end)
-          begin_time = Time.parse(check[:subdue][:begin])
-          end_time = Time.parse(check[:subdue][:end])
+      subdue_at = handler ? 'handler' : 'publisher'
+      conditions = Array.new
+      if check[:subdue]
+        conditions.push(check[:subdue])
+      end
+      if handler && handler[:subdue]
+        conditions.push(handler[:subdue])
+      end
+      conditions.each do |condition|
+        if condition.has_key?(:begin) && condition.has_key?(:end)
+          begin_time = Time.parse(condition[:begin])
+          end_time = Time.parse(condition[:end])
           if end_time < begin_time
             if Time.now < end_time
               begin_time = Time.parse('12:00:00 AM')
@@ -111,19 +119,26 @@ module Sensu
             subdue = true
           end
         end
-        if check[:subdue].has_key?(:days)
-          days = check[:subdue][:days].map(&:downcase)
+        if condition.has_key?(:days)
+          days = condition[:days].map(&:downcase)
           if days.include?(Time.now.strftime('%A').downcase)
             subdue = true
           end
         end
-        if subdue && check[:subdue].has_key?(:exceptions)
-          subdue = check[:subdue][:exceptions].none? do |exception|
+        if subdue && condition.has_key?(:exceptions)
+          subdue = condition[:exceptions].none? do |exception|
             Time.now >= Time.parse(exception[:begin]) && Time.now <= Time.parse(exception[:end])
           end
         end
+        if subdue
+          if subdue_at == (condition[:at] || 'handler')
+            break
+          else
+            subdue = false
+          end
+        end
       end
-      subdue && subdue_at == (check[:subdue][:at] || 'handler').to_sym
+      subdue
     end
 
     def filter_attributes_match?(hash_one, hash_two)
@@ -202,8 +217,8 @@ module Sensu
           })
           next
         end
-        if check_subdued?(event[:check], :handler)
-          @logger.info('check is subdued at handler', {
+        if action_subdued?(event[:check], handler)
+          @logger.info('action is subdued', {
             :event => event,
             :handler => handler
           })
@@ -536,8 +551,12 @@ module Sensu
           @master_timers << EM::Timer.new(scheduling_delay) do
             interval = testing? ? 0.5 : check[:interval]
             @master_timers << EM::PeriodicTimer.new(interval) do
-              unless check_subdued?(check, :publisher)
+              unless action_subdued?(check)
                 publish_check_request(check)
+              else
+                @logger.info('action is subdued', {
+                  :check => check
+                })
               end
             end
           end
