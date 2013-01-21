@@ -141,6 +141,55 @@ module Sensu
       exit 2
     end
 
+    def validate_subdue(condition, details={})
+      type = details.has_key?(:check) ? 'check' : 'handler'
+      unless condition.is_a?(Hash)
+        invalid(type + ' subdue must be a hash', details)
+      end
+      if condition.has_key?(:at)
+        unless %w[handler publisher].include?(condition[:at])
+          invalid(type + ' subdue at must be either handler or publisher', details)
+        end
+      end
+      if condition.has_key?(:begin) || condition.has_key?(:end)
+        begin
+          Time.parse(condition[:begin])
+          Time.parse(condition[:end])
+        rescue
+          invalid(type + ' subdue begin & end times must be valid', details)
+        end
+      end
+      if condition.has_key?(:days)
+        unless condition[:days].is_a?(Array)
+          invalid(type + ' subdue days must be an array', details)
+        end
+        condition[:days].each do |day|
+          days = %w[sunday monday tuesday wednesday thursday friday saturday]
+          unless day.is_a?(String) && days.include?(day.downcase)
+            invalid(type + ' subdue days must be valid days of the week', details)
+          end
+        end
+      end
+      if condition.has_key?(:exceptions)
+        unless condition[:exceptions].is_a?(Array)
+          invalid(type + ' subdue exceptions must be an array', details)
+        end
+        condition[:exceptions].each do |exception|
+          unless exception.is_a?(Hash)
+            invalid(type + ' subdue exceptions must each be a hash', details)
+          end
+          if exception.has_key?(:begin) || exception.has_key?(:end)
+            begin
+              Time.parse(exception[:begin])
+              Time.parse(exception[:end])
+            rescue
+              invalid(type + ' subdue exception begin & end times must be valid', details)
+            end
+          end
+        end
+      end
+    end
+
     def validate_checks
       unless @settings[:checks].is_a?(Hash)
         invalid('checks must be a hash')
@@ -213,60 +262,9 @@ module Sensu
           end
         end
         if check.has_key?(:subdue)
-          unless check[:subdue].is_a?(Hash)
-            invalid('check subdue must be a hash', {
-              :check => check
-            })
-          end
-          if check[:subdue].has_key?(:begin) || check[:subdue].has_key?(:end)
-            begin
-              Time.parse(check[:subdue][:begin])
-              Time.parse(check[:subdue][:end])
-            rescue
-              invalid('check subdue begin & end times must be valid', {
-                :check => check
-              })
-            end
-          end
-          if check[:subdue].has_key?(:days)
-            unless check[:subdue][:days].is_a?(Array)
-              invalid('check subdue days must be an array', {
-                :check => check
-              })
-            end
-            check[:subdue][:days].each do |day|
-              days = %w[sunday monday tuesday wednesday thursday friday saturday]
-              unless day.is_a?(String) && days.include?(day.downcase)
-                invalid('check subdue days must be valid days of the week', {
-                  :check => check
-                })
-              end
-            end
-          end
-          if check[:subdue].has_key?(:exceptions)
-            unless check[:subdue][:exceptions].is_a?(Array)
-              invalid('check subdue exceptions must be an array', {
-                :check => check
-              })
-            end
-            check[:subdue][:exceptions].each do |exception|
-              unless exception.is_a?(Hash)
-                invalid('check subdue exceptions must each be a hash', {
-                  :check => check
-                })
-              end
-              if exception.has_key?(:begin) || exception.has_key?(:end)
-                begin
-                  Time.parse(exception[:begin])
-                  Time.parse(exception[:end])
-                rescue
-                  invalid('check subdue exception begin & end times must be valid', {
-                    :check => check
-                  })
-                end
-              end
-            end
-          end
+          validate_subdue(check[:subdue], {
+            :check => check
+          })
         end
       end
     end
@@ -462,6 +460,11 @@ module Sensu
               })
             end
           end
+        end
+        if handler.has_key?(:subdue)
+          validate_subdue(handler[:subdue], {
+            :handler => handler
+          })
         end
       end
     end
