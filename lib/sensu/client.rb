@@ -134,7 +134,7 @@ module Sensu
 
     def setup_subscriptions
       @logger.debug('subscribing to client subscriptions')
-      @check_request_queue = @amq.queue("", :auto_delete => true) do |queue|
+      @check_request_queue = @amq.queue('', :auto_delete => true) do |queue|
         @settings[:client][:subscriptions].uniq.each do |exchange_name|
           @logger.debug('binding queue to exchange', {
             :queue => queue.name,
@@ -142,9 +142,9 @@ module Sensu
               :name => exchange_name
             }
           })
-          @check_request_queue.bind(@amq.fanout(exchange_name))
+          queue.bind(@amq.fanout(exchange_name))
         end
-        @check_request_queue.subscribe do |payload|
+        queue.subscribe do |payload|
           begin
             check = JSON.parse(payload, :symbolize_names => true)
             @logger.info('received check request', {
