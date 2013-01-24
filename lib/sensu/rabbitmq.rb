@@ -27,9 +27,6 @@ module Sensu
     end
 
     def connect(options={})
-      options.reject! do |key, value|
-        key == :heartbeat
-      end
       on_failure = Proc.new do
         error = RabbitMQError.new('cannot connect to rabbitmq')
         @on_error.call(error)
