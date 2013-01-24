@@ -134,40 +134,42 @@ module Sensu
 
     def setup_subscriptions
       @logger.debug('subscribing to client subscriptions')
-      @check_request_queue = @amq.queue('', :auto_delete => true)
-      @settings[:client][:subscriptions].uniq.each do |exchange_name|
-        @logger.debug('binding queue to exchange', {
-          :exchange => {
-            :name => exchange_name
-          }
-        })
-        @check_request_queue.bind(@amq.fanout(exchange_name))
-      end
-      @check_request_queue.subscribe do |payload|
-        begin
-          check = JSON.parse(payload, :symbolize_names => true)
-          @logger.info('received check request', {
-            :check => check
+      @check_request_queue = @amq.queue('', :auto_delete => true) do |queue|
+        @settings[:client][:subscriptions].uniq.each do |exchange_name|
+          @logger.debug('binding queue to exchange', {
+            :queue => queue.name,
+            :exchange => {
+              :name => exchange_name
+            }
           })
-          if @settings.check_exists?(check[:name])
-            check.merge!(@settings[:checks][check[:name]])
-            execute_check(check)
-          elsif @safe_mode
-            @logger.warn('check is not defined', {
+          queue.bind(@amq.fanout(exchange_name))
+        end
+        queue.subscribe do |payload|
+          begin
+            check = JSON.parse(payload, :symbolize_names => true)
+            @logger.info('received check request', {
               :check => check
             })
-            check[:output] = 'Check is not defined (safe mode)'
-            check[:status] = 3
-            check[:handle] = false
-            publish_result(check)
-          else
-            execute_check(check)
+            if @settings.check_exists?(check[:name])
+              check.merge!(@settings[:checks][check[:name]])
+              execute_check(check)
+            elsif @safe_mode
+              @logger.warn('check is not defined', {
+                :check => check
+              })
+              check[:output] = 'Check is not defined (safe mode)'
+              check[:status] = 3
+              check[:handle] = false
+              publish_result(check)
+            else
+              execute_check(check)
+            end
+          rescue JSON::ParserError => error
+            @logger.warn('check request payload must be valid json', {
+              :payload => payload,
+              :error => error.to_s
+            })
           end
-        rescue JSON::ParserError => error
-          @logger.warn('check request payload must be valid json', {
-            :payload => payload,
-            :error => error.to_s
-          })
         end
       end
     end
