@@ -414,6 +414,7 @@ describe 'Sensu::Server' do
               event = JSON.parse(event_json, :symbolize_names => true)
               event[:status].should eq(1)
               event[:occurrences].should eq(1)
+              event[:custom_data].should_not be_nil
               async_done
             end
           end
