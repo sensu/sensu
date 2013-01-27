@@ -468,16 +468,19 @@ module Sensu
                 event = {
                   :client => client,
                   :check => check,
-                  :occurrences => 1
+                  :occurrences => 1,
+                  :custom_data => {}
                 }
                 if check[:status] != 0 || is_flapping
                   if previous_occurrence && check[:status] == previous_occurrence[:status]
                     event[:occurrences] = previous_occurrence[:occurrences] += 1
+                    event[:custom_data] = previous_occurrence[:custom_data]
                   end
                   @redis.hset('events:' + client[:name], check[:name], {
                     :output => check[:output],
                     :status => check[:status],
                     :issued => check[:issued],
+                    :custom_data => event[:cusom_data],
                     :handlers => Array((check[:handlers] || check[:handler]) || 'default'),
                     :flapping => is_flapping,
                     :occurrences => event[:occurrences]
