@@ -9,7 +9,7 @@ module Sensu
         'converts graphite plain text format to opentsdb'
       end
 
-      def run(event, &block)
+      def run(event, settings, &block)
         begin
           metrics = Array.new
           event[:check][:output].each_line do |line|
