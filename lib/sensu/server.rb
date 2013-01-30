@@ -281,18 +281,18 @@ module Sensu
     end
 
     def mutate_event_data(mutator_name, event, &block)
-      on_error = Proc.new do |error|
-        @logger.error('mutator error', {
-          :event => event,
-          :mutator => mutator,
-          :error => error.to_s
-        })
-      end
       case
       when mutator_name.nil?
         block.call(event.to_json)
       when @settings.mutator_exists?(mutator_name)
         mutator = @settings[:mutators][mutator_name]
+        on_error = Proc.new do |error|
+          @logger.error('mutator error', {
+            :event => event,
+            :mutator => mutator,
+            :error => error.to_s
+          })
+        end
         execute_command(mutator[:command], event.to_json, on_error) do |output, status|
           if status == 0
             block.call(output)
@@ -301,11 +301,16 @@ module Sensu
           end
         end
       when @extensions.mutator_exists?(mutator_name)
-        @extensions[:mutators][mutator_name].run(event, @settings.to_hash) do |output, status|
+        extension = @extensions[:mutators][mutator_name]
+        extension.run(event, @settings.to_hash) do |output, status|
           if status == 0
             block.call(output)
           else
-            on_error.call('non-zero exit status (' + status.to_s + '): ' + output)
+            @logger.error('mutator error', {
+              :event => event,
+              :extension => extension,
+              :error => 'non-zero exit status (' + status.to_s + '): ' + output
+            })
           end
         end
       else

@@ -1,17 +1,16 @@
 module Sensu
   module Extension
-    class Syntax < Mutator
+    class Fail < Mutator
       def name
-        'syntax'
+        'fail'
       end
 
       def description
-        'will raise a script error'
+        'fails to do anything'
       end
 
       def run(event, settings, &block)
-          block.call('boom', 0)
-        end
+        block.call('fail', 2)
       end
     end
   end
