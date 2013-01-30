@@ -390,6 +390,7 @@ describe 'Sensu::Server' do
                 event = JSON.parse(event_json, :symbolize_names => true)
                 event[:flapping].should be_true
                 event[:occurrences].should be_within(2).of(1)
+                event[:custom_data].should_not be_nil
                 async_done
               end
             end
