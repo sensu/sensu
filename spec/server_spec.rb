@@ -272,7 +272,6 @@ describe 'Sensu::Server' do
           @server.mutate_event_data('tag', event) do |event_data|
             JSON.parse(event_data).should include('mutated')
             @server.mutate_event_data('settings', event) do |event_data|
-              puts event_data
               event_data.should eq('true')
               async_done
             end
