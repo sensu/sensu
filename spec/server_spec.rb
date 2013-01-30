@@ -256,13 +256,25 @@ describe 'Sensu::Server' do
   it 'can mutate event data' do
     async_wrapper do
       event = event_template
+      @server.mutate_event_data('unknown', event) do |event_data|
+        raise 'should never get here'
+      end
+      @server.mutate_event_data('explode', event) do |event_data|
+        raise 'should never get here'
+      end
+      @server.mutate_event_data('fail', event) do |event_data|
+        raise 'should never get here'
+      end
       @server.mutate_event_data(nil, event) do |event_data|
         event_data.should eq(event.to_json)
         @server.mutate_event_data('only_check_output', event) do |event_data|
           event_data.should eq('WARNING')
           @server.mutate_event_data('tag', event) do |event_data|
             JSON.parse(event_data).should include('mutated')
-            async_done
+            @server.mutate_event_data('settings', event) do |event_data|
+              event_data.should eq('true')
+              async_done
+            end
           end
         end
       end
