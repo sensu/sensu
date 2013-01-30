@@ -40,7 +40,7 @@ module Sensu
         rescue => error
           kill_process_group(child.pid)
           wait_on_process_group(child.pid)
-          [error.to_s + "\n" + error.backtrace.join("\n"), 2]
+          raise error
         end
       end
 
