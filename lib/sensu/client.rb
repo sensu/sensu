@@ -137,7 +137,9 @@ module Sensu
       @check_request_queue = @amq.queue('', :auto_delete => true) do |queue|
         @settings[:client][:subscriptions].uniq.each do |exchange_name|
           @logger.debug('binding queue to exchange', {
-            :queue => queue.name,
+            :queue => {
+              :name => queue.name
+            },
             :exchange => {
               :name => exchange_name
             }
