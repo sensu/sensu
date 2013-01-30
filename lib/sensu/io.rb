@@ -37,6 +37,10 @@ module Sensu
           kill_process_group(child.pid)
           wait_on_process_group(child.pid)
           ['Execution timed out', 2]
+        rescue => e
+          kill_process_group(child.pid)
+          wait_on_process_group(child.pid)
+          ["Exception during execution command '#{command}': #{e} \n #{e.backtrace}", 2]
         end
       end
 
