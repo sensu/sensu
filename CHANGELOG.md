@@ -4,11 +4,15 @@
 
 Handlers can be subdued like checks, suppression windows.
 
+### Non-backwards compatible changes
+
+Extensions have access to settings.
+
 ### Other
 
 Client queue names are now determined by the broker (RabbitMQ).
 
-Extensions have access to settings.
+Improved zombie reaping.
 
 ## 0.9.9 - 2013-01-14
 
