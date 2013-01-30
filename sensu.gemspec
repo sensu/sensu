@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
   s.has_rdoc    = false
 
   s.add_dependency('eventmachine', '1.0.0')
+  s.add_dependency('amq-client', '0.9.11')
   s.add_dependency('amqp', '0.9.8')
   s.add_dependency('json')
   s.add_dependency('cabin', '0.4.4')
