@@ -297,7 +297,7 @@ module Sensu
           if status == 0
             block.call(output)
           else
-            on_error.call('non-zero exit status (' + status + '): ' + output)
+            on_error.call('non-zero exit status (' + status.to_s + '): ' + output)
           end
         end
       when @extensions.mutator_exists?(mutator_name)
@@ -305,7 +305,7 @@ module Sensu
           if status == 0
             block.call(output)
           else
-            on_error.call('non-zero exit status (' + status + '): ' + output)
+            on_error.call('non-zero exit status (' + status.to_s + '): ' + output)
           end
         end
       else
