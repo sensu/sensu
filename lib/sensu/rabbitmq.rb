@@ -6,12 +6,12 @@ module Sensu
   class RabbitMQError < StandardError; end
 
   class RabbitMQ
-    attr_reader :channel
-
     def initialize
       @on_error = Proc.new {}
       @before_reconnect = Proc.new {}
       @after_reconnect = Proc.new {}
+      @connection = nil
+      @channels = Array.new
     end
 
     def on_error(&block)
@@ -24,6 +24,19 @@ module Sensu
 
     def after_reconnect(&block)
       @after_reconnect = block
+    end
+
+    def create_channel
+      channel = AMQP::Channel.new(@connection)
+      channel.auto_recovery = true
+      channel.on_error do |channel, channel_close|
+        error = RabbitMQError.new('rabbitmq channel closed')
+        @on_error.call(error)
+      end
+      channel.on_recovery do
+        @after_reconnect.call
+      end
+      @channels.push(channel)
     end
 
     def connect(options={})
@@ -42,15 +55,11 @@ module Sensu
           connection.periodically_reconnect(5)
         end
       end
-      @channel = AMQP::Channel.new(@connection)
-      @channel.auto_recovery = true
-      @channel.on_error do |channel, channel_close|
-        error = RabbitMQError.new('rabbitmq channel closed')
-        @on_error.call(error)
-      end
-      @channel.on_recovery do
-        @after_reconnect.call
-      end
+      create_channel
+    end
+
+    def channel(channel=1)
+      @channels[channel - 1]
     end
 
     def connected?
