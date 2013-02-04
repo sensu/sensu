@@ -37,6 +37,7 @@ module Sensu
         @after_reconnect.call
       end
       @channels.push(channel)
+      channel
     end
 
     def connect(options={})
@@ -55,11 +56,10 @@ module Sensu
           connection.periodically_reconnect(5)
         end
       end
-      create_channel
     end
 
     def channel(channel=1)
-      @channels[channel - 1]
+      @channels.fetch(channel - 1, create_channel)
     end
 
     def connected?
