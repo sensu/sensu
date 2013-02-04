@@ -26,20 +26,6 @@ module Sensu
       @after_reconnect = block
     end
 
-    def create_channel
-      channel = AMQP::Channel.new(@connection)
-      channel.auto_recovery = true
-      channel.on_error do |channel, channel_close|
-        error = RabbitMQError.new('rabbitmq channel closed')
-        @on_error.call(error)
-      end
-      channel.on_recovery do
-        @after_reconnect.call
-      end
-      @channels.push(channel)
-      channel
-    end
-
     def connect(options={})
       on_failure = Proc.new do
         error = RabbitMQError.new('cannot connect to rabbitmq')
@@ -56,6 +42,21 @@ module Sensu
           connection.periodically_reconnect(5)
         end
       end
+      @connection
+    end
+
+    def create_channel
+      channel = AMQP::Channel.new(@connection)
+      channel.auto_recovery = true
+      channel.on_error do |channel, channel_close|
+        error = RabbitMQError.new('rabbitmq channel closed')
+        @on_error.call(error)
+      end
+      channel.on_recovery do
+        @after_reconnect.call
+      end
+      @channels.push(channel)
+      channel
     end
 
     def channel(channel=1)
