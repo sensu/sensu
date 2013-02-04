@@ -381,7 +381,7 @@ module Sensu
               [:name, :type].include?(key)
             end
             unless event_data.empty?
-              @amq.method(exchange_type).call(exchange_name, exchange_options).publish(event_data)
+              @rabbitmq.channel(2).method(exchange_type).call(exchange_name, exchange_options).publish(event_data)
             end
             @handlers_in_progress_count -= 1
           when 'extension'
