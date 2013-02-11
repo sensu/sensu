@@ -9,7 +9,10 @@ module Sensu
     end
 
     def receive_data(data)
-      if data.strip == 'ping'
+      if !data.ascii_only?
+        @logger.warn('socket received non-ascii characters')
+        reply('invalid')
+      elsif data.strip == 'ping'
         @logger.debug('socket received ping')
         reply('pong')
       else
