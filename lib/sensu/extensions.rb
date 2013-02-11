@@ -19,7 +19,8 @@ module Sensu
     end
 
     def require_directory(directory)
-      Dir.glob(File.join(directory, '**/*.rb')).each do |file|
+      path = directory.gsub(/\\(?=\S)/, '/')
+      Dir.glob(File.join(path, '**/*.rb')).each do |file|
         begin
           require file
         rescue ScriptError => error
