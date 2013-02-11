@@ -9,7 +9,7 @@ module Sensu
     end
 
     def receive_data(data)
-      if !data.ascii_only?
+      if data =~ /[\x80-\xff]/
         @logger.warn('socket received non-ascii characters')
         reply('invalid')
       elsif data.strip == 'ping'
