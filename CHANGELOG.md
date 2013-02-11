@@ -2,6 +2,8 @@
 
 ### Other
 
+Fixed config & extension directory loading on windows.
+
 Client socket handles non-ascii input.
 
 ## 0.9.10 - 2013-01-30

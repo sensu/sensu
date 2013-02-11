@@ -104,7 +104,8 @@ module Sensu
     end
 
     def load_directory(directory)
-      Dir.glob(File.join(directory, '**/*.json')).each do |file|
+      path = directory.gsub(/\\(?=\S)/, '/')
+      Dir.glob(File.join(path, '**/*.json')).each do |file|
         load_file(file)
       end
     end
