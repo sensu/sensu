@@ -1,3 +1,9 @@
+## 0.9.11 - TBD
+
+### Other
+
+Client socket handles non-ascii input.
+
 ## 0.9.10 - 2013-01-30
 
 ### Features
