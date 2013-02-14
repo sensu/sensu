@@ -591,13 +591,14 @@ module Sensu
               :issued => Time.now.to_i
             }
             time_since_last_keepalive = Time.now.to_i - client[:timestamp]
+            err_msg = 'No keep-alive sent from client "' + client_name + '"'
             case
             when time_since_last_keepalive >= 180
-              check[:output] = 'No keep-alive sent from client in over 180 seconds'
+              check[:output] = err_msg + ' in over 180 seconds'
               check[:status] = 2
               publish_result(client, check)
             when time_since_last_keepalive >= 120
-              check[:output] = 'No keep-alive sent from client in over 120 seconds'
+              check[:output] = err_msg + ' in over 120 seconds'
               check[:status] = 1
               publish_result(client, check)
             else
