@@ -135,15 +135,17 @@ describe 'Sensu::API' do
 
   it 'can delete an event' do
     api_test do
-      api_request('/event/i-424242/test', :delete) do |http, body|
-        http.response_header.status.should eq(202)
-        body.should be_empty
-        amq.queue('results').subscribe do |headers, payload|
-          result = JSON.parse(payload, :symbolize_names => true)
-          result[:client].should eq('i-424242')
-          result[:check][:name].should eq('test')
-          result[:check][:status].should eq(0)
-          async_done
+      result_queue do |queue|
+        api_request('/event/i-424242/test', :delete) do |http, body|
+          http.response_header.status.should eq(202)
+          body.should be_empty
+          queue.subscribe do |payload|
+            result = JSON.parse(payload, :symbolize_names => true)
+            result[:client].should eq('i-424242')
+            result[:check][:name].should eq('test')
+            result[:check][:status].should eq(0)
+            async_done
+          end
         end
       end
     end
@@ -161,21 +163,23 @@ describe 'Sensu::API' do
 
   it 'can resolve an event' do
     api_test do
-      options = {
-        :body => {
-          :client => 'i-424242',
-          :check => 'test'
-        }.to_json
-      }
-      api_request('/resolve', :post, options) do |http, body|
-        http.response_header.status.should eq(202)
-        body.should be_empty
-        amq.queue('results').subscribe do |headers, payload|
-          result = JSON.parse(payload, :symbolize_names => true)
-          result[:client].should eq('i-424242')
-          result[:check][:name].should eq('test')
-          result[:check][:status].should eq(0)
-          async_done
+      result_queue do |queue|
+        options = {
+          :body => {
+            :client => 'i-424242',
+            :check => 'test'
+          }.to_json
+        }
+        api_request('/resolve', :post, options) do |http, body|
+          http.response_header.status.should eq(202)
+          body.should be_empty
+          queue.subscribe do |payload|
+            result = JSON.parse(payload, :symbolize_names => true)
+            result[:client].should eq('i-424242')
+            result[:check][:name].should eq('test')
+            result[:check][:status].should eq(0)
+            async_done
+          end
         end
       end
     end

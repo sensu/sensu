@@ -30,7 +30,7 @@ describe 'Sensu::Server' do
       keepalive = client_template
       keepalive[:timestamp] = epoch
       redis.flushdb do
-        amq.queue('keepalives').publish(keepalive.to_json)
+        amq.direct('keepalives').publish(keepalive.to_json)
         timer(1) do
           redis.sismember('clients', 'i-424242') do |exists|
             exists.should be_true
@@ -322,10 +322,10 @@ describe 'Sensu::Server' do
       event = event_template
       event[:check][:handler] = 'amqp'
       amq.direct('events') do |exchange, declare_ok|
-        binding = amq.queue('', :auto_delete => true).bind('events') do
+        queue = amq.queue('', :auto_delete => true).bind('events') do
           @server.handle_event(event)
         end
-        binding.subscribe do |payload|
+        queue.subscribe do |payload|
           payload.should eq(event.to_json)
           async_done
         end
@@ -420,7 +420,7 @@ describe 'Sensu::Server' do
         client = client_template
         redis.set('client:i-424242', client.to_json) do
           result = result_template
-          amq.queue('results').publish(result.to_json)
+          amq.direct('results').publish(result.to_json)
           timer(1) do
             redis.hget('events:i-424242', 'foobar') do |event_json|
               event = JSON.parse(event_json, :symbolize_names => true)
@@ -440,10 +440,10 @@ describe 'Sensu::Server' do
       amq.fanout('test') do |exchange, declare_ok|
         check = check_template
         check[:subscribers] = ['test']
-        binding = amq.queue('', :auto_delete => true).bind('test') do
+        queue = amq.queue('', :auto_delete => true).bind('test') do
           @server.publish_check_request(check)
         end
-        binding.subscribe do |payload|
+        queue.subscribe do |payload|
           check_request = JSON.parse(payload, :symbolize_names => true)
           check_request[:name].should eq('foobar')
           check_request[:command].should eq('echo -n WARNING && exit 1')
@@ -470,15 +470,17 @@ describe 'Sensu::Server' do
 
   it 'can send a check result' do
     async_wrapper do
-      @server.setup_rabbitmq
-      client = client_template
-      check = result_template[:check]
-      @server.publish_result(client, check)
-      amq.queue('results').subscribe do |headers, payload|
-        result = JSON.parse(payload, :symbolize_names => true)
-        result[:client].should eq('i-424242')
-        result[:check][:name].should eq('foobar')
-        async_done
+      result_queue do |queue|
+        @server.setup_rabbitmq
+        client = client_template
+        check = result_template[:check]
+        @server.publish_result(client, check)
+        queue.subscribe do |payload|
+          result = JSON.parse(payload, :symbolize_names => true)
+          result[:client].should eq('i-424242')
+          result[:check][:name].should eq('foobar')
+          async_done
+        end
       end
     end
   end
