@@ -173,7 +173,7 @@ module Sensu
         $logger.info('publishing check result', {
           :payload => payload
         })
-        $amq.queue('results').publish(payload.to_json)
+        $amq.direct('results').publish(payload.to_json)
       end
     end
 

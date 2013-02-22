@@ -81,6 +81,7 @@ module Sensu
         consumer.cancel
       end
       @keepalive_queue = @amq.queue!('keepalives')
+      @keepalive_queue.bind(@amq.direct('keepalives'))
       @keepalive_queue.subscribe(:ack => true) do |header, payload|
         client = JSON.parse(payload, :symbolize_names => true)
         @logger.debug('received keepalive', {
@@ -518,6 +519,7 @@ module Sensu
         consumer.cancel
       end
       @result_queue = @amq.queue!('results')
+      @result_queue.bind(@amq.direct('results'))
       @result_queue.subscribe(:ack => true) do |header, payload|
         result = JSON.parse(payload, :symbolize_names => true)
         @logger.debug('received result', {
@@ -577,7 +579,7 @@ module Sensu
       @logger.info('publishing check result', {
         :payload => payload
       })
-      @amq.queue('results').publish(payload.to_json)
+      @amq.direct('results').publish(payload.to_json)
     end
 
     def determine_stale_clients

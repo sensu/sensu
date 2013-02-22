@@ -33,6 +33,20 @@ module Helpers
     @amq ? @amq : setup_amq
   end
 
+  def keepalive_queue(&block)
+    queue = amq.queue('keepalives')
+    queue.bind(amq.direct('keepalives')) do
+      block.call(queue)
+    end
+  end
+
+  def result_queue(&block)
+    queue = amq.queue('results')
+    queue.bind(amq.direct('results')) do
+      block.call(queue)
+    end
+  end
+
   def timer(delay, &block)
     periodic_timer = EM::PeriodicTimer.new(delay) do
       block.call

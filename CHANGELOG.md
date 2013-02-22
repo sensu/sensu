@@ -10,6 +10,8 @@ Removed /info "health" in favour of RabbitMQ & Redis "connected".
 
 ### Other
 
+No longer using the default AMQP exchange or publishing directly to queues.
+
 Removed API health filter, as the Redis connection now recovers.
 
 Fixed config & extension directory loading on Windows.
