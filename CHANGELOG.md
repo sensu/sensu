@@ -1,6 +1,16 @@
 ## 0.9.11 - TBD
 
+### Features
+
+API aggregate age filter parameter.
+
+### Non-backwards compatible changes
+
+Removed /info "health" in favour of RabbitMQ & Redis "connected".
+
 ### Other
+
+Removed API health filter, as the Redis connection now recovers.
 
 Fixed config & extension directory loading on windows.
 
