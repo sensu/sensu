@@ -39,8 +39,8 @@ describe 'Sensu::API' do
       api_request('/info') do |http, body|
         http.response_header.status.should eq(200)
         body[:sensu][:version].should eq(Sensu::VERSION)
-        body[:health][:redis].should eq('ok')
-        body[:health][:rabbitmq].should eq('ok')
+        body[:redis][:connected].should be_true
+        body[:rabbitmq][:connected].should be_true
         body[:rabbitmq][:keepalives][:messages].should be_kind_of(Integer)
         body[:rabbitmq][:keepalives][:consumers].should be_kind_of(Integer)
         body[:rabbitmq][:results][:messages].should be_kind_of(Integer)
@@ -487,16 +487,24 @@ describe 'Sensu::API' do
     api_test do
       server = Sensu::Server.new(options)
       server.setup_redis
-      result = result_template
       timestamp = epoch
-      result[:timestamp] = timestamp
-      server.aggregate_result(result)
+      3.times do |index|
+        result = result_template
+        result[:check][:issued] = timestamp + index
+        server.aggregate_result(result)
+      end
       timer(1) do
-        api_request('/aggregates/foobar?limit=1') do |http, body|
+        api_request('/aggregates/foobar') do |http, body|
           body.should be_kind_of(Array)
-          body.should have(1).items
+          body.should have(3).items
           body.should include(timestamp.to_s)
-          async_done
+          api_request('/aggregates/foobar?limit=1') do |http, body|
+            body.should have(1).items
+            api_request('/aggregates/foobar?limit=1&age=30') do |http, body|
+              body.should be_empty
+              async_done
+            end
+          end
         end
       end
     end
