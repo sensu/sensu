@@ -128,22 +128,12 @@ module Sensu
         env['rack.input'].rewind
       end
 
-      def health_filter
-        unless $redis.connected?
-          unless env['REQUEST_PATH'] == '/info'
-            halt 500
-          end
-        end
-      end
-
       def bad_request!
-        status 400
-        body ''
+        ahalt 400
       end
 
       def not_found!
-        status 404
-        body ''
+        ahalt 404
       end
 
       def created!
@@ -188,9 +178,8 @@ module Sensu
     end
 
     before do
-      content_type 'application/json'
       request_log_line
-      health_filter
+      content_type 'application/json'
     end
 
     aget '/info' do
@@ -206,11 +195,11 @@ module Sensu
           :results => {
             :messages => nil,
             :consumers => nil
-          }
+          },
+          :connected => $rabbitmq.connected?
         },
-        :health => {
-          :redis => $redis.connected? ? 'ok' : 'down',
-          :rabbitmq => $rabbitmq.connected? ? 'ok' : 'down'
+        :redis => {
+          :connected => $redis.connected?
         }
       }
       if $rabbitmq.connected?
@@ -412,25 +401,17 @@ module Sensu
       response = Array.new
       $redis.smembers('aggregates') do |checks|
         unless checks.empty?
-          limit = 10
-          if params[:limit]
-            limit = params[:limit] =~ /^[0-9]+$/ ? params[:limit].to_i : nil
-          end
-          unless limit.nil?
-            checks.each_with_index do |check_name, index|
-              $redis.smembers('aggregates:' + check_name) do |aggregates|
-                collection = {
-                  :check => check_name,
-                  :issued => aggregates.sort.reverse.take(limit)
-                }
-                response.push(collection)
-                if index == checks.size - 1
-                  body response.to_json
-                end
+          checks.each_with_index do |check_name, index|
+            $redis.smembers('aggregates:' + check_name) do |aggregates|
+              collection = {
+                :check => check_name,
+                :issued => aggregates.sort.reverse
+              }
+              response.push(collection)
+              if index == checks.size - 1
+                body response.to_json
               end
             end
-          else
-            bad_request!
           end
         else
           body response.to_json
@@ -441,11 +422,26 @@ module Sensu
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
       $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
+          valid_request = true
+          if params[:age]
+            if params[:age] =~ /^[0-9]+$/
+              timestamp = Time.now.to_i - params[:age].to_i
+              aggregates.reject! do |issued|
+                issued.to_i > timestamp
+              end
+            else
+              valid_request = false
+            end
+          end
           limit = 10
           if params[:limit]
-            limit = params[:limit] =~ /^[0-9]+$/ ? params[:limit].to_i : nil
+            if params[:limit] =~ /^[0-9]+$/
+              limit = params[:limit].to_i
+            else
+              valid_request = false
+            end
           end
-          unless limit.nil?
+          if valid_request
             body aggregates.sort.reverse.take(limit).to_json
           else
             bad_request!
