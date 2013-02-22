@@ -356,7 +356,7 @@ describe 'Sensu::Server' do
           result[:check][:status] = index
           @server.aggregate_result(result)
         end
-        timer(1) do
+        timer(2) do
           result_set = 'foobar:' + timestamp.to_s
           redis.sismember('aggregates', 'foobar') do |exists|
             exists.should be_true
