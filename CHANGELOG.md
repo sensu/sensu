@@ -12,7 +12,7 @@ Removed /info "health" in favour of RabbitMQ & Redis "connected".
 
 Removed API health filter, as the Redis connection now recovers.
 
-Fixed config & extension directory loading on windows.
+Fixed config & extension directory loading on Windows.
 
 Client socket handles non-ascii input.
 
