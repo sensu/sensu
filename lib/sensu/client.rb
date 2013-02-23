@@ -132,6 +132,26 @@ module Sensu
       end
     end
 
+    def process_check(check)
+      @logger.debug('processing check', {
+        :check => check
+      })
+      if @settings.check_exists?(check[:name])
+        check.merge!(@settings[:checks][check[:name]])
+        execute_check(check)
+      elsif @safe_mode
+        @logger.warn('check is not defined', {
+          :check => check
+        })
+        check[:output] = 'Check is not defined (safe mode)'
+        check[:status] = 3
+        check[:handle] = false
+        publish_result(check)
+      else
+        execute_check(check)
+      end
+    end
+
     def setup_subscriptions
       @logger.debug('subscribing to client subscriptions')
       @check_request_queue = @amq.queue('', :auto_delete => true) do |queue|
@@ -152,20 +172,7 @@ module Sensu
             @logger.info('received check request', {
               :check => check
             })
-            if @settings.check_exists?(check[:name])
-              check.merge!(@settings[:checks][check[:name]])
-              execute_check(check)
-            elsif @safe_mode
-              @logger.warn('check is not defined', {
-                :check => check
-              })
-              check[:output] = 'Check is not defined (safe mode)'
-              check[:status] = 3
-              check[:handle] = false
-              publish_result(check)
-            else
-              execute_check(check)
-            end
+            process_check(check)
           rescue JSON::ParserError => error
             @logger.warn('check request payload must be valid json', {
               :payload => payload,
