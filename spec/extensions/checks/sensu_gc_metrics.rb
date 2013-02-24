@@ -9,6 +9,15 @@ module Sensu
         'outputs json formatted ruby garbage collection metrics'
       end
 
+      def definition
+        {
+          :type => 'metric',
+          :name => name,
+          :standalone => true,
+          :interval => 1
+        }
+      end
+
       def run(&block)
         metrics = Hash.new
         if RUBY_VERSION >= '1.9.3'
