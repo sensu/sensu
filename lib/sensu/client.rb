@@ -19,6 +19,7 @@ module Sensu
       base = Base.new(options)
       @logger = base.logger
       @settings = base.settings
+      @extensions = base.extensions
       base.setup_process
       @timers = Array.new
       @checks_in_progress = Array.new
@@ -74,35 +75,37 @@ module Sensu
       @amq.direct('results').publish(payload.to_json)
     end
 
-    def execute_check(check)
-      @logger.debug('attempting to execute check', {
+    def substitute_command_tokens(check)
+      unmatched_tokens = Array.new
+      substituted = check[:command].gsub(/:::(.*?):::/) do
+        token = $1.to_s
+        matched = token.split('.').inject(@settings[:client]) do |client, attribute|
+          client[attribute].nil? ? break : client[attribute]
+        end
+        if matched.nil?
+          unmatched_tokens.push(token)
+        end
+        matched
+      end
+      [substituted, unmatched_tokens]
+    end
+
+    def execute_check_command(check)
+      @logger.debug('attempting to execute check command', {
         :check => check
       })
       unless @checks_in_progress.include?(check[:name])
-        @logger.debug('executing check', {
-          :check => check
-        })
         @checks_in_progress.push(check[:name])
-        unmatched_tokens = Array.new
-        command = check[:command].gsub(/:::(.*?):::/) do
-          token = $1.to_s
-          matched = token.split('.').inject(@settings[:client]) do |client, attribute|
-            client[attribute].nil? ? break : client[attribute]
-          end
-          if matched.nil?
-            unmatched_tokens.push(token)
-          end
-          matched
-        end
+        command, unmatched_tokens = substitute_command_tokens(check)
         if unmatched_tokens.empty?
           execute = Proc.new do
+            @logger.debug('executing check command', {
+              :check => check
+            })
             started = Time.now.to_f
             begin
               check[:output], check[:status] = IO.popen(command, 'r', check[:timeout])
             rescue => error
-              @logger.warn('unexpected error', {
-                :error => error.to_s
-              })
               check[:output] = 'Unexpected error: ' + error.to_s
               check[:status] = 2
             end
@@ -115,20 +118,28 @@ module Sensu
           end
           EM::defer(execute, publish)
         else
-          @logger.warn('missing client attributes', {
-            :check => check,
-            :unmatched_tokens => unmatched_tokens
-          })
-          check[:output] = 'Missing client attributes: ' + unmatched_tokens.join(', ')
+          check[:output] = 'Unmatched command tokens: ' + unmatched_tokens.join(', ')
           check[:status] = 3
           check[:handle] = false
           publish_result(check)
           @checks_in_progress.delete(check[:name])
         end
       else
-        @logger.warn('previous check execution in progress', {
+        @logger.warn('previous check command execution in progress', {
           :check => check
         })
+      end
+    end
+
+    def run_check_extension(check)
+      @logger.debug('attempting to run check extension', {
+        :check => check
+      })
+      extension = @extensions[:checks][check[:name]]
+      extension.run do |output, status|
+        check[:output] = output
+        check[:status] = status
+        publish_result(check)
       end
     end
 
@@ -136,33 +147,36 @@ module Sensu
       @logger.debug('processing check', {
         :check => check
       })
-      if @settings.check_exists?(check[:name])
-        check.merge!(@settings[:checks][check[:name]])
-        execute_check(check)
-      elsif @safe_mode
-        @logger.warn('check is not defined', {
-          :check => check
-        })
-        check[:output] = 'Check is not defined (safe mode)'
-        check[:status] = 3
-        check[:handle] = false
-        publish_result(check)
+      if check.has_key?(:command)
+        if @settings.check_exists?(check[:name])
+          check.merge!(@settings[:checks][check[:name]])
+          execute_check_command(check)
+        elsif @safe_mode
+          check[:output] = 'Check is not locally defined (safe mode)'
+          check[:status] = 3
+          check[:handle] = false
+          publish_result(check)
+        else
+          execute_check_command(check)
+        end
       else
-        execute_check(check)
+        if @extensions.check_exists?(check[:name])
+          run_check_extension(check)
+        else
+          @logger.warn('unknown check extension', {
+            :check => check
+          })
+        end
       end
     end
 
     def setup_subscriptions
       @logger.debug('subscribing to client subscriptions')
       @check_request_queue = @amq.queue('', :auto_delete => true) do |queue|
-        @settings[:client][:subscriptions].uniq.each do |exchange_name|
+        @settings[:client][:subscriptions].each do |exchange_name|
           @logger.debug('binding queue to exchange', {
-            :queue => {
-              :name => queue.name
-            },
-            :exchange => {
-              :name => exchange_name
-            }
+            :queue_name => queue.name,
+            :exchange_name => exchange_name
           })
           queue.bind(@amq.fanout(exchange_name))
         end
@@ -183,25 +197,33 @@ module Sensu
       end
     end
 
-    def setup_standalone
-      @logger.debug('scheduling standalone checks')
-      standalone_check_count = 0
+    def schedule_checks(checks)
+      check_count = 0
       stagger = testing? ? 0 : 2
-      @settings.checks.each do |check|
-        if check[:standalone]
-          standalone_check_count += 1
-          scheduling_delay = stagger * standalone_check_count % 30
-          @timers << EM::Timer.new(scheduling_delay) do
-            interval = testing? ? 0.5 : check[:interval]
-            @timers << EM::PeriodicTimer.new(interval) do
-              if @rabbitmq.connected?
-                check[:issued] = Time.now.to_i
-                execute_check(check)
-              end
+      checks.each do |check|
+        check_count += 1
+        scheduling_delay = stagger * check_count % 30
+        @timers << EM::Timer.new(scheduling_delay) do
+          interval = testing? ? 0.5 : check[:interval]
+          @timers << EM::PeriodicTimer.new(interval) do
+            if @rabbitmq.connected?
+              check[:issued] = Time.now.to_i
+              process_check(check)
             end
           end
         end
       end
+    end
+
+    def setup_standalone
+      @logger.debug('scheduling standalone checks')
+      standard_checks = @settings.checks.select do |check|
+        check[:standalone]
+      end
+      extension_checks = @extensions.checks.select do |check|
+        check[:standalone]
+      end
+      schedule_checks(standard_checks + extension_checks)
     end
 
     def setup_sockets

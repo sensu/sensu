@@ -13,8 +13,14 @@ module Sensu
     end
 
     EXTENSION_CATEGORIES.each do |category|
-      define_method(category.to_s.chop + '_exists?') do |extension_name|
-        @extensions[category].has_key?(extension_name)
+      define_method(category) do
+        @extensions[category].map do |name, extension|
+          extension.definition
+        end
+      end
+
+      define_method(category.to_s.chop + '_exists?') do |name|
+        @extensions[category].has_key?(name)
       end
     end
 

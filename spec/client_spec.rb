@@ -63,7 +63,7 @@ describe 'Sensu::Client' do
     async_wrapper do
       result_queue do |queue|
         @client.setup_rabbitmq
-        @client.execute_check(check_template)
+        @client.execute_check_command(check_template)
         queue.subscribe do |payload|
           result = JSON.parse(payload, :symbolize_names => true)
           result[:client].should eq('i-424242')
@@ -80,7 +80,7 @@ describe 'Sensu::Client' do
         @client.setup_rabbitmq
         check = check_template
         check[:command] = 'echo -n :::nested.attribute:::'
-        @client.execute_check(check)
+        @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = JSON.parse(payload, :symbolize_names => true)
           result[:client].should eq('i-424242')
