@@ -1,3 +1,9 @@
+## 0.9.12 - TBD
+
+### Features
+
+Check extensions.
+
 ## 0.9.11 - 2013-02-22
 
 ### Features
