@@ -169,9 +169,7 @@ module Sensu
         filter[:negate] ? matched : !matched
       else
         @logger.error('unknown filter', {
-          :filter => {
-            :name => filter_name
-          }
+          :filter_name => filter_name
         })
         false
       end
@@ -197,9 +195,7 @@ module Sensu
           handlers.push(handler)
         else
           @logger.error('unknown handler', {
-            :handler => {
-              :name => handler_name
-            }
+            :handler_name => handler_name
           })
         end
         handlers.uniq
@@ -316,9 +312,7 @@ module Sensu
         end
       else
         @logger.error('unknown mutator', {
-          :mutator => {
-            :name => mutator_name
-          }
+          :mutator_name => mutator_name
         })
       end
     end
@@ -538,7 +532,7 @@ module Sensu
         :issued => Time.now.to_i
       }
       if check.has_key?(:command)
-        payload.merge!(:command => check[:command])
+        payload[:command] = check[:command]
       end
       @logger.info('publishing check request', {
         :payload => payload,
