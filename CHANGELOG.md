@@ -2,7 +2,7 @@
 
 ### Features
 
-Client check extensions.
+Check extensions.
 
 ## 0.9.11 - 2013-02-22
 
