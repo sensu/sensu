@@ -102,7 +102,7 @@ describe 'Sensu::Client' do
         queue.subscribe do |payload|
           result = JSON.parse(payload, :symbolize_names => true)
           result[:client].should eq('i-424242')
-          result[:check][:output].should include('profiler')
+          result[:check][:output].should start_with('{')
           async_done
         end
       end
