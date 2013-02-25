@@ -535,40 +535,50 @@ module Sensu
     def publish_check_request(check)
       payload = {
         :name => check[:name],
-        :command => check[:command],
         :issued => Time.now.to_i
       }
+      if check.has_key?(:command)
+        payload.merge!(:command => check[:command])
+      end
       @logger.info('publishing check request', {
         :payload => payload,
         :subscribers => check[:subscribers]
       })
-      check[:subscribers].uniq.each do |exchange_name|
+      check[:subscribers].each do |exchange_name|
         @amq.fanout(exchange_name).publish(payload.to_json)
+      end
+    end
+
+    def schedule_checks(checks)
+      check_count = 0
+      stagger = testing? ? 0 : 2
+      checks.each do |check|
+        check_count += 1
+        scheduling_delay = stagger * check_count % 30
+        @master_timers << EM::Timer.new(scheduling_delay) do
+          interval = testing? ? 0.5 : check[:interval]
+          @master_timers << EM::PeriodicTimer.new(interval) do
+            unless action_subdued?(check)
+              publish_check_request(check)
+            else
+              @logger.info('check request was subdued', {
+                :check => check
+              })
+            end
+          end
+        end
       end
     end
 
     def setup_publisher
       @logger.debug('scheduling check requests')
-      check_count = 0
-      stagger = testing? ? 0 : 2
-      @settings.checks.each do |check|
-        unless check[:publish] == false || check[:standalone]
-          check_count += 1
-          scheduling_delay = stagger * check_count % 30
-          @master_timers << EM::Timer.new(scheduling_delay) do
-            interval = testing? ? 0.5 : check[:interval]
-            @master_timers << EM::PeriodicTimer.new(interval) do
-              unless action_subdued?(check)
-                publish_check_request(check)
-              else
-                @logger.info('action is subdued', {
-                  :check => check
-                })
-              end
-            end
-          end
-        end
+      standard_checks = @settings.checks.reject do |check|
+        check[:standalone] || check[:publish] == false
       end
+      extension_checks = @extensions.checks.reject do |check|
+        check[:standalone] || check[:publish] == false
+      end
+      schedule_checks(standard_checks + extension_checks)
     end
 
     def publish_result(client, check)
