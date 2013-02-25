@@ -59,11 +59,11 @@ describe 'Sensu::Client' do
     end
   end
 
-  it 'can execute a check' do
+  it 'can execute a check command' do
     async_wrapper do
       result_queue do |queue|
         @client.setup_rabbitmq
-        @client.execute_check(check_template)
+        @client.execute_check_command(check_template)
         queue.subscribe do |payload|
           result = JSON.parse(payload, :symbolize_names => true)
           result[:client].should eq('i-424242')
@@ -80,11 +80,29 @@ describe 'Sensu::Client' do
         @client.setup_rabbitmq
         check = check_template
         check[:command] = 'echo -n :::nested.attribute:::'
-        @client.execute_check(check)
+        @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = JSON.parse(payload, :symbolize_names => true)
           result[:client].should eq('i-424242')
           result[:check][:output].should eq('true')
+          async_done
+        end
+      end
+    end
+  end
+
+  it 'can run a check extension' do
+    async_wrapper do
+      result_queue do |queue|
+        @client.setup_rabbitmq
+        check = {
+          :name => 'sensu_gc_metrics'
+        }
+        @client.run_check_extension(check)
+        queue.subscribe do |payload|
+          result = JSON.parse(payload, :symbolize_names => true)
+          result[:client].should eq('i-424242')
+          result[:check][:output].should start_with('{')
           async_done
         end
       end
@@ -149,13 +167,17 @@ describe 'Sensu::Client' do
       result_queue do |queue|
         @client.setup_rabbitmq
         @client.setup_standalone
+        expected = ['standalone', 'sensu_gc_metrics']
         queue.subscribe do |payload|
           result = JSON.parse(payload, :symbolize_names => true)
           result[:client].should eq('i-424242')
-          result[:check][:name].should eq('standalone')
-          result[:check][:output].should eq('foobar')
-          result[:check][:status].should eq(1)
-          async_done
+          result[:check].should have_key(:issued)
+          result[:check].should have_key(:output)
+          result[:check].should have_key(:status)
+          expected.delete(result[:check][:name]).should_not be_nil
+          if expected.empty?
+            async_done
+          end
         end
       end
     end

@@ -10,7 +10,7 @@ module Sensu
 
     SETTINGS_CATEGORIES = [:checks, :filters, :mutators, :handlers]
 
-    EXTENSION_CATEGORIES = [:mutators, :handlers]
+    EXTENSION_CATEGORIES = [:checks, :mutators, :handlers]
 
     SEVERITIES = %w[ok warning critical unknown]
   end
