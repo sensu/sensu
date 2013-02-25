@@ -321,7 +321,7 @@ describe 'Sensu::Server' do
       @server.setup_rabbitmq
       event = event_template
       event[:check][:handler] = 'amqp'
-      amq.direct('events') do |exchange, declare_ok|
+      amq.direct('events') do
         queue = amq.queue('', :auto_delete => true).bind('events') do
           @server.handle_event(event)
         end
@@ -437,7 +437,7 @@ describe 'Sensu::Server' do
   it 'can publish check requests' do
     async_wrapper do
       @server.setup_rabbitmq
-      amq.fanout('test') do |exchange, declare_ok|
+      amq.fanout('test') do
         check = check_template
         check[:subscribers] = ['test']
         queue = amq.queue('', :auto_delete => true).bind('test') do
@@ -458,11 +458,15 @@ describe 'Sensu::Server' do
     async_wrapper do
       @server.setup_rabbitmq
       @server.setup_publisher
-      amq.fanout('test') do |exchange, declare_ok|
+      amq.fanout('test') do
+        expected = ['tokens', 'merger', 'sensu_cpu_time']
         amq.queue('', :auto_delete => true).bind('test').subscribe do |payload|
           check_request = JSON.parse(payload, :symbolize_names => true)
           check_request[:issued].should be_within(10).of(epoch)
-          async_done
+          expected.delete(check_request[:name]).should_not be_nil
+          if expected.empty?
+            async_done
+          end
         end
       end
     end

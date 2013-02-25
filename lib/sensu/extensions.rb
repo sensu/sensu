@@ -28,7 +28,7 @@ module Sensu
       path = directory.gsub(/\\(?=\S)/, '/')
       Dir.glob(File.join(path, '**/*.rb')).each do |file|
         begin
-          require file
+          require File.expand_path(file)
         rescue ScriptError => error
           @logger.error('failed to require extension', {
             :extension_file => file,
