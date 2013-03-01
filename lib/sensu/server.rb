@@ -100,10 +100,10 @@ module Sensu
       subdue_at = handler ? 'handler' : 'publisher'
       conditions = Array.new
       if check[:subdue]
-        conditions.push(check[:subdue])
+        conditions << check[:subdue]
       end
       if handler && handler[:subdue]
-        conditions.push(handler[:subdue])
+        conditions << handler[:subdue]
       end
       conditions.each do |condition|
         if condition.has_key?(:begin) && condition.has_key?(:end)
@@ -175,24 +175,17 @@ module Sensu
       end
     end
 
-    def derive_handlers(handler_list, nested=false)
+    def derive_handlers(handler_list)
       handler_list.inject(Array.new) do |handlers, handler_name|
         if @settings.handler_exists?(handler_name)
           handler = @settings[:handlers][handler_name].merge(:name => handler_name)
           if handler[:type] == 'set'
-            unless nested
-              handlers = handlers + derive_handlers(handler[:handlers], true)
-            else
-              @logger.error('handler sets cannot be nested', {
-                :handler => handler
-              })
-            end
+            handlers = handlers + derive_handlers(handler[:handlers])
           else
-            handlers.push(handler)
+            handlers << handler
           end
         elsif @extensions.handler_exists?(handler_name)
-          handler = @extensions[:handlers][handler_name]
-          handlers.push(handler)
+          handlers << @extensions[:handlers][handler_name]
         else
           @logger.error('unknown handler', {
             :handler_name => handler_name
@@ -570,7 +563,7 @@ module Sensu
         check[:standalone] || check[:publish] == false
       end
       extension_checks = @extensions.checks.reject do |check|
-        check[:standalone] || check[:publish] == false
+        check[:standalone] || check[:publish] == false || !check[:interval].is_a?(Integer)
       end
       schedule_checks(standard_checks + extension_checks)
     end

@@ -83,7 +83,7 @@ module Sensu
           client[attribute].nil? ? break : client[attribute]
         end
         if matched.nil?
-          unmatched_tokens.push(token)
+          unmatched_tokens << token
         end
         matched
       end
@@ -95,7 +95,7 @@ module Sensu
         :check => check
       })
       unless @checks_in_progress.include?(check[:name])
-        @checks_in_progress.push(check[:name])
+        @checks_in_progress << check[:name]
         command, unmatched_tokens = substitute_command_tokens(check)
         if unmatched_tokens.empty?
           execute = Proc.new do
@@ -221,7 +221,7 @@ module Sensu
         check[:standalone]
       end
       extension_checks = @extensions.checks.select do |check|
-        check[:standalone]
+        check[:standalone] && check[:interval].is_a?(Integer)
       end
       schedule_checks(standard_checks + extension_checks)
     end
@@ -229,17 +229,16 @@ module Sensu
     def setup_sockets
       @logger.debug('binding client tcp socket')
       EM::start_server('127.0.0.1', 3030, Socket) do |socket|
-        socket.protocol = :tcp
         socket.logger = @logger
         socket.settings = @settings
         socket.amq = @amq
       end
       @logger.debug('binding client udp socket')
       EM::open_datagram_socket('127.0.0.1', 3030, Socket) do |socket|
-        socket.protocol = :udp
         socket.logger = @logger
         socket.settings = @settings
         socket.amq = @amq
+        socket.reply = false
       end
     end
 

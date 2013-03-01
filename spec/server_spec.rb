@@ -201,15 +201,15 @@ describe 'Sensu::Server' do
     ]
     @server.event_handlers(event).should eq(expected)
     event[:client][:environment] = 'development'
-    expected.push({
+    expected << {
       :name => 'filtered',
       :type => 'pipe',
       :command => 'cat > /tmp/sensu_event',
       :filter => 'development'
-    })
+    }
     @server.event_handlers(event).should eq(expected)
     event[:check][:status] = 2
-    expected.push({
+    expected << {
       :name => 'severities',
       :type => 'pipe',
       :command => 'cat > /tmp/sensu_event',
@@ -217,7 +217,7 @@ describe 'Sensu::Server' do
         'critical',
         'unknown'
       ]
-    })
+    }
     @server.event_handlers(event).should eq(expected)
     event[:check][:status] = 0
     event[:action] = :resolve
