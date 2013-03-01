@@ -196,9 +196,8 @@ module Sensu
     end
 
     def event_handlers(event)
-      @event_handlers ||= Hash.new
       handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || 'default')
-      handlers = @event_handlers[handler_list.join] ||= derive_handlers(handler_list)
+      handlers = derive_handlers(handler_list)
       event_severity = SEVERITIES[event[:check][:status]] || 'unknown'
       handlers.select do |handler|
         if event[:action] == :flapping && !handler[:handle_flapping]
