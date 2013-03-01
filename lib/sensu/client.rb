@@ -237,17 +237,16 @@ module Sensu
     def setup_sockets
       @logger.debug('binding client tcp socket')
       EM::start_server('127.0.0.1', 3030, Socket) do |socket|
-        socket.protocol = :tcp
         socket.logger = @logger
         socket.settings = @settings
         socket.amq = @amq
       end
       @logger.debug('binding client udp socket')
       EM::open_datagram_socket('127.0.0.1', 3030, Socket) do |socket|
-        socket.protocol = :udp
         socket.logger = @logger
         socket.settings = @settings
         socket.amq = @amq
+        socket.reply = false
       end
     end
 
