@@ -221,7 +221,7 @@ module Sensu
         check[:standalone]
       end
       extension_checks = @extensions.checks.select do |check|
-        check[:standalone] && check[:interval]
+        check[:standalone] && check[:interval].is_a?(Integer)
       end
       schedule_checks(standard_checks + extension_checks)
     end

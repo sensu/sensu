@@ -563,7 +563,7 @@ module Sensu
         check[:standalone] || check[:publish] == false
       end
       extension_checks = @extensions.checks.reject do |check|
-        check[:standalone] || check[:publish] == false
+        check[:standalone] || check[:publish] == false || !check[:interval].is_a?(Integer)
       end
       schedule_checks(standard_checks + extension_checks)
     end
