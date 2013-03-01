@@ -318,7 +318,7 @@ module Sensu
           unless handler_name.is_a?(String)
             invalid_handler(handler, 'handler set handlers must each be a string')
           end
-          if handler_exists?(handler_name) && @settings[:handlers][handler_name][:type] == 'set'
+          if handler_exists?(handler_name) && @settings[:handlers][handler_name.to_sym][:type] == 'set'
             invalid_handler(handler, 'handler sets cannot be nested')
           end
         end
