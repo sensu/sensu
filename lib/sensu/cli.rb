@@ -13,13 +13,13 @@ module Sensu
           puts VERSION
           exit
         end
-        opts.on('-c', '--config FILE', 'Sensu JSON config FILE. Default: /etc/sensu/config.json') do |file|
+        opts.on('-c', '--config FILE', 'Sensu JSON config FILE') do |file|
           options[:config_file] = file
         end
-        opts.on('-d', '--config_dir DIR', 'DIR for supplemental Sensu JSON config files. Default: /etc/sensu/conf.d/') do |dir|
+        opts.on('-d', '--config_dir DIR', 'DIR for Sensu JSON config files') do |dir|
           options[:config_dir] = dir
         end
-        opts.on('-e', '--extension_dir DIR', 'DIR for Sensu extensions (experimental)') do |dir|
+        opts.on('-e', '--extension_dir DIR', 'DIR for Sensu extensions') do |dir|
           options[:extension_dir] = dir
         end
         opts.on('-l', '--log FILE', 'Log to a given FILE. Default: STDOUT') do |file|
@@ -36,7 +36,7 @@ module Sensu
         end
       end
       optparse.parse!(arguments)
-      DEFAULT_OPTIONS.merge(options)
+      options
     end
   end
 end

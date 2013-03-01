@@ -19,12 +19,12 @@ require File.join(File.dirname(__FILE__), 'rabbitmq')
 module Sensu
   class Base
     def initialize(options={})
-      @options = DEFAULT_OPTIONS.merge(options)
+      @options = options
     end
 
     def logger
       stream = LogStream.new
-      stream.level = @options[:log_level]
+      stream.level = @options[:log_level] || :info
       if @options[:log_file]
         stream.reopen(@options[:log_file])
       end
@@ -35,8 +35,12 @@ module Sensu
     def settings
       settings = Settings.new
       settings.load_env
-      settings.load_file(@options[:config_file])
-      settings.load_directory(@options[:config_dir])
+      if @options[:config_file]
+        settings.load_file(@options[:config_file])
+      end
+      if @options[:config_dir]
+        settings.load_directory(@options[:config_dir])
+      end
       settings.validate
       settings.set_env
       settings

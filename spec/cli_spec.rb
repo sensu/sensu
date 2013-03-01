@@ -2,8 +2,8 @@ require File.dirname(__FILE__) + '/../lib/sensu/cli.rb'
 require File.dirname(__FILE__) + '/../lib/sensu/constants.rb'
 
 describe 'Sensu::CLI' do
-  it 'can provide default configuration options' do
-    Sensu::CLI.read.should eq(Sensu::DEFAULT_OPTIONS)
+  it 'does not provide default configuration options' do
+    Sensu::CLI.read.should eq(Hash.new)
   end
 
   it 'can parse command line arguments' do
