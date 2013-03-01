@@ -136,10 +136,18 @@ module Sensu
         :check => check
       })
       extension = @extensions[:checks][check[:name]]
-      extension.run do |output, status|
-        check[:output] = output
-        check[:status] = status
-        publish_result(check)
+      begin
+        extension.run do |output, status|
+          check[:output] = output
+          check[:status] = status
+          publish_result(check)
+        end
+      rescue => error
+        @logger.error('check extension error', {
+          :extension => extension,
+          :error => error.to_s,
+          :backtrace => error.backtrace.join("\n")
+        })
       end
     end
 
@@ -221,7 +229,7 @@ module Sensu
         check[:standalone]
       end
       extension_checks = @extensions.checks.select do |check|
-        check[:standalone]
+        check[:standalone] && check[:interval]
       end
       schedule_checks(standard_checks + extension_checks)
     end
