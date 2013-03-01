@@ -175,24 +175,17 @@ module Sensu
       end
     end
 
-    def derive_handlers(handler_list, nested=false)
+    def derive_handlers(handler_list)
       handler_list.inject(Array.new) do |handlers, handler_name|
         if @settings.handler_exists?(handler_name)
           handler = @settings[:handlers][handler_name].merge(:name => handler_name)
           if handler[:type] == 'set'
-            unless nested
-              handlers = handlers + derive_handlers(handler[:handlers], true)
-            else
-              @logger.error('handler sets cannot be nested', {
-                :handler => handler
-              })
-            end
+            handlers = handlers + derive_handlers(handler[:handlers])
           else
-            handlers.push(handler)
+            handlers << handler
           end
         elsif @extensions.handler_exists?(handler_name)
-          handler = @extensions[:handlers][handler_name]
-          handlers.push(handler)
+          handlers << @extensions[:handlers][handler_name]
         else
           @logger.error('unknown handler', {
             :handler_name => handler_name
@@ -203,8 +196,9 @@ module Sensu
     end
 
     def event_handlers(event)
+      @event_handlers ||= Hash.new
       handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || 'default')
-      handlers = derive_handlers(handler_list)
+      handlers = @event_handlers[handler_list.join] ||= derive_handlers(handler_list)
       event_severity = SEVERITIES[event[:check][:status]] || 'unknown'
       handlers.select do |handler|
         if event[:action] == :flapping && !handler[:handle_flapping]
