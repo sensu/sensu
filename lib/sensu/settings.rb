@@ -38,8 +38,16 @@ module Sensu
         end
       end
 
-      define_method((category.to_s.chop + '_exists?').to_sym) do |name|
+      type = category.to_s.chop
+
+      define_method((type + '_exists?').to_sym) do |name|
         @settings[category].has_key?(name.to_sym)
+      end
+
+      define_method(('invalid_' + type).to_sym) do |details, reason|
+        invalid(reason, {
+          type => details
+        })
       end
     end
 
@@ -116,40 +124,48 @@ module Sensu
 
     def validate
       @logger.debug('validating settings')
-      validate_checks
+      SETTINGS_CATEGORIES.each do |category|
+        unless @settings[category].is_a?(Hash)
+          invalid(category.to_s + ' must be a hash')
+        end
+
+        send(category).each do |details|
+          send(('validate_' + category.to_s.chop).to_sym, details)
+        end
+      end
       case File.basename($0)
-      when 'rspec'
-        validate_client
-        validate_api
-        validate_server
       when 'sensu-client'
         validate_client
       when 'sensu-api'
         validate_api
-      when 'sensu-server'
-        validate_server
+      when 'rspec'
+        validate_client
+        validate_api
       end
       @logger.debug('settings are valid')
     end
 
     private
 
-    def invalid(reason, details={})
+    def invalid(reason, data={})
       @logger.fatal('invalid settings', {
         :reason => reason
-      }.merge(details))
+      }.merge(data))
       @logger.fatal('SENSU NOT RUNNING!')
       exit 2
     end
 
-    def validate_subdue(condition, details={})
-      type = details.has_key?(:check) ? 'check' : 'handler'
+    def validate_subdue(type, details)
+      condition = details[:subdue]
+      data = {
+        type => details
+      }
       unless condition.is_a?(Hash)
-        invalid(type + ' subdue must be a hash', details)
+        invalid(type + ' subdue must be a hash', data)
       end
       if condition.has_key?(:at)
         unless %w[handler publisher].include?(condition[:at])
-          invalid(type + ' subdue at must be either handler or publisher', details)
+          invalid(type + ' subdue at must be either handler or publisher', data)
         end
       end
       if condition.has_key?(:begin) || condition.has_key?(:end)
@@ -157,116 +173,195 @@ module Sensu
           Time.parse(condition[:begin])
           Time.parse(condition[:end])
         rescue
-          invalid(type + ' subdue begin & end times must be valid', details)
+          invalid(type + ' subdue begin & end times must be valid', data)
         end
       end
       if condition.has_key?(:days)
         unless condition[:days].is_a?(Array)
-          invalid(type + ' subdue days must be an array', details)
+          invalid(type + ' subdue days must be an array', data)
         end
         condition[:days].each do |day|
           days = %w[sunday monday tuesday wednesday thursday friday saturday]
           unless day.is_a?(String) && days.include?(day.downcase)
-            invalid(type + ' subdue days must be valid days of the week', details)
+            invalid(type + ' subdue days must be valid days of the week', data)
           end
         end
       end
       if condition.has_key?(:exceptions)
         unless condition[:exceptions].is_a?(Array)
-          invalid(type + ' subdue exceptions must be an array', details)
+          invalid(type + ' subdue exceptions must be an array', data)
         end
         condition[:exceptions].each do |exception|
           unless exception.is_a?(Hash)
-            invalid(type + ' subdue exceptions must each be a hash', details)
+            invalid(type + ' subdue exceptions must each be a hash', data)
           end
           if exception.has_key?(:begin) || exception.has_key?(:end)
             begin
               Time.parse(exception[:begin])
               Time.parse(exception[:end])
             rescue
-              invalid(type + ' subdue exception begin & end times must be valid', details)
+              invalid(type + ' subdue exception begin & end times must be valid', data)
             end
           end
         end
       end
     end
 
-    def validate_checks
-      unless @settings[:checks].is_a?(Hash)
-        invalid('checks must be a hash')
+    def validate_check(check)
+      unless check[:interval].is_a?(Integer) && check[:interval] > 0
+        invalid_check(check, 'check is missing interval')
       end
-      checks.each do |check|
-        unless check[:interval].is_a?(Integer) && check[:interval] > 0
-          invalid('check is missing interval', {
-            :check => check
-          })
+      unless check[:command].is_a?(String)
+        invalid_check(check, 'check is missing command')
+      end
+      unless check[:standalone]
+        unless check[:subscribers].is_a?(Array)
+          invalid_check(check, 'check is missing subscribers')
         end
-        unless check[:command].is_a?(String)
-          invalid('check is missing command', {
-            :check => check
-          })
-        end
-        unless check[:standalone]
-          unless check[:subscribers].is_a?(Array) && check[:subscribers].size > 0
-            invalid('check is missing subscribers', {
-              :check => check
-            })
-          end
-          check[:subscribers].each do |subscriber|
-            unless subscriber.is_a?(String) && !subscriber.empty?
-              invalid('check subscribers must each be a string', {
-                :check => check
-              })
-            end
+        check[:subscribers].each do |subscriber|
+          unless subscriber.is_a?(String) && !subscriber.empty?
+            invalid_check(check, 'check subscribers must each be a string')
           end
         end
-        if check.has_key?(:timeout)
-          unless check[:timeout].is_a?(Numeric)
-            invalid('check timeout must be numeric', {
-              :check => check
-            })
+      end
+      if check.has_key?(:timeout)
+        unless check[:timeout].is_a?(Numeric)
+          invalid_check(check, 'check timeout must be numeric')
+        end
+      end
+      if check.has_key?(:handler)
+        unless check[:handler].is_a?(String)
+          invalid_check(check, 'check handler must be a string')
+        end
+      end
+      if check.has_key?(:handlers)
+        unless check[:handlers].is_a?(Array)
+          invalid_check(check, 'check handlers must be an array')
+        end
+        check[:handlers].each do |handler_name|
+          unless handler_name.is_a?(String)
+            invalid_check(check, 'check handlers must each be a string')
           end
         end
-        if check.has_key?(:handler)
-          unless check[:handler].is_a?(String)
-            invalid('check handler must be a string', {
-              :check => check
-            })
+      end
+      if check.has_key?(:low_flap_threshold) || check.has_key?(:high_flap_threshold)
+        unless check[:low_flap_threshold].is_a?(Integer)
+          invalid_check(check, 'check low flap threshold must be numeric')
+        end
+        unless check[:high_flap_threshold].is_a?(Integer)
+          invalid_check(check, 'check high flap threshold must be numeric')
+        end
+      end
+      if check.has_key?(:subdue)
+        validate_subdue('check', check)
+      end
+    end
+
+    def validate_mutator(mutator)
+      unless mutator[:command].is_a?(String)
+        invalid_mutator(mutator, 'mutator is missing command')
+      end
+    end
+
+    def validate_filter(filter)
+      unless filter[:attributes].is_a?(Hash)
+        invalid_filter(filter, 'filter attributes must be a hash')
+      end
+      if filter.has_key?(:negate)
+        unless !!filter[:negate] == filter[:negate]
+          invalid_filter(filter, 'filter negate must be boolean')
+        end
+      end
+    end
+
+    def validate_handler(handler)
+      unless handler[:type].is_a?(String)
+        invalid_handler(handler, 'handler is missing type')
+      end
+      case handler[:type]
+      when 'pipe'
+        unless handler[:command].is_a?(String)
+          invalid_handler(handler, 'handler is missing command')
+        end
+      when 'tcp', 'udp'
+        unless handler[:socket].is_a?(Hash)
+          invalid_handler(handler, 'handler is missing socket hash')
+        end
+        unless handler[:socket][:host].is_a?(String)
+          invalid_handler(handler, 'handler is missing socket host')
+        end
+        unless handler[:socket][:port].is_a?(Integer)
+          invalid_handler(handler, 'handler is missing socket port')
+        end
+        if handler[:socket].has_key?(:timeout)
+          unless handler[:socket][:timeout].is_a?(Integer)
+            invalid_handler(handler, 'handler socket timeout must be an integer')
           end
         end
-        if check.has_key?(:handlers)
-          unless check[:handlers].is_a?(Array)
-            invalid('check handlers must be an array', {
-              :check => check
-            })
-          end
-          check[:handlers].each do |handler_name|
-            unless handler_name.is_a?(String)
-              invalid('check handlers items must be strings', {
-                :check => check
-              })
-            end
+      when 'amqp'
+        unless handler[:exchange].is_a?(Hash)
+          invalid_handler(handler, 'handler is missing exchange hash')
+        end
+        unless handler[:exchange][:name].is_a?(String)
+          invalid_handler(handler, 'handler is missing exchange name')
+        end
+        if handler[:exchange].has_key?(:type)
+          unless %w[direct fanout topic].include?(handler[:exchange][:type])
+            invalid_handler(handler, 'handler exchange type is invalid')
           end
         end
-        if check.has_key?(:low_flap_threshold)
-          unless check[:low_flap_threshold].is_a?(Integer)
-            invalid('flap thresholds must be integers', {
-              :check => check
-            })
+      when 'set'
+        unless handler[:handlers].is_a?(Array)
+          invalid_handler(handler, 'handler set handlers must be an array')
+        end
+        handler[:handlers].each do |handler_name|
+          unless handler_name.is_a?(String)
+            invalid_handler(handler, 'handler set handlers must each be a string')
+          end
+          if handler_exists?(handler_name) && @settings[:handlers][handler_name][:type] == 'set'
+            invalid_handler(handler, 'handler sets cannot be nested')
           end
         end
-        if check.has_key?(:high_flap_threshold)
-          unless check[:high_flap_threshold].is_a?(Integer)
-            invalid('flap thresholds must be integers', {
-              :check => check
-            })
+      else
+        invalid_handler(handler, 'unknown handler type')
+      end
+      if handler.has_key?(:filter)
+        unless handler[:filter].is_a?(String)
+          invalid_handler(handler, 'handler filter must be a string')
+        end
+      end
+      if handler.has_key?(:filters)
+        unless handler[:filters].is_a?(Array)
+          invalid_handler(handler, 'handler filters must be an array')
+        end
+        handler[:filters].each do |filter_name|
+          unless filter_name.is_a?(String)
+            invalid_handler(handler, 'handler filters items must be strings')
           end
         end
-        if check.has_key?(:subdue)
-          validate_subdue(check[:subdue], {
-            :check => check
-          })
+      end
+      if handler.has_key?(:mutator)
+        unless handler[:mutator].is_a?(String)
+          invalid_handler(handler, 'handler mutator must be a string')
         end
+      end
+      if handler.has_key?(:handle_flapping)
+        unless !!handler[:handle_flapping] == handler[:handle_flapping]
+          invalid_handler(handler, 'handler handle_flapping must be boolean')
+        end
+      end
+      if handler.has_key?(:severities)
+        unless handler[:severities].is_a?(Array) && !handler[:severities].empty?
+          invalid_handler(handler, 'handler severities must be an array and not empty')
+        end
+        handler[:severities].each do |severity|
+          unless SEVERITIES.include?(severity)
+            invalid_handler(handler, 'handler severities are invalid')
+          end
+        end
+      end
+      if handler.has_key?(:subdue)
+        validate_subdue('handler', handler)
       end
     end
 
@@ -280,7 +375,7 @@ module Sensu
       unless @settings[:client][:address].is_a?(String)
         invalid('client must have an address')
       end
-      unless @settings[:client][:subscriptions].is_a?(Array) && !@settings[:client][:subscriptions].empty?
+      unless @settings[:client][:subscriptions].is_a?(Array)
         invalid('client must have subscriptions')
       end
       @settings[:client][:subscriptions].each do |subscription|
@@ -303,169 +398,6 @@ module Sensu
         end
         unless @settings[:api][:password].is_a?(String)
           invalid('api password must be a string')
-        end
-      end
-    end
-
-    def validate_server
-      unless @settings[:filters].is_a?(Hash)
-        invalid('filters must be a hash')
-      end
-      filters.each do |filter|
-        unless filter[:attributes].is_a?(Hash)
-          invalid('filter attributes must be a hash', {
-            :filter => filter
-          })
-        end
-        if filter.has_key?(:negate)
-          unless !!filter[:negate] == filter[:negate]
-            invalid('filter negate must be boolean', {
-              :filter => filter
-            })
-          end
-        end
-      end
-      unless @settings[:mutators].is_a?(Hash)
-        invalid('mutators must be a hash')
-      end
-      mutators.each do |mutator|
-        unless mutator[:command].is_a?(String)
-          invalid('mutator is missing command', {
-            :mutator => mutator
-          })
-        end
-      end
-      unless @settings[:handlers].is_a?(Hash)
-        invalid('handlers must be a hash')
-      end
-      unless @settings[:handlers].include?(:default)
-        invalid('missing default handler')
-      end
-      handlers.each do |handler|
-        unless handler[:type].is_a?(String)
-          invalid('handler is missing type', {
-            :handler => handler
-          })
-        end
-        case handler[:type]
-        when 'pipe'
-          unless handler[:command].is_a?(String)
-            invalid('handler is missing command', {
-              :handler => handler
-            })
-          end
-        when 'tcp', 'udp'
-          unless handler[:socket].is_a?(Hash)
-            invalid('handler is missing socket hash', {
-              :handler => handler
-            })
-          end
-          unless handler[:socket][:host].is_a?(String)
-            invalid('handler is missing socket host', {
-              :handler => handler
-            })
-          end
-          unless handler[:socket][:port].is_a?(Integer)
-            invalid('handler is missing socket port', {
-              :handler => handler
-            })
-          end
-          if handler[:socket].has_key?(:timeout)
-            unless handler[:socket][:timeout].is_a?(Integer)
-              invalid('handler socket timeout must be an integer', {
-                :handler => handler
-              })
-            end
-          end
-        when 'amqp'
-          unless handler[:exchange].is_a?(Hash)
-            invalid('handler is missing exchange hash', {
-              :handler => handler
-            })
-          end
-          unless handler[:exchange][:name].is_a?(String)
-            invalid('handler is missing exchange name', {
-              :handler => handler
-            })
-          end
-          if handler[:exchange].has_key?(:type)
-            unless %w[direct fanout topic].include?(handler[:exchange][:type])
-              invalid('handler exchange type is invalid', {
-                :handler => handler
-              })
-            end
-          end
-        when 'set'
-          unless handler[:handlers].is_a?(Array)
-            invalid('handler set handlers must be an array', {
-              :handler => handler
-            })
-          end
-          handler[:handlers].each do |handler_name|
-            unless handler_name.is_a?(String)
-              invalid('handler set handlers items must be strings', {
-                :handler => handler
-              })
-            end
-          end
-        else
-          invalid('unknown handler type', {
-            :handler => handler
-          })
-        end
-        if handler.has_key?(:filter)
-          unless handler[:filter].is_a?(String)
-            invalid('handler filter must be a string', {
-              :handler => handler
-            })
-          end
-        end
-        if handler.has_key?(:filters)
-          unless handler[:filters].is_a?(Array)
-            invalid('handler filters must be an array', {
-              :handler => handler
-            })
-          end
-          handler[:filters].each do |filter_name|
-            unless filter_name.is_a?(String)
-              invalid('handler filters items must be strings', {
-                :handler => handler
-              })
-            end
-          end
-        end
-        if handler.has_key?(:mutator)
-          unless handler[:mutator].is_a?(String)
-            invalid('handler mutator must be a string', {
-              :handler => handler
-            })
-          end
-        end
-        if handler.has_key?(:handle_flapping)
-          unless !!handler[:handle_flapping] == handler[:handle_flapping]
-            invalid('handler handle_flapping must be boolean', {
-              :handler => handler
-            })
-          end
-        end
-        if handler.has_key?(:severities)
-          unless handler[:severities].is_a?(Array) && !handler[:severities].empty?
-            invalid('handler severities must be an array and not empty', {
-              :handler => handler
-            })
-          end
-          handler[:severities].each do |severity|
-            unless SEVERITIES.include?(severity)
-              invalid('handler severities are invalid', {
-                :handler => handler
-              })
-            end
-          end
-        end
-        if handler.has_key?(:subdue)
-          validate_subdue(handler[:subdue], {
-            :handler => handler
-          })
         end
       end
     end
