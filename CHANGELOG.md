@@ -4,6 +4,14 @@
 
 Check extensions.
 
+### Non-backwards compatible changes
+
+No longer defaults to or enforces a specific config file or directory.
+
+### Other
+
+Improved config validation.
+
 ## 0.9.11 - 2013-02-22
 
 ### Features
