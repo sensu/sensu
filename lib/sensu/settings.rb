@@ -131,7 +131,6 @@ module Sensu
         unless @settings[category].is_a?(Hash)
           invalid(category.to_s + ' must be a hash')
         end
-
         send(category).each do |details|
           send(('validate_' + category.to_s.chop).to_sym, details)
         end
