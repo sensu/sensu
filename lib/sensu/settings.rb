@@ -78,6 +78,9 @@ module Sensu
     end
 
     def load_file(file)
+      @logger.debug('loading config file', {
+        :config_file => file
+      })
       if File.readable?(file)
         begin
           contents = File.open(file, 'r').read
