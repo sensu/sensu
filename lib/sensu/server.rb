@@ -100,10 +100,10 @@ module Sensu
       subdue_at = handler ? 'handler' : 'publisher'
       conditions = Array.new
       if check[:subdue]
-        conditions.push(check[:subdue])
+        conditions << check[:subdue]
       end
       if handler && handler[:subdue]
-        conditions.push(handler[:subdue])
+        conditions << handler[:subdue]
       end
       conditions.each do |condition|
         if condition.has_key?(:begin) && condition.has_key?(:end)

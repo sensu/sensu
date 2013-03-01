@@ -223,7 +223,7 @@ module Sensu
         unless clients.empty?
           clients.each_with_index do |client_name, index|
             $redis.get('client:' + client_name) do |client_json|
-              response.push(JSON.parse(client_json))
+              response << JSON.parse(client_json)
               if index == clients.size - 1
                 body response.to_json
               end
@@ -330,7 +330,7 @@ module Sensu
           clients.each_with_index do |client_name, index|
             $redis.hgetall('events:' + client_name) do |events|
               events.each do |check_name, event_json|
-                response.push(event_hash(event_json, client_name, check_name))
+                response << event_hash(event_json, client_name, check_name)
               end
               if index == clients.size - 1
                 body response.to_json
@@ -347,7 +347,7 @@ module Sensu
       response = Array.new
       $redis.hgetall('events:' + client_name) do |events|
         events.each do |check_name, event_json|
-          response.push(event_hash(event_json, client_name, check_name))
+          response << event_hash(event_json, client_name, check_name)
         end
         body response.to_json
       end
@@ -407,7 +407,7 @@ module Sensu
                 :check => check_name,
                 :issued => aggregates.sort.reverse
               }
-              response.push(collection)
+              response << collection
               if index == checks.size - 1
                 body response.to_json
               end
@@ -482,7 +482,7 @@ module Sensu
           $redis.hgetall('aggregation:' + result_set) do |results|
             parsed_results = results.inject(Array.new) do |parsed, (client_name, check_json)|
               check = JSON.parse(check_json, :symbolize_names => true)
-              parsed.push(check.merge(:client => client_name))
+              parsed << check.merge(:client => client_name)
             end
             if params[:summarize]
               options = params[:summarize].split(',')

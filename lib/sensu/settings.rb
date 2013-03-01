@@ -94,7 +94,7 @@ module Sensu
           end
           @settings = merged
           @indifferent_access = false
-          @loaded_files.push(file)
+          @loaded_files << file
         rescue JSON::ParserError => error
           @logger.error('config file must be valid json', {
             :config_file => file,

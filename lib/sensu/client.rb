@@ -83,7 +83,7 @@ module Sensu
           client[attribute].nil? ? break : client[attribute]
         end
         if matched.nil?
-          unmatched_tokens.push(token)
+          unmatched_tokens << token
         end
         matched
       end
@@ -95,7 +95,7 @@ module Sensu
         :check => check
       })
       unless @checks_in_progress.include?(check[:name])
-        @checks_in_progress.push(check[:name])
+        @checks_in_progress << check[:name]
         command, unmatched_tokens = substitute_command_tokens(check)
         if unmatched_tokens.empty?
           execute = Proc.new do
