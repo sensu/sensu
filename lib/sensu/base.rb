@@ -1,6 +1,6 @@
 require 'rubygems'
 
-gem 'eventmachine', '1.0.0'
+gem 'eventmachine', '1.0.1'
 
 require 'json'
 require 'time'
