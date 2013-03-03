@@ -23,13 +23,15 @@ module Sensu
     end
 
     def logger
-      stream = LogStream.new
-      stream.level = @options[:log_level] || :info
-      if @options[:log_file]
-        stream.reopen(@options[:log_file])
+      logger = Logger.get
+      if @options[:log_level]
+        logger.level = @options[:log_level]
       end
-      stream.setup_traps
-      stream.logger
+      if @options[:log_file]
+        logger.reopen(@options[:log_file])
+      end
+      logger.setup_traps
+      logger
     end
 
     def settings
