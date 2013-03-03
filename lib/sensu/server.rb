@@ -818,8 +818,15 @@ module Sensu
     end
 
     def trap_signals
-      %w[INT TERM].each do |signal|
+      @signals = Array.new
+      STOP_SIGNALS.each do |signal|
         Signal.trap(signal) do
+          @signals << signal
+        end
+      end
+      EM::PeriodicTimer.new(1) do
+        signal = @signals.shift
+        if STOP_SIGNALS.include?(signal)
           @logger.warn('received signal', {
             :signal => signal
           })
