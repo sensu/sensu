@@ -20,7 +20,7 @@ module Sensu
           :data => data
         })
         begin
-          check = JSON.parse(data, :symbolize_names => true)
+          check = Oj.load(data)
           validates = [:name, :output].all? do |key|
             check[key].is_a?(String)
           end
@@ -34,7 +34,7 @@ module Sensu
             @logger.info('publishing check result', {
               :payload => payload
             })
-            @amq.direct('results').publish(payload.to_json)
+            @amq.direct('results').publish(Oj.dump(payload))
             respond('ok')
           else
             @logger.warn('invalid check result', {
@@ -42,7 +42,7 @@ module Sensu
             })
             respond('invalid')
           end
-        rescue JSON::ParserError => error
+        rescue Oj::ParseError => error
           @logger.warn('check result must be valid json', {
             :data => data,
             :error => error.to_s

@@ -51,7 +51,7 @@ module Sensu
       @logger.debug('publishing keepalive', {
         :payload => payload
       })
-      @amq.direct('keepalives').publish(payload.to_json)
+      @amq.direct('keepalives').publish(Oj.dump(payload))
     end
 
     def setup_keepalives
@@ -72,7 +72,7 @@ module Sensu
       @logger.info('publishing check result', {
         :payload => payload
       })
-      @amq.direct('results').publish(payload.to_json)
+      @amq.direct('results').publish(Oj.dump(payload))
     end
 
     def substitute_command_tokens(check)
@@ -182,12 +182,12 @@ module Sensu
         end
         queue.subscribe do |payload|
           begin
-            check = JSON.parse(payload, :symbolize_names => true)
+            check = Oj.load(payload)
             @logger.info('received check request', {
               :check => check
             })
             process_check(check)
-          rescue JSON::ParserError => error
+          rescue Oj::ParseError => error
             @logger.warn('check request payload must be valid json', {
               :payload => payload,
               :error => error.to_s

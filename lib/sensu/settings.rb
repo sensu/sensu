@@ -84,7 +84,7 @@ module Sensu
       if File.readable?(file)
         begin
           contents = File.open(file, 'r').read
-          config = JSON.parse(contents, :symbolize_names => true)
+          config = Oj.load(contents)
           merged = deep_merge(@settings, config)
           unless @loaded_files.empty?
             @logger.warn('config file applied changes', {
@@ -95,7 +95,7 @@ module Sensu
           @settings = merged
           @indifferent_access = false
           @loaded_files << file
-        rescue JSON::ParserError => error
+        rescue Oj::ParseError => error
           @logger.error('config file must be valid json', {
             :config_file => file,
             :error => error.to_s

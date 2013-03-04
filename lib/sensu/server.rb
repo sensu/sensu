@@ -83,11 +83,11 @@ module Sensu
       @keepalive_queue = @amq.queue!('keepalives')
       @keepalive_queue.bind(@amq.direct('keepalives'))
       @keepalive_queue.subscribe(:ack => true) do |header, payload|
-        client = JSON.parse(payload, :symbolize_names => true)
+        client = Oj.load(payload)
         @logger.debug('received keepalive', {
           :client => client
         })
-        @redis.set('client:' + client[:name], client.to_json) do
+        @redis.set('client:' + client[:name], Oj.dump(client)) do
           @redis.sadd('clients', client[:name]) do
             header.ack
           end
@@ -273,7 +273,7 @@ module Sensu
     def mutate_event_data(mutator_name, event, &block)
       case
       when mutator_name.nil?
-        block.call(event.to_json)
+        block.call(Oj.dump(event))
       when @settings.mutator_exists?(mutator_name)
         mutator = @settings[:mutators][mutator_name]
         on_error = Proc.new do |error|
@@ -283,7 +283,7 @@ module Sensu
             :error => error.to_s
           })
         end
-        execute_command(mutator[:command], event.to_json, on_error) do |output, status|
+        execute_command(mutator[:command], Oj.dump(event), on_error) do |output, status|
           if status == 0
             block.call(output)
           else
@@ -390,10 +390,10 @@ module Sensu
       })
       check = result[:check]
       result_set = check[:name] + ':' + check[:issued].to_s
-      @redis.hset('aggregation:' + result_set, result[:client], {
+      @redis.hset('aggregation:' + result_set, result[:client], Oj.dump(
         :output => check[:output],
         :status => check[:status]
-      }.to_json) do
+      )) do
         SEVERITIES.each do |severity|
           @redis.hsetnx('aggregate:' + result_set, severity, 0)
         end
@@ -414,7 +414,7 @@ module Sensu
       })
       @redis.get('client:' + result[:client]) do |client_json|
         unless client_json.nil?
-          client = JSON.parse(client_json, :symbolize_names => true)
+          client = Oj.load(client_json)
           check = case
           when @settings.check_exists?(result[:check][:name])
             @settings[:checks][result[:check][:name]].merge(result[:check])
@@ -445,7 +445,7 @@ module Sensu
                 @redis.ltrim(history_key, -21, -1)
               end
               @redis.hget('events:' + client[:name], check[:name]) do |event_json|
-                previous_occurrence = event_json ? JSON.parse(event_json, :symbolize_names => true) : false
+                previous_occurrence = event_json ? Oj.load(event_json) : false
                 is_flapping = false
                 if check.has_key?(:low_flap_threshold) && check.has_key?(:high_flap_threshold)
                   was_flapping = previous_occurrence ? previous_occurrence[:flapping] : false
@@ -467,14 +467,14 @@ module Sensu
                   if previous_occurrence && check[:status] == previous_occurrence[:status]
                     event[:occurrences] = previous_occurrence[:occurrences] += 1
                   end
-                  @redis.hset('events:' + client[:name], check[:name], {
+                  @redis.hset('events:' + client[:name], check[:name], Oj.dump(
                     :output => check[:output],
                     :status => check[:status],
                     :issued => check[:issued],
                     :handlers => Array((check[:handlers] || check[:handler]) || 'default'),
                     :flapping => is_flapping,
                     :occurrences => event[:occurrences]
-                  }.to_json) do
+                  )) do
                     unless check[:handle] == false
                       event[:action] = is_flapping ? :flapping : :create
                       handle_event(event)
@@ -508,7 +508,7 @@ module Sensu
       @result_queue = @amq.queue!('results')
       @result_queue.bind(@amq.direct('results'))
       @result_queue.subscribe(:ack => true) do |header, payload|
-        result = JSON.parse(payload, :symbolize_names => true)
+        result = Oj.load(payload)
         @logger.debug('received result', {
           :result => result
         })
@@ -532,7 +532,7 @@ module Sensu
         :subscribers => check[:subscribers]
       })
       check[:subscribers].each do |exchange_name|
-        @amq.fanout(exchange_name).publish(payload.to_json)
+        @amq.fanout(exchange_name).publish(Oj.dump(payload))
       end
     end
 
@@ -576,7 +576,7 @@ module Sensu
       @logger.info('publishing check result', {
         :payload => payload
       })
-      @amq.direct('results').publish(payload.to_json)
+      @amq.direct('results').publish(Oj.dump(payload))
     end
 
     def determine_stale_clients
@@ -584,7 +584,7 @@ module Sensu
       @redis.smembers('clients') do |clients|
         clients.each do |client_name|
           @redis.get('client:' + client_name) do |client_json|
-            client = JSON.parse(client_json, :symbolize_names => true)
+            client = Oj.load(client_json)
             check = {
               :name => 'keepalive',
               :issued => Time.now.to_i

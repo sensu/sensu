@@ -30,12 +30,12 @@ describe 'Sensu::Server' do
       keepalive = client_template
       keepalive[:timestamp] = epoch
       redis.flushdb do
-        amq.direct('keepalives').publish(keepalive.to_json)
+        amq.direct('keepalives').publish(Oj.dump(keepalive))
         timer(1) do
           redis.sismember('clients', 'i-424242') do |exists|
             exists.should be_true
             redis.get('client:i-424242') do |client_json|
-              client = JSON.parse(client_json, :symbolize_names => true)
+              client = Oj.load(client_json)
               client.should eq(keepalive)
               async_done
             end
@@ -266,11 +266,11 @@ describe 'Sensu::Server' do
         raise 'should never get here'
       end
       @server.mutate_event_data(nil, event) do |event_data|
-        event_data.should eq(event.to_json)
+        event_data.should eq(Oj.dump(event))
         @server.mutate_event_data('only_check_output', event) do |event_data|
           event_data.should eq('WARNING')
           @server.mutate_event_data('tag', event) do |event_data|
-            JSON.parse(event_data).should include('mutated')
+            Oj.load(event_data).should include(:mutated)
             @server.mutate_event_data('settings', event) do |event_data|
               event_data.should eq('true')
               async_done
@@ -299,7 +299,7 @@ describe 'Sensu::Server' do
       event = event_template
       event[:check][:handler] = 'tcp'
       EM::start_server('127.0.0.1', 1234, Helpers::TestServer) do |server|
-        server.expected = event.to_json
+        server.expected = Oj.dump(event)
       end
       @server.handle_event(event)
     end
@@ -310,7 +310,7 @@ describe 'Sensu::Server' do
       event = event_template
       event[:check][:handler] = 'udp'
       EM::open_datagram_socket('127.0.0.1', 1234, Helpers::TestServer) do |server|
-        server.expected = event.to_json
+        server.expected = Oj.dump(event)
       end
       @server.handle_event(event)
     end
@@ -326,7 +326,7 @@ describe 'Sensu::Server' do
           @server.handle_event(event)
         end
         queue.subscribe do |payload|
-          payload.should eq(event.to_json)
+          payload.should eq(Oj.dump(event))
           async_done
         end
       end
@@ -387,7 +387,7 @@ describe 'Sensu::Server' do
       @server.setup_redis
       redis.flushdb do
         client = client_template
-        redis.set('client:i-424242', client.to_json) do
+        redis.set('client:i-424242', Oj.dump(client)) do
           26.times do |index|
             result = result_template
             result[:check][:low_flap_threshold] = 5
@@ -399,7 +399,7 @@ describe 'Sensu::Server' do
             redis.llen('history:i-424242:foobar') do |length|
               length.should eq(21)
               redis.hget('events:i-424242', 'foobar') do |event_json|
-                event = JSON.parse(event_json, :symbolize_names => true)
+                event = Oj.load(event_json)
                 event[:flapping].should be_true
                 event[:occurrences].should be_within(2).of(1)
                 async_done
@@ -418,12 +418,12 @@ describe 'Sensu::Server' do
       @server.setup_results
       redis.flushdb do
         client = client_template
-        redis.set('client:i-424242', client.to_json) do
+        redis.set('client:i-424242', Oj.dump(client)) do
           result = result_template
-          amq.direct('results').publish(result.to_json)
+          amq.direct('results').publish(Oj.dump(result))
           timer(1) do
             redis.hget('events:i-424242', 'foobar') do |event_json|
-              event = JSON.parse(event_json, :symbolize_names => true)
+              event = Oj.load(event_json)
               event[:status].should eq(1)
               event[:occurrences].should eq(1)
               async_done
@@ -444,7 +444,7 @@ describe 'Sensu::Server' do
           @server.publish_check_request(check)
         end
         queue.subscribe do |payload|
-          check_request = JSON.parse(payload, :symbolize_names => true)
+          check_request = Oj.load(payload)
           check_request[:name].should eq('foobar')
           check_request[:command].should eq('echo -n WARNING && exit 1')
           check_request[:issued].should be_within(10).of(epoch)
@@ -461,7 +461,7 @@ describe 'Sensu::Server' do
       amq.fanout('test') do
         expected = ['tokens', 'merger', 'sensu_cpu_time']
         amq.queue('', :auto_delete => true).bind('test').subscribe do |payload|
-          check_request = JSON.parse(payload, :symbolize_names => true)
+          check_request = Oj.load(payload)
           check_request[:issued].should be_within(10).of(epoch)
           expected.delete(check_request[:name]).should_not be_nil
           if expected.empty?
@@ -480,7 +480,7 @@ describe 'Sensu::Server' do
         check = result_template[:check]
         @server.publish_result(client, check)
         queue.subscribe do |payload|
-          result = JSON.parse(payload, :symbolize_names => true)
+          result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:name].should eq('foobar')
           async_done
@@ -500,17 +500,17 @@ describe 'Sensu::Server' do
       client2 = client_template
       client2[:name] = 'bar'
       client2[:timestamp] = epoch - 180
-      redis.set('client:foo', client1.to_json) do
+      redis.set('client:foo', Oj.dump(client1)) do
         redis.sadd('clients', 'foo') do
-          redis.set('client:bar', client2.to_json) do
+          redis.set('client:bar', Oj.dump(client2)) do
             redis.sadd('clients', 'bar') do
               @server.determine_stale_clients
               timer(1) do
                 redis.hget('events:foo', 'keepalive') do |event_json|
-                  event = JSON.parse(event_json, :symbolize_names => true)
+                  event = Oj.load(event_json)
                   event[:status].should eq(1)
                   redis.hget('events:bar', 'keepalive') do |event_json|
-                    event = JSON.parse(event_json, :symbolize_names => true)
+                    event = Oj.load(event_json)
                     event[:status].should eq(2)
                     async_done
                   end
@@ -528,7 +528,7 @@ describe 'Sensu::Server' do
       @server.setup_redis
       redis.flushdb do
         client = client_template
-        redis.set('client:i-424242', client.to_json) do
+        redis.set('client:i-424242', Oj.dump(client)) do
           timestamp = epoch - 26
           26.times do |index|
             result = result_template

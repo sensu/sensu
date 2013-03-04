@@ -71,7 +71,7 @@ module Sensu
       if data.is_a?(Hash)
         log_event.merge!(data)
       end
-      log_event.to_json
+      Oj.dump(log_event)
     end
 
     def setup_writer

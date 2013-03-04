@@ -26,7 +26,7 @@ module Sensu
             :system => cpu_times.stime
           }
         }
-        block.call(metrics.to_json, 0)
+        block.call(Oj.dump(metrics), 0)
       end
     end
   end

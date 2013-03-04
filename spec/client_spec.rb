@@ -21,7 +21,7 @@ describe 'Sensu::Client' do
         @client.setup_rabbitmq
         @client.publish_keepalive
         queue.subscribe do |payload|
-          keepalive = JSON.parse(payload, :symbolize_names => true)
+          keepalive = Oj.load(payload)
           keepalive[:name].should eq('i-424242')
           async_done
         end
@@ -35,7 +35,7 @@ describe 'Sensu::Client' do
         @client.setup_rabbitmq
         @client.setup_keepalives
         queue.subscribe do |payload|
-          keepalive = JSON.parse(payload, :symbolize_names => true)
+          keepalive = Oj.load(payload)
           keepalive[:name].should eq('i-424242')
           async_done
         end
@@ -50,7 +50,7 @@ describe 'Sensu::Client' do
         check = result_template[:check]
         @client.publish_result(check)
         queue.subscribe do |payload|
-          result = JSON.parse(payload, :symbolize_names => true)
+          result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:name].should eq('foobar')
           async_done
@@ -65,7 +65,7 @@ describe 'Sensu::Client' do
         @client.setup_rabbitmq
         @client.execute_check_command(check_template)
         queue.subscribe do |payload|
-          result = JSON.parse(payload, :symbolize_names => true)
+          result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should eq('WARNING')
           async_done
@@ -82,7 +82,7 @@ describe 'Sensu::Client' do
         check[:command] = 'echo -n :::nested.attribute:::'
         @client.execute_check_command(check)
         queue.subscribe do |payload|
-          result = JSON.parse(payload, :symbolize_names => true)
+          result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should eq('true')
           async_done
@@ -100,7 +100,7 @@ describe 'Sensu::Client' do
         }
         @client.run_check_extension(check)
         queue.subscribe do |payload|
-          result = JSON.parse(payload, :symbolize_names => true)
+          result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should start_with('{')
           async_done
@@ -129,10 +129,10 @@ describe 'Sensu::Client' do
         @client.setup_rabbitmq
         @client.setup_subscriptions
         timer(1) do
-          amq.fanout('test').publish(check_template.to_json)
+          amq.fanout('test').publish(Oj.dump(check_template))
         end
         queue.subscribe do |payload|
-          result = JSON.parse(payload, :symbolize_names => true)
+          result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should eq('WARNING')
           result[:check][:status].should eq(1)
@@ -149,10 +149,10 @@ describe 'Sensu::Client' do
         @client.setup_rabbitmq
         @client.setup_subscriptions
         timer(1) do
-          amq.fanout('test').publish(check_template.to_json)
+          amq.fanout('test').publish(Oj.dump(check_template))
         end
         queue.subscribe do |payload|
-          result = JSON.parse(payload, :symbolize_names => true)
+          result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should include('safe mode')
           result[:check][:status].should eq(3)
@@ -169,7 +169,7 @@ describe 'Sensu::Client' do
         @client.setup_standalone
         expected = ['standalone', 'sensu_gc_metrics']
         queue.subscribe do |payload|
-          result = JSON.parse(payload, :symbolize_names => true)
+          result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check].should have_key(:issued)
           result[:check].should have_key(:output)
@@ -201,7 +201,7 @@ describe 'Sensu::Client' do
         end
         expected = ['tcp', 'udp']
         queue.subscribe do |payload|
-          result = JSON.parse(payload, :symbolize_names => true)
+          result = Oj.load(payload)
           result[:client].should eq('i-424242')
           expected.delete(result[:check][:name]).should_not be_nil
           if expected.empty?
