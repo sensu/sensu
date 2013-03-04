@@ -17,7 +17,7 @@ require File.join(File.dirname(__FILE__), 'process')
 require File.join(File.dirname(__FILE__), 'io')
 require File.join(File.dirname(__FILE__), 'rabbitmq')
 
-Oj.default_options = {:symbol_keys => true}
+Oj.default_options = {:mode => :compat, :symbol_keys => true}
 
 module Sensu
   class Base
