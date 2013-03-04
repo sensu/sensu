@@ -2,7 +2,7 @@ require 'rubygems'
 
 gem 'eventmachine', '1.0.1'
 
-require 'json'
+require 'oj'
 require 'time'
 require 'uri'
 
@@ -15,6 +15,8 @@ require File.join(File.dirname(__FILE__), 'extensions')
 require File.join(File.dirname(__FILE__), 'process')
 require File.join(File.dirname(__FILE__), 'io')
 require File.join(File.dirname(__FILE__), 'rabbitmq')
+
+Oj.default_options = {:symbol_keys => true}
 
 module Sensu
   class Base
