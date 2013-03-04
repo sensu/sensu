@@ -1,10 +1,11 @@
 require 'rubygems'
 
+gem 'oj', '2.0.8'
 gem 'eventmachine', '1.0.1'
 
-require 'oj'
 require 'time'
 require 'uri'
+require 'oj'
 
 require File.join(File.dirname(__FILE__), 'constants')
 require File.join(File.dirname(__FILE__), 'utilities')
