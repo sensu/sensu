@@ -10,6 +10,12 @@ No longer defaults to or enforces a specific config file or directory.
 
 ### Other
 
+Running on Ruby 2.0.0p0.
+
+Faster JSON parser.
+
+Lightweight logger.
+
 Improved config validation.
 
 ## 0.9.11 - 2013-02-22
