@@ -12,15 +12,15 @@ describe 'Sensu::API' do
       client = client_template
       client[:timestamp] = epoch
       redis.flushdb do
-        redis.set('client:i-424242', client.to_json) do
+        redis.set('client:i-424242', Oj.dump(client)) do
           redis.sadd('clients', 'i-424242') do
-            redis.hset('events:i-424242', 'test', {
+            redis.hset('events:i-424242', 'test', Oj.dump(
               :output => 'CRITICAL',
               :status => 2,
               :issued => Time.now.to_i,
               :flapping => false,
               :occurrences => 1
-            }.to_json) do
+            )) do
               redis.set('stash:test/test', '{"key": "value"}') do
                 redis.sadd('stashes', 'test/test') do
                   @redis = nil
@@ -140,7 +140,7 @@ describe 'Sensu::API' do
           http.response_header.status.should eq(202)
           body.should be_empty
           queue.subscribe do |payload|
-            result = JSON.parse(payload, :symbolize_names => true)
+            result = Oj.load(payload)
             result[:client].should eq('i-424242')
             result[:check][:name].should eq('test')
             result[:check][:status].should eq(0)
@@ -168,13 +168,13 @@ describe 'Sensu::API' do
           :body => {
             :client => 'i-424242',
             :check => 'test'
-          }.to_json
+          }
         }
         api_request('/resolve', :post, options) do |http, body|
           http.response_header.status.should eq(202)
           body.should be_empty
           queue.subscribe do |payload|
-            result = JSON.parse(payload, :symbolize_names => true)
+            result = Oj.load(payload)
             result[:client].should eq('i-424242')
             result[:check][:name].should eq('test')
             result[:check][:status].should eq(0)
@@ -191,7 +191,7 @@ describe 'Sensu::API' do
         :body => {
           :client => 'i-424242',
           :check => 'nonexistent'
-        }.to_json
+        }
       }
       api_request('/resolve', :post, options) do |http, body|
         http.response_header.status.should eq(404)
@@ -219,7 +219,7 @@ describe 'Sensu::API' do
       options = {
         :body => {
           :client => 'i-424242'
-        }.to_json
+        }
       }
       api_request('/resolve', :post, options) do |http, body|
         http.response_header.status.should eq(400)
@@ -303,7 +303,7 @@ describe 'Sensu::API' do
           :subscribers => [
             'test'
           ]
-        }.to_json
+        }
       }
       api_request('/request', :post, options) do |http, body|
         http.response_header.status.should eq(201)
@@ -319,7 +319,7 @@ describe 'Sensu::API' do
         :body => {
           :check => 'tokens',
           :subscribers => 'invalid'
-        }.to_json
+        }
       }
       api_request('/request', :post, options) do |http, body|
         http.response_header.status.should eq(400)
@@ -336,7 +336,7 @@ describe 'Sensu::API' do
           :subscribers => [
             'test'
           ]
-        }.to_json
+        }
       }
       api_request('/request', :post, options) do |http, body|
         http.response_header.status.should eq(400)
@@ -351,7 +351,7 @@ describe 'Sensu::API' do
       options = {
         :body => {
           :check => 'nonexistent'
-        }.to_json
+        }
       }
       api_request('/request', :post, options) do |http, body|
         http.response_header.status.should eq(404)
@@ -366,13 +366,13 @@ describe 'Sensu::API' do
       options = {
         :body => {
           :key => 'value'
-        }.to_json
+        }
       }
       api_request('/stash/tester', :post, options) do |http, body|
         http.response_header.status.should eq(201)
         body.should be_empty
         redis.get('stash:tester') do |stash_json|
-          stash = JSON.parse(stash_json, :symbolize_names => true)
+          stash = Oj.load(stash_json)
           stash.should eq({:key => 'value'})
           async_done
         end
@@ -434,7 +434,7 @@ describe 'Sensu::API' do
         :body => [
           'test/test',
           'nonexistent'
-        ].to_json
+        ]
       }
       api_request('/stashes', :post, options) do |http, body|
         http.response_header.status.should eq(200)
