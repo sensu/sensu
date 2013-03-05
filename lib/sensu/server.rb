@@ -594,20 +594,14 @@ module Sensu
             when time_since_last_keepalive >= 180
               check[:output] = 'No keep-alive sent from client in over 180 seconds'
               check[:status] = 2
-              publish_result(client, check)
             when time_since_last_keepalive >= 120
               check[:output] = 'No keep-alive sent from client in over 120 seconds'
               check[:status] = 1
-              publish_result(client, check)
             else
-              @redis.hexists('events:' + client[:name], 'keepalive') do |exists|
-                if exists
-                  check[:output] = 'Keep-alive sent from client'
-                  check[:status] = 0
-                  publish_result(client, check)
-                end
-              end
+              check[:output] = 'Keep-alive sent from client'
+              check[:status] = 0
             end
+            publish_result(client, check)
           end
         end
       end
