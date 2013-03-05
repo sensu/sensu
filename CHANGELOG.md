@@ -10,6 +10,8 @@ No longer defaults to or enforces a specific config file or directory.
 
 ### Other
 
+Fixed keepalive check history & flap detection.
+
 Running on Ruby 2.0.0p0.
 
 Faster JSON parser.
