@@ -598,7 +598,7 @@ module Sensu
               check[:output] = 'No keep-alive sent from client in over 120 seconds'
               check[:status] = 1
             else
-              check[:output] = 'Keep-alive sent from client'
+              check[:output] = 'Keep-alive sent from client less than 120 seconds ago'
               check[:status] = 0
             end
             publish_result(client, check)
