@@ -465,7 +465,7 @@ module Sensu
                 }
                 if check[:status] != 0 || is_flapping
                   if previous_occurrence && check[:status] == previous_occurrence[:status]
-                    event[:occurrences] = previous_occurrence[:occurrences] += 1
+                    event[:occurrences] = previous_occurrence[:occurrences] + 1
                   end
                   @redis.hset('events:' + client[:name], check[:name], Oj.dump(
                     :output => check[:output],
