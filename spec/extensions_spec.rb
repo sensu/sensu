@@ -25,4 +25,13 @@ describe 'Sensu::Extensions' do
     @extensions.mutator_exists?('opentsdb')
     @extensions[:mutators]['opentsdb'].should be_an_instance_of(Sensu::Extension::OpenTSDB)
   end
+
+  it 'can stop all extensions for cleanup purposes' do
+    @extensions.load_all
+    stopped_all = false
+    @extensions.stop_all do
+      stopped_all = true
+    end
+    stopped_all.should be_true
+  end
 end

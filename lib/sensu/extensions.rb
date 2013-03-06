@@ -53,6 +53,25 @@ module Sensu
       end
     end
 
+    def stop_all(&block)
+      all = @extensions.map do |category, extensions|
+        extensions.map do |name, extension|
+          extension
+        end
+      end
+      all.flatten!
+      stopper = Proc.new do |extension|
+        if extension.nil?
+          block.call
+        else
+          extension.stop do
+            stopper.call(all.pop)
+          end
+        end
+      end
+      stopper.call(all.pop)
+    end
+
     private
 
     def loaded(type, name, description)
@@ -91,6 +110,10 @@ module Sensu
 
       def run(event=nil, settings={}, &block)
         block.call('noop', 0)
+      end
+
+      def stop(&block)
+        block.call
       end
 
       def self.descendants
