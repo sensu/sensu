@@ -2,6 +2,8 @@
 
 ### Features
 
+Extension stop hook for clean up before the event loop is stopped.
+
 Check extensions.
 
 ### Non-backwards compatible changes
@@ -9,6 +11,8 @@ Check extensions.
 No longer defaults to or enforces a specific config file or directory.
 
 ### Other
+
+Improved RabbitMQ queue unsubscribe & connection reconnect.
 
 Fixed keepalive check history & flap detection.
 
