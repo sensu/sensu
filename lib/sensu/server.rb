@@ -41,8 +41,8 @@ module Sensu
         stop
       end
       @redis.before_reconnect do
-        @logger.warn('reconnecting to redis')
         unless testing?
+          @logger.warn('reconnecting to redis')
           pause
         end
       end
@@ -64,12 +64,15 @@ module Sensu
         stop
       end
       @rabbitmq.before_reconnect do
-        @logger.warn('reconnecting to rabbitmq')
-        resign_as_master
+        unless testing?
+          @logger.warn('reconnecting to rabbitmq')
+          pause
+        end
       end
       @rabbitmq.after_reconnect do
         @logger.info('reconnected to rabbitmq')
         @amq.prefetch(1)
+        resume
       end
       @amq = @rabbitmq.channel
       @amq.prefetch(1)
@@ -77,9 +80,6 @@ module Sensu
 
     def setup_keepalives
       @logger.debug('subscribing to keepalives')
-      @amq.queue('keepalives').consumers.each do |consumer_tag, consumer|
-        consumer.cancel
-      end
       @keepalive_queue = @amq.queue!('keepalives')
       @keepalive_queue.bind(@amq.direct('keepalives'))
       @keepalive_queue.subscribe(:ack => true) do |header, payload|
@@ -502,9 +502,6 @@ module Sensu
 
     def setup_results
       @logger.debug('subscribing to results')
-      @amq.queue('results').consumers.each do |consumer_tag, consumer|
-        consumer.cancel
-      end
       @result_queue = @amq.queue!('results')
       @result_queue.bind(@amq.direct('results'))
       @result_queue.subscribe(:ack => true) do |header, payload|
@@ -697,7 +694,7 @@ module Sensu
         @master_timers.each do |timer|
           timer.cancel
         end
-        @master_timers = Array.new
+        @master_timers.clear
         if @redis.connected?
           @redis.del('lock:master') do
             @logger.info('removed master lock')
@@ -722,25 +719,19 @@ module Sensu
       end
     end
 
-    def unsubscribe(&block)
+    def unsubscribe
       @logger.warn('unsubscribing from keepalive and result queues')
-      @keepalive_queue.unsubscribe
-      @result_queue.unsubscribe
       if @rabbitmq.connected?
+        @keepalive_queue.unsubscribe
+        @result_queue.unsubscribe
         @amq.recover
-        timestamp = Time.now.to_i
-        retry_until_true do
-          if !@keepalive_queue.subscribed? && !@result_queue.subscribed?
-            block.call
-            true
-          elsif Time.now.to_i - timestamp >= 5
-            @logger.warn('failed to unsubscribe from keepalive and result queues')
-            block.call
-            true
-          end
-        end
       else
-        block.call
+        @keepalive_queue.before_recovery do
+          @keepalive_queue.unsubscribe
+        end
+        @result_queue.before_recovery do
+          @result_queue.unsubscribe
+        end
       end
     end
 
@@ -775,13 +766,12 @@ module Sensu
         @timers.each do |timer|
           timer.cancel
         end
-        @timers = Array.new
-        unsubscribe do
-          resign_as_master do
-            @state = :paused
-            if block
-              block.call
-            end
+        @timers.clear
+        unsubscribe
+        resign_as_master do
+          @state = :paused
+          if block
+            block.call
           end
         end
       end
