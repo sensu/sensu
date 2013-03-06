@@ -242,10 +242,15 @@ module Sensu
       end
     end
 
-    def unsubscribe(&block)
+    def unsubscribe
       @logger.warn('unsubscribing from client subscriptions')
-      @check_request_queue.unsubscribe
-      block.call
+      if @rabbitmq.connected?
+        @check_request_queue.unsubscribe
+      else
+        @check_request_queue.before_recovery do
+          @check_request_queue.unsubscribe
+        end
+      end
     end
 
     def complete_checks_in_progress(&block)
@@ -273,12 +278,11 @@ module Sensu
       @timers.each do |timer|
         timer.cancel
       end
-      unsubscribe do
-        complete_checks_in_progress do
-          @rabbitmq.close
-          @logger.warn('stopping reactor')
-          EM::stop_event_loop
-        end
+      unsubscribe
+      complete_checks_in_progress do
+        @rabbitmq.close
+        @logger.warn('stopping reactor')
+        EM::stop_event_loop
       end
     end
 
