@@ -681,7 +681,7 @@ module Sensu
           @redis.set('lock:master', Time.now.to_i) do
             @logger.debug('updated master lock timestamp')
           end
-        elsif @rabbitmq.connected?
+        else
           request_master_election
         end
       end
@@ -793,10 +793,12 @@ module Sensu
       @state = :stopping
       pause do
         complete_handlers_in_progress do
-          @redis.close
-          @rabbitmq.close
-          @logger.warn('stopping reactor')
-          EM::stop_event_loop
+          @extensions.stop_all do
+            @redis.close
+            @rabbitmq.close
+            @logger.warn('stopping reactor')
+            EM::stop_event_loop
+          end
         end
       end
     end

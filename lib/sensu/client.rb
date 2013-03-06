@@ -280,9 +280,11 @@ module Sensu
       end
       unsubscribe
       complete_checks_in_progress do
-        @rabbitmq.close
-        @logger.warn('stopping reactor')
-        EM::stop_event_loop
+        @extensions.stop_all do
+          @rabbitmq.close
+          @logger.warn('stopping reactor')
+          EM::stop_event_loop
+        end
       end
     end
 
