@@ -17,6 +17,15 @@ describe 'Sensu::Extension::Base' do
     end
   end
 
+  it 'can clean up before the process terminates' do
+    extension = Sensu::Extension::Base.new
+    stopped = false
+    extension.stop do
+      stopped = true
+    end
+    stopped.should be_true
+  end
+
   it 'can determine descendants (classes)' do
     class Foo < Sensu::Extension::Base; end
     class Bar < Sensu::Extension::Base; end
