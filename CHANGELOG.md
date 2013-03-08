@@ -2,6 +2,8 @@
 
 ### Features
 
+API can bind to a specific address.
+
 Extension stop hook for clean up before the event loop is stopped.
 
 Check extensions.
@@ -11,6 +13,8 @@ Check extensions.
 No longer defaults to or enforces a specific config file or directory.
 
 ### Other
+
+API 201 & 202 status responses return a body.
 
 Improved RabbitMQ queue unsubscribe & connection reconnect.
 
