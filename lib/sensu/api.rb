@@ -517,7 +517,7 @@ module Sensu
         post_body = Oj.load(request.body.read)
         $redis.set('stash:' + path, Oj.dump(post_body)) do
           $redis.sadd('stashes', path) do
-            created!(Oj.dump(post_body))
+            created!(Oj.dump({:issued => Time.now}))
           end
         end
       rescue Oj::ParseError
