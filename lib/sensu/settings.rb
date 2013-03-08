@@ -216,6 +216,11 @@ module Sensu
       unless check[:command].is_a?(String)
         invalid_check(check, 'check is missing command')
       end
+      if check.has_key?(:standalone)
+        unless !!check[:standalone] == check[:standalone]
+          invalid_check(check, 'check standalone must be boolean')
+        end
+      end
       unless check[:standalone]
         unless check[:subscribers].is_a?(Array)
           invalid_check(check, 'check is missing subscribers')
