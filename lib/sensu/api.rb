@@ -75,7 +75,8 @@ module Sensu
         setup_redis
         setup_rabbitmq
         Thin::Logging.silent = true
-        Thin::Server.start(self, $settings[:api][:port])
+        $settings[:api][:bind] ||= "0.0.0.0"
+        Thin::Server.start($settings[:api][:bind], $settings[:api][:port], self)
       end
 
       def stop
