@@ -143,14 +143,14 @@ module Sensu
         ahalt 404
       end
 
-      def created!(response_json)
+      def created!(response)
         status 201
-        body response_json
+        body response
       end
 
-      def accepted!(response_json)
+      def accepted!(response)
         status 202
-        body response_json
+        body response
       end
 
       def no_content!
