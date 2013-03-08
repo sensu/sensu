@@ -138,7 +138,7 @@ describe 'Sensu::API' do
       result_queue do |queue|
         api_request('/event/i-424242/test', :delete) do |http, body|
           http.response_header.status.should eq(202)
-          body.should be_empty
+          body.should include(:issued)
           queue.subscribe do |payload|
             result = Oj.load(payload)
             result[:client].should eq('i-424242')
@@ -172,7 +172,7 @@ describe 'Sensu::API' do
         }
         api_request('/resolve', :post, options) do |http, body|
           http.response_header.status.should eq(202)
-          body.should be_empty
+          body.should include(:issued)
           queue.subscribe do |payload|
             result = Oj.load(payload)
             result[:client].should eq('i-424242')
@@ -257,7 +257,7 @@ describe 'Sensu::API' do
     api_test do
       api_request('/client/i-424242', :delete) do |http, body|
         http.response_header.status.should eq(202)
-        body.should be_empty
+        body.should include(:issued)
         async_done
       end
     end
@@ -307,7 +307,7 @@ describe 'Sensu::API' do
       }
       api_request('/request', :post, options) do |http, body|
         http.response_header.status.should eq(201)
-        body.should be_empty
+        body.should include(:issued)
         async_done
       end
     end
@@ -370,7 +370,7 @@ describe 'Sensu::API' do
       }
       api_request('/stash/tester', :post, options) do |http, body|
         http.response_header.status.should eq(201)
-        body.should be_empty
+        body.should include(:issued)
         redis.get('stash:tester') do |stash_json|
           stash = Oj.load(stash_json)
           stash.should eq({:key => 'value'})
