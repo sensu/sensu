@@ -143,14 +143,14 @@ module Sensu
         ahalt 404
       end
 
-      def created!
+      def created!(response_json)
         status 201
-        body ''
+        body response_json
       end
 
-      def accepted!
+      def accepted!(response_json)
         status 202
-        body ''
+        body response_json
       end
 
       def no_content!
@@ -274,7 +274,7 @@ module Sensu
                 $redis.del('history:' + client_name)
               end
             end
-            accepted!
+            accepted!(Oj.dump({:issued => Time.now}))
           end
         else
           not_found!
@@ -318,7 +318,7 @@ module Sensu
             subscribers.uniq.each do |exchange_name|
               $amq.fanout(exchange_name).publish(Oj.dump(payload))
             end
-            created!
+            created!(Oj.dump(payload))
           else
             not_found!
           end
@@ -375,7 +375,7 @@ module Sensu
       $redis.hgetall('events:' + client_name) do |events|
         if events.include?(check_name)
           resolve_event(event_hash(events[check_name], client_name, check_name))
-          accepted!
+          accepted!(Oj.dump({:issued => Time.now}))
         else
           not_found!
         end
@@ -391,7 +391,7 @@ module Sensu
           $redis.hgetall('events:' + client_name) do |events|
             if events.include?(check_name)
               resolve_event(event_hash(events[check_name], client_name, check_name))
-              accepted!
+              accepted!(Oj.dump({:issued => Time.now}))
             else
               not_found!
             end
@@ -517,7 +517,7 @@ module Sensu
         post_body = Oj.load(request.body.read)
         $redis.set('stash:' + path, Oj.dump(post_body)) do
           $redis.sadd('stashes', path) do
-            created!
+            created!(Oj.dump(post_body))
           end
         end
       rescue Oj::ParseError
