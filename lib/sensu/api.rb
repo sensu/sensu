@@ -274,7 +274,7 @@ module Sensu
                 $redis.del('history:' + client_name)
               end
             end
-            accepted!(Oj.dump({:issued => Time.now}))
+            accepted!(Oj.dump({:issued => Time.now.to_i}))
           end
         else
           not_found!
@@ -375,7 +375,7 @@ module Sensu
       $redis.hgetall('events:' + client_name) do |events|
         if events.include?(check_name)
           resolve_event(event_hash(events[check_name], client_name, check_name))
-          accepted!(Oj.dump({:issued => Time.now}))
+          accepted!(Oj.dump({:issued => Time.now.to_i}))
         else
           not_found!
         end
@@ -391,7 +391,7 @@ module Sensu
           $redis.hgetall('events:' + client_name) do |events|
             if events.include?(check_name)
               resolve_event(event_hash(events[check_name], client_name, check_name))
-              accepted!(Oj.dump({:issued => Time.now}))
+              accepted!(Oj.dump({:issued => Time.now.to_i}))
             else
               not_found!
             end
@@ -517,7 +517,7 @@ module Sensu
         post_body = Oj.load(request.body.read)
         $redis.set('stash:' + path, Oj.dump(post_body)) do
           $redis.sadd('stashes', path) do
-            created!(Oj.dump({:issued => Time.now}))
+            created!(Oj.dump({:issued => Time.now.to_i}))
           end
         end
       rescue Oj::ParseError
