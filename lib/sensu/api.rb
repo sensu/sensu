@@ -296,6 +296,21 @@ module Sensu
       end
     end
 
+    aget %r{/executions/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
+      $redis.get('status:' + client_name + ':' + check_name) do |check_time|
+        if check_time
+          payload = {
+            :client => client_name,
+            :check => check_name,
+            :executed => check_time
+          }
+          body payload.to_json
+        else
+          not_found!
+        end
+      end
+    end
+
     apost %r{/(?:check/)?request$} do
       begin
         post_body = Oj.load(request.body.read)

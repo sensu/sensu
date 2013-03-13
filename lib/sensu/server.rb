@@ -424,6 +424,8 @@ module Sensu
           if check[:aggregate]
             aggregate_result(result)
           end
+          last_check_status_key = 'status:' + client[:name] + ':' + check[:name]
+          @redis.set(last_check_status_key, client[:timestamp])
           @redis.sadd('history:' + client[:name], check[:name])
           history_key = 'history:' + client[:name] + ':' + check[:name]
           @redis.rpush(history_key, check[:status]) do
