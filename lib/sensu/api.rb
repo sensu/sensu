@@ -260,14 +260,17 @@ module Sensu
           checks.each_with_index do |check, index|
             $redis.get('status:' + client_name + ':' + check) do |check_time|
               if check_time
-                payload = {
-                  :check => check,
-                  :executed => check_time
-                }
-                response.push(payload)
-              end
-              if index == checks.size - 1
-                body response.to_json
+                $redis.lrange('history:' + client_name + ':' + check, -1, -1) do |check_status|
+                  payload = {
+                    :check => check,
+                    :executed => check_time,
+                    :status => check_status[0]
+                  }
+                  response.push(payload)
+                  if index == checks.size - 1
+                    body response.to_json
+                  end
+                end
               end
             end
           end
