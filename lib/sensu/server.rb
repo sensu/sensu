@@ -586,7 +586,8 @@ module Sensu
             client = Oj.load(client_json)
             check = {
               :name => 'keepalive',
-              :issued => Time.now.to_i
+              :issued => Time.now.to_i,
+              :executed => Time.now.to_i
             }
             time_since_last_keepalive = Time.now.to_i - client[:timestamp]
             case
