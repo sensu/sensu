@@ -424,11 +424,11 @@ module Sensu
           if check[:aggregate]
             aggregate_result(result)
           end
-          last_execution_key = 'execution:' + client[:name] + ':' + check[:name]
-          @redis.set(last_execution_key, client[:executed])
           @redis.sadd('history:' + client[:name], check[:name])
           history_key = 'history:' + client[:name] + ':' + check[:name]
           @redis.rpush(history_key, check[:status]) do
+            execution_key = 'execution:' + client[:name] + ':' + check[:name]
+            @redis.set(execution_key, client[:executed])
             @redis.lrange(history_key, -21, -1) do |history|
               check[:history] = history
               total_state_change = 0
