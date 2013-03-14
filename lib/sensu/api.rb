@@ -267,11 +267,11 @@ module Sensu
                     :status => check_status[0]
                   }
                   response.push(payload)
-                  if index == checks.size - 1
-                    body response.to_json
-                  end
                 end
               end
+            end
+            if index == checks.size - 1
+              body response.to_json
             end
           end
         else
