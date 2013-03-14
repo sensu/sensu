@@ -23,11 +23,15 @@ describe 'Sensu::API' do
             )) do
               redis.set('stash:test/test', '{"key": "value"}') do
                 redis.sadd('stashes', 'test/test') do
-                  redis.set('execution:i-424242:test_check', '1363224805') do
-                    redis.sadd('history:i-424242', 'test_check') do
-                      redis.sadd('history:i-424242:test_check', '0') do
-                        @redis = nil
-                        async_done
+                  redis.sadd('history:i-424242', 'history_success') do
+                    redis.sadd('history:i-424242', 'history_fail') do
+                      redis.set('execution:i-424242:history_success', '1363224805') do
+                        redis.set('execution:i-424242:history_fail', '1363224806') do
+                          redis.sadd('history:i-424242:history_success', '0') do
+                            @redis = nil
+                            async_done
+                          end
+                        end
                       end
                     end
                   end
@@ -139,11 +143,17 @@ describe 'Sensu::API' do
     end
   end
 
-  it 'can not check history for broken event' do
+  it 'can request check history for a client' do
     api_test do
       api_request('/client/i-424242/history') do |http, body|
         http.response_header.status.should eq(200)
-        body.should be_empty
+        body.should be_kind_of(Array)
+        result = Oj.load(body)
+        result[0]['check'].should eq('history_success')
+        result[0]['executed'].should eq('1363224805')
+        result[0]['status'].should eq('0')
+        result.include?('history_failed').should be_false
+        result.length.should eq (1)
         async_done
       end
     end
@@ -158,8 +168,6 @@ describe 'Sensu::API' do
           queue.subscribe do |payload|
             result = Oj.load(payload)
             result[:client].should eq('i-424242')
-            result[:check][:name].should eq('test')
-            result[:check][:status].should eq(0)
             async_done
           end
         end
