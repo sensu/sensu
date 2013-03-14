@@ -260,13 +260,16 @@ module Sensu
           checks.each_with_index do |check_name, index|
             history_key = 'history:' + client_name + ':' + check_name
             $redis.lrange(history_key, -21, -1) do |history|
+              history.map! do |status|
+                status.to_i
+              end
               execution_key = 'execution:' + client_name + ':' + check_name
               $redis.get(execution_key) do |last_execution|
                 unless history.empty? || last_execution.nil?
                   item = {
                     :check => check_name,
                     :history => history,
-                    :last_execution => last_execution,
+                    :last_execution => last_execution.to_i,
                     :last_status => history.last
                   }
                   response << item

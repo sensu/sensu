@@ -25,9 +25,9 @@ describe 'Sensu::API' do
                 redis.sadd('stashes', 'test/test') do
                   redis.sadd('history:i-424242', 'success') do
                     redis.sadd('history:i-424242', 'fail') do
-                      redis.set('execution:i-424242:success', '1363224805') do
-                        redis.set('execution:i-424242:fail', '1363224806') do
-                          redis.rpush('history:i-424242:success', '0') do
+                      redis.set('execution:i-424242:success', 1363224805) do
+                        redis.set('execution:i-424242:fail', 1363224806) do
+                          redis.rpush('history:i-424242:success', 0) do
                             @redis = nil
                             async_done
                           end
@@ -271,8 +271,8 @@ describe 'Sensu::API' do
         body.should have(1).items
         body[0][:check].should eq('success')
         body[0][:history].should be_kind_of(Array)
-        body[0][:last_execution].should eq('1363224805')
-        body[0][:last_status].should eq('0')
+        body[0][:last_execution].should eq(1363224805)
+        body[0][:last_status].should eq(0)
         async_done
       end
     end
