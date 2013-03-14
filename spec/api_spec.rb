@@ -148,6 +148,9 @@ describe 'Sensu::API' do
       api_request('/clients/i-424242/history') do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Array)
+        puts body.inspect
+        puts body.class
+        puts body
         body[0]['check'].should eq('history_success')
         body[0]['executed'].should eq('1363224805')
         body[0]['status'].should eq('0')

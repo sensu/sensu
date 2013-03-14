@@ -68,6 +68,7 @@ describe 'Sensu::Client' do
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should eq('WARNING')
+          result[:check][:executed].should start_with('1')
           async_done
         end
       end
@@ -103,6 +104,7 @@ describe 'Sensu::Client' do
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should start_with('{')
+          result[:check][:executed].should start_with('1')
           async_done
         end
       end
