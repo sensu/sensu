@@ -427,6 +427,8 @@ module Sensu
           @redis.sadd('history:' + client[:name], check[:name])
           history_key = 'history:' + client[:name] + ':' + check[:name]
           @redis.rpush(history_key, check[:status]) do
+            execution_key = 'execution:' + client[:name] + ':' + check[:name]
+            @redis.set(execution_key, check[:executed])
             @redis.lrange(history_key, -21, -1) do |history|
               check[:history] = history
               total_state_change = 0
@@ -584,7 +586,8 @@ module Sensu
             client = Oj.load(client_json)
             check = {
               :name => 'keepalive',
-              :issued => Time.now.to_i
+              :issued => Time.now.to_i,
+              :executed => Time.now.to_i
             }
             time_since_last_keepalive = Time.now.to_i - client[:timestamp]
             case
