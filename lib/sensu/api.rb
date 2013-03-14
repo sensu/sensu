@@ -258,7 +258,7 @@ module Sensu
       $redis.smembers('history:' + client_name) do |checks|
         unless checks.empty?
           checks.each_with_index do |check, index|
-            $redis.get('status:' + client_name + ':' + check) do |check_time|
+            $redis.get('execution:' + client_name + ':' + check) do |check_time|
               if check_time
                 $redis.lrange('history:' + client_name + ':' + check, -1, -1) do |check_status|
                   payload = {
