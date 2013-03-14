@@ -145,7 +145,7 @@ describe 'Sensu::API' do
 
   it 'can request check history for a client' do
     api_test do
-      api_request('/client/i-424242/history') do |http, body|
+      api_request('/clients/i-424242/history') do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Array)
         result = Oj.load(body)
@@ -153,7 +153,7 @@ describe 'Sensu::API' do
         result[0]['executed'].should eq('1363224805')
         result[0]['status'].should eq('0')
         result.include?('history_failed').should be_false
-        result.length.should eq (1)
+        result.length.should eq(1)
         async_done
       end
     end
