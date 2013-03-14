@@ -259,19 +259,18 @@ module Sensu
         unless checks.empty?
           checks.each_with_index do |check, index|
             $redis.get('execution:' + client_name + ':' + check) do |check_time|
-              if check_time
-                $redis.lrange('history:' + client_name + ':' + check, -1, -1) do |check_status|
-                  payload = {
-                    :check => check,
-                    :executed => check_time,
-                    :status => check_status[0]
-                  }
-                  response.push(payload)
+              $redis.lrange('history:' + client_name + ':' + check, -1, -1) do |check_status|
+                last_execution_status = check_status[0]
+                payload = {
+                  :check => check,
+                  :executed => check_time,
+                  :status => check_status[0]
+                }
+                response.push(payload) unless check_time.nil? or last_execution_status.nil?
+                if index == checks.size - 1
+                  body response.to_json
                 end
               end
-            end
-            if index == checks.size - 1
-              body response.to_json
             end
           end
         else
