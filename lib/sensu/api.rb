@@ -257,16 +257,20 @@ module Sensu
       response = Array.new
       $redis.smembers('history:' + client_name) do |checks|
         unless checks.empty?
-          checks.each_with_index do |check, index|
-            $redis.get('execution:' + client_name + ':' + check) do |check_time|
-              $redis.lrange('history:' + client_name + ':' + check, -1, -1) do |check_status|
-                check_status.is_a?(Array) ? last_status = check_status[0] : last_status = nil
-                payload = {
-                  :check => check,
-                  :executed => check_time,
-                  :status => last_status
-                }
-                response.push(payload) unless last_status.nil? or check_time.nil?
+          checks.each_with_index do |check_name, index|
+            history_key = 'history:' + client_name + ':' + check_name
+            $redis.lrange(history_key, -21, -1) do |history|
+              execution_key = 'execution:' + client_name + ':' + check_name
+              $redis.get(execution_key) do |last_execution|
+                unless history.empty? || last_execution.nil?
+                  item = {
+                    :check => check_name,
+                    :history => history,
+                    :last_execution => last_execution,
+                    :last_status => history.last
+                  }
+                  response << item
+                end
                 if index == checks.size - 1
                   body Oj.dump(response)
                 end
@@ -437,11 +441,11 @@ module Sensu
         unless checks.empty?
           checks.each_with_index do |check_name, index|
             $redis.smembers('aggregates:' + check_name) do |aggregates|
-              collection = {
+              item = {
                 :check => check_name,
                 :issued => aggregates.sort.reverse
               }
-              response << collection
+              response << item
               if index == checks.size - 1
                 body Oj.dump(response)
               end
