@@ -2,6 +2,8 @@
 
 ### Features
 
+Client check history API endpoint with last execution timestamp.
+
 API can bind to a specific address.
 
 Extension stop hook for clean up before the event loop is stopped.
