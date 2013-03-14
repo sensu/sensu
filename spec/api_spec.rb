@@ -23,8 +23,14 @@ describe 'Sensu::API' do
             )) do
               redis.set('stash:test/test', '{"key": "value"}') do
                 redis.sadd('stashes', 'test/test') do
-                  @redis = nil
-                  async_done
+                  redis.set('execution:i-424242:test_check', '1363224805') do
+                    redis.sadd('history:i-424242', 'test_check') do
+                      redis.sadd('history:i-424242:test_check', '0') do
+                        @redis = nil
+                        async_done
+                      end
+                    end
+                  end
                 end
               end
             end
@@ -127,6 +133,16 @@ describe 'Sensu::API' do
     api_test do
       api_request('/event/i-424242/nonexistent') do |http, body|
         http.response_header.status.should eq(404)
+        body.should be_empty
+        async_done
+      end
+    end
+  end
+
+  it 'can not check history for broken event' do
+    api_test do
+      api_request('/client/i-424242/history') do |http, body|
+        http.response_header.status.should eq(200)
         body.should be_empty
         async_done
       end
