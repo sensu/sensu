@@ -148,9 +148,10 @@ describe 'Sensu::API' do
       api_request('/clients/i-424242/history') do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Array)
-        body[:check].should eq('history_success')
-        body[:executed].should eq('1363224805')
-        body[:status].should eq('0')
+        puts body.inspect
+        body[0][:check].should eq('history_success')
+        body[0][:executed].should eq('1363224805')
+        body[0][:status].should eq('0')
         body.include?('history_failed').should be_false
         body.length.should eq(1)
         async_done
