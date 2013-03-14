@@ -167,6 +167,8 @@ describe 'Sensu::API' do
           queue.subscribe do |payload|
             result = Oj.load(payload)
             result[:client].should eq('i-424242')
+            result[:check][:name].should eq('test')
+            result[:check][:status].should eq(0)
             async_done
           end
         end
