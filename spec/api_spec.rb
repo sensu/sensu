@@ -27,7 +27,7 @@ describe 'Sensu::API' do
                     redis.sadd('history:i-424242', 'history_fail') do
                       redis.set('execution:i-424242:history_success', '1363224805') do
                         redis.set('execution:i-424242:history_fail', '1363224806') do
-                          redis.sadd('history:i-424242:history_success', '0') do
+                          redis.rpush('history:i-424242:history_success', '0') do
                             @redis = nil
                             async_done
                           end
