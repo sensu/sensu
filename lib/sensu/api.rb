@@ -253,6 +253,32 @@ module Sensu
       end
     end
 
+    aget %r{/clients/([\w\.-]+)/history$} do |client_name|
+      response = Array.new
+      $redis.smembers('history:' + client_name) do |checks|
+        unless checks.empty?
+          checks.each_with_index do |check, index|
+            $redis.get('execution:' + client_name + ':' + check) do |check_time|
+              $redis.lrange('history:' + client_name + ':' + check, -1, -1) do |check_status|
+                check_status.is_a?(Array) ? last_status = check_status[0] : last_status = nil
+                payload = {
+                  :check => check,
+                  :executed => check_time,
+                  :status => last_status
+                }
+                response.push(payload) unless last_status.nil? or check_time.nil?
+                if index == checks.size - 1
+                  body Oj.dump(response)
+                end
+              end
+            end
+          end
+        else
+          body Oj.dump(response)
+        end
+      end
+    end
+
     adelete %r{/clients?/([\w\.-]+)$} do |client_name|
       $redis.get('client:' + client_name) do |client_json|
         unless client_json.nil?
