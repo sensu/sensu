@@ -157,6 +157,7 @@ module Sensu
           check[:output] = 'Check is not locally defined (safe mode)'
           check[:status] = 3
           check[:handle] = false
+          check[:executed] = Time.now.to_i
           publish_result(check)
         else
           execute_check_command(check)
