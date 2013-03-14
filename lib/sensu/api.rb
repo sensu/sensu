@@ -268,13 +268,13 @@ module Sensu
                 }
                 response.push(payload) unless last_status.nil? or check_time.nil?
                 if index == checks.size - 1
-                  body response.to_json
+                  body Oj.dump(response)
                 end
               end
             end
           end
         else
-          body response.to_json
+          body Oj.dump(response)
         end
       end
     end
