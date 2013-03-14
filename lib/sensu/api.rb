@@ -264,7 +264,7 @@ module Sensu
                 payload = {
                   :check => check,
                   :executed => check_time,
-                  :status => check_status[0]
+                  :status => last_execution_status
                 }
                 response.push(payload) unless check_time.nil? or last_execution_status.nil?
                 if index == checks.size - 1
