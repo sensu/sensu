@@ -304,6 +304,7 @@ module Sensu
               $redis.smembers('history:' + client_name) do |checks|
                 checks.each do |check_name|
                   $redis.del('history:' + client_name + ':' + check_name)
+                  $redis.del('execution:' + client_name + ':' + check_name)
                 end
                 $redis.del('history:' + client_name)
               end
