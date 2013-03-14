@@ -97,6 +97,7 @@ module Sensu
       unless @checks_in_progress.include?(check[:name])
         @checks_in_progress << check[:name]
         command, unmatched_tokens = substitute_command_tokens(check)
+        check[:executed] = Time.now.to_i
         if unmatched_tokens.empty?
           execute = Proc.new do
             @logger.debug('executing check command', {
@@ -135,6 +136,7 @@ module Sensu
       @logger.debug('attempting to run check extension', {
         :check => check
       })
+      check[:executed] = Time.now.to_i
       extension = @extensions[:checks][check[:name]]
       extension.run do |output, status|
         check[:output] = output

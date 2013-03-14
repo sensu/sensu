@@ -253,6 +253,39 @@ module Sensu
       end
     end
 
+    aget %r{/clients/([\w\.-]+)/history$} do |client_name|
+      response = Array.new
+      $redis.smembers('history:' + client_name) do |checks|
+        unless checks.empty?
+          checks.each_with_index do |check_name, index|
+            history_key = 'history:' + client_name + ':' + check_name
+            $redis.lrange(history_key, -21, -1) do |history|
+              history.map! do |status|
+                status.to_i
+              end
+              execution_key = 'execution:' + client_name + ':' + check_name
+              $redis.get(execution_key) do |last_execution|
+                unless history.empty? || last_execution.nil?
+                  item = {
+                    :check => check_name,
+                    :history => history,
+                    :last_execution => last_execution.to_i,
+                    :last_status => history.last
+                  }
+                  response << item
+                end
+                if index == checks.size - 1
+                  body Oj.dump(response)
+                end
+              end
+            end
+          end
+        else
+          body Oj.dump(response)
+        end
+      end
+    end
+
     adelete %r{/clients?/([\w\.-]+)$} do |client_name|
       $redis.get('client:' + client_name) do |client_json|
         unless client_json.nil?
@@ -411,11 +444,11 @@ module Sensu
         unless checks.empty?
           checks.each_with_index do |check_name, index|
             $redis.smembers('aggregates:' + check_name) do |aggregates|
-              collection = {
+              item = {
                 :check => check_name,
                 :issued => aggregates.sort.reverse
               }
-              response << collection
+              response << item
               if index == checks.size - 1
                 body Oj.dump(response)
               end

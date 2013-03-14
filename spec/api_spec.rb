@@ -23,8 +23,18 @@ describe 'Sensu::API' do
             )) do
               redis.set('stash:test/test', '{"key": "value"}') do
                 redis.sadd('stashes', 'test/test') do
-                  @redis = nil
-                  async_done
+                  redis.sadd('history:i-424242', 'success') do
+                    redis.sadd('history:i-424242', 'fail') do
+                      redis.set('execution:i-424242:success', 1363224805) do
+                        redis.set('execution:i-424242:fail', 1363224806) do
+                          redis.rpush('history:i-424242:success', 0) do
+                            @redis = nil
+                            async_done
+                          end
+                        end
+                      end
+                    end
+                  end
                 end
               end
             end
@@ -248,6 +258,21 @@ describe 'Sensu::API' do
       api_request('/client/nonexistent') do |http, body|
         http.response_header.status.should eq(404)
         body.should be_empty
+        async_done
+      end
+    end
+  end
+
+  it 'can request check history for a client' do
+    api_test do
+      api_request('/clients/i-424242/history') do |http, body|
+        http.response_header.status.should eq(200)
+        body.should be_kind_of(Array)
+        body.should have(1).items
+        body[0][:check].should eq('success')
+        body[0][:history].should be_kind_of(Array)
+        body[0][:last_execution].should eq(1363224805)
+        body[0][:last_status].should eq(0)
         async_done
       end
     end
