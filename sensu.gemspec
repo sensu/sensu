@@ -18,6 +18,7 @@ Gem::Specification.new do |s|
   s.add_dependency('amqp', '0.9.10')
   s.add_dependency('em-redis-unified', '0.4.1')
   s.add_dependency('thin', '1.5.0')
+  s.add_dependency('sinatra', '1.3.5')
   s.add_dependency('async_sinatra', '1.0.0')
 
   s.add_development_dependency('rake')
