@@ -595,11 +595,14 @@ module Sensu
       begin
         post_body = Oj.load(request.body.read)
         if post_body.is_a?(Array) && post_body.size > 0
-          response = Hash.new
+          response = Array.new
           post_body.each_with_index do |path, index|
             $redis.get('stash:' + path) do |stash_json|
               unless stash_json.nil?
-                response[path] = Oj.load(stash_json)
+                response << {
+                  :path => path,
+                  :keys => Oj.load(stash_json)
+                }
               end
               if index == post_body.size - 1
                 body Oj.dump(response)
