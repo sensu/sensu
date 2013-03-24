@@ -137,6 +137,22 @@ module Sensu
         env['rack.input'].rewind
       end
 
+      def pagination(items)
+        limit = params[:limit] =~ /^[0-9]+$/ ? params[:limit].to_i : 0
+        offset = params[:offset] =~ /^[0-9]+$/ ? params[:offset].to_i : 0
+        unless limit == 0
+          headers['X-Pagination'] = Oj.dump(
+            :limit => limit,
+            :offset => offset,
+            :total => items.size
+          )
+          paginated = items.slice(offset, limit)
+          Array(paginated)
+        else
+          items
+        end
+      end
+
       def bad_request!
         ahalt 400
       end
@@ -153,6 +169,10 @@ module Sensu
       def accepted!(response)
         status 202
         body response
+      end
+
+      def issued!
+        accepted!(Oj.dump(:issued => Time.now.to_i))
       end
 
       def no_content!
@@ -229,6 +249,7 @@ module Sensu
     aget '/clients' do
       response = Array.new
       $redis.smembers('clients') do |clients|
+        clients = pagination(clients)
         unless clients.empty?
           clients.each_with_index do |client_name, index|
             $redis.get('client:' + client_name) do |client_json|
@@ -310,7 +331,7 @@ module Sensu
                 $redis.del('history:' + client_name)
               end
             end
-            accepted!(Oj.dump({:issued => Time.now.to_i}))
+            issued!
           end
         else
           not_found!
@@ -335,7 +356,7 @@ module Sensu
       begin
         post_body = Oj.load(request.body.read)
         check_name = post_body[:check]
-        subscribers = post_body[:subscribers] || Array.new
+        subscribers = post_body[:subscribers]
         if check_name.is_a?(String) && subscribers.is_a?(Array)
           if $settings.check_exists?(check_name)
             check = $settings[:checks][check_name]
@@ -354,7 +375,7 @@ module Sensu
             subscribers.uniq.each do |exchange_name|
               $amq.fanout(exchange_name).publish(Oj.dump(payload))
             end
-            created!(Oj.dump(payload))
+            issued!
           else
             not_found!
           end
@@ -411,7 +432,7 @@ module Sensu
       $redis.hgetall('events:' + client_name) do |events|
         if events.include?(check_name)
           resolve_event(event_hash(events[check_name], client_name, check_name))
-          accepted!(Oj.dump({:issued => Time.now.to_i}))
+          issued!
         else
           not_found!
         end
@@ -427,7 +448,7 @@ module Sensu
           $redis.hgetall('events:' + client_name) do |events|
             if events.include?(check_name)
               resolve_event(event_hash(events[check_name], client_name, check_name))
-              accepted!(Oj.dump({:issued => Time.now.to_i}))
+              issued!
             else
               not_found!
             end
@@ -446,6 +467,9 @@ module Sensu
         unless checks.empty?
           checks.each_with_index do |check_name, index|
             $redis.smembers('aggregates:' + check_name) do |aggregates|
+              aggregates.map! do |issued|
+                issued.to_i
+              end
               item = {
                 :check => check_name,
                 :issued => aggregates.sort.reverse
@@ -465,27 +489,23 @@ module Sensu
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
       $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
+          aggregates.map! do |issued|
+            issued.to_i
+          end
           valid_request = true
           if params[:age]
             if params[:age] =~ /^[0-9]+$/
               timestamp = Time.now.to_i - params[:age].to_i
               aggregates.reject! do |issued|
-                issued.to_i > timestamp
+                issued > timestamp
               end
             else
               valid_request = false
             end
           end
-          limit = 10
-          if params[:limit]
-            if params[:limit] =~ /^[0-9]+$/
-              limit = params[:limit].to_i
-            else
-              valid_request = false
-            end
-          end
           if valid_request
-            body Oj.dump(aggregates.sort.reverse.take(limit))
+            aggregates = pagination(aggregates.sort.reverse)
+            body Oj.dump(aggregates)
           else
             bad_request!
           end
@@ -553,7 +573,7 @@ module Sensu
         post_body = Oj.load(request.body.read)
         $redis.set('stash:' + path, Oj.dump(post_body)) do
           $redis.sadd('stashes', path) do
-            created!(Oj.dump({:issued => Time.now.to_i}))
+            created!(Oj.dump(:path => path))
           end
         end
       rescue Oj::ParseError
@@ -586,24 +606,39 @@ module Sensu
     end
 
     aget '/stashes' do
+      response = Array.new
       $redis.smembers('stashes') do |stashes|
-        body Oj.dump(stashes)
+        stashes = pagination(stashes)
+        unless stashes.empty?
+          stashes.each_with_index do |path, index|
+            $redis.get('stash:' + path) do |stash_json|
+              unless stash_json.nil?
+                item = {
+                  :path => path,
+                  :content => Oj.load(stash_json)
+                }
+                response << item
+              end
+              if index == stashes.size - 1
+                body Oj.dump(response)
+              end
+            end
+          end
+        else
+          body Oj.dump(response)
+        end
       end
     end
 
     apost '/stashes' do
       begin
         post_body = Oj.load(request.body.read)
-        if post_body.is_a?(Array) && post_body.size > 0
-          response = Hash.new
-          post_body.each_with_index do |path, index|
-            $redis.get('stash:' + path) do |stash_json|
-              unless stash_json.nil?
-                response[path] = Oj.load(stash_json)
-              end
-              if index == post_body.size - 1
-                body Oj.dump(response)
-              end
+        path = post_body[:path]
+        content = post_body[:content]
+        if path.is_a?(String) && content.is_a?(Hash)
+          $redis.set('stash:' + path, Oj.dump(content)) do
+            $redis.sadd('stashes', path) do
+              created!(Oj.dump(:path => path))
             end
           end
         else
