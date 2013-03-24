@@ -358,9 +358,7 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :subscribers => [
-            'test'
-          ]
+          :check => 'tokens'
         }
       }
       api_request('/request', :post, options) do |http, body|
@@ -375,7 +373,10 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :check => 'nonexistent'
+          :check => 'nonexistent',
+          :subscribers => [
+            'test'
+          ]
         }
       }
       api_request('/request', :post, options) do |http, body|

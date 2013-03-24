@@ -356,7 +356,7 @@ module Sensu
       begin
         post_body = Oj.load(request.body.read)
         check_name = post_body[:check]
-        subscribers = post_body[:subscribers] || Array.new
+        subscribers = post_body[:subscribers]
         if check_name.is_a?(String) && subscribers.is_a?(Array)
           if $settings.check_exists?(check_name)
             check = $settings[:checks][check_name]
