@@ -245,6 +245,7 @@ module Sensu
     aget '/clients' do
       response = Array.new
       $redis.smembers('clients') do |clients|
+        clients = pagination(clients)
         unless clients.empty?
           clients.each_with_index do |client_name, index|
             $redis.get('client:' + client_name) do |client_json|
