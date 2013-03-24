@@ -446,6 +446,9 @@ module Sensu
         unless checks.empty?
           checks.each_with_index do |check_name, index|
             $redis.smembers('aggregates:' + check_name) do |aggregates|
+              aggregates.map! do |issued|
+                issued.to_i
+              end
               item = {
                 :check => check_name,
                 :issued => aggregates.sort.reverse
@@ -465,12 +468,15 @@ module Sensu
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
       $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
+          aggregates.map! do |issued|
+            issued.to_i
+          end
           valid_request = true
           if params[:age]
             if params[:age] =~ /^[0-9]+$/
               timestamp = Time.now.to_i - params[:age].to_i
               aggregates.reject! do |issued|
-                issued.to_i > timestamp
+                issued > timestamp
               end
             else
               valid_request = false
