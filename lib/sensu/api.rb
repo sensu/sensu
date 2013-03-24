@@ -498,16 +498,9 @@ module Sensu
               valid_request = false
             end
           end
-          limit = 10
-          if params[:limit]
-            if params[:limit] =~ /^[0-9]+$/
-              limit = params[:limit].to_i
-            else
-              valid_request = false
-            end
-          end
           if valid_request
-            body Oj.dump(aggregates.sort.reverse.take(limit))
+            aggregates = pagination(aggregates.sort.reverse)
+            body Oj.dump(aggregates)
           else
             bad_request!
           end
