@@ -171,6 +171,10 @@ module Sensu
         body response
       end
 
+      def issued!
+        accepted!(Oj.dump(:issued => Time.now.to_i))
+      end
+
       def no_content!
         status 204
         body ''
@@ -327,7 +331,7 @@ module Sensu
                 $redis.del('history:' + client_name)
               end
             end
-            accepted!(Oj.dump({:issued => Time.now.to_i}))
+            issued!
           end
         else
           not_found!
@@ -371,7 +375,7 @@ module Sensu
             subscribers.uniq.each do |exchange_name|
               $amq.fanout(exchange_name).publish(Oj.dump(payload))
             end
-            created!(Oj.dump(payload))
+            issued!
           else
             not_found!
           end
@@ -428,7 +432,7 @@ module Sensu
       $redis.hgetall('events:' + client_name) do |events|
         if events.include?(check_name)
           resolve_event(event_hash(events[check_name], client_name, check_name))
-          accepted!(Oj.dump({:issued => Time.now.to_i}))
+          issued!
         else
           not_found!
         end
@@ -444,7 +448,7 @@ module Sensu
           $redis.hgetall('events:' + client_name) do |events|
             if events.include?(check_name)
               resolve_event(event_hash(events[check_name], client_name, check_name))
-              accepted!(Oj.dump({:issued => Time.now.to_i}))
+              issued!
             else
               not_found!
             end
@@ -569,7 +573,7 @@ module Sensu
         post_body = Oj.load(request.body.read)
         $redis.set('stash:' + path, Oj.dump(post_body)) do
           $redis.sadd('stashes', path) do
-            created!(Oj.dump({:issued => Time.now.to_i}))
+            created!(Oj.dump({:path => path}))
           end
         end
       rescue Oj::ParseError
@@ -623,6 +627,25 @@ module Sensu
         else
           body Oj.dump(response)
         end
+      end
+    end
+
+    apost '/stashes' do
+      begin
+        post_body = Oj.load(request.body.read)
+        path = post_body[:path]
+        content = post_body[:content] || Hash.new
+        if path.is_a?(String) && content.is_a?(Hash)
+          $redis.set('stash:' + path, Oj.dump(content)) do
+            $redis.sadd('stashes', path) do
+              created!(Oj.dump(:path => path))
+            end
+          end
+        else
+          bad_request!
+        end
+      rescue Oj::ParseError
+        bad_request!
       end
     end
   end
