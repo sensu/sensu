@@ -390,7 +390,7 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :path => 'test',
+          :path => 'tester',
           :content => {
             :key => 'value'
           }
@@ -399,28 +399,10 @@ describe 'Sensu::API' do
       api_request('/stashes', :post, options) do |http, body|
         http.response_header.status.should eq(201)
         body.should include(:path)
-        redis.get('stash:test') do |stash_json|
+        body[:path].should eq('tester')
+        redis.get('stash:tester') do |stash_json|
           stash = Oj.load(stash_json)
           stash.should eq({:key => 'value'})
-          async_done
-        end
-      end
-    end
-  end
-
-  it 'can create a stash without providing content' do
-    api_test do
-      options = {
-        :body => {
-          :path => 'test'
-        }
-      }
-      api_request('/stashes', :post, options) do |http, body|
-        http.response_header.status.should eq(201)
-        body.should include(:path)
-        redis.get('stash:test') do |stash_json|
-          stash = Oj.load(stash_json)
-          stash.should be_empty
           async_done
         end
       end
@@ -431,13 +413,16 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :content => 'value'
+          :path => 'tester'
         }
       }
       api_request('/stashes', :post, options) do |http, body|
         http.response_header.status.should eq(400)
         body.should be_empty
-        async_done
+        redis.exists('stash:tester') do |exists|
+          exists.should be_false
+          async_done
+        end
       end
     end
   end
@@ -465,15 +450,15 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :foo => 'bar'
+          :key => 'value'
         }
       }
-      api_request('/stash/foobar', :post, options) do |http, body|
+      api_request('/stash/tester', :post, options) do |http, body|
         http.response_header.status.should eq(201)
         body.should include(:path)
-        redis.get('stash:foobar') do |stash_json|
+        redis.get('stash:tester') do |stash_json|
           stash = Oj.load(stash_json)
-          stash.should eq({:foo => 'bar'})
+          stash.should eq({:key => 'value'})
           async_done
         end
       end
@@ -485,10 +470,10 @@ describe 'Sensu::API' do
       options = {
         :body => 'should fail'
       }
-      api_request('/stash/foo/bar', :post, options) do |http, body|
+      api_request('/stash/tester', :post, options) do |http, body|
         http.response_header.status.should eq(400)
         body.should be_empty
-        redis.exists('stash:foo/bar') do |exists|
+        redis.exists('stash:tester') do |exists|
           exists.should be_false
           async_done
         end

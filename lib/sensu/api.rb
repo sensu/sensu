@@ -573,7 +573,7 @@ module Sensu
         post_body = Oj.load(request.body.read)
         $redis.set('stash:' + path, Oj.dump(post_body)) do
           $redis.sadd('stashes', path) do
-            created!(Oj.dump({:path => path}))
+            created!(Oj.dump(:path => path))
           end
         end
       rescue Oj::ParseError
@@ -634,7 +634,7 @@ module Sensu
       begin
         post_body = Oj.load(request.body.read)
         path = post_body[:path]
-        content = post_body[:content] || Hash.new
+        content = post_body[:content]
         if path.is_a?(String) && content.is_a?(Hash)
           $redis.set('stash:' + path, Oj.dump(content)) do
             $redis.sadd('stashes', path) do
