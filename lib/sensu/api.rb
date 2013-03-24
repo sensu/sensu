@@ -137,6 +137,22 @@ module Sensu
         env['rack.input'].rewind
       end
 
+      def pagination(items)
+        limit = params[:limit] =~ /^[0-9]+$/ ? params[:limit].to_i : 0
+        offset = params[:offset] =~ /^[0-9]+$/ ? params[:offset].to_i : 0
+        unless limit == 0
+          headers['X-Pagination'] = Oj.dump(
+            :limit => limit,
+            :offset => offset,
+            :total => items.size
+          )
+          paginated = items.slice(offset, limit)
+          Array(paginated)
+        else
+          items
+        end
+      end
+
       def bad_request!
         ahalt 400
       end
@@ -592,31 +608,27 @@ module Sensu
     end
 
     aget '/stashes' do
+      response = Array.new
       $redis.smembers('stashes') do |stashes|
-        body Oj.dump(stashes)
-      end
-    end
-
-    apost '/stashes' do
-      begin
-        post_body = Oj.load(request.body.read)
-        if post_body.is_a?(Array) && post_body.size > 0
-          response = Hash.new
-          post_body.each_with_index do |path, index|
+        stashes = pagination(stashes)
+        unless stashes.empty?
+          stashes.each_with_index do |path, index|
             $redis.get('stash:' + path) do |stash_json|
               unless stash_json.nil?
-                response[path] = Oj.load(stash_json)
+                item = {
+                  :path => path,
+                  :content => Oj.load(stash_json)
+                }
+                response << item
               end
-              if index == post_body.size - 1
+              if index == stashes.size - 1
                 body Oj.dump(response)
               end
             end
           end
         else
-          bad_request!
+          body Oj.dump(response)
         end
-      rescue Oj::ParseError
-        bad_request!
       end
     end
   end
