@@ -12,6 +12,8 @@ Check extensions.
 
 ### Non-backwards compatible changes
 
+Stashes API routes changed, no longer using POST multi-get.
+
 No longer defaults to or enforces a specific config file or directory.
 
 ### Other
