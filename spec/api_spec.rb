@@ -331,7 +331,7 @@ describe 'Sensu::API' do
         }
       }
       api_request('/request', :post, options) do |http, body|
-        http.response_header.status.should eq(201)
+        http.response_header.status.should eq(202)
         body.should include(:issued)
         async_done
       end
@@ -358,9 +358,7 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :subscribers => [
-            'test'
-          ]
+          :check => 'tokens'
         }
       }
       api_request('/request', :post, options) do |http, body|
@@ -375,7 +373,10 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :check => 'nonexistent'
+          :check => 'nonexistent',
+          :subscribers => [
+            'test'
+          ]
         }
       }
       api_request('/request', :post, options) do |http, body|
@@ -390,12 +391,16 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :key => 'value'
+          :path => 'tester',
+          :content => {
+            :key => 'value'
+          }
         }
       }
-      api_request('/stash/tester', :post, options) do |http, body|
+      api_request('/stashes', :post, options) do |http, body|
         http.response_header.status.should eq(201)
-        body.should include(:issued)
+        body.should include(:path)
+        body[:path].should eq('tester')
         redis.get('stash:tester') do |stash_json|
           stash = Oj.load(stash_json)
           stash.should eq({:key => 'value'})
@@ -405,15 +410,71 @@ describe 'Sensu::API' do
     end
   end
 
+  it 'can not create a stash when missing data' do
+    api_test do
+      options = {
+        :body => {
+          :path => 'tester'
+        }
+      }
+      api_request('/stashes', :post, options) do |http, body|
+        http.response_header.status.should eq(400)
+        body.should be_empty
+        redis.exists('stash:tester') do |exists|
+          exists.should be_false
+          async_done
+        end
+      end
+    end
+  end
+
   it 'can not create a non-json stash' do
+    api_test do
+      options = {
+        :body => {
+          :path => 'tester',
+          :content => 'value'
+        }
+      }
+      api_request('/stashes', :post, options) do |http, body|
+        http.response_header.status.should eq(400)
+        body.should be_empty
+        redis.exists('stash:tester') do |exists|
+          exists.should be_false
+          async_done
+        end
+      end
+    end
+  end
+
+  it 'can create a stash with id (path)' do
+    api_test do
+      options = {
+        :body => {
+          :key => 'value'
+        }
+      }
+      api_request('/stash/tester', :post, options) do |http, body|
+        http.response_header.status.should eq(201)
+        body.should include(:path)
+        redis.get('stash:tester') do |stash_json|
+          stash = Oj.load(stash_json)
+          stash.should eq({:key => 'value'})
+          async_done
+        end
+      end
+    end
+  end
+
+  it 'can not create a non-json stash with id' do
     api_test do
       options = {
         :body => 'should fail'
       }
-      api_request('/stash/foobar', :post, options) do |http, body|
+      api_request('/stash/tester', :post, options) do |http, body|
         http.response_header.status.should eq(400)
         body.should be_empty
-        redis.exists('stash:foobar') do |exists|
+        redis.exists('stash:tester') do |exists|
           exists.should be_false
           async_done
         end
@@ -442,30 +503,14 @@ describe 'Sensu::API' do
     end
   end
 
-  it 'can provide a list of stashes' do
+  it 'can provide multiple stashes' do
     api_test do
       api_request('/stashes') do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Array)
-        body.should include('test/test')
-        async_done
-      end
-    end
-  end
-
-  it 'can provide multiple stashes' do
-    api_test do
-      options = {
-        :body => [
-          'test/test',
-          'nonexistent'
-        ]
-      }
-      api_request('/stashes', :post, options) do |http, body|
-        http.response_header.status.should eq(200)
-        body.should be_kind_of(Hash)
-        body.should have_key(:'test/test')
-        body[:'test/test'].should eq({:key => 'value'})
+        body[0].should be_kind_of(Hash)
+        body[0][:path].should eq('test/test')
+        body[0][:content].should eq({:key => 'value'})
         async_done
       end
     end
@@ -526,7 +571,7 @@ describe 'Sensu::API' do
         api_request('/aggregates/foobar') do |http, body|
           body.should be_kind_of(Array)
           body.should have(3).items
-          body.should include(timestamp.to_s)
+          body.should include(timestamp)
           api_request('/aggregates/foobar?limit=1') do |http, body|
             body.should have(1).items
             api_request('/aggregates/foobar?limit=1&age=30') do |http, body|
