@@ -1,34 +1,49 @@
-## 0.9.12 - TBD
+## 0.9.12 - 2013-04-03
 
 ### Features
 
-Client check history API endpoint with last execution timestamp.
+The Sensu API now provides client history, providing a list of executed
+checks, their status histories, and last execution timestamps. The client
+history endpoint is /clients/\<client-name\>/history, which returns a JSON
+body.
 
-API can bind to a specific address.
+The Sensu API can now bind to a specific address. To bind to an address,
+use the API configuration key "bind", with a string value (eg.
+"127.0.0.1").
 
-Extension stop hook for clean up before the event loop is stopped.
+A stop hook was added to the Sensu extension API, enabling gracefull
+stop for extensions. The stop hook is called before the event loop comes
+to a halt.
 
-Check extensions.
+The Sensu client now supports check extensions, checks the run within the
+Sensu Ruby VM, for aggresive service monitoring & metric collection.
 
 ### Non-backwards compatible changes
 
-Stashes API routes changed, no longer using POST multi-get.
+The Sensu API stashes route changed, GET /stashes now returns an array of
+stash objects, with support for pagination. The API no longer uses POST
+for multi-get.
 
-No longer defaults to or enforces a specific config file or directory.
+Sensu services no longer have config file or directory defaults.
+Configuration paths a left to packaging.
 
 ### Other
 
-API 201 & 202 status responses return a body.
+All Sensu API 201 & 202 status responses now return a body.
 
-Improved RabbitMQ queue unsubscribe & connection reconnect.
+The Sensu server now "pauses" when reconnecting to RabbitMQ. Pausing the
+Sensu server when reconnecting to RabbitMQ fixes an issue when it is also
+reconnecting to Redis.
 
-Fixed keepalive check history & flap detection.
+Keepalive checks now produce results with a zero exit status, fixing
+keepalive check history.
 
-Running on Ruby 2.0.0p0.
+Sensu runs on Ruby 2.0.0p0.
 
-Faster JSON parser.
+Replaced the JSON parser with a faster implementation.
 
-Lightweight logger.
+Replaced the Sensu logger with a more lightweight & EventMachine
+friendly implementation. No more TTY detection with colours.
 
 Improved config validation.
 
