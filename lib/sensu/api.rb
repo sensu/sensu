@@ -180,6 +180,11 @@ module Sensu
         body ''
       end
 
+      def service_unavailable!
+        status 503
+        body ''
+      end
+
       def event_hash(event_json, client_name, check_name)
         Oj.load(event_json).merge(
           :client => client_name,
@@ -243,6 +248,24 @@ module Sensu
         end
       else
         body Oj.dump(response)
+      end
+    end
+
+    aget '/status' do
+      results = [
+        $rabbitmq.connected?,
+        $redis.connected?
+      ]
+      $amq.queue('results').status do |messages, consumers|
+        subscriber_min = params[:subscriber_min] ? params[:subscriber_min].to_i : 2
+        message_max = params[:message_max] ? params[:message_max].to_i : 1000
+        results << (messages <= message_max)
+        results << (consumers >= subscriber_min)
+        if results.all?
+          no_content!
+        else
+          service_unavailable!
+        end
       end
     end
 
