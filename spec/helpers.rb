@@ -93,7 +93,13 @@ module Helpers
       :address => '127.0.0.1',
       :subscriptions => [
         'test'
-      ]
+      ],
+      :keepalive => {
+        :thresholds => {
+          :warning => 60,
+          :critical => 120
+        }
+      }
     }
   end
 
