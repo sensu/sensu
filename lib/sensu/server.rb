@@ -593,8 +593,13 @@ module Sensu
               :critical => 180,
               :warning => 120
             }
-            if client.has_key?(:keepalive) && client[:keepalive].has_key(:thresholds)
-              thresholds.merge!(client[:keepalive][:thresholds])
+            if client.has_key?(:keepalive)
+              if client[:keepalive].has_key(:handler) || client[:keepalive].has_key(:handlers)
+                check[:handlers] = Array(client[:keepalive][:handlers] || client[:keepalive][:handler])
+              end
+              if client[:keepalive].has_key(:thresholds)
+                thresholds.merge!(client[:keepalive][:thresholds])
+              end
             end
             time_since_last_keepalive = Time.now.to_i - client[:timestamp]
             case
