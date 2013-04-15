@@ -496,10 +496,11 @@ describe 'Sensu::Server' do
       @server.setup_results
       client1 = client_template
       client1[:name] = 'foo'
-      client1[:timestamp] = epoch - 120
+      client1[:timestamp] = epoch - 60
+      client1[:keepalive][:handler] = 'debug'
       client2 = client_template
       client2[:name] = 'bar'
-      client2[:timestamp] = epoch - 180
+      client2[:timestamp] = epoch - 120
       redis.set('client:foo', Oj.dump(client1)) do
         redis.sadd('clients', 'foo') do
           redis.set('client:bar', Oj.dump(client2)) do
@@ -509,9 +510,11 @@ describe 'Sensu::Server' do
                 redis.hget('events:foo', 'keepalive') do |event_json|
                   event = Oj.load(event_json)
                   event[:status].should eq(1)
+                  event[:handlers].should eq(['debug'])
                   redis.hget('events:bar', 'keepalive') do |event_json|
                     event = Oj.load(event_json)
                     event[:status].should eq(2)
+                    event[:handlers].should eq(['default'])
                     async_done
                   end
                 end

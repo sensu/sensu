@@ -594,10 +594,10 @@ module Sensu
               :warning => 120
             }
             if client.has_key?(:keepalive)
-              if client[:keepalive].has_key(:handler) || client[:keepalive].has_key(:handlers)
+              if client[:keepalive].has_key?(:handler) || client[:keepalive].has_key?(:handlers)
                 check[:handlers] = Array(client[:keepalive][:handlers] || client[:keepalive][:handler])
               end
-              if client[:keepalive].has_key(:thresholds)
+              if client[:keepalive].has_key?(:thresholds)
                 thresholds.merge!(client[:keepalive][:thresholds])
               end
             end
