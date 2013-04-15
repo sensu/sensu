@@ -590,8 +590,8 @@ module Sensu
               :executed => Time.now.to_i
             }
             thresholds = {
-              :critical => 180,
-              :warning => 120
+              :warning => 120,
+              :critical => 180
             }
             if client.has_key?(:keepalive)
               if client[:keepalive].has_key?(:handler) || client[:keepalive].has_key?(:handlers)

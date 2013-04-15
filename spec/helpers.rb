@@ -96,8 +96,8 @@ module Helpers
       ],
       :keepalive => {
         :thresholds => {
-          :critical => 120,
-          :warning => 60
+          :warning => 60,
+          :critical => 120
         }
       }
     }
