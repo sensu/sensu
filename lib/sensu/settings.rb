@@ -390,6 +390,41 @@ module Sensu
           invalid('client subscriptions must each be a string')
         end
       end
+      if @settings[:client].has_key?(:keepalive)
+        unless @settings[:client][:keepalive].is_a?(Hash)
+          invalid('client keepalive must be a hash')
+        end
+        if @settings[:client][:keepalive].has_key?(:handler)
+          unless @settings[:client][:keepalive][:handler].is_a?(String)
+            invalid('client keepalive handler must be a string')
+          end
+        end
+        if @settings[:client][:keepalive].has_key?(:handlers)
+          handlers = @settings[:client][:keepalive][:handlers]
+          unless handlers.is_a?(Array)
+            invalid('client keepalive handlers must be an array')
+          end
+          handlers.each do |handler_name|
+            unless handler_name.is_a?(String)
+              invalid('client keepalive handlers must each be a string')
+            end
+          end
+        end
+        if @settings[:client][:keepalive].has_key?(:thresholds)
+          thresholds = @settings[:client][:keepalive][:thresholds]
+          unless thresholds.is_a?(Hash)
+            invalid('client keepalive thresholds must be a hash')
+          end
+          if thresholds.has_key?(:warning) || thresholds.has_key?(:critical)
+            unless thresholds[:warning].is_a?(Integer)
+              invalid('client keepalive warning threshold must be an integer')
+            end
+            unless thresholds[:critical].is_a?(Integer)
+              invalid('client keepalive critical threshold must be an integer')
+            end
+          end
+        end
+      end
     end
 
     def validate_api
