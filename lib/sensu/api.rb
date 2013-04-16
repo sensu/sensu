@@ -252,20 +252,21 @@ module Sensu
     end
 
     aget '/status' do
-      results = [
-        $rabbitmq.connected?,
-        $redis.connected?
-      ]
-      $amq.queue('results').status do |messages, consumers|
-        subscriber_min = params[:subscriber_min] ? params[:subscriber_min].to_i : 2
-        message_max = params[:message_max] ? params[:message_max].to_i : 1000
-        results << (messages <= message_max)
-        results << (consumers >= subscriber_min)
-        if results.all?
-          no_content!
-        else
-          service_unavailable!
+      results = []
+      if $redis.connected? and $rabbitmq.connected?
+        $amq.queue('results').status do |messages, consumers|
+          subscriber_min = params[:subscriber_min] ? params[:subscriber_min].to_i : 2
+          message_max = params[:message_max] ? params[:message_max].to_i : 1000
+          results << (messages <= message_max)
+          results << (consumers >= subscriber_min)
+          if results.all?
+            no_content!
+          else
+            service_unavailable!
+          end
         end
+      else
+        service_unavailable!
       end
     end
 
