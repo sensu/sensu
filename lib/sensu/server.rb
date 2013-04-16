@@ -572,7 +572,7 @@ module Sensu
         :client => client[:name],
         :check => check
       }
-      @logger.info('publishing check result', {
+      @logger.debug('publishing check result', {
         :payload => payload
       })
       @amq.direct('results').publish(Oj.dump(payload))
@@ -589,16 +589,31 @@ module Sensu
               :issued => Time.now.to_i,
               :executed => Time.now.to_i
             }
+            thresholds = {
+              :warning => 120,
+              :critical => 180
+            }
+            if client.has_key?(:keepalive)
+              if client[:keepalive].has_key?(:handler) || client[:keepalive].has_key?(:handlers)
+                check[:handlers] = Array(client[:keepalive][:handlers] || client[:keepalive][:handler])
+              end
+              if client[:keepalive].has_key?(:thresholds)
+                thresholds.merge!(client[:keepalive][:thresholds])
+              end
+            end
             time_since_last_keepalive = Time.now.to_i - client[:timestamp]
             case
-            when time_since_last_keepalive >= 180
-              check[:output] = 'No keep-alive sent from client in over 180 seconds'
+            when time_since_last_keepalive >= thresholds[:critical]
+              check[:output] = 'No keep-alive sent from client in over '
+              check[:output] << thresholds[:critical].to_s + ' seconds'
               check[:status] = 2
-            when time_since_last_keepalive >= 120
-              check[:output] = 'No keep-alive sent from client in over 120 seconds'
+            when time_since_last_keepalive >= thresholds[:warning]
+              check[:output] = 'No keep-alive sent from client in over '
+              check[:output] << thresholds[:warning].to_s + ' seconds'
               check[:status] = 1
             else
-              check[:output] = 'Keep-alive sent from client less than 120 seconds ago'
+              check[:output] = 'Keep-alive sent from client less than '
+              check[:output] << thresholds[:warning].to_s + ' seconds ago'
               check[:status] = 0
             end
             publish_result(client, check)
