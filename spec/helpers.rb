@@ -132,6 +132,7 @@ module Helpers
       :client => client,
       :check => check,
       :occurrences => 1,
+      :nonzero => 1,
       :action => :create
     }
   end

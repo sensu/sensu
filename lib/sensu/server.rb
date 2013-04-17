@@ -463,11 +463,15 @@ module Sensu
                 event = {
                   :client => client,
                   :check => check,
-                  :occurrences => 1
+                  :occurrences => 1,
+                  :nonzero => 1
                 }
                 if check[:status] != 0 || is_flapping
                   if previous_occurrence && check[:status] == previous_occurrence[:status]
                     event[:occurrences] = previous_occurrence[:occurrences] + 1
+                  end
+                  if previous_occurrence && previous_occurrence[:status] != 0
+                    event[:nonzero] = previous_occurrence[:nonzero] + 1
                   end
                   @redis.hset('events:' + client[:name], check[:name], Oj.dump(
                     :output => check[:output],
@@ -475,7 +479,8 @@ module Sensu
                     :issued => check[:issued],
                     :handlers => Array((check[:handlers] || check[:handler]) || 'default'),
                     :flapping => is_flapping,
-                    :occurrences => event[:occurrences]
+                    :occurrences => event[:occurrences],
+                    :nonzero => event[:nonzero]
                   )) do
                     unless check[:handle] == false
                       event[:action] = is_flapping ? :flapping : :create
@@ -487,6 +492,7 @@ module Sensu
                     @redis.hdel('events:' + client[:name], check[:name]) do
                       unless check[:handle] == false
                         event[:occurrences] = previous_occurrence[:occurrences]
+                        event[:nonzero] = previous_occurrence[:nonzero]
                         event[:action] = :resolve
                         handle_event(event)
                       end
