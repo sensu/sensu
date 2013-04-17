@@ -255,8 +255,8 @@ module Sensu
       results = []
       if $redis.connected? and $rabbitmq.connected?
         $amq.queue('results').status do |messages, consumers|
-          subscriber_min = params[:subscriber_min] ? params[:subscriber_min].to_i : 2
-          message_max = params[:message_max] ? params[:message_max].to_i : 1000
+          subscriber_min = params[:subscriber] ? params[:subscriber].to_i : 2
+          message_max = params[:message] ? params[:message].to_i : 1000
           results << (messages <= message_max)
           results << (consumers >= subscriber_min)
           if results.all?
