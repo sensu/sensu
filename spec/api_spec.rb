@@ -19,7 +19,8 @@ describe 'Sensu::API' do
               :status => 2,
               :issued => Time.now.to_i,
               :flapping => false,
-              :occurrences => 1
+              :occurrences => 1,
+              :nonzero => 1
             )) do
               redis.set('stash:test/test', '{"key": "value"}') do
                 redis.sadd('stashes', 'test/test') do
@@ -127,6 +128,7 @@ describe 'Sensu::API' do
         body[:status].should eq(2)
         body[:flapping].should be_false
         body[:occurrences].should eq(1)
+        body[:nonzero].should eq(1)
         body[:issued].should be_within(10).of(epoch)
         async_done
       end
