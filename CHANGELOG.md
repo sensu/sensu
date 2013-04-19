@@ -1,3 +1,12 @@
+## 0.9.13 - TBD
+
+### Features
+
+The Sensu API now provides /health, an endpoint for connection & queue
+monitoring. Monitor Sensu health with services like Pingdom.
+
+Sensu clients can configure their own keepalive handler(s) and thresholds.
+
 ## 0.9.12 - 2013-04-03
 
 ### Features
