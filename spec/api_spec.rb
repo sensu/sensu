@@ -60,12 +60,19 @@ describe 'Sensu::API' do
     end
   end
 
-  it 'can provide basic information on server availability' do
+  it 'can provide connection and queue monitoring' do
     api_test do
-      api_request('/status') do |http, body|
+      api_request('/status?consumers=0&messages=1000') do |http, body|
         http.response_header.status.should eq(204)
         body.should be_empty
-        async_done
+        api_request('/status?consumers=1000') do |http, body|
+          http.response_header.status.should eq(503)
+          body.should be_empty
+          api_request('/status?consumers=1000&messages=1000') do |http, body|
+            http.response_header.status.should eq(503)
+            async_done
+          end
+        end
       end
     end
   end
