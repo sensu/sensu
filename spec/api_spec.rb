@@ -60,6 +60,16 @@ describe 'Sensu::API' do
     end
   end
 
+  it 'can provide basic information on server availability' do
+    api_test do
+      api_request('/status') do |http, body|
+        http.response_header.status.should eq(204)
+        body.should be_empty
+        async_done
+      end
+    end
+  end
+
   it 'can provide current events' do
     api_test do
       api_request('/events') do |http, body|
