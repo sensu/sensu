@@ -64,6 +64,7 @@ describe 'Sensu::API' do
     api_test do
       api_request('/status') do |http, body|
         http.response_header.status.should eq(204)
+        body.should be_empty
         async_done
       end
     end
