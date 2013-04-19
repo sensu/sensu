@@ -502,6 +502,16 @@ module Sensu
       end
     end
 
+    def valid_result?(result)
+      if result[:client].is_a?(String) && result[:check].is_a?(Hash)
+        result[:check][:name].is_a?(String) &&
+          result[:check][:output].is_a?(String) &&
+          result[:check][:status].is_a?(Integer)
+      else
+        false
+      end
+    end
+
     def setup_results
       @logger.debug('subscribing to results')
       @result_queue = @amq.queue!('results')
@@ -511,7 +521,13 @@ module Sensu
         @logger.debug('received result', {
           :result => result
         })
-        process_result(result)
+        if valid_result?(result)
+          process_result(result)
+        else
+          @logger.warn('invalid result', {
+            :result => result
+          })
+        end
         EM::next_tick do
           header.ack
         end
