@@ -137,10 +137,14 @@ module Sensu
         env['rack.input'].rewind
       end
 
+      def integer_parameter(parameter)
+        parameter =~ /^[0-9]+$/ ? parameter.to_i : nil
+      end
+
       def pagination(items)
-        limit = params[:limit] =~ /^[0-9]+$/ ? params[:limit].to_i : 0
-        offset = params[:offset] =~ /^[0-9]+$/ ? params[:offset].to_i : 0
-        unless limit == 0
+        limit = integer_parameter(params[:limit])
+        offset = integer_parameter(params[:offset]) || 0
+        unless limit.nil?
           headers['X-Pagination'] = Oj.dump(
             :limit => limit,
             :offset => offset,
@@ -159,6 +163,10 @@ module Sensu
 
       def not_found!
         ahalt 404
+      end
+
+      def unavailable!
+        ahalt 503
       end
 
       def created!(response)
@@ -243,6 +251,33 @@ module Sensu
         end
       else
         body Oj.dump(response)
+      end
+    end
+
+    aget '/status' do
+      if $redis.connected? && $rabbitmq.connected?
+        healthy = Array.new
+        min_consumers = integer_parameter(params[:consumers])
+        max_messages = integer_parameter(params[:messages])
+        $amq.queue('keepalives').status do |messages, consumers|
+          if min_consumers
+            healthy << (consumers >= min_consumers)
+          end
+          if max_messages
+            healthy << (messages <= max_messages)
+          end
+          $amq.queue('results').status do |messages, consumers|
+            if min_consumers
+              healthy << (consumers >= min_consumers)
+            end
+            if max_messages
+              healthy << (messages <= max_messages)
+            end
+            healthy.all? ? no_content! : unavailable!
+          end
+        end
+      else
+        unavailable!
       end
     end
 
@@ -492,23 +527,15 @@ module Sensu
           aggregates.map! do |issued|
             issued.to_i
           end
-          valid_request = true
-          if params[:age]
-            if params[:age] =~ /^[0-9]+$/
-              timestamp = Time.now.to_i - params[:age].to_i
-              aggregates.reject! do |issued|
-                issued > timestamp
-              end
-            else
-              valid_request = false
+          age = integer_parameter(params[:age])
+          if age
+            timestamp = Time.now.to_i - age
+            aggregates.reject! do |issued|
+              issued > timestamp
             end
           end
-          if valid_request
-            aggregates = pagination(aggregates.sort.reverse)
-            body Oj.dump(aggregates)
-          else
-            bad_request!
-          end
+          aggregates = pagination(aggregates.sort.reverse)
+          body Oj.dump(aggregates)
         else
           not_found!
         end
