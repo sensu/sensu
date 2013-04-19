@@ -254,7 +254,7 @@ module Sensu
       end
     end
 
-    aget '/status' do
+    aget '/health' do
       if $redis.connected? && $rabbitmq.connected?
         healthy = Array.new
         min_consumers = integer_parameter(params[:consumers])

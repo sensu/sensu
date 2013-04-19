@@ -62,13 +62,13 @@ describe 'Sensu::API' do
 
   it 'can provide connection and queue monitoring' do
     api_test do
-      api_request('/status?consumers=0&messages=1000') do |http, body|
+      api_request('/health?consumers=0&messages=1000') do |http, body|
         http.response_header.status.should eq(204)
         body.should be_empty
-        api_request('/status?consumers=1000') do |http, body|
+        api_request('/health?consumers=1000') do |http, body|
           http.response_header.status.should eq(503)
           body.should be_empty
-          api_request('/status?consumers=1000&messages=1000') do |http, body|
+          api_request('/health?consumers=1000&messages=1000') do |http, body|
             http.response_header.status.should eq(503)
             async_done
           end
