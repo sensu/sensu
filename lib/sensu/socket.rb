@@ -27,8 +27,10 @@ module Sensu
           check[:issued] = Time.now.to_i
           check[:status] ||= 0
           if validates && check[:status].is_a?(Integer)
+            # if check has attr :masquerade, set client name to it, if not, use local client name
+            check[:masquerade] ? (client = check[:masquerade]) : (client = @settings[:client][:name])
             payload = {
-              :client => @settings[:client][:name],
+              :client => client,
               :check => check
             }
             @logger.info('publishing check result', {
