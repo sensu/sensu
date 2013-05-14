@@ -210,7 +210,7 @@ module Sensu
     end
 
     def validate_check(check)
-      unless check[:interval].is_a?(Integer) && check[:interval] > 0
+      unless !check[:publish] || (check[:interval].is_a?(Integer) && check[:interval] > 0)
         invalid_check(check, 'check is missing interval')
       end
       unless check[:command].is_a?(String)

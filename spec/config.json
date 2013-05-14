@@ -96,6 +96,11 @@
     "merger": {
       "command": "this will be overwritten",
       "interval": 60
+    },
+    "unpublished": {
+      "command": "/bin/true",
+      "publish": false,
+      "subscribers":["test"]
     }
   },
   "client": {
