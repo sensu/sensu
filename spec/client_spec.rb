@@ -97,29 +97,12 @@ describe 'Sensu::Client' do
       result_queue do |queue|
         @client.setup_rabbitmq
         check = check_template
-        check[:command] = 'echo -n :::nested.attribute|default:::'
+        check[:command] = 'echo -n :::nested.attribute|default::: :::missing|default:::'
         @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
-          result[:check][:output].should eq('true')
-          async_done
-        end
-      end
-    end
-  end
-
-  it 'can substitute check command tokens with attributes and default values and use default values and execute it' do
-    async_wrapper do
-      result_queue do |queue|
-        @client.setup_rabbitmq
-        check = check_template
-        check[:command] = 'echo -n :::nested.attribute2|default:::'
-        @client.execute_check_command(check)
-        queue.subscribe do |payload|
-          result = Oj.load(payload)
-          result[:client].should eq('i-424242')
-          result[:check][:output].should eq('default')
+          result[:check][:output].should eq('true default')
           async_done
         end
       end

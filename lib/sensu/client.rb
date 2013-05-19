@@ -80,7 +80,11 @@ module Sensu
       substituted = check[:command].gsub(/:::(.*?):::/) do
         token, default = $1.to_s.split('|')
         matched = token.split('.').inject(@settings[:client]) do |client, attribute|
-          client[attribute].nil? ? (default.nil? ? break : default) : client[attribute]
+          if client[attribute].nil?
+            default.nil? ? break : default
+          else
+            client[attribute]
+          end
         end
         if matched.nil?
           unmatched_tokens << token
