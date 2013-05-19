@@ -599,40 +599,42 @@ module Sensu
       @redis.smembers('clients') do |clients|
         clients.each do |client_name|
           @redis.get('client:' + client_name) do |client_json|
-            client = Oj.load(client_json)
-            check = {
-              :name => 'keepalive',
-              :issued => Time.now.to_i,
-              :executed => Time.now.to_i
-            }
-            thresholds = {
-              :warning => 120,
-              :critical => 180
-            }
-            if client.has_key?(:keepalive)
-              if client[:keepalive].has_key?(:handler) || client[:keepalive].has_key?(:handlers)
-                check[:handlers] = Array(client[:keepalive][:handlers] || client[:keepalive][:handler])
+            unless client_json.nil?
+              client = Oj.load(client_json)
+              check = {
+                :name => 'keepalive',
+                :issued => Time.now.to_i,
+                :executed => Time.now.to_i
+              }
+              thresholds = {
+                :warning => 120,
+                :critical => 180
+              }
+              if client.has_key?(:keepalive)
+                if client[:keepalive].has_key?(:handler) || client[:keepalive].has_key?(:handlers)
+                  check[:handlers] = Array(client[:keepalive][:handlers] || client[:keepalive][:handler])
+                end
+                if client[:keepalive].has_key?(:thresholds)
+                  thresholds.merge!(client[:keepalive][:thresholds])
+                end
               end
-              if client[:keepalive].has_key?(:thresholds)
-                thresholds.merge!(client[:keepalive][:thresholds])
+              time_since_last_keepalive = Time.now.to_i - client[:timestamp]
+              case
+              when time_since_last_keepalive >= thresholds[:critical]
+                check[:output] = 'No keep-alive sent from client in over '
+                check[:output] << thresholds[:critical].to_s + ' seconds'
+                check[:status] = 2
+              when time_since_last_keepalive >= thresholds[:warning]
+                check[:output] = 'No keep-alive sent from client in over '
+                check[:output] << thresholds[:warning].to_s + ' seconds'
+                check[:status] = 1
+              else
+                check[:output] = 'Keep-alive sent from client less than '
+                check[:output] << thresholds[:warning].to_s + ' seconds ago'
+                check[:status] = 0
               end
+              publish_result(client, check)
             end
-            time_since_last_keepalive = Time.now.to_i - client[:timestamp]
-            case
-            when time_since_last_keepalive >= thresholds[:critical]
-              check[:output] = 'No keep-alive sent from client in over '
-              check[:output] << thresholds[:critical].to_s + ' seconds'
-              check[:status] = 2
-            when time_since_last_keepalive >= thresholds[:warning]
-              check[:output] = 'No keep-alive sent from client in over '
-              check[:output] << thresholds[:warning].to_s + ' seconds'
-              check[:status] = 1
-            else
-              check[:output] = 'Keep-alive sent from client less than '
-              check[:output] << thresholds[:warning].to_s + ' seconds ago'
-              check[:status] = 0
-            end
-            publish_result(client, check)
           end
         end
       end
