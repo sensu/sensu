@@ -508,6 +508,9 @@ module Sensu
           result[:check][:output].is_a?(String) &&
           result[:check][:status].is_a?(Integer)
       else
+        @logger.warn('invalid result', {
+          :result => result
+        })
         false
       end
     end
@@ -523,10 +526,6 @@ module Sensu
         })
         if valid_result?(result)
           process_result(result)
-        else
-          @logger.warn('invalid result', {
-            :result => result
-          })
         end
         EM::next_tick do
           header.ack
