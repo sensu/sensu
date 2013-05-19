@@ -415,6 +415,10 @@ module Sensu
       @redis.get('client:' + result[:client]) do |client_json|
         unless client_json.nil?
           client = Oj.load(client_json)
+          if client[:masquerade]
+            client[:sender] = client[:name]
+            client[:name] = client[:masquerade]
+          end
           check = case
           when @settings.check_exists?(result[:check][:name])
             @settings[:checks][result[:check][:name]].merge(result[:check])
