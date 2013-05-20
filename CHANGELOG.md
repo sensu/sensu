@@ -1,11 +1,27 @@
-## 0.9.13 - TBD
+## 0.9.13 - 2013-05-20
 
 ### Features
 
 The Sensu API now provides /health, an endpoint for connection & queue
 monitoring. Monitor Sensu health with services like Pingdom.
 
-Sensu clients can configure their own keepalive handler(s) and thresholds.
+Sensu clients can configure their own keepalive handler(s) & thresholds.
+
+Command substitution tokens can have default values
+(eg. :::foo.bar|default:::).
+
+Check result (& event) data now includes "command_executed", the command
+after token substitution.
+
+### Other
+
+Validating check results, as bugs in older Sensu clients may produce
+invalid or malformed results.
+
+Improved stale client monitoring, to better handle client deletions.
+
+Improved check validation, names must not contain spaces or special
+characters, & an "interval" is not required when "publish" is false.
 
 ## 0.9.12 - 2013-04-03
 
