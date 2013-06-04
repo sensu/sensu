@@ -12,9 +12,9 @@ describe 'Sensu::API' do
       client = client_template
       client[:timestamp] = epoch
       redis.flushdb do
-        redis.set('client:i-424242', Oj.dump(client)) do
-          redis.sadd('clients', 'i-424242') do
-            redis.hset('events:i-424242', 'test', Oj.dump(
+        redis.set('client:i-424242 _~#!.()[]@$-^', Oj.dump(client)) do
+          redis.sadd('clients', 'i-424242 _~#!.()[]@$-^') do
+            redis.hset('events:i-424242 _~#!.()[]@$-^', 'test', Oj.dump(
               :output => 'CRITICAL',
               :status => 2,
               :issued => Time.now.to_i,
@@ -23,11 +23,11 @@ describe 'Sensu::API' do
             )) do
               redis.set('stash:test/test', '{"key": "value"}') do
                 redis.sadd('stashes', 'test/test') do
-                  redis.sadd('history:i-424242', 'success') do
-                    redis.sadd('history:i-424242', 'fail') do
-                      redis.set('execution:i-424242:success', 1363224805) do
-                        redis.set('execution:i-424242:fail', 1363224806) do
-                          redis.rpush('history:i-424242:success', 0) do
+                  redis.sadd('history:i-424242 _~#!.()[]@$-^', 'success') do
+                    redis.sadd('history:i-424242 _~#!.()[]@$-^', 'fail') do
+                      redis.set('execution:i-424242 _~#!.()[]@$-^:success', 1363224805) do
+                        redis.set('execution:i-424242 _~#!.()[]@$-^:fail', 1363224806) do
+                          redis.rpush('history:i-424242 _~#!.()[]@$-^:success', 0) do
                             @redis = nil
                             async_done
                           end
@@ -93,7 +93,7 @@ describe 'Sensu::API' do
 
   it 'can provide current events for a specific client' do
     api_test do
-      api_request('/events/i-424242') do |http, body|
+      api_request("/events/#{encoded_client_name}") do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Array)
         test_event = Proc.new do |event|
@@ -111,7 +111,7 @@ describe 'Sensu::API' do
         http.response_header.status.should eq(200)
         body.should be_kind_of(Array)
         test_client = Proc.new do |client|
-          client[:name] == 'i-424242'
+          client[:name] == 'i-424242 _~#!.()[]@$-^'
         end
         body.should contain(test_client)
         async_done
@@ -125,7 +125,7 @@ describe 'Sensu::API' do
         http.response_header.status.should eq(200)
         body.should be_kind_of(Array)
         test_check = Proc.new do |check|
-          check[:name] == 'tokens'
+          check[:name] == 'tokens_~#!.()[]@$-^ 30'
         end
         body.should contain(test_check)
         async_done
@@ -135,10 +135,10 @@ describe 'Sensu::API' do
 
   it 'can provide a specific event' do
     api_test do
-      api_request('/event/i-424242/test') do |http, body|
+      api_request("/event/#{encoded_client_name}/test") do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Hash)
-        body[:client].should eq('i-424242')
+        body[:client].should eq('i-424242 _~#!.()[]@$-^')
         body[:check].should eq('test')
         body[:output].should eq('CRITICAL')
         body[:status].should eq(2)
@@ -152,7 +152,7 @@ describe 'Sensu::API' do
 
   it 'can not provide a nonexistent event' do
     api_test do
-      api_request('/event/i-424242/nonexistent') do |http, body|
+      api_request("/event/#{encoded_client_name}/nonexistent") do |http, body|
         http.response_header.status.should eq(404)
         body.should be_empty
         async_done
@@ -163,12 +163,12 @@ describe 'Sensu::API' do
   it 'can delete an event' do
     api_test do
       result_queue do |queue|
-        api_request('/event/i-424242/test', :delete) do |http, body|
+        api_request("/event/#{encoded_client_name}/test", :delete) do |http, body|
           http.response_header.status.should eq(202)
           body.should include(:issued)
           queue.subscribe do |payload|
             result = Oj.load(payload)
-            result[:client].should eq('i-424242')
+            result[:client].should eq('i-424242 _~#!.()[]@$-^')
             result[:check][:name].should eq('test')
             result[:check][:status].should eq(0)
             async_done
@@ -180,7 +180,7 @@ describe 'Sensu::API' do
 
   it 'can not delete a nonexistent event' do
     api_test do
-      api_request('/event/i-424242/nonexistent', :delete) do |http, body|
+      api_request("/event/#{encoded_client_name}/nonexistent", :delete) do |http, body|
         http.response_header.status.should eq(404)
         body.should be_empty
         async_done
@@ -193,7 +193,7 @@ describe 'Sensu::API' do
       result_queue do |queue|
         options = {
           :body => {
-            :client => 'i-424242',
+            :client => 'i-424242 _~#!.()[]@$-^',
             :check => 'test'
           }
         }
@@ -202,7 +202,7 @@ describe 'Sensu::API' do
           body.should include(:issued)
           queue.subscribe do |payload|
             result = Oj.load(payload)
-            result[:client].should eq('i-424242')
+            result[:client].should eq('i-424242 _~#!.()[]@$-^')
             result[:check][:name].should eq('test')
             result[:check][:status].should eq(0)
             async_done
@@ -216,7 +216,7 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :client => 'i-424242',
+          :client => 'i-424242 _~#!.()[]@$-^',
           :check => 'nonexistent'
         }
       }
@@ -231,7 +231,7 @@ describe 'Sensu::API' do
   it 'can not resolve an event with an invalid post body' do
     api_test do
       options = {
-        :body => 'i-424242/test'
+        :body => 'i-424242 _~#!.()[]@$-^/test'
       }
       api_request('/resolve', :post, options) do |http, body|
         http.response_header.status.should eq(400)
@@ -245,7 +245,7 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :client => 'i-424242'
+          :client => 'i-424242 _~#!.()[]@$-^'
         }
       }
       api_request('/resolve', :post, options) do |http, body|
@@ -258,10 +258,10 @@ describe 'Sensu::API' do
 
   it 'can provide a specific client' do
     api_test do
-      api_request('/client/i-424242') do |http, body|
+      api_request("/client/#{encoded_client_name}") do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Hash)
-        body[:name].should eq('i-424242')
+        body[:name].should eq('i-424242 _~#!.()[]@$-^')
         body[:address].should eq('127.0.0.1')
         body[:subscriptions].should eq(['test'])
         body[:timestamp].should be_within(10).of(epoch)
@@ -282,7 +282,7 @@ describe 'Sensu::API' do
 
   it 'can request check history for a client' do
     api_test do
-      api_request('/clients/i-424242/history') do |http, body|
+      api_request("/clients/#{encoded_client_name}/history") do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Array)
         body.should have(1).items
@@ -297,7 +297,7 @@ describe 'Sensu::API' do
 
   it 'can delete a client' do
     api_test do
-      api_request('/client/i-424242', :delete) do |http, body|
+      api_request("/client/#{encoded_client_name}", :delete) do |http, body|
         http.response_header.status.should eq(202)
         body.should include(:issued)
         async_done
@@ -317,10 +317,10 @@ describe 'Sensu::API' do
 
   it 'can provide a specific defined check' do
     api_test do
-      api_request('/check/tokens') do |http, body|
+      api_request("/check/#{encoded_tokens_name}") do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Hash)
-        body[:name].should eq('tokens')
+        body[:name].should eq('tokens_~#!.()[]@$-^ 30')
         body[:interval].should eq(1)
         async_done
       end
@@ -341,7 +341,7 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :check => 'tokens',
+          :check => 'tokens_~#!.()[]@$-^ 30',
           :subscribers => [
             'test'
           ]
@@ -359,7 +359,7 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :check => 'tokens',
+          :check => 'tokens_~#!.()[]@$-^ 30',
           :subscribers => 'invalid'
         }
       }
@@ -375,7 +375,7 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :check => 'tokens'
+          :check => 'tokens_~#!.()[]@$-^ 30'
         }
       }
       api_request('/request', :post, options) do |http, body|
@@ -649,7 +649,7 @@ describe 'Sensu::API' do
           body[:total].should eq(1)
           body[:results].should be_kind_of(Array)
           body[:results].should have(1).items
-          body[:results][0][:client].should eq('i-424242')
+          body[:results][0][:client].should eq('i-424242 _~#!.()[]@$-^')
           body[:results][0][:output].should eq('WARNING')
           body[:results][0][:status].should eq(1)
           body[:outputs].should be_kind_of(Hash)

@@ -11,7 +11,7 @@ describe 'Sensu::Settings' do
   it 'can load settings from configuration files' do
     @settings.load_file(options[:config_file])
     @settings.should respond_to(:to_hash, :[], :check_exists?, :mutator_exists?, :handler_exists?)
-    @settings.check_exists?('tokens').should be_true
+    @settings.check_exists?('tokens_~#!.()[]@$-^ 30').should be_true
     @settings.check_exists?('nonexistent').should be_false
     @settings.check_exists?('unpublished').should be_true
     @settings.mutator_exists?('tag').should be_true
@@ -64,7 +64,7 @@ describe 'Sensu::Settings' do
 
   it 'can provide indifferent access' do
     @settings.load_file(options[:config_file])
-    @settings[:checks][:tokens].should be_kind_of(Hash)
-    @settings['checks']['tokens'].should be_kind_of(Hash)
+    @settings[:checks][:"tokens_~#!.()[]@$-^ 30"].should be_kind_of(Hash)
+    @settings['checks']['tokens_~#!.()[]@$-^ 30'].should be_kind_of(Hash)
   end
 end

@@ -81,7 +81,7 @@
     }
   },
   "checks": {
-    "tokens": {
+    "tokens_~#!.()[]@$-^ 30": {
       "command": "echo -n :::name::: :::nested.attribute::: && exit 2",
       "subscribers": [
         "test"
@@ -104,7 +104,9 @@
     }
   },
   "client": {
-    "name": "i-424242",
+  },
+  "client": {
+    "name": "i-424242 _~#!.()[]@$-^",
     "address": "127.0.0.1",
     "subscriptions": [
       "test"

@@ -300,7 +300,8 @@ module Sensu
       end
     end
 
-    aget %r{/clients?/([\w\.-]+)$} do |client_name|
+    aget %r{/clients?/([^/]+)$} do |client_name|
+      not_found! and return unless client_name =~ %r{^#{VALID_CHARACTERS}+$}
       $redis.get('client:' + client_name) do |client_json|
         unless client_json.nil?
           body client_json
@@ -310,7 +311,8 @@ module Sensu
       end
     end
 
-    aget %r{/clients/([\w\.-]+)/history$} do |client_name|
+    aget %r{/clients/([^/]+)/history$} do |client_name|
+      not_found! and return unless client_name =~ %r{^#{VALID_CHARACTERS}+$}
       response = Array.new
       $redis.smembers('history:' + client_name) do |checks|
         unless checks.empty?
@@ -343,7 +345,8 @@ module Sensu
       end
     end
 
-    adelete %r{/clients?/([\w\.-]+)$} do |client_name|
+    adelete %r{/clients?/([^/]+)$} do |client_name|
+      not_found! and return unless client_name =~ %r{^#{VALID_CHARACTERS}+$}
       $redis.get('client:' + client_name) do |client_json|
         unless client_json.nil?
           $redis.hgetall('events:' + client_name) do |events|
@@ -378,7 +381,8 @@ module Sensu
       body Oj.dump($settings.checks)
     end
 
-    aget %r{/checks?/([\w\.-]+)$} do |check_name|
+    aget %r{/checks?/([^/]+)$} do |check_name|
+      not_found! and return unless check_name =~ %r{^#{VALID_CHARACTERS}+$}
       if $settings.check_exists?(check_name)
         response = $settings[:checks][check_name].merge(:name => check_name)
         body Oj.dump(response)
@@ -442,7 +446,8 @@ module Sensu
       end
     end
 
-    aget %r{/events/([\w\.-]+)$} do |client_name|
+    aget %r{/events/([^/]+)$} do |client_name|
+      not_found! and return unless client_name =~ %r{^#{VALID_CHARACTERS}+$}
       response = Array.new
       $redis.hgetall('events:' + client_name) do |events|
         events.each do |check_name, event_json|
@@ -452,7 +457,9 @@ module Sensu
       end
     end
 
-    aget %r{/events?/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
+    aget %r{/events?/([^/]+)/([^/]+)$} do |client_name, check_name|
+      not_found! and return unless client_name =~ %r{^#{VALID_CHARACTERS}+$} &&
+        check_name =~ %r{^#{VALID_CHARACTERS}+$}
       $redis.hgetall('events:' + client_name) do |events|
         event_json = events[check_name]
         unless event_json.nil?
@@ -463,7 +470,9 @@ module Sensu
       end
     end
 
-    adelete %r{/events?/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
+    adelete %r{/events?/([^/]+)/([^/]+)$} do |client_name, check_name|
+      not_found! and return unless client_name =~ %r{^#{VALID_CHARACTERS}+$} &&
+        check_name =~ %r{^#{VALID_CHARACTERS}+$}
       $redis.hgetall('events:' + client_name) do |events|
         if events.include?(check_name)
           resolve_event(event_hash(events[check_name], client_name, check_name))
@@ -521,7 +530,8 @@ module Sensu
       end
     end
 
-    aget %r{/aggregates/([\w\.-]+)$} do |check_name|
+    aget %r{/aggregates/([^/]+)$} do |check_name|
+      not_found! and return unless check_name =~ %r{^#{VALID_CHARACTERS}+$}
       $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
           aggregates.map! do |issued|
@@ -542,7 +552,8 @@ module Sensu
       end
     end
 
-    adelete %r{/aggregates/([\w\.-]+)$} do |check_name|
+    adelete %r{/aggregates/([^/]+)$} do |check_name|
+      not_found! and return unless check_name =~ %r{^#{VALID_CHARACTERS}+$}
       $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
           aggregates.each do |check_issued|
@@ -561,7 +572,8 @@ module Sensu
       end
     end
 
-    aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)$} do |check_name, check_issued|
+    aget %r{/aggregates?/([^/]+)/([^/]+)$} do |check_name, check_issued|
+      not_found! and return unless check_name =~ %r{^#{VALID_CHARACTERS}+$}
       result_set = check_name + ':' + check_issued
       $redis.hgetall('aggregate:' + result_set) do |aggregate|
         unless aggregate.empty?

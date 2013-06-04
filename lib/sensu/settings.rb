@@ -210,8 +210,8 @@ module Sensu
     end
 
     def validate_check(check)
-      unless check[:name] =~ /^[\w-]+$/
-        invalid_check(check, 'check name cannot contain spaces or special characters')
+      unless check[:name] =~ /^#{VALID_CHARACTERS}+$/
+        invalid_check(check, "check name must only contain valid characters #{VALID_CHARACTERS}")
       end
       unless (check[:interval].is_a?(Integer) && check[:interval] > 0) || !check[:publish]
         invalid_check(check, 'check is missing interval')
@@ -379,8 +379,8 @@ module Sensu
       unless @settings[:client].is_a?(Hash)
         invalid('missing client configuration')
       end
-      unless @settings[:client][:name].is_a?(String) && !@settings[:client][:name].empty?
-        invalid('client must have a name')
+      unless @settings[:client][:name] =~ /^#{VALID_CHARACTERS}+$/
+        invalid("client name must only contain valid characters #{VALID_CHARACTERS}")
       end
       unless @settings[:client][:address].is_a?(String)
         invalid('client must have an address')
