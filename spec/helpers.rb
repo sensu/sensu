@@ -1,4 +1,5 @@
 require 'rspec'
+require 'uri'
 
 module Helpers
   def setup_options
@@ -89,7 +90,7 @@ module Helpers
 
   def client_template
     {
-      :name => 'i-424242',
+      :name => 'i-424242 _~#!.()[]@$-^',
       :address => '127.0.0.1',
       :subscriptions => [
         'test'
@@ -116,7 +117,7 @@ module Helpers
     check[:output] = 'WARNING'
     check[:status] = 1
     {
-      :client => 'i-424242',
+      :client => 'i-424242 _~#!.()[]@$-^',
       :check => check
     }
   end
@@ -134,6 +135,14 @@ module Helpers
       :occurrences => 1,
       :action => :create
     }
+  end
+
+  def encoded_tokens_name
+    @encoded_tokens_name ||= URI.escape('tokens_~#!.()[]@$-^ 30')
+  end
+
+  def encoded_client_name
+    @encoded_client_name ||= URI.escape('i-424242 _~#!.()[]@$-^')
   end
 
   def api_request(uri, method=:get, options={}, &block)

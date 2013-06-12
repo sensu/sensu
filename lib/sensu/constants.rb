@@ -11,5 +11,7 @@ module Sensu
     SEVERITIES = %w[ok warning critical unknown]
 
     STOP_SIGNALS = %w[INT TERM]
+
+    VALID_CHARACTERS = '[\w ~#!.()\[\]@$\-\^]'
   end
 end

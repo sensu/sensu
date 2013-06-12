@@ -32,9 +32,9 @@ describe 'Sensu::Server' do
       redis.flushdb do
         amq.direct('keepalives').publish(Oj.dump(keepalive))
         timer(1) do
-          redis.sismember('clients', 'i-424242') do |exists|
+          redis.sismember('clients', 'i-424242 _~#!.()[]@$-^') do |exists|
             exists.should be_true
-            redis.get('client:i-424242') do |client_json|
+            redis.get('client:i-424242 _~#!.()[]@$-^') do |client_json|
               client = Oj.load(client_json)
               client.should eq(keepalive)
               async_done
@@ -387,7 +387,7 @@ describe 'Sensu::Server' do
       @server.setup_redis
       redis.flushdb do
         client = client_template
-        redis.set('client:i-424242', Oj.dump(client)) do
+        redis.set('client:i-424242 _~#!.()[]@$-^', Oj.dump(client)) do
           26.times do |index|
             result = result_template
             result[:check][:low_flap_threshold] = 5
@@ -396,9 +396,9 @@ describe 'Sensu::Server' do
             @server.process_result(result)
           end
           timer(1) do
-            redis.llen('history:i-424242:foobar') do |length|
+            redis.llen('history:i-424242 _~#!.()[]@$-^:foobar') do |length|
               length.should eq(21)
-              redis.hget('events:i-424242', 'foobar') do |event_json|
+              redis.hget('events:i-424242 _~#!.()[]@$-^', 'foobar') do |event_json|
                 event = Oj.load(event_json)
                 event[:flapping].should be_true
                 event[:occurrences].should be_within(2).of(1)
@@ -418,11 +418,11 @@ describe 'Sensu::Server' do
       @server.setup_results
       redis.flushdb do
         client = client_template
-        redis.set('client:i-424242', Oj.dump(client)) do
+        redis.set('client:i-424242 _~#!.()[]@$-^', Oj.dump(client)) do
           result = result_template
           amq.direct('results').publish(Oj.dump(result))
           timer(1) do
-            redis.hget('events:i-424242', 'foobar') do |event_json|
+            redis.hget('events:i-424242 _~#!.()[]@$-^', 'foobar') do |event_json|
               event = Oj.load(event_json)
               event[:status].should eq(1)
               event[:occurrences].should eq(1)
@@ -459,7 +459,7 @@ describe 'Sensu::Server' do
       @server.setup_rabbitmq
       @server.setup_publisher
       amq.fanout('test') do
-        expected = ['tokens', 'merger', 'sensu_cpu_time']
+        expected = ['tokens_~#!.()[]@$-^ 30', 'merger', 'sensu_cpu_time']
         amq.queue('', :auto_delete => true).bind('test').subscribe do |payload|
           check_request = Oj.load(payload)
           check_request[:issued].should be_within(10).of(epoch)
@@ -481,7 +481,7 @@ describe 'Sensu::Server' do
         @server.publish_result(client, check)
         queue.subscribe do |payload|
           result = Oj.load(payload)
-          result[:client].should eq('i-424242')
+          result[:client].should eq('i-424242 _~#!.()[]@$-^')
           result[:check][:name].should eq('foobar')
           async_done
         end
@@ -531,7 +531,7 @@ describe 'Sensu::Server' do
       @server.setup_redis
       redis.flushdb do
         client = client_template
-        redis.set('client:i-424242', Oj.dump(client)) do
+        redis.set('client:i-424242 _~#!.()[]@$-^', Oj.dump(client)) do
           timestamp = epoch - 26
           26.times do |index|
             result = result_template
