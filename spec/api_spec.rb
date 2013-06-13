@@ -119,6 +119,48 @@ describe 'Sensu::API' do
     end
   end
 
+  it 'can provide wildcard current clients' do
+    api_test do
+      api_request('/clients/*') do |http, body|
+        http.response_header.status.should eq(200)
+        body.should be_kind_of(Array)
+        test_client = Proc.new do |client|
+          client[:name] == 'i-424242'
+        end
+        body.should contain(test_client)
+        async_done
+      end
+    end
+  end
+
+  it 'can provide question mark wildcard current clients' do
+    api_test do
+      api_request('/clients/?-424242') do |http, body|
+        http.response_header.status.should eq(200)
+        body.should be_kind_of(Array)
+        test_client = Proc.new do |client|
+          client[:name] == 'i-424242'
+        end
+        body.should contain(test_client)
+        async_done
+      end
+    end
+  end
+
+  it 'can provide star wildcard current clients' do
+    api_test do
+      api_request('/clients/*42*') do |http, body|
+        http.response_header.status.should eq(200)
+        body.should be_kind_of(Array)
+        test_client = Proc.new do |client|
+          client[:name] == 'i-424242'
+        end
+        body.should contain(test_client)
+        async_done
+      end
+    end
+  end
+
   it 'can provide defined checks' do
     api_test do
       api_request('/checks') do |http, body|
