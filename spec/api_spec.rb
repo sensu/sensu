@@ -135,7 +135,7 @@ describe 'Sensu::API' do
 
   it 'can provide question mark wildcard current clients' do
     api_test do
-      api_request('/clients/\?-424242') do |http, body|
+      api_request('/clients/%3f-424242') do |http, body|
         http.response_header.status.should eq(200)
         body.should be_kind_of(Array)
         test_client = Proc.new do |client|
