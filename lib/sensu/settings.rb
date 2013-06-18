@@ -210,7 +210,7 @@ module Sensu
     end
 
     def validate_check(check)
-      unless check[:name] =~ /^[\w-]+$/
+      unless check[:name] =~ /^\w([\w\-\.]+)?$/
         invalid_check(check, 'check name cannot contain spaces or special characters')
       end
       unless (check[:interval].is_a?(Integer) && check[:interval] > 0) || !check[:publish]
