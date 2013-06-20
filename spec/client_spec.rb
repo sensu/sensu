@@ -86,7 +86,6 @@ describe 'Sensu::Client' do
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should eq('true default')
-          result[:check][:command_executed] = 'echo -n true default'
           async_done
         end
       end
