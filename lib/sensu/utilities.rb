@@ -60,12 +60,9 @@ module Sensu
 
     def redact_passwords(hash)
       hash.each do |key, value|
-        case value
-        when String
-          if %w[password passwd pass].include?(key)
-            hash[key] = "redacted"
-          end
-        when Hash
+        if %w[password passwd pass].include?(key.to_s)
+          hash[key] = "REDACTED"
+        elsif value.is_a?(Hash)
           hash[key] = redact_passwords(value)
         end
       end
