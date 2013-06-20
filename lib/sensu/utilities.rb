@@ -57,5 +57,19 @@ module Sensu
         diff
       end
     end
+
+    def redact_passwords(hash)
+      hash.each do |key, value|
+        case value
+        when String
+          if %w[password passwd pass].include?(key)
+            hash[key] = "redacted"
+          end
+        when Hash
+          hash[key] = redact_passwords(value)
+        end
+      end
+      hash
+    end
   end
 end
