@@ -111,6 +111,9 @@
     ],
     "nested": {
       "attribute": true
+    },
+    "service": {
+      "password": "secret"
     }
   }
 }
