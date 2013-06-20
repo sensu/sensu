@@ -282,6 +282,7 @@ module Sensu
             :mutator => mutator,
             :error => error.to_s
           })
+          @handlers_in_progress_count -= 1
         end
         execute_command(mutator[:command], Oj.dump(event), on_error) do |output, status|
           if status == 0
@@ -298,15 +299,17 @@ module Sensu
           else
             @logger.error('mutator error', {
               :event => event,
-              :extension => extension,
+              :extension => extension.name,
               :error => 'non-zero exit status (' + status.to_s + '): ' + output
             })
+            @handlers_in_progress_count -= 1
           end
         end
       else
         @logger.error('unknown mutator', {
           :mutator_name => mutator_name
         })
+        @handlers_in_progress_count -= 1
       end
     end
 
