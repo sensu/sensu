@@ -23,6 +23,7 @@ describe 'Sensu::Client' do
         queue.subscribe do |payload|
           keepalive = Oj.load(payload)
           keepalive[:name].should eq('i-424242')
+          keepalive[:service][:password].should eq('REDACTED')
           async_done
         end
       end
@@ -86,7 +87,6 @@ describe 'Sensu::Client' do
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should eq('true default')
-          result[:check][:command_executed] = 'echo -n true default'
           async_done
         end
       end

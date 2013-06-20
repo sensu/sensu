@@ -47,7 +47,8 @@ module Sensu
     end
 
     def publish_keepalive
-      payload = @settings[:client].merge(:timestamp => Time.now.to_i)
+      keepalive = @settings[:client].merge(:timestamp => Time.now.to_i)
+      payload = redact_passwords(keepalive)
       @logger.debug('publishing keepalive', {
         :payload => payload
       })
@@ -103,7 +104,6 @@ module Sensu
         command, unmatched_tokens = substitute_command_tokens(check)
         check[:executed] = Time.now.to_i
         if unmatched_tokens.empty?
-          check[:command_executed] = command
           execute = Proc.new do
             @logger.debug('executing check command', {
               :check => check
