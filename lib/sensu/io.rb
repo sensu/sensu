@@ -68,7 +68,7 @@ module Sensu
         if wait_on_group
           wait_on_process_group(process.pid)
         end
-        [output, status.exitstatus]
+        [output, status.exited? ? status.exitstatus : 2]
       end
     end
   end
