@@ -87,9 +87,10 @@ module Sensu
           config = Oj.load(contents)
           merged = deep_merge(@settings, config)
           unless @loaded_files.empty?
+            changes = deep_diff(@settings, merged)
             @logger.warn('config file applied changes', {
               :config_file => file,
-              :changes => deep_diff(@settings, merged)
+              :changes => redact_passwords(changes)
             })
           end
           @settings = merged
