@@ -189,18 +189,11 @@ module Sensu
           queue.bind(@amq.fanout(exchange_name))
         end
         queue.subscribe do |payload|
-          begin
-            check = Oj.load(payload)
-            @logger.info('received check request', {
-              :check => check
-            })
-            process_check(check)
-          rescue Oj::ParseError => error
-            @logger.warn('check request payload must be valid json', {
-              :payload => payload,
-              :error => error.to_s
-            })
-          end
+          check = Oj.load(payload)
+          @logger.info('received check request', {
+            :check => check
+          })
+          process_check(check)
         end
       end
     end
