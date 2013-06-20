@@ -299,7 +299,7 @@ module Sensu
           else
             @logger.error('mutator error', {
               :event => event,
-              :extension => extension.name,
+              :extension => extension.definition,
               :error => 'non-zero exit status (' + status.to_s + '): ' + output
             })
             @handlers_in_progress_count -= 1
