@@ -10,7 +10,7 @@ module Sensu
       end
 
       def run(event, settings, &block)
-        block.call(Oj.dump(event), 0)
+        block.call(event, 0)
       end
     end
   end
