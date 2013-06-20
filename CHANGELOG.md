@@ -1,3 +1,10 @@
+## 0.10.0 - TBD
+
+### Non-backwards compatible changes
+
+Client & check names must not contain spaces or special characters.
+The valid characters are: a-z, A-Z, 0-9, "_", ".", and "-".
+
 ## 0.9.13 - 2013-05-20
 
 ### Features
