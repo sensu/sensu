@@ -105,7 +105,7 @@ module Sensu
         command, unmatched_tokens = substitute_command_tokens(check)
         check[:executed] = Time.now.to_i
         if unmatched_tokens.empty?
-          check[:command_executed] = substitute_command_tokens(check, @settings[:client][:anonymize])
+          check[:command_executed] = substitute_command_tokens(check, @settings[:client][:anonymize]).first
           execute = Proc.new do
             @logger.debug('executing check command', {
               :check => check
