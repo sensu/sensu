@@ -63,7 +63,7 @@ module Sensu
         if secrets.include?(key.to_s)
           hash[key] = "ANONYMIZED"
         elsif value.is_a?(Hash)
-          hash[key] = redact_passwords(value)
+          hash[key] = anonymize(value)
         end
       end
       hash
