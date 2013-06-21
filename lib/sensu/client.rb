@@ -85,7 +85,7 @@ module Sensu
           if client[attribute].nil?
             default.nil? ? break : default
           else
-            secrets.include?(attribute) ? "ANONIMIZED" : client[attribute]
+            secrets.include?(attribute) ? "ANONYMIZED" : client[attribute]
           end
         end
         if matched.nil?
