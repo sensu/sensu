@@ -87,7 +87,7 @@ describe 'Sensu::Client' do
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
           result[:check][:output].should eq('true default secret')
-          result[:check][:command_executed] = 'echo -n true default ANONYMIZED'
+          result[:check][:command_executed].should eq('echo -n true default ANONYMIZED')
           async_done
         end
       end
