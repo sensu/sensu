@@ -49,7 +49,7 @@ module Sensu
 
     def publish_keepalive
       keepalive = @settings[:client].merge(:timestamp => Time.now.to_i)
-      payload = anonymise(keepalive, @settings[:client][:anonymize])
+      payload = anonymize(keepalive, @settings[:client][:anonymize])
       @logger.debug('publishing keepalive', {
         :payload => payload
       })
