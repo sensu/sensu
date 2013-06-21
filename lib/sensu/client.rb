@@ -24,6 +24,7 @@ module Sensu
       @timers = Array.new
       @checks_in_progress = Array.new
       @safe_mode = @settings[:client][:safe_mode] || false
+      @settings[:client][:anonymize] ||= %w[password passwd pass]
     end
 
     def setup_rabbitmq
@@ -48,7 +49,7 @@ module Sensu
 
     def publish_keepalive
       keepalive = @settings[:client].merge(:timestamp => Time.now.to_i)
-      payload = redact_passwords(keepalive)
+      payload = anonymise(keepalive, @settings[:client][:anonymize])
       @logger.debug('publishing keepalive', {
         :payload => payload
       })
@@ -76,7 +77,7 @@ module Sensu
       @amq.direct('results').publish(Oj.dump(payload))
     end
 
-    def substitute_command_tokens(check)
+    def substitute_command_tokens(check, exceptions=[])
       unmatched_tokens = Array.new
       substituted = check[:command].gsub(/:::(.*?):::/) do
         token, default = $1.to_s.split('|')
@@ -84,7 +85,7 @@ module Sensu
           if client[attribute].nil?
             default.nil? ? break : default
           else
-            client[attribute]
+            exceptions.include?(attribute) ? "ANONIMIZED" : client[attribute]
           end
         end
         if matched.nil?
@@ -104,6 +105,7 @@ module Sensu
         command, unmatched_tokens = substitute_command_tokens(check)
         check[:executed] = Time.now.to_i
         if unmatched_tokens.empty?
+          check[:command_executed] = substitute_command_tokens(check, @settings[:client][:anonymize])
           execute = Proc.new do
             @logger.debug('executing check command', {
               :check => check

@@ -427,6 +427,11 @@ module Sensu
               invalid('client keepalive critical threshold must be an integer')
             end
           end
+        end 
+      end
+      if @settings[:client].has_key?(:anonymize)
+        unless @settings[:client][:anonymize].is_a?(Array)
+          invalid('client list of anonymized attributes must be an array')
         end
       end
     end
