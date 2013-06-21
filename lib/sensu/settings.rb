@@ -90,7 +90,7 @@ module Sensu
             changes = deep_diff(@settings, merged)
             @logger.warn('config file applied changes', {
               :config_file => file,
-              :changes => redact_passwords(changes)
+              :changes => anonymize(changes, %w[password passwd pass])
             })
           end
           @settings = merged
