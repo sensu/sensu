@@ -5,6 +5,22 @@
 Client & check names must not contain spaces or special characters.
 The valid characters are: a-z, A-Z, 0-9, "_", ".", and "-".
 
+"command_executed" was removed from check results, as it may contain
+sensitive information, such as credentials.
+
+### Feature
+
+Passwords in client data (keepalives) and log events are replaced with
+"REDACTED", reducing the possibility of exposure. The following
+attributes will have their values replaced: "password", "passwd", and
+"pass".
+
+### Other
+
+Fixed nil check status when check does not exit.
+
+Fixed the built-in debug handler output encoding (JSON).
+
 ## 0.9.13 - 2013-05-20
 
 ### Features
