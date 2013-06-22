@@ -23,7 +23,7 @@ describe 'Sensu::Client' do
         queue.subscribe do |payload|
           keepalive = Oj.load(payload)
           keepalive[:name].should eq('i-424242')
-          keepalive[:service][:password].should eq('REDACTED')
+          keepalive[:service][:password].should eq('ANONYMIZED')
           async_done
         end
       end
@@ -81,12 +81,13 @@ describe 'Sensu::Client' do
       result_queue do |queue|
         @client.setup_rabbitmq
         check = check_template
-        check[:command] = 'echo -n :::nested.attribute|default::: :::missing|default:::'
+        check[:command] = 'echo -n :::nested.attribute|default::: :::missing|default::: :::service.password:::'
         @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
-          result[:check][:output].should eq('true default')
+          result[:check][:output].should eq('true default secret')
+          result[:check][:command_executed].should eq('echo -n true default ANONYMIZED')
           async_done
         end
       end

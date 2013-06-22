@@ -58,12 +58,12 @@ module Sensu
       end
     end
 
-    def redact_passwords(hash)
+    def anonymize(hash,secrets=[])
       hash.each do |key, value|
-        if %w[password passwd pass].include?(key.to_s)
-          hash[key] = "REDACTED"
+        if secrets.include?(key.to_s)
+          hash[key] = "ANONYMIZED"
         elsif value.is_a?(Hash)
-          hash[key] = redact_passwords(value)
+          hash[key] = anonymize(value, secrets)
         end
       end
       hash
