@@ -2,14 +2,14 @@ require File.dirname(__FILE__) + '/../lib/sensu/io.rb'
 
 describe 'Sensu::IO' do
   it 'can execute a command' do
-    output, status = Sensu::IO.popen('echo -n test')
-    output.should eq('test')
+    output, status = Sensu::IO.popen('echo test')
+    output.should eq("test\n")
     status.should eq(0)
   end
 
   it 'can execute a command with a non-zero exist status' do
-    output, status = Sensu::IO.popen('echo -n test && exit 1')
-    output.should eq('test')
+    output, status = Sensu::IO.popen('echo test && exit 1')
+    output.should eq("test\n")
     status.should eq(1)
   end
 

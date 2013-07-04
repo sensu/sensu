@@ -106,7 +106,7 @@ module Helpers
   def check_template
     {
       :name => 'foobar',
-      :command => 'echo -n WARNING && exit 1',
+      :command => 'echo WARNING && exit 1',
       :issued => epoch
     }
   end
