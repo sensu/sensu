@@ -44,7 +44,9 @@ module Sensu
         settings.load_file(@options[:config_file])
       end
       if @options[:config_dir]
-        settings.load_directory(@options[:config_dir])
+        @options[:config_dir].each do |config_dir|
+          settings.load_directory(config_dir)
+        end
       end
       settings.validate
       settings.set_env

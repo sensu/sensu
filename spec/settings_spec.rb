@@ -20,7 +20,9 @@ describe 'Sensu::Settings' do
     @settings.handler_exists?('nonexistent').should be_false
     @settings.check_exists?('merger').should be_true
     @settings[:checks][:merger][:command].should eq('this will be overwritten')
-    @settings.load_directory(options[:config_dir])
+    options[:config_dir].each do |config_dir|
+      @settings.load_directory(config_dir)
+    end
     @settings[:checks][:merger][:command].should eq('echo -n merger')
     @settings[:checks][:merger][:subscribers].should eq(['test'])
     @settings[:checks][:merger][:interval].should eq(60)
@@ -51,7 +53,9 @@ describe 'Sensu::Settings' do
     with_stdout_redirect do
       lambda { @settings.validate }.should raise_error(SystemExit)
     end
-    @settings.load_directory(options[:config_dir])
+    options[:config_dir].each do |config_dir|
+      @settings.load_directory(config_dir)
+    end
     @settings.validate
   end
 
