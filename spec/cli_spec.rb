@@ -18,7 +18,7 @@ describe 'Sensu::CLI' do
     ])
     expected = {
       :config_file => 'spec/config.json',
-      :config_dir => 'spec/conf.d',
+      :config_dir => ['spec/conf.d'],
       :extension_dir => 'spec/extensions',
       :log_level => :debug,
       :log_file => '/tmp/sensu_spec.log',
