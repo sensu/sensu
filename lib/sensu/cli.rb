@@ -16,8 +16,8 @@ module Sensu
         opts.on('-c', '--config FILE', 'Sensu JSON config FILE') do |file|
           options[:config_file] = file
         end
-        opts.on('-d', '--config_dir DIR[,DIR]', 'DIR comma-delimited directory list for Sensu JSON config files') do |dir|
-          options[:config_dir] = dir.split(',')
+        opts.on('-d', '--config_dir DIR[,DIR]', 'DIR or comma-delimited DIR list for Sensu JSON config files') do |dir|
+          options[:config_dirs] = dir.split(',')
         end
         opts.on('-e', '--extension_dir DIR', 'DIR for Sensu extensions') do |dir|
           options[:extension_dir] = dir
