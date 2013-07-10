@@ -240,22 +240,14 @@ describe 'Sensu::Server' do
   it 'can handle an event with a nil status' do
     event = event_template
     event[:client][:environment] = 'production'
-    event[:check][:handlers] = ['file', 'filtered', 'severities']
+    event[:check][:handlers] = ['severities']
     event[:check][:status] = nil
     expected = [
-      {
-        :name => 'file',
-        :type => 'pipe',
-        :command => 'cat > /tmp/sensu_event'
-      },
       {
         :name => 'severities',
         :type => 'pipe',
         :command => 'cat > /tmp/sensu_event',
-        :severities => [
-          'critical',
-          'unknown'
-        ]
+        :severities => [ 'critical', 'unknown' ]
       }
     ]
     @server.event_handlers(event).should eq(expected)
