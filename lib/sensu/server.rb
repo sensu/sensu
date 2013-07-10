@@ -198,7 +198,12 @@ module Sensu
     def event_handlers(event)
       handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || 'default')
       handlers = derive_handlers(handler_list)
-      event_severity = SEVERITIES[event[:check][:status]] || 'unknown'
+      # Checks that don't specify a status in the event data end up as nil
+      event_severity = if event[:check][:status] && SEVERITIES[event[:check][:status]]
+        SEVERITIES[event[:check][:status]]
+      else
+        'unknown'
+      end
       handlers.select do |handler|
         if event[:action] == :flapping && !handler[:handle_flapping]
           @logger.info('handler does not handle flapping events', {
