@@ -81,7 +81,7 @@ describe 'Sensu::Client' do
       result_queue do |queue|
         @client.setup_rabbitmq
         check = check_template
-        check[:command] = 'echo :::nested.attribute|default::: :::missing|default:::'
+        check[:command] = 'echo :::nested.attribute|default::: :::missing|default::: :::missing|:::'
         @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = Oj.load(payload)
