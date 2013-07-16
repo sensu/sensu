@@ -85,6 +85,12 @@ module Sensu
 
   module Extension
     class Base
+      def initialize
+        EM::next_tick do
+          post_init
+        end
+      end
+
       def name
         'base'
       end
@@ -106,6 +112,10 @@ module Sensu
 
       def has_key?(key)
         definition.has_key?(key.to_sym)
+      end
+
+      def post_init
+        true
       end
 
       def run(event=nil, settings={}, &block)
