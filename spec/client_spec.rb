@@ -86,7 +86,7 @@ describe 'Sensu::Client' do
         queue.subscribe do |payload|
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
-          result[:check][:output].should eq("true default \n")
+          result[:check][:output].should eq("true default\n")
           async_done
         end
       end
