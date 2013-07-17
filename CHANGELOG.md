@@ -1,3 +1,22 @@
+## 0.10.1 - 2013-07-17
+
+### Features
+
+You can specify multiple Sensu service configuration directories,
+using the -d (--config_dir) CLI argument, providing a comma delimited
+list.
+
+A post initialize hook ("post_init()") was added to the extension API,
+enabling setup (connections, etc.) within the event loop.
+
+### Other
+
+Catches nil exit statuses, returned from check execution.
+
+Empty command token substitution defaults now work. eg. "-f :::bar|:::"
+
+Specs updated to run on OS X, bash compatibility.
+
 ## 0.10.0 - 2013-06-27
 
 ### Non-backwards compatible changes
@@ -8,7 +27,7 @@ The valid characters are: a-z, A-Z, 0-9, "_", ".", and "-".
 "command_executed" was removed from check results, as it may contain
 sensitive information, such as credentials.
 
-### Feature
+### Features
 
 Passwords in client data (keepalives) and log events are replaced with
 "REDACTED", reducing the possibility of exposure. The following
