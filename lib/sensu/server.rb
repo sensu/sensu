@@ -57,6 +57,7 @@ module Sensu
         :settings => @settings[:rabbitmq]
       })
       @rabbitmq = RabbitMQ.connect(@settings[:rabbitmq])
+      prefetch = @settings[:amq] && @settings[:amq][:prefetch] ? @settings[:amq][:prefetch] : 1
       @rabbitmq.on_error do |error|
         @logger.fatal('rabbitmq connection error', {
           :error => error.to_s
@@ -71,11 +72,11 @@ module Sensu
       end
       @rabbitmq.after_reconnect do
         @logger.info('reconnected to rabbitmq')
-        @amq.prefetch(1)
+        @amq.prefetch(prefetch)
         resume
       end
       @amq = @rabbitmq.channel
-      @amq.prefetch(1)
+      @amq.prefetch(prefetch)
     end
 
     def setup_keepalives
