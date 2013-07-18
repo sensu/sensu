@@ -59,6 +59,7 @@ module Sensu
     end
 
     def redact_passwords(hash)
+      hash = hash.dup
       hash.each do |key, value|
         if %w[password passwd pass].include?(key.to_s)
           hash[key] = "REDACTED"
