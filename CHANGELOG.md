@@ -1,3 +1,10 @@
+## 0.10.2 - 2013-07-18
+
+### Other
+
+Fixed redacting passwords in client data, correct value is now provided
+to check command token substitution.
+
 ## 0.10.1 - 2013-07-17
 
 ### Features
