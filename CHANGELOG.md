@@ -1,3 +1,10 @@
+## 0.10.3 - TBD
+
+### Other
+
+The Sensu server AMQP channel prefetch value is now configurable,
+which defaults to 1. eg. "rabbitmq": {"prefetch": 10}
+
 ## 0.10.2 - 2013-07-18
 
 ### Other
