@@ -472,8 +472,14 @@ module Sensu
                   if previous_occurrence && check[:status] == previous_occurrence[:status]
                     event[:occurrences] = previous_occurrence[:occurrences] + 1
                   end
+                  if check[:type] == 'hybird'
+                    output = Oj.load(check[:output])
+                    output = output[:description] if output[:description]
+                  else
+                    output = check[:output]
+                  end
                   @redis.hset('events:' + client[:name], check[:name], Oj.dump(
-                    :output => check[:output],
+                    :output => output,
                     :status => check[:status],
                     :issued => check[:issued],
                     :handlers => Array((check[:handlers] || check[:handler]) || 'default'),
@@ -495,7 +501,7 @@ module Sensu
                       end
                     end
                   end
-                elsif check[:type] == 'metric'
+                elsif check[:type] == 'metric' || check[:type] == 'hybird'
                   handle_event(event)
                 end
               end
