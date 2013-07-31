@@ -5,7 +5,7 @@ describe 'Sensu::Extension::Base' do
   include Helpers
 
   it 'can run (nagios spec)' do
-    extension = Sensu::Extension::Base.new
+    extension = Sensu::Extension::Base.new(settings={})
     extension.should respond_to(:name, :description, :[])
     extension.name.should eq('base')
     extension['name'].should eq('base')
@@ -18,7 +18,7 @@ describe 'Sensu::Extension::Base' do
   end
 
   it 'can clean up before the process terminates' do
-    extension = Sensu::Extension::Base.new
+    extension = Sensu::Extension::Base.new(settings={})
     stopped = false
     extension.stop do
       stopped = true

@@ -41,12 +41,12 @@ module Sensu
       end
     end
 
-    def load_all
+    def load_all(settings)
       require_directory(File.join(File.dirname(__FILE__), 'extensions'))
       EXTENSION_CATEGORIES.each do |category|
         extension_type = category.to_s.chop
         Extension.const_get(extension_type.capitalize).descendants.each do |klass|
-          extension = klass.new
+          extension = klass.new(settings)
           @extensions[category][extension.name] = extension
           loaded(extension_type, extension.name, extension.description)
         end
@@ -85,9 +85,9 @@ module Sensu
 
   module Extension
     class Base
-      def initialize
+      def initialize(settings)
         EM::next_tick do
-          post_init
+          post_init(settings)
         end
       end
 
@@ -114,7 +114,7 @@ module Sensu
         definition.has_key?(key.to_sym)
       end
 
-      def post_init
+      def post_init(settings={})
         true
       end
 

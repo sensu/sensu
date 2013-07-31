@@ -21,7 +21,7 @@ module Sensu
       base = Base.new(options)
       @logger = base.logger
       @settings = base.settings
-      @extensions = base.extensions
+      @extensions = base.extensions(@settings)
       base.setup_process
       @timers = Array.new
       @master_timers = Array.new
