@@ -28,6 +28,13 @@ module Sensu
         opts.on('-v', '--verbose', 'Enable verbose logging') do
           options[:log_level] = :debug
         end
+        opts.on('-L', '--log-level LEVEL', 'Set the log level explicitly') do |level|
+          unless [ "debug", "info", "warn", "error", "fatal" ].include?(level.to_s.downcase)
+            $stderr.puts "Unknown log level #{level}"
+            exit(1)
+          end
+          options[:log_level] = level.to_s.downcase.to_sym
+        end
         opts.on('-b', '--background', 'Fork into the background') do
           options[:daemonize] = true
         end
