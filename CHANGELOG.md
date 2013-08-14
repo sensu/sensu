@@ -17,6 +17,8 @@ prevent mutation.
 
 Extension runs are wrapped in a begin/rescue block, for a safety net.
 
+UDP handler now binds to "0.0.0.0".
+
 ## 0.10.2 - 2013-07-18
 
 ### Other
