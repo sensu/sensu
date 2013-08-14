@@ -53,26 +53,36 @@ module Sensu
       end
     end
 
+    def load_settings(settings={})
+      all_extensions.each do |extension|
+        extension.settings = settings
+      end
+    end
+
     def stop_all(&block)
+      extensions = all_extensions
+      stopper = Proc.new do |extension|
+        if extension.nil?
+          block.call
+        else
+          extension.stop do
+            stopper.call(extensions.pop)
+          end
+        end
+      end
+      stopper.call(extensions.pop)
+    end
+
+    private
+
+    def all_extensions
       all = @extensions.map do |category, extensions|
         extensions.map do |name, extension|
           extension
         end
       end
       all.flatten!
-      stopper = Proc.new do |extension|
-        if extension.nil?
-          block.call
-        else
-          extension.stop do
-            stopper.call(all.pop)
-          end
-        end
-      end
-      stopper.call(all.pop)
     end
-
-    private
 
     def loaded(type, name, description)
       @logger.info('loaded extension', {
@@ -85,6 +95,8 @@ module Sensu
 
   module Extension
     class Base
+      attr_accessor :settings
+
       def initialize
         EM::next_tick do
           post_init
@@ -106,6 +118,18 @@ module Sensu
         }
       end
 
+      def post_init
+        true
+      end
+
+      def run(data=nil, &block)
+        block.call('noop', 0)
+      end
+
+      def stop(&block)
+        block.call
+      end
+
       def [](key)
         definition[key.to_sym]
       end
@@ -114,16 +138,12 @@ module Sensu
         definition.has_key?(key.to_sym)
       end
 
-      def post_init
-        true
-      end
-
-      def run(event=nil, settings={}, &block)
-        block.call('noop', 0)
-      end
-
-      def stop(&block)
-        block.call
+      def safe_run(data=nil, &block)
+        begin
+          data ? run(data.dup, &block) : run(&block)
+        rescue => error
+          block.call(error.to_s, 2)
+        end
       end
 
       def self.descendants

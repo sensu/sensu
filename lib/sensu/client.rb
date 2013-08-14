@@ -21,6 +21,7 @@ module Sensu
       @settings = base.settings
       @extensions = base.extensions
       base.setup_process
+      @extensions.load_settings(@settings.to_hash)
       @timers = Array.new
       @checks_in_progress = Array.new
       @safe_mode = @settings[:client][:safe_mode] || false
@@ -143,7 +144,7 @@ module Sensu
       })
       check[:executed] = Time.now.to_i
       extension = @extensions[:checks][check[:name]]
-      extension.run do |output, status|
+      extension.safe_run do |output, status|
         check[:output] = output
         check[:status] = status
         publish_result(check)

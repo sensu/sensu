@@ -23,6 +23,7 @@ module Sensu
       @settings = base.settings
       @extensions = base.extensions
       base.setup_process
+      @extensions.load_settings(@settings.to_hash)
       @timers = Array.new
       @master_timers = Array.new
       @handlers_in_progress_count = 0
@@ -293,7 +294,7 @@ module Sensu
         end
       when @extensions.mutator_exists?(mutator_name)
         extension = @extensions[:mutators][mutator_name]
-        extension.run(event, @settings.to_hash) do |output, status|
+        extension.safe_run(event) do |output, status|
           if status == 0
             block.call(output)
           else
@@ -376,7 +377,7 @@ module Sensu
             end
             @handlers_in_progress_count -= 1
           when 'extension'
-            handler.run(event_data, @settings.to_hash) do |output, status|
+            handler.safe_run(event_data) do |output, status|
               output.split(/\n+/).each do |line|
                 @logger.info(line)
               end
