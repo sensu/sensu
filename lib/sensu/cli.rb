@@ -25,16 +25,16 @@ module Sensu
         opts.on('-l', '--log FILE', 'Log to a given FILE. Default: STDOUT') do |file|
           options[:log_file] = file
         end
+        opts.on('-L', '--log_level LEVEL', 'Log severity LEVEL') do |level|
+          log_level = level.to_s.downcase.to_sym
+          unless LOG_LEVELS.include?(log_level)
+            puts 'Unknown log level: ' + level.to_s
+            exit 1
+          end
+          options[:log_level] = log_level
+        end
         opts.on('-v', '--verbose', 'Enable verbose logging') do
           options[:log_level] = :debug
-        end
-        opts.on('-L', '--log-level LEVEL', 'Set the log level explicitly') do |level|
-          level_sym = level.to_s.downcase.to_sym
-          unless Sensu::LOG_LEVELS.include?(level_sym)
-            puts "Unknown log level #{level}"
-            exit(1)
-          end
-          options[:log_level] = level_sym
         end
         opts.on('-b', '--background', 'Fork into the background') do
           options[:daemonize] = true
