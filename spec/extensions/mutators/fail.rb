@@ -9,7 +9,7 @@ module Sensu
         'fails to do anything'
       end
 
-      def run(event, settings, &block)
+      def run(event, &block)
         block.call('fail', 2)
       end
     end
