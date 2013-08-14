@@ -215,13 +215,11 @@ module Sensu
           next
         end
         if handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
-          unless event[:action] == :resolve
-            @logger.debug('handler does not handle event severity', {
-              :event => event,
-              :handler => handler
-            })
-            next
-          end
+          @logger.debug('handler does not handle event severity', {
+            :event => event,
+            :handler => handler
+          })
+          next
         end
         if handler.has_key?(:filters) || handler.has_key?(:filter)
           filter_list = Array(handler[:filters] || handler[:filter])
