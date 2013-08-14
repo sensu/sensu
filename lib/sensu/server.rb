@@ -358,7 +358,7 @@ module Sensu
             end
           when 'udp'
             begin
-              EM::open_datagram_socket('127.0.0.1', 0, nil) do |socket|
+              EM::open_datagram_socket('0.0.0.0', 0, nil) do |socket|
                 socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
                 socket.close_connection_after_writing
                 @handlers_in_progress_count -= 1
