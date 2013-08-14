@@ -237,6 +237,22 @@ describe 'Sensu::Server' do
     @server.event_handlers(event).should eq(expected)
   end
 
+  it 'can handle an event with a nil status' do
+    event = event_template
+    event[:client][:environment] = 'production'
+    event[:check][:handlers] = ['severities']
+    event[:check][:status] = nil
+    expected = [
+      {
+        :name => 'severities',
+        :type => 'pipe',
+        :command => 'cat > /tmp/sensu_event',
+        :severities => [ 'critical', 'unknown' ]
+      }
+    ]
+    @server.event_handlers(event).should eq(expected)
+  end
+
   it 'can execute a command asynchronously' do
     timestamp = epoch.to_s
     file_name = File.join('/tmp', timestamp)
