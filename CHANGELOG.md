@@ -1,3 +1,22 @@
+## 0.11.0 - TBD
+
+### Non-backwards compatible changes
+
+Sensu settings are now part of the extension API & are no longer passed
+as an argument to run.
+
+### Features
+
+You can specify the Sensu log severity level using the -L (--log_level)
+CLI argument, providing a valid level (eg. warn).
+
+### Other
+
+Sensu passes a dup of event data to mutator & handler extensions to
+prevent mutation.
+
+Extension runs are wrapped in a begin/rescue block, for a safety net.
+
 ## 0.10.2 - 2013-07-18
 
 ### Other
