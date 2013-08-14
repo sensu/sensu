@@ -14,20 +14,20 @@ describe 'Sensu::Extensions' do
     @extensions[:mutators].should be_empty
     @extensions[:handlers].should be_kind_of(Hash)
     @extensions[:handlers].should be_empty
-    @extensions.load_all
+    @extensions.load_all(settings={})
     @extensions[:mutators]['only_check_output'].should be_an_instance_of(Sensu::Extension::OnlyCheckOutput)
     @extensions[:handlers]['debug'].should be_an_instance_of(Sensu::Extension::Debug)
   end
 
   it 'can load custom extensions and ignore those with syntax errors' do
     @extensions.require_directory(options[:extension_dir])
-    @extensions.load_all
+    @extensions.load_all(settings={})
     @extensions.mutator_exists?('opentsdb')
     @extensions[:mutators]['opentsdb'].should be_an_instance_of(Sensu::Extension::OpenTSDB)
   end
 
   it 'can stop all extensions for cleanup purposes' do
-    @extensions.load_all
+    @extensions.load_all(settings={})
     stopped_all = false
     @extensions.stop_all do
       stopped_all = true

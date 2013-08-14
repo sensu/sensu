@@ -53,12 +53,12 @@ module Sensu
       settings
     end
 
-    def extensions
+    def extensions(settings)
       extensions = Extensions.new
       if @options[:extension_dir]
         extensions.require_directory(@options[:extension_dir])
       end
-      extensions.load_all
+      extensions.load_all(settings)
       extensions
     end
 

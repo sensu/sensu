@@ -24,7 +24,7 @@ describe 'Sensu::Base' do
   end
 
   it 'can load extensions' do
-    extensions = @base.extensions
+    extensions = @base.extensions(@base.settings)
     extensions.should respond_to(:[])
     extensions[:mutators].should be_kind_of(Hash)
     extensions[:handlers].should be_kind_of(Hash)
