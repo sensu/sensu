@@ -1,7 +1,10 @@
 require File.dirname(__FILE__) + '/../lib/sensu/cli.rb'
 require File.dirname(__FILE__) + '/../lib/sensu/constants.rb'
+require File.dirname(__FILE__) + '/helpers.rb'
 
 describe 'Sensu::CLI' do
+  include Helpers
+
   it 'does not provide default configuration options' do
     Sensu::CLI.read.should eq(Hash.new)
   end
@@ -26,5 +29,22 @@ describe 'Sensu::CLI' do
       :daemonize => true
     }
     options.should eq(expected)
+  end
+
+  it 'can set the appropriate log level' do
+    options = Sensu::CLI.read([
+      '-v',
+      '-L', 'warn'
+    ])
+    expected = {
+      :log_level => :warn
+    }
+    options.should eq(expected)
+  end
+
+  it 'exits when an invalid log level is provided' do
+    with_stdout_redirect do
+      lambda { Sensu::CLI.read(['-L', 'invalid']) }.should raise_error SystemExit
+    end
   end
 end

@@ -1,4 +1,5 @@
 require 'rspec'
+require 'eventmachine'
 
 module Helpers
   def setup_options
