@@ -6,10 +6,10 @@ module Sensu
       end
 
       def description
-        'tests the settings hash passed to extension run()'
+        'tests the loaded settings hash'
       end
 
-      def run(event, settings, &block)
+      def run(event, &block)
         block.call(settings.has_key?(:handlers).to_s, 0)
       end
     end
