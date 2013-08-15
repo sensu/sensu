@@ -2,6 +2,9 @@
 
 ### Non-backwards compatible changes
 
+WARNING: Extensions and handlers compatible with previous versions of
+Sensu will NO LONGER FUNCTION until they are updated for Sensu 0.11.x!
+
 Sensu settings are now part of the extension API & are no longer passed
 as an argument to run.
 
