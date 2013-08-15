@@ -4,7 +4,7 @@
 
 WARNING: Extensions compatible with previous versions of Sensu will
 NO LONGER FUNCTION until they are updated for Sensu 0.11.x! Extensions
-are an experimental future and not in wide usage yet.
+are an experimental feature and not widely used.
 
 Sensu settings are now part of the extension API & are no longer passed
 as an argument to run.
@@ -19,7 +19,7 @@ CLI argument, providing a valid level (eg. warn).
 Sensu passes a dup of event data to mutator & handler extensions to
 prevent mutation.
 
-Extension runs are wrapped in a begin/rescue block, for a safety net.
+Extension runs are wrapped in a begin/rescue block, a safety net.
 
 UDP handler now binds to "0.0.0.0".
 
