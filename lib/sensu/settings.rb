@@ -90,7 +90,7 @@ module Sensu
             changes = deep_diff(@settings, merged)
             @logger.warn('config file applied changes', {
               :config_file => file,
-              :changes => redact_passwords(changes)
+              :changes => redact_sensitive(changes)
             })
           end
           @settings = merged
@@ -426,6 +426,16 @@ module Sensu
             unless thresholds[:critical].is_a?(Integer)
               invalid('client keepalive critical threshold must be an integer')
             end
+          end
+        end
+      end
+      if @settings[:client].has_key?(:redact)
+        unless @settings[:client][:redact].is_a?(Array)
+          invalid('client redact must be an array')
+        end
+        @settings[:client][:redact].each do |key|
+          unless key.is_a?(String) && !key.empty?
+            invalid('client redact keys must each be a string')
           end
         end
       end

@@ -49,7 +49,7 @@ module Sensu
 
     def publish_keepalive
       keepalive = @settings[:client].merge(:timestamp => Time.now.to_i)
-      payload = redact_passwords(keepalive)
+      payload = redact_sensitive(keepalive, @settings[:client][:redact])
       @logger.debug('publishing keepalive', {
         :payload => payload
       })
