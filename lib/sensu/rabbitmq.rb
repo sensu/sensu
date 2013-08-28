@@ -9,11 +9,11 @@ module AMQ
         def send_heartbeat
           if tcp_connection_established? && !reconnecting?
             if !@handling_skipped_hearbeats && @last_server_heartbeat
+              send_frame(Protocol::HeartbeatFrame)
               if @last_server_heartbeat < (Time.now - (self.heartbeat_interval * 2))
-                logger.error('detected missing server heartbeats')
+                logger.error('detected missing amqp heartbeats')
                 self.handle_skipped_hearbeats
               end
-              send_frame(Protocol::HeartbeatFrame)
             end
           end
         end
@@ -56,12 +56,14 @@ module Sensu
         :on_possible_authentication_failure => on_failure
       })
       @connection.logger = Logger.get
-      @connection.on_tcp_connection_loss do |connection, settings|
-        unless connection.reconnecting?
+      reconnect = Proc.new do
+        unless @connection.reconnecting?
           @before_reconnect.call
-          connection.periodically_reconnect(5)
+          @connection.periodically_reconnect(5)
         end
       end
+      @connection.on_tcp_connection_loss(&reconnect)
+      @connection.on_skipped_heartbeats(&reconnect)
       @channel = AMQP::Channel.new(@connection)
       @channel.auto_recovery = true
       @channel.on_error do |channel, channel_close|
