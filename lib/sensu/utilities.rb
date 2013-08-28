@@ -58,13 +58,19 @@ module Sensu
       end
     end
 
-    def redact_passwords(hash)
+    def redact_sensitive(hash, keys=nil)
+      keys ||= %w[
+        password passwd pass
+        api_key api_token
+        access_key secret_key private_key
+        secret
+      ]
       hash = hash.dup
       hash.each do |key, value|
-        if %w[password passwd pass].include?(key.to_s)
+        if keys.include?(key.to_s)
           hash[key] = "REDACTED"
         elsif value.is_a?(Hash)
-          hash[key] = redact_passwords(value)
+          hash[key] = redact_sensitive(value, keys)
         end
       end
       hash
