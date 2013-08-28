@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
   s.has_rdoc    = false
 
-  s.add_dependency('oj', '2.0.9')
+  s.add_dependency('oj', '2.1.4')
   s.add_dependency('eventmachine', '1.0.3')
   s.add_dependency('amqp', '0.9.10')
   s.add_dependency('em-redis-unified', '0.4.1')
