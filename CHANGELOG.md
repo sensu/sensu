@@ -14,6 +14,10 @@ as an argument to run.
 You can specify the Sensu log severity level using the -L (--log_level)
 CLI argument, providing a valid level (eg. warn).
 
+You can specify custom sensitive Sensu client key/values to be redacted
+from log events and keepalives, eg. "client": { "redact":
+["secret_access_key"] }.
+
 ### Other
 
 Sensu passes a dup of event data to mutator & handler extensions to
@@ -22,6 +26,10 @@ prevent mutation.
 Extension runs are wrapped in a begin/rescue block, a safety net.
 
 UDP handler now binds to "0.0.0.0".
+
+Faster JSON parser.
+
+Missing AMQP connection heartbeats will result in a reconnect.
 
 ## 0.10.2 - 2013-07-18
 
