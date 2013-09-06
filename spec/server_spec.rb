@@ -47,109 +47,79 @@ describe 'Sensu::Server' do
 
   it 'can determine if an action is subdued' do
     @server.action_subdued?(Hash.new).should be_false
+    condition = {
+      :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
+      :end => (Time.now + 3600).strftime('%l:00 %p').strip
+    }
+    @server.action_subdued?(condition).should be_true
+    condition = {
+      :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
+      :end => (Time.now + 7200).strftime('%l:00 %p').strip
+    }
+    @server.action_subdued?(condition).should be_false
+    condition = {
+      :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
+      :end => (Time.now - 7200).strftime('%l:00 %p').strip
+    }
+    @server.action_subdued?(condition).should be_true
+    condition = {
+      :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
+      :end => (Time.now - 7200).strftime('%l:00 %p').strip
+    }
+    @server.action_subdued?(condition).should be_false
+    condition = {
+      :days => [
+        Time.now.strftime('%A'),
+        'wednesday'
+      ]
+    }
+    @server.action_subdued?(condition).should be_true
+    condition = {
+      :days => [
+        (Time.now + 86400).strftime('%A'),
+        (Time.now + 172800).strftime('%A')
+      ]
+    }
+    @server.action_subdued?(condition).should be_false
+    condition = {
+      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
+      :exceptions => [
+        {
+          :begin => (Time.now + 3600).rfc2822,
+          :end => (Time.now + 7200)
+        }
+      ]
+    }
+    @server.action_subdued?(condition).should be_true
+    condition = {
+      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
+      :exceptions => [
+        {
+          :begin => (Time.now - 3600).rfc2822,
+          :end => (Time.now + 3600).rfc2822
+        }
+      ]
+    }
+    @server.action_subdued?(condition).should be_false
     check = {
       :subdue => {
         :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
         :end => (Time.now + 3600).strftime('%l:00 %p').strip
       }
     }
-    @server.action_subdued?(check).should be_false
+    @server.check_request_subdued?(check).should be_false
     handler = Hash.new
-    @server.action_subdued?(check, handler).should be_true
+    @server.handler_subdued?(handler, check).should be_true
     check[:subdue][:at] = 'publisher'
-    @server.action_subdued?(check).should be_true
-    check = {
-      :subdue => {
-        :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
-        :end => (Time.now + 7200).strftime('%l:00 %p').strip
-      }
-    }
-    @server.action_subdued?(check, handler).should be_false
-    check = {
-      :subdue => {
-        :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
-        :end => (Time.now - 7200).strftime('%l:00 %p').strip
-      }
-    }
-    @server.action_subdued?(check, handler).should be_true
-    check = {
-      :subdue => {
-        :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
-        :end => (Time.now - 7200).strftime('%l:00 %p').strip
-      }
-    }
-    @server.action_subdued?(check, handler).should be_false
-    check = {
-      :subdue => {
-        :days => [
-          Time.now.strftime('%A'),
-          'wednesday'
-        ]
-      }
-    }
-    @server.action_subdued?(check, handler).should be_true
-    check = {
-      :subdue => {
-        :days => [
-          (Time.now + 86400).strftime('%A'),
-          (Time.now + 172800).strftime('%A')
-        ]
-      }
-    }
-    @server.action_subdued?(check, handler).should be_false
-    check = {
-      :subdue => {
-        :days => %w[sunday monday tuesday wednesday thursday friday saturday],
-        :exceptions => [
-          {
-            :begin => (Time.now + 3600).rfc2822,
-            :end => (Time.now + 7200)
-          }
-        ]
-      }
-    }
-    @server.action_subdued?(check, handler).should be_true
-    check = {
-      :subdue => {
-        :days => %w[sunday monday tuesday wednesday thursday friday saturday],
-        :exceptions => [
-          {
-            :begin => (Time.now - 3600).rfc2822,
-            :end => (Time.now + 3600).rfc2822
-          }
-        ]
-      }
-    }
-    @server.action_subdued?(check, handler).should be_false
-    check = Hash.new
+    @server.check_request_subdued?(check).should be_true
+    @server.handler_subdued?(handler, check).should be_false
     handler = {
       :subdue => {
         :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
         :end => (Time.now + 3600).strftime('%l:00 %p').strip
       }
     }
-    @server.action_subdued?(check, handler).should be_true
-    check = {
-      :subdue => {
-        :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
-        :end => (Time.now + 3600).strftime('%l:00 %p').strip
-      }
-    }
-    @server.action_subdued?(check, handler).should be_true
-    check = {
-      :subdue => {
-        :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
-        :end => (Time.now + 7200).strftime('%l:00 %p').strip
-      }
-    }
-    @server.action_subdued?(check, handler).should be_true
-    handler = {
-      :subdue => {
-        :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
-        :end => (Time.now + 7200).strftime('%l:00 %p').strip
-      }
-    }
-    @server.action_subdued?(check, handler).should be_false
+    @server.handler_subdued?(handler, check).should be_true
   end
 
   it 'can determine if filter attributes match an event' do
