@@ -135,16 +135,14 @@ module Sensu
     end
 
     def handler_subdued?(handler, check)
-      conditions = Array.new
+      subdued = Array.new
       if handler[:subdue]
-        conditions << handler[:subdue]
+        subdued << action_subdued?(handler[:subdue])
       end
       if check[:subdue] && check[:subdue][:at] != 'publisher'
-        conditions << check[:subdue]
+        subdued << action_subdued?(check[:subdue])
       end
-      conditions.any? do |condition|
-        action_subdued?(condition)
-      end
+      subdued.any?
     end
 
     def filter_attributes_match?(hash_one, hash_two)
