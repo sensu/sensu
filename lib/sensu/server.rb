@@ -126,7 +126,7 @@ module Sensu
       subdued
     end
 
-    def publisher_subdued?(check)
+    def check_request_subdued?(check)
       if check[:subdue] && check[:subdue][:at] == 'publisher'
         action_subdued?(check[:subdue])
       else
@@ -552,7 +552,7 @@ module Sensu
         @master_timers << EM::Timer.new(scheduling_delay) do
           interval = testing? ? 0.5 : check[:interval]
           @master_timers << EM::PeriodicTimer.new(interval) do
-            unless publisher_subdued?(check)
+            unless check_request_subdued?(check)
               publish_check_request(check)
             else
               @logger.info('check request was subdued', {

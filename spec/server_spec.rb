@@ -107,11 +107,11 @@ describe 'Sensu::Server' do
         :end => (Time.now + 3600).strftime('%l:00 %p').strip
       }
     }
-    @server.publisher_subdued?(check).should be_false
+    @server.check_request_subdued?(check).should be_false
     handler = Hash.new
     @server.handler_subdued?(handler, check).should be_true
     check[:subdue][:at] = 'publisher'
-    @server.publisher_subdued?(check).should be_true
+    @server.check_request_subdued?(check).should be_true
     @server.handler_subdued?(handler, check).should be_false
     handler = {
       :subdue => {
