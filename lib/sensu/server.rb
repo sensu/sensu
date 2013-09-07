@@ -126,14 +126,6 @@ module Sensu
       subdued
     end
 
-    def check_request_subdued?(check)
-      if check[:subdue] && check[:subdue][:at] == 'publisher'
-        action_subdued?(check[:subdue])
-      else
-        false
-      end
-    end
-
     def handler_subdued?(handler, check)
       subdued = Array.new
       if handler[:subdue]
@@ -521,6 +513,14 @@ module Sensu
         EM::next_tick do
           header.ack
         end
+      end
+    end
+
+    def check_request_subdued?(check)
+      if check[:subdue] && check[:subdue][:at] == 'publisher'
+        action_subdued?(check[:subdue])
+      else
+        false
       end
     end
 
