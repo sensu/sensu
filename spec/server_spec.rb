@@ -26,18 +26,19 @@ describe 'Sensu::Server' do
     async_wrapper do
       @server.setup_redis
       @server.setup_rabbitmq
-      @server.setup_keepalives
-      keepalive = client_template
-      keepalive[:timestamp] = epoch
-      redis.flushdb do
-        amq.direct('keepalives').publish(Oj.dump(keepalive))
-        timer(1) do
-          redis.sismember('clients', 'i-424242') do |exists|
-            exists.should be_true
-            redis.get('client:i-424242') do |client_json|
-              client = Oj.load(client_json)
-              client.should eq(keepalive)
-              async_done
+      @server.setup_keepalives do
+        keepalive = client_template
+        keepalive[:timestamp] = epoch
+        redis.flushdb do
+          amq.direct('keepalives').publish(Oj.dump(keepalive))
+          timer(1) do
+            redis.sismember('clients', 'i-424242') do |exists|
+              exists.should be_true
+              redis.get('client:i-424242') do |client_json|
+                client = Oj.load(client_json)
+                client.should eq(keepalive)
+                async_done
+              end
             end
           end
         end
@@ -385,18 +386,19 @@ describe 'Sensu::Server' do
     async_wrapper do
       @server.setup_rabbitmq
       @server.setup_redis
-      @server.setup_results
-      redis.flushdb do
-        client = client_template
-        redis.set('client:i-424242', Oj.dump(client)) do
-          result = result_template
-          amq.direct('results').publish(Oj.dump(result))
-          timer(1) do
-            redis.hget('events:i-424242', 'foobar') do |event_json|
-              event = Oj.load(event_json)
-              event[:status].should eq(1)
-              event[:occurrences].should eq(1)
-              async_done
+      @server.setup_results do
+        redis.flushdb do
+          client = client_template
+          redis.set('client:i-424242', Oj.dump(client)) do
+            result = result_template
+            amq.direct('results').publish(Oj.dump(result))
+            timer(1) do
+              redis.hget('events:i-424242', 'foobar') do |event_json|
+                event = Oj.load(event_json)
+                event[:status].should eq(1)
+                event[:occurrences].should eq(1)
+                async_done
+              end
             end
           end
         end
@@ -569,16 +571,6 @@ describe 'Sensu::Server' do
             [server1.is_master, server2.is_master].uniq.size.should eq(2)
             async_done
           end
-        end
-      end
-    end
-  end
-
-  after(:all) do
-    async_wrapper do
-      amq.queue('results').purge do
-        amq.queue('keepalives').purge do
-          async_done
         end
       end
     end

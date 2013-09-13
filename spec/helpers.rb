@@ -35,16 +35,18 @@ module Helpers
   end
 
   def keepalive_queue(&block)
-    queue = amq.queue('keepalives')
-    queue.bind(amq.direct('keepalives')) do
-      block.call(queue)
+    amq.queue('keepalives', :auto_delete => true) do |queue|
+      queue.bind(amq.direct('keepalives')) do
+        block.call(queue)
+      end
     end
   end
 
   def result_queue(&block)
-    queue = amq.queue('results')
-    queue.bind(amq.direct('results')) do
-      block.call(queue)
+    amq.queue('results', :auto_delete => true) do |queue|
+      queue.bind(amq.direct('results')) do
+        block.call(queue)
+      end
     end
   end
 
