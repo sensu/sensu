@@ -188,6 +188,33 @@ module Sensu
         body ''
       end
 
+      def rabbitmq_info(&block)
+        info = {
+          :keepalives => {
+            :messages => nil,
+            :consumers => nil
+          },
+          :results => {
+            :messages => nil,
+            :consumers => nil
+          },
+          :connected => $rabbitmq.connected?
+        }
+        if $rabbitmq.connected?
+          $amq.queue('keepalives', :auto_delete => true).status do |messages, consumers|
+            info[:keepalives][:messages] = messages
+            info[:keepalives][:consumers] = consumers
+            $amq.queue('results', :auto_delete => true).status do |messages, consumers|
+              info[:results][:messages] = messages
+              info[:results][:consumers] = consumers
+              block.call(info)
+            end
+          end
+        else
+          block.call(info)
+        end
+      end
+
       def event_hash(event_json, client_name, check_name)
         Oj.load(event_json).merge(
           :client => client_name,
@@ -220,36 +247,16 @@ module Sensu
     end
 
     aget '/info' do
-      response = {
-        :sensu => {
-          :version => VERSION
-        },
-        :rabbitmq => {
-          :keepalives => {
-            :messages => nil,
-            :consumers => nil
+      rabbitmq_info do |info|
+        response = {
+          :sensu => {
+            :version => VERSION
           },
-          :results => {
-            :messages => nil,
-            :consumers => nil
-          },
-          :connected => $rabbitmq.connected?
-        },
-        :redis => {
-          :connected => $redis.connected?
+          :rabbitmq => info,
+          :redis => {
+            :connected => $redis.connected?
+          }
         }
-      }
-      if $rabbitmq.connected?
-        $amq.queue('keepalives', :auto_delete => true).status do |messages, consumers|
-          response[:rabbitmq][:keepalives][:messages] = messages
-          response[:rabbitmq][:keepalives][:consumers] = consumers
-          $amq.queue('results', :auto_delete => true).status do |messages, consumers|
-            response[:rabbitmq][:results][:messages] = messages
-            response[:rabbitmq][:results][:consumers] = consumers
-            body Oj.dump(response)
-          end
-        end
-      else
         body Oj.dump(response)
       end
     end
@@ -259,22 +266,16 @@ module Sensu
         healthy = Array.new
         min_consumers = integer_parameter(params[:consumers])
         max_messages = integer_parameter(params[:messages])
-        $amq.queue('keepalives', :auto_delete => true).status do |messages, consumers|
+        rabbitmq_info do |info|
           if min_consumers
-            healthy << (consumers >= min_consumers)
+            healthy << (info[:keepalives][:consumers] >= min_consumers)
+            healthy << (info[:results][:consumers] >= min_consumers)
           end
           if max_messages
-            healthy << (messages <= max_messages)
+            healthy << (info[:keepalives][:messages] <= max_messages)
+            healthy << (info[:results][:messages] <= max_messages)
           end
-          $amq.queue('results', :auto_delete => true).status do |messages, consumers|
-            if min_consumers
-              healthy << (consumers >= min_consumers)
-            end
-            if max_messages
-              healthy << (messages <= max_messages)
-            end
-            healthy.all? ? no_content! : unavailable!
-          end
+          healthy.all? ? no_content! : unavailable!
         end
       else
         unavailable!
