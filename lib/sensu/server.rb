@@ -79,10 +79,12 @@ module Sensu
       @amq.prefetch(1)
     end
 
-    def setup_keepalives
+    def setup_keepalives(&block)
       @logger.debug('subscribing to keepalives')
       @keepalive_queue = @amq.queue!('keepalives', :auto_delete => true)
-      @keepalive_queue.bind(@amq.direct('keepalives'))
+      @keepalive_queue.bind(@amq.direct('keepalives')) do
+        block.call if block
+      end
       @keepalive_queue.subscribe(:ack => true) do |header, payload|
         client = Oj.load(payload)
         @logger.debug('received keepalive', {
@@ -500,10 +502,12 @@ module Sensu
       end
     end
 
-    def setup_results
+    def setup_results(&block)
       @logger.debug('subscribing to results')
       @result_queue = @amq.queue!('results', :auto_delete => true)
-      @result_queue.bind(@amq.direct('results'))
+      @result_queue.bind(@amq.direct('results')) do
+        block.call if block
+      end
       @result_queue.subscribe(:ack => true) do |header, payload|
         result = Oj.load(payload)
         @logger.debug('received result', {

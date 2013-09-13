@@ -670,12 +670,4 @@ describe 'Sensu::API' do
       end
     end
   end
-
-  after(:all) do
-    async_wrapper do
-      amq.queue('results').purge do
-        async_done
-      end
-    end
-  end
 end

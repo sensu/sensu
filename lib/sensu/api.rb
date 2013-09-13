@@ -240,10 +240,10 @@ module Sensu
         }
       }
       if $rabbitmq.connected?
-        $amq.queue('keepalives').status do |messages, consumers|
+        $amq.queue('keepalives', :auto_delete => true).status do |messages, consumers|
           response[:rabbitmq][:keepalives][:messages] = messages
           response[:rabbitmq][:keepalives][:consumers] = consumers
-          $amq.queue('results').status do |messages, consumers|
+          $amq.queue('results', :auto_delete => true).status do |messages, consumers|
             response[:rabbitmq][:results][:messages] = messages
             response[:rabbitmq][:results][:consumers] = consumers
             body Oj.dump(response)
@@ -259,14 +259,14 @@ module Sensu
         healthy = Array.new
         min_consumers = integer_parameter(params[:consumers])
         max_messages = integer_parameter(params[:messages])
-        $amq.queue('keepalives').status do |messages, consumers|
+        $amq.queue('keepalives', :auto_delete => true).status do |messages, consumers|
           if min_consumers
             healthy << (consumers >= min_consumers)
           end
           if max_messages
             healthy << (messages <= max_messages)
           end
-          $amq.queue('results').status do |messages, consumers|
+          $amq.queue('results', :auto_delete => true).status do |messages, consumers|
             if min_consumers
               healthy << (consumers >= min_consumers)
             end
