@@ -81,7 +81,7 @@ module Sensu
 
     def setup_keepalives
       @logger.debug('subscribing to keepalives')
-      @keepalive_queue = @amq.queue!('keepalives')
+      @keepalive_queue = @amq.queue!('keepalives', :auto_delete => true)
       @keepalive_queue.bind(@amq.direct('keepalives'))
       @keepalive_queue.subscribe(:ack => true) do |header, payload|
         client = Oj.load(payload)
@@ -502,7 +502,7 @@ module Sensu
 
     def setup_results
       @logger.debug('subscribing to results')
-      @result_queue = @amq.queue!('results')
+      @result_queue = @amq.queue!('results', :auto_delete => true)
       @result_queue.bind(@amq.direct('results'))
       @result_queue.subscribe(:ack => true) do |header, payload|
         result = Oj.load(payload)
