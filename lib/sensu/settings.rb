@@ -394,6 +394,21 @@ module Sensu
           invalid('client subscriptions must each be a string')
         end
       end
+      if @settings[:client].has_key?(:socket)
+        unless @settings[:client][:socket].is_a?(Hash)
+          invalid('client socket must be a hash')
+        end
+        if @settings[:client][:socket].has_key?(:bind)
+          unless @settings[:client][:socket][:bind].is_a?(String)
+            invalid('client socket bind must be a string')
+          end
+        end
+        if @settings[:client][:socket].has_key?(:port)
+          unless @settings[:client][:socket][:port].is_a?(Integer)
+            invalid('client socket port must be an integer')
+          end
+        end
+      end
       if @settings[:client].has_key?(:keepalive)
         unless @settings[:client][:keepalive].is_a?(Hash)
           invalid('client keepalive must be a hash')
