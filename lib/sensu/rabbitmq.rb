@@ -51,17 +51,22 @@ module Sensu
         error = RabbitMQError.new('cannot connect to rabbitmq')
         @on_error.call(error)
       end
-      @connection = AMQP.connect(options, {
-        :on_tcp_connection_failure => on_failure,
-        :on_possible_authentication_failure => on_failure
-      })
-      @connection.logger = Logger.get
       reconnect = Proc.new do
         unless @connection.reconnecting?
           @before_reconnect.call
           @connection.periodically_reconnect(5)
         end
       end
+      if options.is_a?(Hash)
+        if options[:on_failure] == 'reconnect'
+          on_failure = reconnect
+        end
+      end
+      @connection = AMQP.connect(options, {
+        :on_tcp_connection_failure => on_failure,
+        :on_possible_authentication_failure => on_failure
+      })
+      @connection.logger = Logger.get
       @connection.on_tcp_connection_loss(&reconnect)
       @connection.on_skipped_heartbeats(&reconnect)
       @channel = AMQP::Channel.new(@connection)
