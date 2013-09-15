@@ -229,14 +229,18 @@ module Sensu
     end
 
     def setup_sockets
-      @logger.debug('binding client tcp socket')
-      EM::start_server('127.0.0.1', 3030, Socket) do |socket|
+      options = @settings[:client][:socket] || Hash.new
+      options[:bind] ||= '127.0.0.1'
+      options[:port] ||= 3030
+      @logger.debug('binding client tcp and udp sockets', {
+        :options => options
+      })
+      EM::start_server(options[:bind], options[:port], Socket) do |socket|
         socket.logger = @logger
         socket.settings = @settings
         socket.amq = @amq
       end
-      @logger.debug('binding client udp socket')
-      EM::open_datagram_socket('127.0.0.1', 3030, Socket) do |socket|
+      EM::open_datagram_socket(options[:bind], options[:port], Socket) do |socket|
         socket.logger = @logger
         socket.settings = @settings
         socket.amq = @amq
