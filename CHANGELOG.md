@@ -15,8 +15,14 @@ You can specify the Sensu log severity level using the -L (--log_level)
 CLI argument, providing a valid level (eg. warn).
 
 You can specify custom sensitive Sensu client key/values to be redacted
-from log events and keepalives, eg. "client": { "redact":
-["secret_access_key"] }.
+from log events and keepalives, eg. "client": { "redact": [
+"secret_access_key" ] }.
+
+You can configure the Sensu client socket (UDP & TCP), bind & port, eg.
+"client": { "socket": { "bind": "0.0.0.0", "port": 4040 } }.
+
+You can choose to reconnect to RabbitMQ on initial TCP connection
+failure, eg. "rabbitmq": { "on_failure": "reconnect" }.
 
 ### Other
 
@@ -29,7 +35,14 @@ UDP handler now binds to "0.0.0.0".
 
 Faster JSON parser.
 
+AMQP connection heartbeats will no longer attempt to use a closed
+channel.
+
 Missing AMQP connection heartbeats will result in a reconnect.
+
+The keepalive & result queues will now auto-delete when there are no
+active consumers. This change stops the creation of a keepalive/result
+backlog, stale data that may overwhelm the recovering consumers.
 
 ## 0.10.2 - 2013-07-18
 
