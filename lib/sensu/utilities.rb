@@ -67,7 +67,7 @@ module Sensu
       ]
       hash = hash.dup
       hash.each do |key, value|
-        if keys.include?(key.to_s)
+        if keys.select{|k| key.to_s =~ /#{k}$/}.any?
           hash[key] = "REDACTED"
         elsif value.is_a?(Hash)
           hash[key] = redact_sensitive(value, keys)
