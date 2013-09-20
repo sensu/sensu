@@ -237,55 +237,23 @@ module Sensu
       end
     end
 
-    def execute_command(command, data=nil, on_error=nil, &block)
-      on_error ||= Proc.new do |error|
-        @logger.error('failed to execute command', {
-          :command => command,
-          :data => data,
-          :error => error.to_s
-        })
-      end
-      execute = Proc.new do
-        begin
-          output, status = IO.popen(command, 'r+') do |child|
-            unless data.nil?
-              child.write(data.to_s)
-            end
-            child.close_write
-          end
-          [true, output, status]
-        rescue => error
-          on_error.call(error)
-          [false, nil, nil]
-        end
-      end
-      complete = Proc.new do |success, output, status|
-        if success
-          block.call(output, status)
-        end
-      end
-      EM::defer(execute, complete)
-    end
-
     def mutate_event_data(mutator_name, event, &block)
       case
       when mutator_name.nil?
         block.call(Oj.dump(event))
       when @settings.mutator_exists?(mutator_name)
         mutator = @settings[:mutators][mutator_name]
-        on_error = Proc.new do |error|
-          @logger.error('mutator error', {
-            :event => event,
-            :mutator => mutator,
-            :error => error.to_s
-          })
-          @handlers_in_progress_count -= 1
-        end
-        execute_command(mutator[:command], Oj.dump(event), on_error) do |output, status|
+        IO.async_popen(mutator[:command], Oj.dump(event), mutator[:timeout]) do |output, status|
           if status == 0
             block.call(output)
           else
-            on_error.call('non-zero exit status (' + status.to_s + '): ' + output)
+            @logger.error('mutator error', {
+              :event => event,
+              :mutator => mutator,
+              :output => output,
+              :status => status
+            })
+            @handlers_in_progress_count -= 1
           end
         end
       when @extensions.mutator_exists?(mutator_name)
@@ -294,10 +262,11 @@ module Sensu
           if status == 0
             block.call(output)
           else
-            @logger.error('mutator error', {
+            @logger.error('mutator extension error', {
               :event => event,
               :extension => extension.definition,
-              :error => 'non-zero exit status (' + status.to_s + '): ' + output
+              :output => output,
+              :status => status
             })
             @handlers_in_progress_count -= 1
           end
@@ -330,7 +299,7 @@ module Sensu
         mutate_event_data(handler[:mutator], event) do |event_data|
           case handler[:type]
           when 'pipe'
-            execute_command(handler[:command], event_data, on_error) do |output, status|
+            IO.async_popen(handler[:command], event_data, handler[:timeout]) do |output, status|
               output.split(/\n+/).each do |line|
                 @logger.info(line)
               end
@@ -343,7 +312,7 @@ module Sensu
                   @handlers_in_progress_count -= 1
                 end
                 socket.on_error = on_error
-                timeout = handler[:socket][:timeout] || 10
+                timeout = handler[:timeout] || 10
                 socket.pending_connect_timeout = timeout
                 socket.comm_inactivity_timeout = timeout
                 socket.send_data(event_data.to_s)

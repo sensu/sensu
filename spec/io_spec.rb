@@ -1,6 +1,9 @@
 require File.dirname(__FILE__) + '/../lib/sensu/io.rb'
+require File.dirname(__FILE__) + '/helpers.rb'
 
 describe 'Sensu::IO' do
+  include Helpers
+
   it 'can execute a command' do
     output, status = Sensu::IO.popen('echo test')
     output.should eq("test\n")
@@ -41,6 +44,20 @@ describe 'Sensu::IO' do
     status.should eq(0)
     File.exists?(file_name).should be_true
     File.open(file_name, 'r').read.should eq(content)
+    File.delete(file_name)
+  end
+
+  it 'can execute a command asynchronously and write to stdin' do
+    timestamp = epoch.to_s
+    file_name = File.join('/tmp', timestamp)
+    async_wrapper do
+      Sensu::IO.async_popen('cat > ' + file_name, timestamp) do |output, status|
+        status.should eq(0)
+        async_done
+      end
+    end
+    File.exists?(file_name).should be_true
+    File.open(file_name, 'r').read.should eq(timestamp)
     File.delete(file_name)
   end
 end
