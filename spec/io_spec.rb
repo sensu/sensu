@@ -47,6 +47,16 @@ describe 'Sensu::IO' do
     File.delete(file_name)
   end
 
+  it 'can execute a command asynchronously' do
+    async_wrapper do
+      Sensu::IO.async_popen('echo fail && exit 2') do |output, status|
+        output.should eq("fail\n")
+        status.should eq(2)
+        async_done
+      end
+    end
+  end
+
   it 'can execute a command asynchronously and write to stdin' do
     timestamp = epoch.to_s
     file_name = File.join('/tmp', timestamp)

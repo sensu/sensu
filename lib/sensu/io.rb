@@ -47,13 +47,12 @@ module Sensu
       def async_popen(command, data=nil, timeout=nil, &block)
         execute = Proc.new do
           begin
-            output, status = IO.popen(command, 'r+', timeout) do |child|
+            IO.popen(command, 'r+', timeout) do |child|
               unless data.nil?
                 child.write(data.to_s)
               end
               child.close_write
             end
-            [output, status]
           rescue => error
             [error.to_s, 2]
           end
