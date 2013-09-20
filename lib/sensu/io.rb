@@ -47,7 +47,7 @@ module Sensu
       def async_popen(command, data=nil, timeout=nil, &block)
         execute = Proc.new do
           begin
-            IO.popen(command, 'r+', timeout) do |child|
+            popen(command, 'r+', timeout) do |child|
               unless data.nil?
                 child.write(data.to_s)
               end
