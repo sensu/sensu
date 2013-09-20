@@ -208,22 +208,6 @@ describe 'Sensu::Server' do
     @server.event_handlers(event).should eq(expected)
   end
 
-  it 'can execute a command asynchronously' do
-    timestamp = epoch.to_s
-    file_name = File.join('/tmp', timestamp)
-    on_error = Proc.new do
-      raise 'failed to execute command'
-    end
-    async_wrapper do
-      @server.execute_command('cat > ' + file_name, timestamp, on_error) do
-        async_done
-      end
-    end
-    File.exists?(file_name).should be_true
-    File.open(file_name, 'r').read.should eq(timestamp)
-    File.delete(file_name)
-  end
-
   it 'can mutate event data' do
     async_wrapper do
       event = event_template
