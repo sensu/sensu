@@ -9,6 +9,9 @@ are an experimental feature and not widely used.
 Sensu settings are now part of the extension API & are no longer passed
 as an argument to run.
 
+TCP handlers no longer have a socket timeout, instead they have a
+handler timeout for consistency.
+
 ### Features
 
 You can specify the Sensu log severity level using the -L (--log_level)
@@ -23,6 +26,8 @@ You can configure the Sensu client socket (UDP & TCP), bind & port, eg.
 
 You can choose to reconnect to RabbitMQ on initial TCP connection
 failure, eg. "rabbitmq": { "on_failure": "reconnect" }.
+
+Handlers & mutators can now have a timeout, in seconds.
 
 ### Other
 

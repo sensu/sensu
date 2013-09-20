@@ -272,6 +272,11 @@ module Sensu
       unless mutator[:command].is_a?(String)
         invalid_mutator(mutator, 'mutator is missing command')
       end
+      if mutator.has_key?(:timeout)
+        unless mutator[:timeout].is_a?(Numeric)
+          invalid_mutator(mutator, 'mutator timeout must be numeric')
+        end
+      end
     end
 
     def validate_filter(filter)
@@ -304,11 +309,6 @@ module Sensu
         unless handler[:socket][:port].is_a?(Integer)
           invalid_handler(handler, 'handler is missing socket port')
         end
-        if handler[:socket].has_key?(:timeout)
-          unless handler[:socket][:timeout].is_a?(Integer)
-            invalid_handler(handler, 'handler socket timeout must be an integer')
-          end
-        end
       when 'amqp'
         unless handler[:exchange].is_a?(Hash)
           invalid_handler(handler, 'handler is missing exchange hash')
@@ -335,6 +335,11 @@ module Sensu
         end
       else
         invalid_handler(handler, 'unknown handler type')
+      end
+      if handler.has_key?(:timeout)
+        unless handler[:timeout].is_a?(Numeric)
+          invalid_handler(handler, 'handler timeout must be numeric')
+        end
       end
       if handler.has_key?(:filter)
         unless handler[:filter].is_a?(String)

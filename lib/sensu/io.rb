@@ -44,6 +44,25 @@ module Sensu
         end
       end
 
+      def async_popen(command, data=nil, timeout=nil, &block)
+        execute = Proc.new do
+          begin
+            popen(command, 'r+', timeout) do |child|
+              unless data.nil?
+                child.write(data.to_s)
+              end
+              child.close_write
+            end
+          rescue => error
+            [error.to_s, 2]
+          end
+        end
+        complete = Proc.new do |output, status|
+          block.call(output, status) if block
+        end
+        EM::defer(execute, complete)
+      end
+
       private
 
       def kill_process_group(group_id)
