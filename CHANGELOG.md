@@ -49,6 +49,8 @@ The keepalive & result queues will now auto-delete when there are no
 active consumers. This change stops the creation of a keepalive/result
 backlog, stale data that may overwhelm the recovering consumers.
 
+Improved Sensu client socket check validation.
+
 ## 0.10.2 - 2013-07-18
 
 ### Other

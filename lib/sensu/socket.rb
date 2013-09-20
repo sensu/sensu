@@ -21,12 +21,14 @@ module Sensu
         })
         begin
           check = Oj.load(data)
-          validates = [:name, :output].all? do |key|
-            check[key].is_a?(String)
-          end
           check[:issued] = Time.now.to_i
           check[:status] ||= 0
-          if validates && check[:status].is_a?(Integer)
+          validates = [
+            check[:name] =~ /^[\w\.-]+$/,
+            check[:output].is_a?(String),
+            check[:status].is_a?(Integer)
+          ].all?
+          if validates
             payload = {
               :client => @settings[:client][:name],
               :check => check
