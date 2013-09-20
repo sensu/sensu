@@ -300,8 +300,11 @@ module Sensu
           case handler[:type]
           when 'pipe'
             IO.async_popen(handler[:command], event_data, handler[:timeout]) do |output, status|
-              output.split(/\n+/).each do |line|
-                @logger.info(line)
+              output.each_line do |line|
+                @logger.info('handler output', {
+                  :handler => handler,
+                  :output => line
+                })
               end
               @handlers_in_progress_count -= 1
             end
@@ -343,8 +346,11 @@ module Sensu
             @handlers_in_progress_count -= 1
           when 'extension'
             handler.safe_run(event_data) do |output, status|
-              output.split(/\n+/).each do |line|
-                @logger.info(line)
+              output.each_line do |line|
+                @logger.info('handler extension output', {
+                  :extension => handler.definition,
+                  :output => line
+                })
               end
               @handlers_in_progress_count -= 1
             end
