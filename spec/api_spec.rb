@@ -446,7 +446,7 @@ describe 'Sensu::API' do
       }
       api_request('/stashes', :post, options) do |http, body|
         http.response_header.status.should eq(201)
-        body.is_a?(Array).should eq(true)
+        body.should be_kind_of(Array)
         body.each do |b| 
           b.should include(:path)
           testers.should include(b[:path])
