@@ -438,7 +438,7 @@ describe 'Sensu::API' do
           }
         },
         {
-          :path => tester[1],
+          :path => testers[1],
           :content => {
             :key => 'value'
           }
