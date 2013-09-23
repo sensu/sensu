@@ -428,8 +428,8 @@ describe 'Sensu::API' do
   end
 
   it 'can create multiple stashes from an array of stashes' do
-    testers = %w[tester1 tester2]
     api_test do
+      testers = %w[tester1 tester2]
       options = {
         :body => [{
           :path => testers[0],
