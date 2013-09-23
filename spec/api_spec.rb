@@ -429,19 +429,13 @@ describe 'Sensu::API' do
 
   it 'can create multiple stashes from an array of stashes' do
     api_test do
-      testers = %w[tester1 tester2 tester3]
-      options = {
-        :body => [{
-          :path => testers[0],
-          :content => {:key => 'value'}
-        },
-        {:path => testers[1],
-         :content => {:key => 'value'}
-        },
-        {:path => testers[-1],
-         :content => {:key => 'value'}
-        }]
-      }
+      testers = %w[tester1 tester2 tester3 tester4 tester5].shuffle
+      stashes = []
+      testers.each_index do |idx|
+        stashes << {:path => testers[idx], :content => {:key => 'value'}}
+      end
+      options = {:body => stashes}
+
       api_request('/stashes', :post, options) do |http, body|
         http.response_header.status.should eq(201)
         body.should include(:path)
