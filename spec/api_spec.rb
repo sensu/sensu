@@ -427,6 +427,41 @@ describe 'Sensu::API' do
     end
   end
 
+  it 'can create multiple stashes from an array of stashes' do
+    testers = %w[tester1 tester2]
+    api_test do
+      options = {
+        :body => [{
+          :path => testers[0],
+          :content => {
+            :key => 'value'
+          }
+        },
+        {
+          :path => tester[1],
+          :content => {
+            :key => 'value'
+          }
+        }]
+      }
+      api_request('/stashes', :post, options) do |http, body|
+        http.response_header.status.should eq(201)
+        body.is_a?(Array).should eq(true)
+        body.each do |b| 
+          b.should include(:path)
+          testers.should include(b[:path])
+          testers.each do |tester|
+            redis.get("stash:#{tester}") do |stash_json|
+              stash = Oj.load(stash_json)
+              stash.should eq({:key => 'value'})
+              async_done
+            end
+          end
+        end
+      end
+    end
+  end
+
   it 'can not create a stash when missing data' do
     api_test do
       options = {
