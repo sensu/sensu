@@ -434,6 +434,11 @@ module Sensu
             end
           end
         end
+        if @settings[:client][:keepalive].has_key?(:refresh)
+          unless @settings[:client][:keepalive][:refresh].is_a?(Integer)
+            invalid('client keepaalive refresh interval must be an integer')
+          end
+        end
         if @settings[:client][:keepalive].has_key?(:thresholds)
           thresholds = @settings[:client][:keepalive][:thresholds]
           unless thresholds.is_a?(Hash)
