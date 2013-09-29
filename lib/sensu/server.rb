@@ -586,7 +586,7 @@ module Sensu
                 if client[:keepalive].has_key?(:thresholds)
                   thresholds.merge!(client[:keepalive][:thresholds])
                 end
-                check[:refresh] = client[:keepalive][:refresh] if client[:keepalive].has_key?(:refresh)
+                check.merge!(client[:keepalive][:attributes]) { |key, v1, v2| v1 } if client[:keepalive].has_key?(:attributes)
               end
               time_since_last_keepalive = Time.now.to_i - client[:timestamp]
               case
