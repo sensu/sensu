@@ -24,9 +24,6 @@ from log events and keepalives, eg. "client": { "redact": [
 You can configure the Sensu client socket (UDP & TCP), bind & port, eg.
 "client": { "socket": { "bind": "0.0.0.0", "port": 4040 } }.
 
-You can choose to reconnect to RabbitMQ on initial TCP connection
-failure, eg. "rabbitmq": { "on_failure": "reconnect" }.
-
 Handlers & mutators can now have a timeout, in seconds.
 
 ### Other
@@ -50,6 +47,9 @@ active consumers. This change stops the creation of a keepalive/result
 backlog, stale data that may overwhelm the recovering consumers.
 
 Improved Sensu client socket check validation.
+
+AMQP connection will time out if the vhost is missing, there is a lack
+of permissions, or authentication fails.
 
 ## 0.10.2 - 2013-07-18
 
