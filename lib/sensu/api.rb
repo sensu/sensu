@@ -356,15 +356,16 @@ module Sensu
               $logger.info('deleting client', {
                 :client => client
               })
-              $redis.srem('clients', client_name)
-              $redis.del('events:' + client_name)
-              $redis.del('client:' + client_name)
-              $redis.smembers('history:' + client_name) do |checks|
-                checks.each do |check_name|
-                  $redis.del('history:' + client_name + ':' + check_name)
-                  $redis.del('execution:' + client_name + ':' + check_name)
+              $redis.srem('clients', client_name) do
+                $redis.del('client:' + client_name)
+                $redis.del('events:' + client_name)
+                $redis.smembers('history:' + client_name) do |checks|
+                  checks.each do |check_name|
+                    $redis.del('history:' + client_name + ':' + check_name)
+                    $redis.del('execution:' + client_name + ':' + check_name)
+                  end
+                  $redis.del('history:' + client_name)
                 end
-                $redis.del('history:' + client_name)
               end
             end
             issued!
