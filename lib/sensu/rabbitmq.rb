@@ -47,9 +47,21 @@ module Sensu
     end
 
     def connect(options={})
-      on_failure = Proc.new do
-        error = RabbitMQError.new('cannot connect to rabbitmq')
+      timeout = EM::Timer.new(10) do
+        error = RabbitMQError.new('timed out while attempting to connect')
         @on_error.call(error)
+      end
+      on_failure = Proc.new do
+        error = RabbitMQError.new('failed to connect')
+        @on_error.call(error)
+      end
+      @connection = AMQP.connect(options, {
+        :on_tcp_connection_failure => on_failure,
+        :on_possible_authentication_failure => on_failure
+      })
+      @connection.logger = Logger.get
+      @connection.on_open do
+        timeout.cancel
       end
       reconnect = Proc.new do
         unless @connection.reconnecting?
@@ -57,16 +69,6 @@ module Sensu
           @connection.periodically_reconnect(5)
         end
       end
-      if options.is_a?(Hash)
-        if options[:on_failure] == 'reconnect'
-          on_failure = reconnect
-        end
-      end
-      @connection = AMQP.connect(options, {
-        :on_tcp_connection_failure => on_failure,
-        :on_possible_authentication_failure => on_failure
-      })
-      @connection.logger = Logger.get
       @connection.on_tcp_connection_loss(&reconnect)
       @connection.on_skipped_heartbeats(&reconnect)
       @channel = AMQP::Channel.new(@connection)
