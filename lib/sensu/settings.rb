@@ -434,6 +434,11 @@ module Sensu
             end
           end
         end
+        if @settings[:client][:keepalive].has_key?(:attributes)
+          unless @settings[:client][:keepalive][:refresh].is_a?(Hash)
+            invalid('client keepalive attributes must be a hash')
+          end
+        end
         if @settings[:client][:keepalive].has_key?(:thresholds)
           thresholds = @settings[:client][:keepalive][:thresholds]
           unless thresholds.is_a?(Hash)
