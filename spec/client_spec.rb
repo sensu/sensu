@@ -23,7 +23,9 @@ describe 'Sensu::Client' do
         queue.subscribe do |payload|
           keepalive = Oj.load(payload)
           keepalive[:name].should eq('i-424242')
+          keepalive[:service][:non_password_key].should eq('cleartext')
           keepalive[:service][:password].should eq('REDACTED')
+          keepalive[:service][:other_password].should eq('REDACTED')
           async_done
         end
       end

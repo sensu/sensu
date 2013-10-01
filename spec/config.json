@@ -113,7 +113,9 @@
       "attribute": true
     },
     "service": {
-      "password": "secret"
+      "non_password_key": "cleartext",
+      "password": "secret",
+      "other_password": "sauce"
     }
   }
 }
