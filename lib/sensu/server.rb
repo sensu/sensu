@@ -573,20 +573,16 @@ module Sensu
               check = {
                 :name => 'keepalive',
                 :issued => Time.now.to_i,
-                :executed => Time.now.to_i
-              }
-              thresholds = {
-                :warning => 120,
-                :critical => 180
+                :executed => Time.now.to_i,
+                :thresholds => {
+                  :warning => 120,
+                  :critical => 180
+                }
               }
               if client.has_key?(:keepalive)
-                if client[:keepalive].has_key?(:handler) || client[:keepalive].has_key?(:handlers)
-                  check[:handlers] = Array(client[:keepalive][:handlers] || client[:keepalive][:handler])
-                end
-                if client[:keepalive].has_key?(:thresholds)
-                  thresholds.merge!(client[:keepalive][:thresholds])
-                end
+                check.merge!(client[:keepalive])
               end
+              thresholds = check[:thresholds]
               time_since_last_keepalive = Time.now.to_i - client[:timestamp]
               case
               when time_since_last_keepalive >= thresholds[:critical]
