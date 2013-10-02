@@ -114,6 +114,11 @@
     },
     "service": {
       "password": "secret"
+    },
+    "keepalive": {
+      "thresholds": {
+        "warning": 10
+      }
     }
   }
 }
