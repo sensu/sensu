@@ -77,9 +77,15 @@ module Sensu
         error = RabbitMQError.new('rabbitmq channel closed')
         @on_error.call(error)
       end
+      prefetch = 1
+      if options.is_a?(Hash)
+        prefetch = options[:prefetch] || 1
+      end
       @channel.on_recovery do
         @after_reconnect.call
+        @channel.prefetch(prefetch)
       end
+      @channel.prefetch(prefetch)
     end
 
     def connected?
