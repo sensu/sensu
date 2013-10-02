@@ -1,4 +1,4 @@
-## 0.11.0 - TBD
+## 0.11.0 - 2013-10-02
 
 ### Non-backwards compatible changes
 
@@ -25,6 +25,9 @@ You can configure the Sensu client socket (UDP & TCP), bind & port, eg.
 "client": { "socket": { "bind": "0.0.0.0", "port": 4040 } }.
 
 Handlers & mutators can now have a timeout, in seconds.
+
+You can configure the RabbitMQ channel prefetch value (advanced), eg.
+"rabbitmq": { "prefetch": 100 }.
 
 ### Other
 

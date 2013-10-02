@@ -81,7 +81,7 @@ module Sensu
           extension
         end
       end
-      all.flatten!
+      all.flatten
     end
 
     def loaded(type, name, description)
