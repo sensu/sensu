@@ -577,7 +577,7 @@ module Sensu
                 }
               }
               if client.has_key?(:keepalive)
-                check.merge!(client[:keepalive])
+                check = deep_merge(check, client[:keepalive])
               end
               check[:name] = 'keepalive'
               check[:issued] = Time.now.to_i

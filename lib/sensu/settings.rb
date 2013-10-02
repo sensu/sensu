@@ -439,10 +439,12 @@ module Sensu
           unless thresholds.is_a?(Hash)
             invalid('client keepalive thresholds must be a hash')
           end
-          if thresholds.has_key?(:warning) || thresholds.has_key?(:critical)
+          if thresholds.has_key?(:warning)
             unless thresholds[:warning].is_a?(Integer)
               invalid('client keepalive warning threshold must be an integer')
             end
+          end
+          if thresholds.has_key?(:critical)
             unless thresholds[:critical].is_a?(Integer)
               invalid('client keepalive critical threshold must be an integer')
             end
