@@ -1,4 +1,4 @@
-gem 'em-redis-unified', '0.4.1'
+gem 'em-redis-unified', '0.4.2'
 
 require 'em-redis'
 
