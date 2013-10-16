@@ -1,3 +1,10 @@
+## 0.11.1 - 2013-10-16
+
+### Other
+
+Updated "em-redis-unified" dependency version lock, fixing Redis
+reconnect when using authentication and/or select database.
+
 ## 0.11.0 - 2013-10-02
 
 ### Non-backwards compatible changes
