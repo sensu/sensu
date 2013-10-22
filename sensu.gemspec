@@ -24,6 +24,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency('rake')
   s.add_development_dependency('rspec')
   s.add_development_dependency('em-http-request')
+  s.add_development_dependency('ruby-prof')
 
   s.files         = Dir.glob('{bin,lib}/**/*') + %w[sensu.gemspec README.md CHANGELOG.md MIT-LICENSE.txt]
   s.executables   = Dir.glob('bin/**/*').map { |file| File.basename(file) }
