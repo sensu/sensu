@@ -71,6 +71,10 @@ module Sensu
           hash[key] = "REDACTED"
         elsif value.is_a?(Hash)
           hash[key] = redact_sensitive(value, keys)
+        elsif value.is_a?(Array) && value.size == 2
+          hash[key] = value.map do |diff|
+            redact_sensitive(diff, keys) if diff.is_a?(Hash) && !diff.nil?
+          end
         end
       end
       hash
