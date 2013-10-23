@@ -1,3 +1,9 @@
+## 0.11.2 - 2013-10-23
+
+### Features
+
+Sensu profiler extension support.
+
 ## 0.11.1 - 2013-10-16
 
 ### Other
