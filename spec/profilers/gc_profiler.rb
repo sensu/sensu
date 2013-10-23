@@ -11,6 +11,7 @@ module Sensu
 
       def post_init
         GC::Profiler.enable
+        @reported = false
         @timer = EM::PeriodicTimer.new(60) do
           report
         end
@@ -27,6 +28,7 @@ module Sensu
             File.open(report_path, 'a') do |file|
               file.puts(result)
             end
+            @reported = true
           end
         end
         GC::Profiler.clear
@@ -34,9 +36,11 @@ module Sensu
 
       def stop
         @timer.cancel
-        logger.info('garbage collection profiler generated a report', {
-          :path => report_path
-        })
+        if @reported
+          logger.info('garbage collection profiler generated a report', {
+            :path => report_path
+          })
+        end
         yield
       end
     end
