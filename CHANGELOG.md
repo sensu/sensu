@@ -1,8 +1,22 @@
+## 0.11.3 - 2013-10-23
+
+### Other
+
+Fixed redacting sensitive information in log lines during configuration
+loading.
+
+Fixed AMQP library dependency version resolution.
+
+Changed to an older version of the JSON parser, until the source of a
+memory leak is identified.
+
 ## 0.11.2 - 2013-10-23
 
 ### Features
 
 Sensu profiler extension support.
+
+Added logger() to the extension API, providing access to the Sensu logger.
 
 ## 0.11.1 - 2013-10-16
 
