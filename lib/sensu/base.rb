@@ -1,6 +1,6 @@
 require 'rubygems'
 
-gem 'oj', '2.1.4'
+gem 'oj', '2.0.9'
 gem 'eventmachine', '1.0.3'
 
 require 'time'
