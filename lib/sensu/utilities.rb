@@ -71,6 +71,10 @@ module Sensu
           hash[key] = "REDACTED"
         elsif value.is_a?(Hash)
           hash[key] = redact_sensitive(value, keys)
+        elsif value.is_a?(Array)
+          hash[key] = value.map do |item|
+            item.is_a?(Hash) ? redact_sensitive(item, keys) : item
+          end
         end
       end
       hash
