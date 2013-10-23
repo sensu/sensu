@@ -21,7 +21,10 @@ module Sensu
           report = RubyProf.stop
           printer = RubyProf::GraphHtmlPrinter.new(report)
           File.open(@report_path, 'w') do |file|
-            printer.print(file, :print_file => true)
+            printer.print(file, {
+              :print_file => true,
+              :min_percent => 10
+            })
           end
         end
         complete = Proc.new do
