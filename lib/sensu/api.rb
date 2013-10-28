@@ -137,6 +137,37 @@ module Sensu
         env['rack.input'].rewind
       end
 
+      def bad_request!
+        ahalt 400
+      end
+
+      def not_found!
+        ahalt 404
+      end
+
+      def unavailable!
+        ahalt 503
+      end
+
+      def created!(response='')
+        status 201
+        body response
+      end
+
+      def accepted!(response='')
+        status 202
+        body response
+      end
+
+      def issued!
+        accepted!(Oj.dump(:issued => Time.now.to_i))
+      end
+
+      def no_content!
+        status 204
+        body ''
+      end
+
       def read_data(rules=[], &block)
         begin
           data = Oj.load(env['rack.input'].read)
@@ -172,37 +203,6 @@ module Sensu
         else
           items
         end
-      end
-
-      def bad_request!
-        ahalt 400
-      end
-
-      def not_found!
-        ahalt 404
-      end
-
-      def unavailable!
-        ahalt 503
-      end
-
-      def created!(response='')
-        status 201
-        body response
-      end
-
-      def accepted!(response='')
-        status 202
-        body response
-      end
-
-      def issued!
-        accepted!(Oj.dump(:issued => Time.now.to_i))
-      end
-
-      def no_content!
-        status 204
-        body ''
       end
 
       def rabbitmq_info(&block)
