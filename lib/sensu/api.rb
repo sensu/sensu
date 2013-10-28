@@ -149,12 +149,12 @@ module Sensu
         ahalt 503
       end
 
-      def created!(response='')
+      def created!(response)
         status 201
         body response
       end
 
-      def accepted!(response='')
+      def accepted!(response)
         status 202
         body response
       end
@@ -433,39 +433,6 @@ module Sensu
       end
     end
 
-    apost '/silence' do
-      rules = {
-        :client => {:type => String, :nil_ok => true},
-        :check => {:type => String, :nil_ok => true},
-        :expires => {:type => Integer, :nil_ok => true}
-      }
-      read_data(rules) do |data|
-        if data[:client] || data[:check]
-          silence = ['silence']
-          if data[:client]
-            silence << 'client'
-            silence << data[:client]
-          end
-          if data[:check]
-            silence << 'check'
-            silence << data[:check]
-          end
-          silence_key = silence.join(':')
-          $redis.set(silence_key, nil) do
-            if data[:expires]
-              $redis.expire(silence_key, data[:expires]) do
-                created!
-              end
-            else
-              created!
-            end
-          end
-        else
-          bad_request!
-        end
-      end
-    end
-
     aget '/events' do
       response = Array.new
       $redis.smembers('clients') do |clients|
@@ -671,7 +638,6 @@ module Sensu
     aget '/stashes' do
       response = Array.new
       $redis.smembers('stashes') do |stashes|
-        stashes = pagination(stashes)
         unless stashes.empty?
           stashes.each_with_index do |path, index|
             $redis.get('stash:' + path) do |stash_json|
@@ -681,9 +647,11 @@ module Sensu
                   :content => Oj.load(stash_json)
                 }
                 response << item
+              else
+                $redis.srem('stashes', path)
               end
               if index == stashes.size - 1
-                body Oj.dump(response)
+                body Oj.dump(pagination(response))
               end
             end
           end
@@ -696,12 +664,21 @@ module Sensu
     apost '/stashes' do
       rules = {
         :path => {:type => String, :nil_ok => false},
-        :content => {:type => Hash, :nil_ok => false}
+        :content => {:type => Hash, :nil_ok => false},
+        :expire => {:type => Integer, :nil_ok => true}
       }
       read_data(rules) do |data|
-        $redis.set('stash:' + data[:path], Oj.dump(data[:content])) do
+        stash_key = 'stash:' + data[:path]
+        $redis.set(stash_key, Oj.dump(data[:content])) do
           $redis.sadd('stashes', data[:path]) do
-            created!(Oj.dump(:path => data[:path]))
+            response = Oj.dump(:path => data[:path])
+            if data[:expire]
+              $redis.expire(stash_key, data[:expire]) do
+                created!(response)
+              end
+            else
+              created!(response)
+            end
           end
         end
       end
