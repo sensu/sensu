@@ -508,12 +508,13 @@ module Sensu
         unless checks.empty?
           checks.each_with_index do |check_name, index|
             $redis.smembers('aggregates:' + check_name) do |aggregates|
+              aggregates.reverse!
               aggregates.map! do |issued|
                 issued.to_i
               end
               item = {
                 :check => check_name,
-                :issued => aggregates.sort.reverse
+                :issued => aggregates
               }
               response << item
               if index == checks.size - 1
@@ -530,6 +531,7 @@ module Sensu
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
       $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
+          aggregates.reverse!
           aggregates.map! do |issued|
             issued.to_i
           end
@@ -540,8 +542,7 @@ module Sensu
               issued > timestamp
             end
           end
-          aggregates = pagination(aggregates.sort.reverse)
-          body Oj.dump(aggregates)
+          body Oj.dump(pagination(aggregates))
         else
           not_found!
         end
