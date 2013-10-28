@@ -133,6 +133,79 @@ describe 'Sensu::API' do
     end
   end
 
+  it 'can silence a client' do
+    api_test do
+      options = {
+        :body => {
+          :client => 'i-424242'
+        }
+      }
+      api_request('/silence', :post, options) do |http, body|
+        http.response_header.status.should eq(201)
+        async_done
+      end
+    end
+  end
+
+  it 'can silence a check' do
+    api_test do
+      options = {
+        :body => {
+          :check => 'test'
+        }
+      }
+      api_request('/silence', :post, options) do |http, body|
+        http.response_header.status.should eq(201)
+        async_done
+      end
+    end
+  end
+
+  it 'can silence a check for a client' do
+    api_test do
+      options = {
+        :body => {
+          :client => 'i-424242',
+          :check => 'test'
+        }
+      }
+      api_request('/silence', :post, options) do |http, body|
+        http.response_header.status.should eq(201)
+        async_done
+      end
+    end
+  end
+
+  it 'can silence a client for one second' do
+    api_test do
+      options = {
+        :body => {
+          :client => 'i-424242',
+          :expires => 1
+        }
+      }
+      api_request('/silence', :post, options) do |http, body|
+        http.response_header.status.should eq(201)
+        async_done
+      end
+    end
+  end
+
+  it 'can not silence a client with an invalid expires' do
+    api_test do
+      options = {
+        :body => {
+          :client => 'i-424242',
+          :expires => 'invalid'
+        }
+      }
+      api_request('/silence', :post, options) do |http, body|
+        http.response_header.status.should eq(400)
+        async_done
+      end
+    end
+  end
+
   it 'can provide a specific event' do
     api_test do
       api_request('/event/i-424242/test') do |http, body|
@@ -375,7 +448,9 @@ describe 'Sensu::API' do
     api_test do
       options = {
         :body => {
-          :check => 'tokens'
+          :subscribers => [
+            'test'
+          ]
         }
       }
       api_request('/request', :post, options) do |http, body|
