@@ -168,12 +168,11 @@ module Sensu
         body ''
       end
 
-      def read_data(rules=[], &block)
+      def read_data(rules={}, &block)
         begin
           data = Oj.load(env['rack.input'].read)
-          valid = rules.all? do |rule|
-            param = data[rule[:param]]
-            param.is_a?(rule[:type]) || (rule[:nil_ok] && param.nil?)
+          valid = rules.all? do |key, rule|
+            data[key].is_a?(rule[:type]) || (rule[:nil_ok] && data[key].nil?)
           end
           if valid
             block.call(data)
@@ -185,8 +184,8 @@ module Sensu
         end
       end
 
-      def integer_parameter(param)
-        param =~ /^[0-9]+$/ ? param.to_i : nil
+      def integer_parameter(parameter)
+        parameter =~ /^[0-9]+$/ ? parameter.to_i : nil
       end
 
       def pagination(items)
@@ -407,10 +406,10 @@ module Sensu
     end
 
     apost '/request' do
-      rules = [
-        {:param => :check, :type => String, :nil_ok => false},
-        {:param => :subscribers, :type => Array, :nil_ok => true}
-      ]
+      rules = {
+        :check => {:type => String, :nil_ok => false},
+        :subscribers => {:type => Array, :nil_ok => true}
+      }
       read_data(rules) do |data|
         if $settings.check_exists?(data[:check])
           check = $settings[:checks][data[:check]]
@@ -435,11 +434,11 @@ module Sensu
     end
 
     apost '/silence' do
-      rules = [
-        {:param => :client, :type => String, :nil_ok => true},
-        {:param => :check, :type => String, :nil_ok => true},
-        {:param => :expires, :type => Integer, :nil_ok => true}
-      ]
+      rules = {
+        :client => {:type => String, :nil_ok => true},
+        :check => {:type => String, :nil_ok => true},
+        :expires => {:type => Integer, :nil_ok => true}
+      }
       read_data(rules) do |data|
         if data[:client] || data[:check]
           silence = ['silence']
@@ -520,10 +519,10 @@ module Sensu
     end
 
     apost '/resolve' do
-      rules = [
-        {:param => :client, :type => String, :nil_ok => false},
-        {:param => :check, :type => String, :nil_ok => false}
-      ]
+      rules = {
+        :client => {:type => String, :nil_ok => false},
+        :check => {:type => String, :nil_ok => false}
+      }
       read_data(rules) do |data|
         $redis.hgetall('events:' + data[:client]) do |events|
           if events.include?(data[:check])
@@ -695,10 +694,10 @@ module Sensu
     end
 
     apost '/stashes' do
-      rules = [
-        {:param => :path, :type => String, :nil_ok => false},
-        {:param => :content, :type => Hash, :nil_ok => false}
-      ]
+      rules = {
+        :path => {:type => String, :nil_ok => false},
+        :content => {:type => Hash, :nil_ok => false}
+      }
       read_data(rules) do |data|
         $redis.set('stash:' + data[:path], Oj.dump(data[:content])) do
           $redis.sadd('stashes', data[:path]) do
