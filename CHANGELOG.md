@@ -1,3 +1,21 @@
+## 0.12.0 - 2013-10-28
+
+### Non-backwards compatible changes
+
+Deprecated API endpoints, `/check/request` and `/event/resolve`, have been
+removed. Please use `/request` and `/resolve`.
+
+### Features
+
+API stashes can now expire, automatically removing themselves after `N`
+seconds, eg. '{"path": "foo", "content":{"bar": "baz"}, "expire": 600}'.
+
+### Other
+
+Added additional AMQP library version constraints.
+
+Improved API POST data validation.
+
 ## 0.11.3 - 2013-10-23
 
 ### Other

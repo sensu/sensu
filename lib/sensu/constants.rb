@@ -1,6 +1,6 @@
 module Sensu
   unless defined?(Sensu::VERSION)
-    VERSION = '0.11.3'
+    VERSION = '0.12.0'
 
     LOG_LEVELS = [:debug, :info, :warn, :error, :fatal]
 
