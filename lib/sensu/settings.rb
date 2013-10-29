@@ -84,7 +84,7 @@ module Sensu
       if File.file?(file) && File.readable?(file)
         begin
           contents = File.open(file, 'r').read
-          config = Oj.load(contents)
+          config = Oj.load(contents, :mode => :strict)
           merged = deep_merge(@settings, config)
           unless @loaded_files.empty?
             changes = deep_diff(@settings, merged)
