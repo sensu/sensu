@@ -137,26 +137,6 @@ module Sensu
         env['rack.input'].rewind
       end
 
-      def integer_parameter(parameter)
-        parameter =~ /^[0-9]+$/ ? parameter.to_i : nil
-      end
-
-      def pagination(items)
-        limit = integer_parameter(params[:limit])
-        offset = integer_parameter(params[:offset]) || 0
-        unless limit.nil?
-          headers['X-Pagination'] = Oj.dump(
-            :limit => limit,
-            :offset => offset,
-            :total => items.size
-          )
-          paginated = items.slice(offset, limit)
-          Array(paginated)
-        else
-          items
-        end
-      end
-
       def bad_request!
         ahalt 400
       end
@@ -186,6 +166,42 @@ module Sensu
       def no_content!
         status 204
         body ''
+      end
+
+      def read_data(rules={}, &block)
+        begin
+          data = Oj.load(env['rack.input'].read)
+          valid = rules.all? do |key, rule|
+            data[key].is_a?(rule[:type]) || (rule[:nil_ok] && data[key].nil?)
+          end
+          if valid
+            block.call(data)
+          else
+            bad_request!
+          end
+        rescue Oj::ParseError
+          bad_request!
+        end
+      end
+
+      def integer_parameter(parameter)
+        parameter =~ /^[0-9]+$/ ? parameter.to_i : nil
+      end
+
+      def pagination(items)
+        limit = integer_parameter(params[:limit])
+        offset = integer_parameter(params[:offset]) || 0
+        unless limit.nil?
+          headers['X-Pagination'] = Oj.dump(
+            :limit => limit,
+            :offset => offset,
+            :total => items.size
+          )
+          paginated = items.slice(offset, limit)
+          Array(paginated)
+        else
+          items
+        end
       end
 
       def rabbitmq_info(&block)
@@ -389,38 +405,31 @@ module Sensu
       end
     end
 
-    apost %r{/(?:check/)?request$} do
-      begin
-        post_body = Oj.load(request.body.read)
-        check_name = post_body[:check]
-        subscribers = post_body[:subscribers]
-        if check_name.is_a?(String) && subscribers.is_a?(Array)
-          if $settings.check_exists?(check_name)
-            check = $settings[:checks][check_name]
-            if subscribers.empty?
-              subscribers = check[:subscribers] || Array.new
-            end
-            payload = {
-              :name => check_name,
-              :command => check[:command],
-              :issued => Time.now.to_i
-            }
-            $logger.info('publishing check request', {
-              :payload => payload,
-              :subscribers => subscribers
-            })
-            subscribers.uniq.each do |exchange_name|
-              $amq.fanout(exchange_name).publish(Oj.dump(payload))
-            end
-            issued!
-          else
-            not_found!
+    apost '/request' do
+      rules = {
+        :check => {:type => String, :nil_ok => false},
+        :subscribers => {:type => Array, :nil_ok => true}
+      }
+      read_data(rules) do |data|
+        if $settings.check_exists?(data[:check])
+          check = $settings[:checks][data[:check]]
+          subscribers = data[:subscribers] || check[:subscribers] || Array.new
+          payload = {
+            :name => data[:check],
+            :command => check[:command],
+            :issued => Time.now.to_i
+          }
+          $logger.info('publishing check request', {
+            :payload => payload,
+            :subscribers => subscribers
+          })
+          subscribers.uniq.each do |exchange_name|
+            $amq.fanout(exchange_name).publish(Oj.dump(payload))
           end
+          issued!
         else
-          bad_request!
+          not_found!
         end
-      rescue Oj::ParseError, TypeError
-        bad_request!
       end
     end
 
@@ -476,25 +485,20 @@ module Sensu
       end
     end
 
-    apost %r{/(?:event/)?resolve$} do
-      begin
-        post_body = Oj.load(request.body.read)
-        client_name = post_body[:client]
-        check_name = post_body[:check]
-        if client_name.is_a?(String) && check_name.is_a?(String)
-          $redis.hgetall('events:' + client_name) do |events|
-            if events.include?(check_name)
-              resolve_event(event_hash(events[check_name], client_name, check_name))
-              issued!
-            else
-              not_found!
-            end
+    apost '/resolve' do
+      rules = {
+        :client => {:type => String, :nil_ok => false},
+        :check => {:type => String, :nil_ok => false}
+      }
+      read_data(rules) do |data|
+        $redis.hgetall('events:' + data[:client]) do |events|
+          if events.include?(data[:check])
+            resolve_event(event_hash(events[data[:check]], data[:client], data[:check]))
+            issued!
+          else
+            not_found!
           end
-        else
-          bad_request!
         end
-      rescue Oj::ParseError, TypeError
-        bad_request!
       end
     end
 
@@ -504,12 +508,13 @@ module Sensu
         unless checks.empty?
           checks.each_with_index do |check_name, index|
             $redis.smembers('aggregates:' + check_name) do |aggregates|
+              aggregates.reverse!
               aggregates.map! do |issued|
                 issued.to_i
               end
               item = {
                 :check => check_name,
-                :issued => aggregates.sort.reverse
+                :issued => aggregates
               }
               response << item
               if index == checks.size - 1
@@ -526,6 +531,7 @@ module Sensu
     aget %r{/aggregates/([\w\.-]+)$} do |check_name|
       $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
+          aggregates.reverse!
           aggregates.map! do |issued|
             issued.to_i
           end
@@ -536,8 +542,7 @@ module Sensu
               issued > timestamp
             end
           end
-          aggregates = pagination(aggregates.sort.reverse)
-          body Oj.dump(aggregates)
+          body Oj.dump(pagination(aggregates))
         else
           not_found!
         end
@@ -598,15 +603,12 @@ module Sensu
     end
 
     apost %r{/stash(?:es)?/(.*)} do |path|
-      begin
-        post_body = Oj.load(request.body.read)
-        $redis.set('stash:' + path, Oj.dump(post_body)) do
+      read_data do |data|
+        $redis.set('stash:' + path, Oj.dump(data)) do
           $redis.sadd('stashes', path) do
             created!(Oj.dump(:path => path))
           end
         end
-      rescue Oj::ParseError
-        bad_request!
       end
     end
 
@@ -637,7 +639,6 @@ module Sensu
     aget '/stashes' do
       response = Array.new
       $redis.smembers('stashes') do |stashes|
-        stashes = pagination(stashes)
         unless stashes.empty?
           stashes.each_with_index do |path, index|
             $redis.get('stash:' + path) do |stash_json|
@@ -647,9 +648,11 @@ module Sensu
                   :content => Oj.load(stash_json)
                 }
                 response << item
+              else
+                $redis.srem('stashes', path)
               end
               if index == stashes.size - 1
-                body Oj.dump(response)
+                body Oj.dump(pagination(response))
               end
             end
           end
@@ -660,21 +663,25 @@ module Sensu
     end
 
     apost '/stashes' do
-      begin
-        post_body = Oj.load(request.body.read)
-        path = post_body[:path]
-        content = post_body[:content]
-        if path.is_a?(String) && content.is_a?(Hash)
-          $redis.set('stash:' + path, Oj.dump(content)) do
-            $redis.sadd('stashes', path) do
-              created!(Oj.dump(:path => path))
+      rules = {
+        :path => {:type => String, :nil_ok => false},
+        :content => {:type => Hash, :nil_ok => false},
+        :expire => {:type => Integer, :nil_ok => true}
+      }
+      read_data(rules) do |data|
+        stash_key = 'stash:' + data[:path]
+        $redis.set(stash_key, Oj.dump(data[:content])) do
+          $redis.sadd('stashes', data[:path]) do
+            response = Oj.dump(:path => data[:path])
+            if data[:expire]
+              $redis.expire(stash_key, data[:expire]) do
+                created!(response)
+              end
+            else
+              created!(response)
             end
           end
-        else
-          bad_request!
         end
-      rescue Oj::ParseError
-        bad_request!
       end
     end
   end
