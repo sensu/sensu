@@ -642,17 +642,20 @@ module Sensu
         unless stashes.empty?
           stashes.each_with_index do |path, index|
             $redis.get('stash:' + path) do |stash_json|
-              unless stash_json.nil?
-                item = {
-                  :path => path,
-                  :content => Oj.load(stash_json)
-                }
-                response << item
-              else
-                $redis.srem('stashes', path)
-              end
-              if index == stashes.size - 1
-                body Oj.dump(pagination(response))
+              $redis.ttl('stash:' + path) do |ttl|
+                unless stash_json.nil?
+                  item = {
+                    :path => path,
+                    :content => Oj.load(stash_json),
+                    :expire => ttl
+                  }
+                  response << item
+                else
+                  $redis.srem('stashes', path)
+                end
+                if index == stashes.size - 1
+                  body Oj.dump(pagination(response))
+                end
               end
             end
           end
