@@ -283,7 +283,7 @@ module Sensu
         log_level = event[:check][:type] == 'metric' ? :debug : :info
         @logger.send(log_level, 'handling event', {
           :event => event,
-          :handler => handler
+          :handler => handler.respond_to?(:definition) ? handler.definition : handler
         })
         @handlers_in_progress_count += 1
         on_error = Proc.new do |error|
