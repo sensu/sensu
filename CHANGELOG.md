@@ -1,3 +1,18 @@
+## 0.12.1 - 2013-11-02
+
+### Features
+
+API GET `/stashes` now returns stash expiration information, time
+remaining in seconds. eg. [{"path": "foo", "content":{"bar": "baz"},
+"expire": 3598}].
+
+### Other
+
+Fixed a config loading bug where Sensu was not ignoring files without a
+valid JSON object.
+
+Fixed `handling event` log line data for extensions.
+
 ## 0.12.0 - 2013-10-28
 
 ### Non-backwards compatible changes
