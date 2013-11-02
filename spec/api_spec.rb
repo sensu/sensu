@@ -22,14 +22,16 @@ describe 'Sensu::API' do
               :occurrences => 1
             )) do
               redis.set('stash:test/test', '{"key": "value"}') do
-                redis.sadd('stashes', 'test/test') do
-                  redis.sadd('history:i-424242', 'success') do
-                    redis.sadd('history:i-424242', 'fail') do
-                      redis.set('execution:i-424242:success', 1363224805) do
-                        redis.set('execution:i-424242:fail', 1363224806) do
-                          redis.rpush('history:i-424242:success', 0) do
-                            @redis = nil
-                            async_done
+                redis.expire('stash:test/test', 3600) do
+                  redis.sadd('stashes', 'test/test') do
+                    redis.sadd('history:i-424242', 'success') do
+                      redis.sadd('history:i-424242', 'fail') do
+                        redis.set('execution:i-424242:success', 1363224805) do
+                          redis.set('execution:i-424242:fail', 1363224806) do
+                            redis.rpush('history:i-424242:success', 0) do
+                              @redis = nil
+                              async_done
+                            end
                           end
                         end
                       end
@@ -423,7 +425,10 @@ describe 'Sensu::API' do
         redis.get('stash:tester') do |stash_json|
           stash = Oj.load(stash_json)
           stash.should eq({:key => 'value'})
-          async_done
+          redis.ttl('stash:tester') do |ttl|
+            ttl.should eq(-1)
+            async_done
+          end
         end
       end
     end
@@ -530,6 +535,7 @@ describe 'Sensu::API' do
         body[0].should be_kind_of(Hash)
         body[0][:path].should eq('test/test')
         body[0][:content].should eq({:key => 'value'})
+        body[0][:expire].should be_within(3).of(3600)
         async_done
       end
     end
