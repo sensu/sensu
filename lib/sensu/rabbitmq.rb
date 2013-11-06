@@ -47,7 +47,7 @@ module Sensu
     end
 
     def connect(options={})
-      timeout = EM::Timer.new(10) do
+      timeout = EM::Timer.new(20) do
         error = RabbitMQError.new('timed out while attempting to connect')
         @on_error.call(error)
       end
