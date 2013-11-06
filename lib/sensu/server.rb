@@ -587,6 +587,9 @@ module Sensu
               when check[:ignore]
                 check[:output] = 'Ignore keep-alive check for this client'
                 check[:status] = 0
+              when time_since_last_keepalive < 0
+                check[:output] = 'Negative keep-alive timestamp found for this client'
+                check[:status] = 3
               when time_since_last_keepalive >= check[:thresholds][:critical]
                 check[:output] = 'No keep-alive sent from client in over '
                 check[:output] << check[:thresholds][:critical].to_s + ' seconds'
