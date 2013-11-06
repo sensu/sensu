@@ -573,7 +573,8 @@ module Sensu
                 :thresholds => {
                   :warning => 120,
                   :critical => 180
-                }
+                },
+                :ignore => false
               }
               if client.has_key?(:keepalive)
                 check = deep_merge(check, client[:keepalive])
@@ -583,6 +584,9 @@ module Sensu
               check[:executed] = Time.now.to_i
               time_since_last_keepalive = Time.now.to_i - client[:timestamp]
               case
+              when check[:ignore]
+                check[:output] = 'Ignore keep-alive check for this client'
+                check[:status] = 0
               when time_since_last_keepalive >= check[:thresholds][:critical]
                 check[:output] = 'No keep-alive sent from client in over '
                 check[:output] << check[:thresholds][:critical].to_s + ' seconds'
