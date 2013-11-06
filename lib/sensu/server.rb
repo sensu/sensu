@@ -88,6 +88,7 @@ module Sensu
         @logger.debug('received keepalive', {
           :client => client
         })
+        client[:timestamp] = Time.now.to_i
         @redis.set('client:' + client[:name], Oj.dump(client)) do
           @redis.sadd('clients', client[:name]) do
             header.ack
