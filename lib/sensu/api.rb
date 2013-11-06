@@ -327,6 +327,37 @@ module Sensu
       end
     end
 
+    aget %r{/clients?/([\w\.-\?\*]+)$} do |client_spec|
+      response = Array.new
+      $logger.info('clients called with wildcards', {
+                     :client_spec => client_spec
+                   })
+      $redis.keys('client:' + client_spec) do |clients|
+        clients = pagination(clients)
+        unless clients.empty?
+          clients.each_with_index do |client_name, index|
+              $logger.info('client found', {
+                :client => client_name,
+              })
+            $redis.get(client_name) do |client_json|
+              $logger.info('client json', {
+                :client_json => client_json
+              })
+              unless client_json.nil?
+                response << Oj.load(client_json)
+              end
+              if index == clients.size - 1
+                body Oj.dump(response)
+              end
+            end
+          end
+        else
+          body Oj.dump(response)
+        end
+      end
+    end
+
+
     aget %r{/clients/([\w\.-]+)/history$} do |client_name|
       response = Array.new
       $redis.smembers('history:' + client_name) do |checks|
