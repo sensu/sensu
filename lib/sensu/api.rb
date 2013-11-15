@@ -262,7 +262,7 @@ module Sensu
       content_type 'application/json'
     end
 
-    aget '/info' do
+    aget '/info/?' do
       rabbitmq_info do |info|
         response = {
           :sensu => {
@@ -277,7 +277,7 @@ module Sensu
       end
     end
 
-    aget '/health' do
+    aget '/health/?' do
       if $redis.connected? && $rabbitmq.connected?
         healthy = Array.new
         min_consumers = integer_parameter(params[:consumers])
@@ -298,7 +298,7 @@ module Sensu
       end
     end
 
-    aget '/clients' do
+    aget '/clients/?' do
       response = Array.new
       $redis.smembers('clients') do |clients|
         clients = pagination(clients)
@@ -317,7 +317,7 @@ module Sensu
       end
     end
 
-    aget %r{/clients?/([\w\.-]+)$} do |client_name|
+    aget %r{/clients?/([\w\.-]+)/?$} do |client_name|
       $redis.get('client:' + client_name) do |client_json|
         unless client_json.nil?
           body client_json
@@ -327,7 +327,7 @@ module Sensu
       end
     end
 
-    aget %r{/clients/([\w\.-]+)/history$} do |client_name|
+    aget %r{/clients/([\w\.-]+)/history/?$} do |client_name|
       response = Array.new
       $redis.smembers('history:' + client_name) do |checks|
         unless checks.empty?
@@ -360,7 +360,7 @@ module Sensu
       end
     end
 
-    adelete %r{/clients?/([\w\.-]+)$} do |client_name|
+    adelete %r{/clients?/([\w\.-]+)/?$} do |client_name|
       $redis.get('client:' + client_name) do |client_json|
         unless client_json.nil?
           $redis.hgetall('events:' + client_name) do |events|
@@ -392,11 +392,11 @@ module Sensu
       end
     end
 
-    aget '/checks' do
+    aget '/checks/?' do
       body Oj.dump($settings.checks)
     end
 
-    aget %r{/checks?/([\w\.-]+)$} do |check_name|
+    aget %r{/checks?/([\w\.-]+)/?$} do |check_name|
       if $settings.check_exists?(check_name)
         response = $settings[:checks][check_name].merge(:name => check_name)
         body Oj.dump(response)
@@ -405,7 +405,7 @@ module Sensu
       end
     end
 
-    apost '/request' do
+    apost '/request/?' do
       rules = {
         :check => {:type => String, :nil_ok => false},
         :subscribers => {:type => Array, :nil_ok => true}
@@ -433,7 +433,7 @@ module Sensu
       end
     end
 
-    aget '/events' do
+    aget '/events/?' do
       response = Array.new
       $redis.smembers('clients') do |clients|
         unless clients.empty?
@@ -453,7 +453,7 @@ module Sensu
       end
     end
 
-    aget %r{/events/([\w\.-]+)$} do |client_name|
+    aget %r{/events/([\w\.-]+)/?$} do |client_name|
       response = Array.new
       $redis.hgetall('events:' + client_name) do |events|
         events.each do |check_name, event_json|
@@ -463,7 +463,7 @@ module Sensu
       end
     end
 
-    aget %r{/events?/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
+    aget %r{/events?/([\w\.-]+)/([\w\.-]+)/?$} do |client_name, check_name|
       $redis.hgetall('events:' + client_name) do |events|
         event_json = events[check_name]
         unless event_json.nil?
@@ -474,7 +474,7 @@ module Sensu
       end
     end
 
-    adelete %r{/events?/([\w\.-]+)/([\w\.-]+)$} do |client_name, check_name|
+    adelete %r{/events?/([\w\.-]+)/([\w\.-]+)/?$} do |client_name, check_name|
       $redis.hgetall('events:' + client_name) do |events|
         if events.include?(check_name)
           resolve_event(event_hash(events[check_name], client_name, check_name))
@@ -485,7 +485,7 @@ module Sensu
       end
     end
 
-    apost '/resolve' do
+    apost '/resolve/?' do
       rules = {
         :client => {:type => String, :nil_ok => false},
         :check => {:type => String, :nil_ok => false}
@@ -502,7 +502,7 @@ module Sensu
       end
     end
 
-    aget '/aggregates' do
+    aget '/aggregates/?' do
       response = Array.new
       $redis.smembers('aggregates') do |checks|
         unless checks.empty?
@@ -528,7 +528,7 @@ module Sensu
       end
     end
 
-    aget %r{/aggregates/([\w\.-]+)$} do |check_name|
+    aget %r{/aggregates/([\w\.-]+)/?$} do |check_name|
       $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
           aggregates.reverse!
@@ -549,7 +549,7 @@ module Sensu
       end
     end
 
-    adelete %r{/aggregates/([\w\.-]+)$} do |check_name|
+    adelete %r{/aggregates/([\w\.-]+)/?$} do |check_name|
       $redis.smembers('aggregates:' + check_name) do |aggregates|
         unless aggregates.empty?
           aggregates.each do |check_issued|
@@ -568,7 +568,7 @@ module Sensu
       end
     end
 
-    aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)$} do |check_name, check_issued|
+    aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)/?$} do |check_name, check_issued|
       result_set = check_name + ':' + check_issued
       $redis.hgetall('aggregate:' + result_set) do |aggregate|
         unless aggregate.empty?
@@ -602,7 +602,7 @@ module Sensu
       end
     end
 
-    apost %r{/stash(?:es)?/(.*)} do |path|
+    apost %r{/stash(?:es)?/(.*)/?} do |path|
       read_data do |data|
         $redis.set('stash:' + path, Oj.dump(data)) do
           $redis.sadd('stashes', path) do
@@ -612,7 +612,7 @@ module Sensu
       end
     end
 
-    aget %r{/stash(?:es)?/(.*)} do |path|
+    aget %r{/stash(?:es)?/(.*)/?} do |path|
       $redis.get('stash:' + path) do |stash_json|
         unless stash_json.nil?
           body stash_json
@@ -622,7 +622,7 @@ module Sensu
       end
     end
 
-    adelete %r{/stash(?:es)?/(.*)} do |path|
+    adelete %r{/stash(?:es)?/(.*)/?} do |path|
       $redis.exists('stash:' + path) do |stash_exists|
         if stash_exists
           $redis.srem('stashes', path) do
@@ -636,7 +636,7 @@ module Sensu
       end
     end
 
-    aget '/stashes' do
+    aget '/stashes/?' do
       response = Array.new
       $redis.smembers('stashes') do |stashes|
         unless stashes.empty?
@@ -665,7 +665,7 @@ module Sensu
       end
     end
 
-    apost '/stashes' do
+    apost '/stashes/?' do
       rules = {
         :path => {:type => String, :nil_ok => false},
         :content => {:type => Hash, :nil_ok => false},
