@@ -1,3 +1,14 @@
+## 0.12.2 - 2013-11-22
+
+### Other
+
+API routes now have an optional trailing slash.
+
+RabbitMQ initial connection timeout increased from 10 to 20 seconds.
+
+RabbitMQ connection closed errors are now rescued when attempting to
+publish to an exchange, while Sensu is reconnecting.
+
 ## 0.12.1 - 2013-11-02
 
 ### Features
