@@ -53,7 +53,14 @@ module Sensu
       @logger.debug('publishing keepalive', {
         :payload => payload
       })
-      @amq.direct('keepalives').publish(Oj.dump(payload))
+      begin
+        @amq.direct('keepalives').publish(Oj.dump(payload))
+      rescue AMQ::Client::ConnectionClosedError => error
+        @logger.error('failed to publish keepalive', {
+          :payload => payload,
+          :error => error.to_s
+        })
+      end
     end
 
     def setup_keepalives
@@ -74,7 +81,14 @@ module Sensu
       @logger.info('publishing check result', {
         :payload => payload
       })
-      @amq.direct('results').publish(Oj.dump(payload))
+      begin
+        @amq.direct('results').publish(Oj.dump(payload))
+      rescue AMQ::Client::ConnectionClosedError => error
+        @logger.error('failed to publish check result', {
+          :payload => payload,
+          :error => error.to_s
+        })
+      end
     end
 
     def substitute_command_tokens(check)

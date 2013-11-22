@@ -339,7 +339,15 @@ module Sensu
               [:name, :type].include?(key)
             end
             unless event_data.empty?
-              @amq.method(exchange_type).call(exchange_name, exchange_options).publish(event_data)
+              begin
+                @amq.method(exchange_type).call(exchange_name, exchange_options).publish(event_data)
+              rescue AMQ::Client::ConnectionClosedError => error
+                @logger.error('failed to publish event data to an exchange', {
+                  :exchange => handler[:exchange],
+                  :payload => event_data,
+                  :error => error.to_s
+                })
+              end
             end
             @handlers_in_progress_count -= 1
           when 'extension'
@@ -514,7 +522,15 @@ module Sensu
         :subscribers => check[:subscribers]
       })
       check[:subscribers].each do |exchange_name|
-        @amq.fanout(exchange_name).publish(Oj.dump(payload))
+        begin
+          @amq.fanout(exchange_name).publish(Oj.dump(payload))
+        rescue AMQ::Client::ConnectionClosedError => error
+          @logger.error('failed to publish check request', {
+            :exchange_name => exchange_name,
+            :payload => payload,
+            :error => error.to_s
+          })
+        end
       end
     end
 
@@ -558,7 +574,14 @@ module Sensu
       @logger.debug('publishing check result', {
         :payload => payload
       })
-      @amq.direct('results').publish(Oj.dump(payload))
+      begin
+        @amq.direct('results').publish(Oj.dump(payload))
+      rescue AMQ::Client::ConnectionClosedError => error
+        @logger.error('failed to publish check result', {
+          :payload => payload,
+          :error => error.to_s
+        })
+      end
     end
 
     def determine_stale_clients
