@@ -1,4 +1,7 @@
+gem 'em-worker', '0.0.2'
+
 require 'timeout'
+require 'em/worker'
 
 module Sensu
   class IO
@@ -60,7 +63,8 @@ module Sensu
         complete = Proc.new do |output, status|
           block.call(output, status) if block
         end
-        EM::defer(execute, complete)
+        @async_popen_worker ||= EM::Worker.new
+        @async_popen_worker.enqueue(execute, complete)
       end
 
       private

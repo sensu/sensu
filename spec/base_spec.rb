@@ -34,8 +34,7 @@ describe 'Sensu::Base' do
   end
 
   it 'can setup the current process' do
-    EM::threadpool_size = 20
     @base.setup_process
-    EM::threadpool_size.should eq(14)
+    EM::threadpool_size.should eq(20)
   end
 end
