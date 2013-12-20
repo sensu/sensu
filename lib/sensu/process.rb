@@ -44,9 +44,5 @@ module Sensu
         end
       end
     end
-
-    def setup_eventmachine
-      EM::threadpool_size = 14
-    end
   end
 end

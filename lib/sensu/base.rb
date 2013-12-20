@@ -70,7 +70,6 @@ module Sensu
       if @options[:pid_file]
         process.write_pid(@options[:pid_file])
       end
-      process.setup_eventmachine
     end
   end
 end

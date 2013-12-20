@@ -18,10 +18,4 @@ describe 'Sensu::Process' do
       lambda { @process.write_pid('/sensu.pid') }.should raise_error(SystemExit)
     end
   end
-
-  it 'can adjust eventmachine settings (thread pool size)' do
-    EM::threadpool_size = 20
-    @process.setup_eventmachine
-    EM::threadpool_size.should eq(14)
-  end
 end
