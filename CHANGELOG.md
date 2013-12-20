@@ -1,3 +1,10 @@
+## 0.12.3 - 2013-12-19
+
+### Other
+
+The pipe handler and mutator concurrency limit is now imposed by
+`EM::Worker`. A maximum of 12 processes may be spawned at a time.
+
 ## 0.12.2 - 2013-11-22
 
 ### Other
