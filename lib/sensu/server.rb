@@ -491,10 +491,18 @@ module Sensu
       end
       @result_queue.subscribe(:ack => true) do |header, payload|
         result = Oj.load(payload)
-        @logger.debug('received result', {
-          :result => result
-        })
-        process_result(result)
+        age = Time.now.to_i - result[:check][:issued]
+        if age >= result[:check][:interval]
+          # event has expired
+          @logger.debug("skipping result (expired #{age})", {
+            :result => result
+          })
+        else
+          @logger.debug('received result', {
+            :result => result
+          })
+          process_result(result)
+        end
         EM::next_tick do
           header.ack
         end
