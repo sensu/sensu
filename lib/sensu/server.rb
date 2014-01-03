@@ -148,7 +148,11 @@ module Sensu
           begin
             expression = hash_one[key].gsub(/^eval:(\s+)?/, '')
             !!Sandbox.eval(expression, hash_two[key])
-          rescue
+          rescue => error
+            @logger.error('filter eval error', {
+              :attributes => [hash_one, hash_two],
+              :error => error.to_s
+            })
             false
           end
         else
