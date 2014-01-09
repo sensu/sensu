@@ -397,6 +397,7 @@ module Sensu
       @logger.debug('processing result', {
         :result => result
       })
+
       @redis.get('client:' + result[:client]) do |client_json|
         unless client_json.nil?
           client = Oj.load(client_json)
@@ -498,7 +499,15 @@ module Sensu
         @logger.debug('received result', {
           :result => result
         })
-        process_result(result)
+        # Protection against direct injection
+        # with bad format into RabbitMq 
+        unless result[:client].nil?
+          process_result(result)
+        else
+          @logger.debug('Malformed json received', {
+            :result => result
+          })
+        end
         EM::next_tick do
           header.ack
         end
