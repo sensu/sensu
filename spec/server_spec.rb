@@ -197,6 +197,10 @@ describe 'Sensu::Server' do
     event[:action] = :flapping
     @server.event_handlers(event).should be_empty
     event[:check].delete(:handlers)
+    event[:check][:handler] = 'severities'
+    event[:check][:history] = [1, 0]
+    event[:action] = :resolve
+    @server.event_handlers(event).should be_empty
     event[:check][:handler] = 'flapping'
     expected = [
       {
