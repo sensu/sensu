@@ -191,6 +191,7 @@ describe 'Sensu::Server' do
     }
     @server.event_handlers(event).should eq(expected)
     event[:check][:status] = 0
+    event[:check][:history] = [2, 0]
     event[:action] = :resolve
     @server.event_handlers(event).should eq(expected)
     event[:action] = :flapping

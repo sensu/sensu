@@ -197,7 +197,6 @@ module Sensu
     def event_handlers(event)
       handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || 'default')
       handlers = derive_handlers(handler_list)
-      event_severity = SEVERITIES[event[:check][:status]] || 'unknown'
       handlers.select do |handler|
         if event[:action] == :flapping && !handler[:handle_flapping]
           @logger.info('handler does not handle flapping events', {
@@ -213,8 +212,15 @@ module Sensu
           })
           next
         end
-        if handler.has_key?(:severities) && !handler[:severities].include?(event_severity)
-          unless event[:action] == :resolve
+        if handler.has_key?(:severities)
+          status = case event[:action]
+          when :resolve
+            event[:check][:history][-2]
+          else
+            event[:check][:status]
+          end
+          severity = SEVERITIES[status] || 'unknown'
+          unless handler[:severities].include?(severity)
             @logger.debug('handler does not handle event severity', {
               :event => event,
               :handler => handler
