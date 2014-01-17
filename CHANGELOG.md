@@ -1,3 +1,13 @@
+## 0.12.4 - 2014-01-17
+
+### Other
+
+Fixed filter "eval:" on Ruby 2.1.0, and logging errors.
+
+Fixed handler severity filtering when event action is "resolve". Events
+with an action of "resolve" will be negated if the severity conditions have
+not been met since the last OK status.
+
 ## 0.12.3 - 2013-12-19
 
 ### Other
