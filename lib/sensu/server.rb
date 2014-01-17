@@ -213,14 +213,20 @@ module Sensu
           next
         end
         if handler.has_key?(:severities)
-          status = case event[:action]
+          handle = case event[:action]
           when :resolve
-            event[:check][:history][-2]
+            event[:check][:history].reverse[1..-1].any? do |status|
+              if status == 0
+                break
+              end
+              severity = SEVERITIES[status] || 'unknown'
+              handler[:severities].include?(severity)
+            end
           else
-            event[:check][:status]
+            severity = SEVERITIES[event[:check][:status]] || 'unknown'
+            handler[:severities].include?(severity)
           end
-          severity = SEVERITIES[status] || 'unknown'
-          unless handler[:severities].include?(severity)
+          unless handle
             @logger.debug('handler does not handle event severity', {
               :event => event,
               :handler => handler
