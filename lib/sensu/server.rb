@@ -216,10 +216,10 @@ module Sensu
           handle = case event[:action]
           when :resolve
             event[:check][:history].reverse[1..-1].any? do |status|
-              if status == 0
+              if status.to_i == 0
                 break
               end
-              severity = SEVERITIES[status] || 'unknown'
+              severity = SEVERITIES[status.to_i] || 'unknown'
               handler[:severities].include?(severity)
             end
           else
