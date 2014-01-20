@@ -1,3 +1,9 @@
+## 0.12.5 - 2014-01-20
+
+### Other
+
+Fixed handler severity filtering, check history is an array of strings.
+
 ## 0.12.4 - 2014-01-17
 
 ### Other
