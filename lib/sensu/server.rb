@@ -175,7 +175,7 @@ module Sensu
     end
 
     def derive_handlers(handler_list)
-      handler_list.inject(Array.new) do |handlers, handler_name|
+      handler_list.compact.inject(Array.new) do |handlers, handler_name|
         if @settings.handler_exists?(handler_name)
           handler = @settings[:handlers][handler_name].merge(:name => handler_name)
           if handler[:type] == 'set'
