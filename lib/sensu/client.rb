@@ -182,8 +182,8 @@ module Sensu
         else
           execute_check_command(check)
         end
-      else
-        if @extensions.check_exists?(check[:name])
+      elsif check.has_key?(:extension)
+        if @extensions.check_exists?(check[:extension])
           run_check_extension(check)
         else
           @logger.warn('unknown check extension', {
