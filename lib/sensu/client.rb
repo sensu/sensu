@@ -158,7 +158,7 @@ module Sensu
       })
       check[:executed] = Time.now.to_i
       extension = @extensions[:checks][check[:extension]]
-      extension.safe_run do |output, status|
+      extension.safe_run(check) do |output, status|
         check[:output] = output
         check[:status] = status
         publish_result(check)
