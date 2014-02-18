@@ -2,7 +2,7 @@ require 'ruby-prof'
 
 module Sensu
   module Extension
-    class RubyProfiler < Profiler
+    class RubyProfiler < Generic
       def name
         'ruby_profiler'
       end

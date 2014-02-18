@@ -1,6 +1,6 @@
 module Sensu
   module Extension
-    class GCProfiler < Profiler
+    class GCProfiler < Generic
       def name
         'gc_profiler'
       end
