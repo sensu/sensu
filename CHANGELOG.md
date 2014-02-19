@@ -1,3 +1,10 @@
+## 0.12.6 - 2014-02-19
+
+### Non-backwards compatible changes
+
+The "profiler" extension type `Sensu::Extension::Profiler` is now "generic"
+`Sensu::Extension::Generic`.
+
 ## 0.12.5 - 2014-01-20
 
 ### Other
