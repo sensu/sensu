@@ -224,7 +224,7 @@ module Sensu
           @timers << EM::PeriodicTimer.new(interval) do
             if @rabbitmq.connected?
               check[:issued] = Time.now.to_i
-              process_check(check)
+              process_check(check.dup)
             end
           end
         end
