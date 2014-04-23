@@ -1,6 +1,6 @@
 module Sensu
   class Socket < EM::Connection
-    attr_accessor :logger, :settings, :amq, :reply
+    attr_accessor :logger, :settings, :transport, :reply
 
     def respond(data)
       unless @reply == false
@@ -36,7 +36,7 @@ module Sensu
             @logger.info('publishing check result', {
               :payload => payload
             })
-            @amq.direct('results').publish(Oj.dump(payload))
+            @transport.publish(:direct, 'results', Oj.dump(payload))
             respond('ok')
           else
             @logger.warn('invalid check result', {

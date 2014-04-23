@@ -33,6 +33,7 @@ module Sensu
         :settings => @settings[:rabbitmq]
       })
       @transport = Transport::RabbitMQ.connect(@settings[:rabbitmq])
+      @transport.logger = @logger
       @transport.on_error do |error|
         @logger.fatal('transport connection error', {
           :error => error.to_s
@@ -248,12 +249,12 @@ module Sensu
       EM::start_server(options[:bind], options[:port], Socket) do |socket|
         socket.logger = @logger
         socket.settings = @settings
-        socket.amq = @transport
+        socket.transport = @transport
       end
       EM::open_datagram_socket(options[:bind], options[:port], Socket) do |socket|
         socket.logger = @logger
         socket.settings = @settings
-        socket.amq = @transport
+        socket.transport = @transport
         socket.reply = false
       end
     end
