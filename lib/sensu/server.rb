@@ -529,11 +529,11 @@ module Sensu
         :payload => payload,
         :subscribers => check[:subscribers]
       })
-      check[:subscribers].each do |exchange_name|
-        @transport.publish(:fanout, exchange_name, Oj.dump(payload)) do |info|
+      check[:subscribers].each do |subscription|
+        @transport.publish(:fanout, subscription, Oj.dump(payload)) do |info|
           if info[:error]
             @logger.error('failed to publish check request', {
-              :exchange_name => exchange_name,
+              :subscription => subscription,
               :payload => payload,
               :error => info[:error].to_s
             })
