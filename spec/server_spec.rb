@@ -382,16 +382,18 @@ describe 'Sensu::Server' do
       @server.setup_redis
       @server.setup_results
       redis.flushdb do
-        client = client_template
-        redis.set('client:i-424242', Oj.dump(client)) do
-          result = result_template
-          amq.direct('results').publish(Oj.dump(result))
-          timer(1) do
-            redis.hget('events:i-424242', 'foobar') do |event_json|
-              event = Oj.load(event_json)
-              event[:status].should eq(1)
-              event[:occurrences].should eq(1)
-              async_done
+        timer(1) do
+          client = client_template
+          redis.set('client:i-424242', Oj.dump(client)) do
+            result = result_template
+            amq.direct('results').publish(Oj.dump(result))
+            timer(1) do
+              redis.hget('events:i-424242', 'foobar') do |event_json|
+                event = Oj.load(event_json)
+                event[:status].should eq(1)
+                event[:occurrences].should eq(1)
+                async_done
+              end
             end
           end
         end

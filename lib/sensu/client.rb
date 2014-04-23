@@ -200,7 +200,7 @@ module Sensu
         @logger.debug('subscribing to a subscription', {
           :subscription => subscription
         })
-        @transport.subscribe(:fanout, subscription) do |payload|
+        @transport.subscribe(:fanout, subscription, @settings[:client][:name]) do |payload|
           check = Oj.load(payload)
           @logger.info('received check request', {
             :check => check
