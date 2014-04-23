@@ -77,7 +77,7 @@ module Sensu
       end
     end
 
-    def setup_keepalives(&block)
+    def setup_keepalives
       @logger.debug('subscribing to keepalives')
       @transport.subscribe(:direct, 'keepalives', 'keepalives', :ack => true) do |header, payload|
         client = Oj.load(payload)
@@ -495,7 +495,7 @@ module Sensu
       end
     end
 
-    def setup_results(&block)
+    def setup_results
       @logger.debug('subscribing to results')
       @transport.subscribe(:direct, 'results', 'results', :ack => true) do |header, payload|
         result = Oj.load(payload)

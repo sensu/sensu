@@ -10,7 +10,7 @@ describe 'Sensu::Client' do
 
   it 'can connect to rabbitmq' do
     async_wrapper do
-      @client.setup_rabbitmq
+      @client.setup_transport
       async_done
     end
   end
@@ -18,7 +18,7 @@ describe 'Sensu::Client' do
   it 'can send a keepalive' do
     async_wrapper do
       keepalive_queue do |queue|
-        @client.setup_rabbitmq
+        @client.setup_transport
         @client.publish_keepalive
         queue.subscribe do |payload|
           keepalive = Oj.load(payload)
@@ -33,7 +33,7 @@ describe 'Sensu::Client' do
   it 'can schedule keepalive publishing' do
     async_wrapper do
       keepalive_queue do |queue|
-        @client.setup_rabbitmq
+        @client.setup_transport
         @client.setup_keepalives
         queue.subscribe do |payload|
           keepalive = Oj.load(payload)
@@ -47,7 +47,7 @@ describe 'Sensu::Client' do
   it 'can send a check result' do
     async_wrapper do
       result_queue do |queue|
-        @client.setup_rabbitmq
+        @client.setup_transport
         check = result_template[:check]
         @client.publish_result(check)
         queue.subscribe do |payload|
@@ -63,7 +63,7 @@ describe 'Sensu::Client' do
   it 'can execute a check command' do
     async_wrapper do
       result_queue do |queue|
-        @client.setup_rabbitmq
+        @client.setup_transport
         @client.execute_check_command(check_template)
         queue.subscribe do |payload|
           result = Oj.load(payload)
@@ -79,7 +79,7 @@ describe 'Sensu::Client' do
   it 'can substitute check command tokens with attributes, default values, and execute it' do
     async_wrapper do
       result_queue do |queue|
-        @client.setup_rabbitmq
+        @client.setup_transport
         check = check_template
         check[:command] = 'echo :::nested.attribute|default::: :::missing|default::: :::missing|:::'
         @client.execute_check_command(check)
@@ -96,7 +96,7 @@ describe 'Sensu::Client' do
   it 'can run a check extension' do
     async_wrapper do
       result_queue do |queue|
-        @client.setup_rabbitmq
+        @client.setup_transport
         check = {
           :name => 'sensu_gc_metrics'
         }
@@ -114,7 +114,7 @@ describe 'Sensu::Client' do
 
   it 'can setup subscriptions' do
     async_wrapper do
-      @client.setup_rabbitmq
+      @client.setup_transport
       @client.setup_subscriptions
       timer(1) do
         amq.fanout('test', :passive => true) do |exchange, declare_ok|
@@ -129,7 +129,7 @@ describe 'Sensu::Client' do
   it 'can receive a check request and execute the check' do
     async_wrapper do
       result_queue do |queue|
-        @client.setup_rabbitmq
+        @client.setup_transport
         @client.setup_subscriptions
         timer(1) do
           amq.fanout('test').publish(Oj.dump(check_template))
@@ -149,7 +149,7 @@ describe 'Sensu::Client' do
     async_wrapper do
       result_queue do |queue|
         @client.safe_mode = true
-        @client.setup_rabbitmq
+        @client.setup_transport
         @client.setup_subscriptions
         timer(1) do
           amq.fanout('test').publish(Oj.dump(check_template))
@@ -168,7 +168,7 @@ describe 'Sensu::Client' do
   it 'can schedule standalone check execution' do
     async_wrapper do
       result_queue do |queue|
-        @client.setup_rabbitmq
+        @client.setup_transport
         @client.setup_standalone
         expected = ['standalone', 'sensu_gc_metrics']
         queue.subscribe do |payload|
@@ -189,7 +189,7 @@ describe 'Sensu::Client' do
   it 'can accept external result input via sockets' do
     async_wrapper do
       result_queue do |queue|
-        @client.setup_rabbitmq
+        @client.setup_transport
         @client.setup_sockets
         timer(1) do
           EM::connect('127.0.0.1', 3030, nil) do |socket|

@@ -52,11 +52,11 @@ describe 'Sensu::API' do
         http.response_header.status.should eq(200)
         body[:sensu][:version].should eq(Sensu::VERSION)
         body[:redis][:connected].should be_true
-        body[:rabbitmq][:connected].should be_true
-        body[:rabbitmq][:keepalives][:messages].should be_kind_of(Integer)
-        body[:rabbitmq][:keepalives][:consumers].should be_kind_of(Integer)
-        body[:rabbitmq][:results][:messages].should be_kind_of(Integer)
-        body[:rabbitmq][:results][:consumers].should be_kind_of(Integer)
+        body[:transport][:connected].should be_true
+        body[:transport][:keepalives][:messages].should be_kind_of(Integer)
+        body[:transport][:keepalives][:consumers].should be_kind_of(Integer)
+        body[:transport][:results][:messages].should be_kind_of(Integer)
+        body[:transport][:results][:consumers].should be_kind_of(Integer)
         async_done
       end
     end
