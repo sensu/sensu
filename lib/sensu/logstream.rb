@@ -103,8 +103,8 @@ module Sensu
       end
       register_callback(&writer)
       EM::add_shutdown_hook do
-        @log_stream.each do |log_event|
-          puts log_event
+        @log_stream.size.times do
+          puts @log_stream.shift
         end
       end
     end
