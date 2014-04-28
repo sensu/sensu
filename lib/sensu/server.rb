@@ -413,7 +413,7 @@ module Sensu
         unless client_json.nil?
           client = Oj.load(client_json)
           check = case
-          when @settings.check_exists?(result[:check][:name])
+          when @settings.check_exists?(result[:check][:name]) && !result[:check][:standalone]
             @settings[:checks][result[:check][:name]].merge(result[:check])
           else
             result[:check]
