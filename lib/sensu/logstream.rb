@@ -1,7 +1,8 @@
 module Sensu
   class LogStream
     def initialize
-      @log_stream = EM::Queue.new
+      @log_stream = Array.new
+      @log_stream_callbacks = Array.new
       @log_level = :info
       STDOUT.sync = true
       STDERR.reopen(STDOUT)
@@ -20,7 +21,7 @@ module Sensu
       unless level_filtered?(level)
         log_event = create_log_event(level, *arguments)
         if EM::reactor_running?
-          @log_stream << log_event
+          schedule_write(log_event)
         else
           puts log_event
         end
@@ -74,14 +75,38 @@ module Sensu
       Oj.dump(log_event)
     end
 
+    def schedule_write(log_event)
+      EM::schedule do
+        @log_stream << log_event
+        unless @log_stream_callbacks.empty?
+          @log_stream_callbacks.shift.call(@log_stream.shift)
+        end
+      end
+    end
+
+    def register_callback(&block)
+      EM::schedule do
+        if @log_stream.empty?
+          @log_stream_callbacks << block
+        else
+          block.call(@log_stream.shift)
+        end
+      end
+    end
+
     def setup_writer
       writer = Proc.new do |log_event|
         puts log_event
         EM::next_tick do
-          @log_stream.pop(&writer)
+          register_callback(&writer)
         end
       end
-      @log_stream.pop(&writer)
+      register_callback(&writer)
+      EM::add_shutdown_hook do
+        @log_stream.size.times do
+          puts @log_stream.shift
+        end
+      end
     end
   end
 
