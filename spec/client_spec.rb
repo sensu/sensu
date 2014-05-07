@@ -81,12 +81,12 @@ describe 'Sensu::Client' do
       result_queue do |queue|
         @client.setup_rabbitmq
         check = check_template
-        check[:command] = 'echo :::nested.attribute|default::: :::missing|default::: :::missing|:::'
+        check[:command] = 'echo :::nested.attribute|default::: :::missing|default::: :::missing|::: :::nested.attribute:::::::nested.attribute:::'
         @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
-          result[:check][:output].should eq("true default\n")
+          result[:check][:output].should eq("true default true:true\n")
           async_done
         end
       end
