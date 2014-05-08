@@ -286,11 +286,24 @@ module Sensu
     end
 
     def start
-      setup_rabbitmq
-      setup_keepalives
-      setup_subscriptions
-      setup_standalone
-      setup_sockets
+      started = false
+      until started
+        restart_wait = @settings[:client][:restart_wait].to_i || 10
+        begin
+          setup_rabbitmq
+          setup_keepalives
+          setup_subscriptions
+          setup_standalone
+          setup_sockets
+        rescue Exception => e
+          msg = "client start error: #{e}. Retrying in #{restart_wait} secs..."
+          @logger.error(msg)
+          @logger.flush
+          sleep restart_wait
+          next
+        end
+        started = true
+      end
     end
 
     def stop
