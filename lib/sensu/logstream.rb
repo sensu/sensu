@@ -34,6 +34,12 @@ module Sensu
       end
     end
 
+    def flush()
+      @log_stream.each do |log_event|
+        puts(log_event)
+      end
+    end
+
     def reopen(file)
       @log_file = file
       if File.writable?(file) || !File.exist?(file) && File.writable?(File.dirname(file))
