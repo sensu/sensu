@@ -9,6 +9,11 @@ module Sensu
       setup_writer
     end
 
+    def ignore_exception(exception)
+      yield
+    rescue exception
+    end
+
     def level=(level)
       @log_level = level
     end
@@ -23,7 +28,7 @@ module Sensu
         if EM::reactor_running?
           schedule_write(log_event)
         else
-          puts log_event
+          ignore_exception(Errno::ENOSPC) { puts log_event }
         end
       end
     end
@@ -96,7 +101,7 @@ module Sensu
 
     def setup_writer
       writer = Proc.new do |log_event|
-        puts log_event
+        ignore_exception(Errno::ENOSPC) { puts log_event }
         EM::next_tick do
           register_callback(&writer)
         end
@@ -104,7 +109,7 @@ module Sensu
       register_callback(&writer)
       EM::add_shutdown_hook do
         @log_stream.size.times do
-          puts @log_stream.shift
+          ignore_exception(Errno::ENOSPC) { puts @log_stream.shift }
         end
       end
     end
