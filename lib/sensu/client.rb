@@ -304,6 +304,7 @@ module Sensu
         end
         started = true
       end
+      @logger.info("client started successfully")
     end
 
     def stop
