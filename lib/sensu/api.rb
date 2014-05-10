@@ -52,29 +52,31 @@ module Sensu
         end
       end
 
-      def setup_rabbitmq
-        $logger.debug('connecting to rabbitmq', {
-          :settings => $settings[:rabbitmq]
+      def setup_transport
+        transport_name = $settings[:transport] || 'rabbitmq'
+        transport_settings = $settings[transport_name.to_sym]
+        $logger.debug('connecting to transport', {
+          :name => transport_name,
+          :settings => transport_settings
         })
-        $rabbitmq = RabbitMQ.connect($settings[:rabbitmq])
-        $rabbitmq.on_error do |error|
-          $logger.fatal('rabbitmq connection error', {
+        $transport = Transport.connect(transport_name, transport_settings)
+        $transport.on_error do |error|
+          $logger.fatal('transport connection error', {
             :error => error.to_s
           })
           stop
         end
-        $rabbitmq.before_reconnect do
-          $logger.warn('reconnecting to rabbitmq')
+        $transport.before_reconnect do
+          $logger.warn('reconnecting to transport')
         end
-        $rabbitmq.after_reconnect do
-          $logger.info('reconnected to rabbitmq')
+        $transport.after_reconnect do
+          $logger.info('reconnected to transport')
         end
-        $amq = $rabbitmq.channel
       end
 
       def start
         setup_redis
-        setup_rabbitmq
+        setup_transport
         Thin::Logging.silent = true
         bind = $settings[:api][:bind] || '0.0.0.0'
         Thin::Server.start(bind, $settings[:api][:port], self)
@@ -82,7 +84,7 @@ module Sensu
 
       def stop
         $logger.warn('stopping')
-        $rabbitmq.close
+        $transport.close
         $redis.close
         $logger.warn('stopping reactor')
         EM::stop_event_loop
@@ -204,7 +206,7 @@ module Sensu
         end
       end
 
-      def rabbitmq_info(&block)
+      def transport_info(&block)
         info = {
           :keepalives => {
             :messages => nil,
@@ -214,15 +216,13 @@ module Sensu
             :messages => nil,
             :consumers => nil
           },
-          :connected => $rabbitmq.connected?
+          :connected => $transport.connected?
         }
-        if $rabbitmq.connected?
-          $amq.queue('keepalives', :auto_delete => true).status do |messages, consumers|
-            info[:keepalives][:messages] = messages
-            info[:keepalives][:consumers] = consumers
-            $amq.queue('results', :auto_delete => true).status do |messages, consumers|
-              info[:results][:messages] = messages
-              info[:results][:consumers] = consumers
+        if $transport.connected?
+          $transport.stats('keepalives') do |stats|
+            info[:keepalives] = stats
+            $transport.stats('results') do |stats|
+              info[:results] = stats
               block.call(info)
             end
           end
@@ -253,13 +253,13 @@ module Sensu
         $logger.info('publishing check result', {
           :payload => payload
         })
-        begin
-          $amq.direct('results').publish(Oj.dump(payload))
-        rescue AMQ::Client::ConnectionClosedError => error
-          $logger.error('failed to publish check result', {
-            :payload => payload,
-            :error => error.to_s
-          })
+        $transport.publish(:direct, 'results', Oj.dump(payload)) do |info|
+          if info[:error]
+            $logger.error('failed to publish check result', {
+              :payload => payload,
+              :error => info[:error].to_s
+            })
+          end
         end
       end
     end
@@ -270,12 +270,12 @@ module Sensu
     end
 
     aget '/info/?' do
-      rabbitmq_info do |info|
+      transport_info do |info|
         response = {
           :sensu => {
             :version => VERSION
           },
-          :rabbitmq => info,
+          :transport => info,
           :redis => {
             :connected => $redis.connected?
           }
@@ -285,11 +285,11 @@ module Sensu
     end
 
     aget '/health/?' do
-      if $redis.connected? && $rabbitmq.connected?
+      if $redis.connected? && $transport.connected?
         healthy = Array.new
         min_consumers = integer_parameter(params[:consumers])
         max_messages = integer_parameter(params[:messages])
-        rabbitmq_info do |info|
+        transport_info do |info|
           if min_consumers
             healthy << (info[:keepalives][:consumers] >= min_consumers)
             healthy << (info[:results][:consumers] >= min_consumers)
@@ -431,14 +431,14 @@ module Sensu
             :subscribers => subscribers
           })
           subscribers.uniq.each do |exchange_name|
-            begin
-              $amq.fanout(exchange_name).publish(Oj.dump(payload))
-            rescue AMQ::Client::ConnectionClosedError => error
-              $logger.error('failed to publish check request', {
-                :exchange_name => exchange_name,
-                :payload => payload,
-                :error => error.to_s
-              })
+            $transport.publish(:fanout, exchange_name, Oj.dump(payload)) do |info|
+              if info[:error]
+                $logger.error('failed to publish check request', {
+                  :exchange_name => exchange_name,
+                  :payload => payload,
+                  :error => info[:error].to_s
+                })
+              end
             end
           end
           issued!
