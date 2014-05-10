@@ -346,17 +346,13 @@ module Sensu
             rescue => error
               on_error.call(error)
             end
-          when 'amqp'
-            exchange_name = handler[:exchange][:name]
-            exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
-            exchange_options = handler[:exchange].reject do |key, value|
-              [:name, :type].include?(key)
-            end
+          when 'transport'
             unless event_data.empty?
-              @transport.publish(exchange_type, exchange_name, event_data, exchange_options) do |info|
+              pipe = handler[:pipe]
+              @transport.publish(pipe[:type].to_sym, pipe[:name], event_data, pipe[:options] || Hash.new) do |info|
                 if info[:error]
-                  @logger.error('failed to publish event data to an exchange', {
-                    :exchange => handler[:exchange],
+                  @logger.fatal('failed to publish event data to the transport', {
+                    :pipe => pipe,
                     :payload => event_data,
                     :error => info[:error].to_s
                   })

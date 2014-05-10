@@ -309,16 +309,22 @@ module Sensu
         unless handler[:socket][:port].is_a?(Integer)
           invalid_handler(handler, 'handler is missing socket port')
         end
-      when 'amqp'
-        unless handler[:exchange].is_a?(Hash)
-          invalid_handler(handler, 'handler is missing exchange hash')
+      when 'transport'
+        unless handler[:pipe].is_a?(Hash)
+          invalid_handler(handler, 'handler is missing pipe hash')
         end
-        unless handler[:exchange][:name].is_a?(String)
-          invalid_handler(handler, 'handler is missing exchange name')
+        unless handler[:pipe][:type].is_a?(String)
+          invalid_handler(handler, 'handler is missing pipe type')
         end
-        if handler[:exchange].has_key?(:type)
-          unless %w[direct fanout topic].include?(handler[:exchange][:type])
-            invalid_handler(handler, 'handler exchange type is invalid')
+        unless %w[direct fanout topic].include?(handler[:pipe][:type])
+          invalid_handler(handler, 'handler pipe type is invalid')
+        end
+        unless handler[:pipe][:name].is_a?(String)
+          invalid_handler(handler, 'handler is missing pipe name')
+        end
+        if handler[:pipe].has_key?(:options)
+          unless handler[:pipe][:options].is_a?(Hash)
+            invalid('handler pipe options must be a hash')
           end
         end
       when 'set'

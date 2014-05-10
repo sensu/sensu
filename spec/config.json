@@ -73,9 +73,10 @@
         "port": 1234
       }
     },
-    "amqp": {
-      "type": "amqp",
-      "exchange": {
+    "transport": {
+      "type": "transport",
+      "pipe": {
+        "type": "direct",
         "name": "events"
       }
     }

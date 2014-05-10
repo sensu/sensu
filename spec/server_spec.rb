@@ -285,7 +285,7 @@ describe 'Sensu::Server' do
     async_wrapper do
       @server.setup_transport
       event = event_template
-      event[:check][:handler] = 'amqp'
+      event[:check][:handler] = 'transport'
       amq.direct('events') do
         queue = amq.queue('', :auto_delete => true).bind('events') do
           @server.handle_event(event)
