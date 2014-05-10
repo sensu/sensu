@@ -217,8 +217,8 @@ module Sensu
       unless (check[:interval].is_a?(Integer) && check[:interval] > 0) || !check[:publish]
         invalid_check(check, 'check is missing interval')
       end
-      unless check[:command].is_a?(String)
-        invalid_check(check, 'check is missing command')
+      unless (check[:command].is_a?(String) ^ check[:extension].is_a?(String))
+        invalid_check(check, 'check configuration is invalid command xor extension')
       end
       if check.has_key?(:standalone)
         unless !!check[:standalone] == check[:standalone]

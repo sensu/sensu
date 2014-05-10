@@ -160,8 +160,8 @@ module Sensu
         :check => check
       })
       check[:executed] = Time.now.to_i
-      extension = @extensions[:checks][check[:name]]
-      extension.safe_run do |output, status|
+      extension = @extensions[:checks][check[:extension]]
+      extension.safe_run(check) do |output, status|
         check[:output] = output
         check[:status] = status
         publish_result(check)
@@ -185,8 +185,8 @@ module Sensu
         else
           execute_check_command(check)
         end
-      else
-        if @extensions.check_exists?(check[:name])
+      elsif check.has_key?(:extension)
+        if @extensions.check_exists?(check[:extension])
           run_check_extension(check)
         else
           @logger.warn('unknown check extension', {
