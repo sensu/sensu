@@ -54,11 +54,13 @@ module Sensu
     end
 
     def setup_transport
+      transport_name = @settings[:transport] || 'rabbitmq'
+      transport_settings = @settings[transport_name.to_sym]
       @logger.debug('connecting to transport', {
-        :type => 'rabbitmq',
-        :settings => @settings[:rabbitmq]
+        :name => transport_name,
+        :settings => transport_settings
       })
-      @transport = Transport::RabbitMQ.connect(@settings[:rabbitmq])
+      @transport = Transport.connect(transport_name, transport_settings)
       @transport.on_error do |error|
         @logger.fatal('transport connection error', {
           :error => error.to_s

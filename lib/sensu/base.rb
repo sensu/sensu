@@ -15,7 +15,7 @@ require File.join(File.dirname(__FILE__), 'settings')
 require File.join(File.dirname(__FILE__), 'extensions')
 require File.join(File.dirname(__FILE__), 'process')
 require File.join(File.dirname(__FILE__), 'io')
-require 'sensu/transport/rabbitmq'
+require 'sensu/transport'
 
 Oj.default_options = {:mode => :compat, :symbol_keys => true}
 
