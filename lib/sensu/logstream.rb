@@ -23,7 +23,7 @@ module Sensu
         if EM::reactor_running?
           schedule_write(log_event)
         else
-          puts log_event
+          safe_write(log_event)
         end
       end
     end
@@ -84,6 +84,13 @@ module Sensu
       end
     end
 
+    def safe_write(log_event)
+      begin
+        puts log_event
+      rescue Errno::ENOSPC
+      end
+    end
+
     def register_callback(&block)
       EM::schedule do
         if @log_stream.empty?
@@ -96,7 +103,7 @@ module Sensu
 
     def setup_writer
       writer = Proc.new do |log_event|
-        puts log_event
+        safe_write(log_event)
         EM::next_tick do
           register_callback(&writer)
         end
@@ -104,7 +111,7 @@ module Sensu
       register_callback(&writer)
       EM::add_shutdown_hook do
         @log_stream.size.times do
-          puts @log_stream.shift
+          safe_write(@log_stream.shift)
         end
       end
     end
