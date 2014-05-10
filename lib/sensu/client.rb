@@ -201,8 +201,8 @@ module Sensu
           :subscription => subscription
         })
         funnel = [@settings[:client][:name], VERSION, Time.now.to_i].join('-')
-        @transport.subscribe(:fanout, subscription, funnel) do |payload|
-          check = Oj.load(payload)
+        @transport.subscribe(:fanout, subscription, funnel) do |message_info, message|
+          check = Oj.load(message)
           @logger.info('received check request', {
             :check => check
           })

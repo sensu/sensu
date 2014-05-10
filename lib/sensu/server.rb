@@ -79,14 +79,14 @@ module Sensu
 
     def setup_keepalives
       @logger.debug('subscribing to keepalives')
-      @transport.subscribe(:direct, 'keepalives', 'keepalives', :ack => true) do |header, payload|
-        client = Oj.load(payload)
+      @transport.subscribe(:direct, 'keepalives', 'keepalives', :ack => true) do |message_info, message|
+        client = Oj.load(message)
         @logger.debug('received keepalive', {
           :client => client
         })
         @redis.set('client:' + client[:name], Oj.dump(client)) do
           @redis.sadd('clients', client[:name]) do
-            header.ack
+            @transport.ack(message_info)
           end
         end
       end
@@ -497,14 +497,14 @@ module Sensu
 
     def setup_results
       @logger.debug('subscribing to results')
-      @transport.subscribe(:direct, 'results', 'results', :ack => true) do |header, payload|
-        result = Oj.load(payload)
+      @transport.subscribe(:direct, 'results', 'results', :ack => true) do |message_info, message|
+        result = Oj.load(message)
         @logger.debug('received result', {
           :result => result
         })
         process_result(result)
         EM::next_tick do
-          header.ack
+          @transport.ack(message_info)
         end
       end
     end
