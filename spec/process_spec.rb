@@ -10,12 +10,12 @@ describe 'Sensu::Process' do
 
   it 'can create a pid file' do
     @process.write_pid('/tmp/sensu.pid')
-    File.open('/tmp/sensu.pid', 'r').read.should eq(::Process.pid.to_s + "\n")
+    expect(File.open('/tmp/sensu.pid', 'r').read).to eq(::Process.pid.to_s + "\n")
   end
 
   it 'can exit if it cannot create a pid file' do
     with_stdout_redirect do
-      lambda { @process.write_pid('/sensu.pid') }.should raise_error(SystemExit)
+      expect { @process.write_pid('/sensu.pid') }.to raise_error(SystemExit)
     end
   end
 end

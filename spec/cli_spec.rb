@@ -6,7 +6,7 @@ describe 'Sensu::CLI' do
   include Helpers
 
   it 'does not provide default configuration options' do
-    Sensu::CLI.read.should eq(Hash.new)
+    expect(Sensu::CLI.read).to eq(Hash.new)
   end
 
   it 'can parse command line arguments' do
@@ -28,7 +28,7 @@ describe 'Sensu::CLI' do
       :pid_file => '/tmp/sensu_spec.pid',
       :daemonize => true
     }
-    options.should eq(expected)
+    expect(options).to eq(expected)
   end
 
   it 'can set the appropriate log level' do
@@ -39,12 +39,12 @@ describe 'Sensu::CLI' do
     expected = {
       :log_level => :warn
     }
-    options.should eq(expected)
+    expect(options).to eq(expected)
   end
 
   it 'exits when an invalid log level is provided' do
     with_stdout_redirect do
-      lambda { Sensu::CLI.read(['-L', 'invalid']) }.should raise_error SystemExit
+      expect { Sensu::CLI.read(['-L', 'invalid']) }.to raise_error SystemExit
     end
   end
 end

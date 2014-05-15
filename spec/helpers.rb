@@ -170,7 +170,7 @@ module Helpers
     attr_accessor :expected
 
     def receive_data(data)
-      data.should eq(expected)
+      expect(data).to eq(expected)
       EM::stop_event_loop
     end
   end
