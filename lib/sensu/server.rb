@@ -683,7 +683,7 @@ module Sensu
       @redis.setnx('lock:master', Time.now.to_i) do |created|
         if created
           @is_master = true
-          @logger.info('i am the master')
+          @logger.info('I am the master')
           master_duties
         else
           @redis.get('lock:master') do |timestamp|
@@ -691,7 +691,7 @@ module Sensu
               @redis.getset('lock:master', Time.now.to_i) do |previous|
                 if previous == timestamp
                   @is_master = true
-                  @logger.info('i am now the master')
+                  @logger.info('I am now the master')
                   master_duties
                 end
               end
