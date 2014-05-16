@@ -6,14 +6,14 @@ describe 'Sensu::Extension::Base' do
 
   it 'can run (nagios spec)' do
     extension = Sensu::Extension::Base.new
-    extension.should respond_to(:name, :description, :[])
-    extension.name.should eq('base')
-    extension['name'].should eq('base')
-    extension[:name].should eq('base')
-    extension[:type].should eq('extension')
+    expect(extension).to respond_to(:name, :description, :[])
+    expect(extension.name).to eq('base')
+    expect(extension['name']).to eq('base')
+    expect(extension[:name]).to eq('base')
+    expect(extension[:type]).to eq('extension')
     extension.run do |output, status|
-      output.should eq('noop')
-      status.should eq(0)
+      expect(output).to eq('noop')
+      expect(status).to eq(0)
     end
   end
 
@@ -23,14 +23,14 @@ describe 'Sensu::Extension::Base' do
     extension.stop do
       stopped = true
     end
-    stopped.should be_true
+    expect(stopped).to be_true
   end
 
   it 'can determine descendants (classes)' do
     class Foo < Sensu::Extension::Base; end
     class Bar < Sensu::Extension::Base; end
     descendants = Sensu::Extension::Base.descendants
-    descendants.should include(Foo)
-    descendants.should include(Bar)
+    expect(descendants).to include(Foo)
+    expect(descendants).to include(Bar)
   end
 end

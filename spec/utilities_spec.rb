@@ -14,11 +14,11 @@ describe 'Sensu::Utilities' do
       :diff_two => [{:secret => 'baz'}, {:secret => 'qux'}]
     }
     redacted = redact_sensitive(hash)
-    redacted[:one].should eq(1)
-    redacted[:password].should eq('REDACTED')
-    redacted[:nested][:password].should eq('REDACTED')
-    redacted[:diff_one][1][:secret].should eq('REDACTED')
-    redacted[:diff_two][0][:secret].should eq('REDACTED')
-    redacted[:diff_two][1][:secret].should eq('REDACTED')
+    expect(redacted[:one]).to eq(1)
+    expect(redacted[:password]).to eq('REDACTED')
+    expect(redacted[:nested][:password]).to eq('REDACTED')
+    expect(redacted[:diff_one][1][:secret]).to eq('REDACTED')
+    expect(redacted[:diff_two][0][:secret]).to eq('REDACTED')
+    expect(redacted[:diff_two][1][:secret]).to eq('REDACTED')
   end
 end

@@ -6,30 +6,30 @@ describe 'Sensu::IO' do
 
   it 'can execute a command' do
     output, status = Sensu::IO.popen('echo test')
-    output.should eq("test\n")
-    status.should eq(0)
+    expect(output).to eq("test\n")
+    expect(status).to eq(0)
   end
 
   it 'can execute a command with a non-zero exist status' do
     output, status = Sensu::IO.popen('echo test && exit 1')
-    output.should eq("test\n")
-    status.should eq(1)
+    expect(output).to eq("test\n")
+    expect(status).to eq(1)
   end
 
   it 'can execute an unknown command' do
     output, status = Sensu::IO.popen('unknown.command')
-    output.should include('unknown')
-    status.should eq(127)
+    expect(output).to include('unknown')
+    expect(status).to eq(127)
   end
 
   it 'can time out command execution (ruby 1.9.3 only)' do
     output, status = Sensu::IO.popen('sleep 1 && echo -n "Ruby 1.8"', 'r', 0.25)
     if RUBY_VERSION < '1.9.3'
-      output.should eq('Ruby 1.8')
-      status.should eq(0)
+      expect(output).to eq('Ruby 1.8')
+      expect(status).to eq(0)
     else
-      output.should eq('Execution timed out')
-      status.should eq(2)
+      expect(output).to eq('Execution timed out')
+      expect(status).to eq(2)
     end
   end
 
@@ -40,18 +40,18 @@ describe 'Sensu::IO' do
       child.write(content)
       child.close_write
     end
-    output.should be_empty
-    status.should eq(0)
-    File.exists?(file_name).should be_true
-    File.open(file_name, 'r').read.should eq(content)
+    expect(output).to be_empty
+    expect(status).to eq(0)
+    expect(File.exists?(file_name)).to be_true
+    expect(File.open(file_name, 'r').read).to eq(content)
     File.delete(file_name)
   end
 
   it 'can execute a command asynchronously' do
     async_wrapper do
       Sensu::IO.async_popen('echo fail && exit 2') do |output, status|
-        output.should eq("fail\n")
-        status.should eq(2)
+        expect(output).to eq("fail\n")
+        expect(status).to eq(2)
         async_done
       end
     end
@@ -62,12 +62,12 @@ describe 'Sensu::IO' do
     file_name = File.join('/tmp', timestamp)
     async_wrapper do
       Sensu::IO.async_popen('cat > ' + file_name, timestamp) do |output, status|
-        status.should eq(0)
+        expect(status).to eq(0)
         async_done
       end
     end
-    File.exists?(file_name).should be_true
-    File.open(file_name, 'r').read.should eq(timestamp)
+    expect(File.exists?(file_name)).to be_true
+    expect(File.open(file_name, 'r').read).to eq(timestamp)
     File.delete(file_name)
   end
 end

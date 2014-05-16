@@ -9,21 +9,21 @@ describe 'Sensu::Extensions' do
   end
 
   it 'can load the default extensions' do
-    @extensions.should respond_to(:[], :mutator_exists?, :handler_exists?)
-    @extensions[:mutators].should be_kind_of(Hash)
-    @extensions[:mutators].should be_empty
-    @extensions[:handlers].should be_kind_of(Hash)
-    @extensions[:handlers].should be_empty
+    expect(@extensions).to respond_to(:[], :mutator_exists?, :handler_exists?)
+    expect(@extensions[:mutators]).to be_kind_of(Hash)
+    expect(@extensions[:mutators]).to be_empty
+    expect(@extensions[:handlers]).to be_kind_of(Hash)
+    expect(@extensions[:handlers]).to be_empty
     @extensions.load_all
-    @extensions[:mutators]['only_check_output'].should be_an_instance_of(Sensu::Extension::OnlyCheckOutput)
-    @extensions[:handlers]['debug'].should be_an_instance_of(Sensu::Extension::Debug)
+    expect(@extensions[:mutators]['only_check_output']).to be_an_instance_of(Sensu::Extension::OnlyCheckOutput)
+    expect(@extensions[:handlers]['debug']).to be_an_instance_of(Sensu::Extension::Debug)
   end
 
   it 'can load custom extensions and ignore those with syntax errors' do
     @extensions.require_directory(options[:extension_dir])
     @extensions.load_all
     @extensions.mutator_exists?('opentsdb')
-    @extensions[:mutators]['opentsdb'].should be_an_instance_of(Sensu::Extension::OpenTSDB)
+    expect(@extensions[:mutators]['opentsdb']).to be_an_instance_of(Sensu::Extension::OpenTSDB)
   end
 
   it 'can stop all extensions for cleanup purposes' do
@@ -32,6 +32,6 @@ describe 'Sensu::Extensions' do
     @extensions.stop_all do
       stopped_all = true
     end
-    stopped_all.should be_true
+    expect(stopped_all).to be_true
   end
 end

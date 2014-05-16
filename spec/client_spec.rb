@@ -22,8 +22,8 @@ describe 'Sensu::Client' do
         @client.publish_keepalive
         queue.subscribe do |payload|
           keepalive = Oj.load(payload)
-          keepalive[:name].should eq('i-424242')
-          keepalive[:service][:password].should eq('REDACTED')
+          expect(keepalive[:name]).to eq('i-424242')
+          expect(keepalive[:service][:password]).to eq('REDACTED')
           async_done
         end
       end
@@ -37,7 +37,7 @@ describe 'Sensu::Client' do
         @client.setup_keepalives
         queue.subscribe do |payload|
           keepalive = Oj.load(payload)
-          keepalive[:name].should eq('i-424242')
+          expect(keepalive[:name]).to eq('i-424242')
           async_done
         end
       end
@@ -52,8 +52,8 @@ describe 'Sensu::Client' do
         @client.publish_result(check)
         queue.subscribe do |payload|
           result = Oj.load(payload)
-          result[:client].should eq('i-424242')
-          result[:check][:name].should eq('foobar')
+          expect(result[:client]).to eq('i-424242')
+          expect(result[:check][:name]).to eq('foobar')
           async_done
         end
       end
@@ -67,9 +67,9 @@ describe 'Sensu::Client' do
         @client.execute_check_command(check_template)
         queue.subscribe do |payload|
           result = Oj.load(payload)
-          result[:client].should eq('i-424242')
-          result[:check][:output].should eq("WARNING\n")
-          result[:check].should have_key(:executed)
+          expect(result[:client]).to eq('i-424242')
+          expect(result[:check][:output]).to eq("WARNING\n")
+          expect(result[:check]).to have_key(:executed)
           async_done
         end
       end
@@ -85,8 +85,8 @@ describe 'Sensu::Client' do
         @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = Oj.load(payload)
-          result[:client].should eq('i-424242')
-          result[:check][:output].should eq("true default true:true\n")
+          expect(result[:client]).to eq('i-424242')
+          expect(result[:check][:output]).to eq("true default true:true\n")
           async_done
         end
       end
@@ -103,9 +103,9 @@ describe 'Sensu::Client' do
         @client.run_check_extension(check)
         queue.subscribe do |payload|
           result = Oj.load(payload)
-          result[:client].should eq('i-424242')
-          result[:check][:output].should start_with('{')
-          result[:check].should have_key(:executed)
+          expect(result[:client]).to eq('i-424242')
+          expect(result[:check][:output]).to start_with('{')
+          expect(result[:check]).to have_key(:executed)
           async_done
         end
       end
@@ -118,8 +118,8 @@ describe 'Sensu::Client' do
       @client.setup_subscriptions
       timer(1) do
         amq.fanout('test', :passive => true) do |exchange, declare_ok|
-          declare_ok.should be_an_instance_of(AMQ::Protocol::Exchange::DeclareOk)
-          exchange.status.should eq(:opening)
+          expect(declare_ok).to be_an_instance_of(AMQ::Protocol::Exchange::DeclareOk)
+          expect(exchange.status).to eq(:opening)
           async_done
         end
       end
@@ -136,9 +136,9 @@ describe 'Sensu::Client' do
         end
         queue.subscribe do |payload|
           result = Oj.load(payload)
-          result[:client].should eq('i-424242')
-          result[:check][:output].should eq("WARNING\n")
-          result[:check][:status].should eq(1)
+          expect(result[:client]).to eq('i-424242')
+          expect(result[:check][:output]).to eq("WARNING\n")
+          expect(result[:check][:status]).to eq(1)
           async_done
         end
       end
@@ -156,9 +156,9 @@ describe 'Sensu::Client' do
         end
         queue.subscribe do |payload|
           result = Oj.load(payload)
-          result[:client].should eq('i-424242')
-          result[:check][:output].should include('safe mode')
-          result[:check][:status].should eq(3)
+          expect(result[:client]).to eq('i-424242')
+          expect(result[:check][:output]).to include('safe mode')
+          expect(result[:check][:status]).to eq(3)
           async_done
         end
       end
@@ -173,11 +173,11 @@ describe 'Sensu::Client' do
         expected = ['standalone', 'sensu_gc_metrics']
         queue.subscribe do |payload|
           result = Oj.load(payload)
-          result[:client].should eq('i-424242')
-          result[:check].should have_key(:issued)
-          result[:check].should have_key(:output)
-          result[:check].should have_key(:status)
-          expected.delete(result[:check][:name]).should_not be_nil
+          expect(result[:client]).to eq('i-424242')
+          expect(result[:check]).to have_key(:issued)
+          expect(result[:check]).to have_key(:output)
+          expect(result[:check]).to have_key(:status)
+          expect(expected.delete(result[:check][:name])).not_to be_nil
           if expected.empty?
             async_done
           end
@@ -205,8 +205,8 @@ describe 'Sensu::Client' do
         expected = ['tcp', 'udp']
         queue.subscribe do |payload|
           result = Oj.load(payload)
-          result[:client].should eq('i-424242')
-          expected.delete(result[:check][:name]).should_not be_nil
+          expect(result[:client]).to eq('i-424242')
+          expect(expected.delete(result[:check][:name])).not_to be_nil
           if expected.empty?
             async_done
           end
