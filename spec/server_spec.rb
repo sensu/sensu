@@ -31,12 +31,12 @@ describe 'Sensu::Server' do
       keepalive[:timestamp] = epoch
       redis.flushdb do
         timer(1) do
-          amq.direct('keepalives').publish(Oj.dump(keepalive))
+          amq.direct('keepalives').publish(MultiJson.dump(keepalive))
           timer(1) do
             redis.sismember('clients', 'i-424242') do |exists|
               expect(exists).to be_true
               redis.get('client:i-424242') do |client_json|
-                client = Oj.load(client_json)
+                client = MultiJson.load(client_json)
                 expect(client).to eq(keepalive)
                 async_done
               end
@@ -231,11 +231,11 @@ describe 'Sensu::Server' do
         raise 'should never get here'
       end
       @server.mutate_event_data(nil, event) do |event_data|
-        expect(event_data).to eq(Oj.dump(event))
+        expect(event_data).to eq(MultiJson.dump(event))
         @server.mutate_event_data('only_check_output', event) do |event_data|
           expect(event_data).to eq('WARNING')
           @server.mutate_event_data('tag', event) do |event_data|
-            expect(Oj.load(event_data)).to include(:mutated)
+            expect(MultiJson.load(event_data)).to include(:mutated)
             @server.mutate_event_data('settings', event) do |event_data|
               expect(event_data).to eq('true')
               async_done
@@ -264,7 +264,7 @@ describe 'Sensu::Server' do
       event = event_template
       event[:check][:handler] = 'tcp'
       EM::start_server('127.0.0.1', 1234, Helpers::TestServer) do |server|
-        server.expected = Oj.dump(event)
+        server.expected = MultiJson.dump(event)
       end
       @server.handle_event(event)
     end
@@ -275,7 +275,7 @@ describe 'Sensu::Server' do
       event = event_template
       event[:check][:handler] = 'udp'
       EM::open_datagram_socket('127.0.0.1', 1234, Helpers::TestServer) do |server|
-        server.expected = Oj.dump(event)
+        server.expected = MultiJson.dump(event)
       end
       @server.handle_event(event)
     end
@@ -291,7 +291,7 @@ describe 'Sensu::Server' do
           @server.handle_event(event)
         end
         queue.subscribe do |payload|
-          expect(payload).to eq(Oj.dump(event))
+          expect(payload).to eq(MultiJson.dump(event))
           async_done
         end
       end
@@ -352,7 +352,7 @@ describe 'Sensu::Server' do
       @server.setup_redis
       redis.flushdb do
         client = client_template
-        redis.set('client:i-424242', Oj.dump(client)) do
+        redis.set('client:i-424242', MultiJson.dump(client)) do
           26.times do |index|
             result = result_template
             result[:check][:low_flap_threshold] = 5
@@ -364,7 +364,7 @@ describe 'Sensu::Server' do
             redis.llen('history:i-424242:foobar') do |length|
               expect(length).to eq(21)
               redis.hget('events:i-424242', 'foobar') do |event_json|
-                event = Oj.load(event_json)
+                event = MultiJson.load(event_json)
                 expect(event[:flapping]).to be_true
                 expect(event[:occurrences]).to be_within(2).of(1)
                 async_done
@@ -384,12 +384,12 @@ describe 'Sensu::Server' do
       redis.flushdb do
         timer(1) do
           client = client_template
-          redis.set('client:i-424242', Oj.dump(client)) do
+          redis.set('client:i-424242', MultiJson.dump(client)) do
             result = result_template
-            amq.direct('results').publish(Oj.dump(result))
+            amq.direct('results').publish(MultiJson.dump(result))
             timer(1) do
               redis.hget('events:i-424242', 'foobar') do |event_json|
-                event = Oj.load(event_json)
+                event = MultiJson.load(event_json)
                 expect(event[:status]).to eq(1)
                 expect(event[:occurrences]).to eq(1)
                 async_done
@@ -411,7 +411,7 @@ describe 'Sensu::Server' do
           @server.publish_check_request(check)
         end
         queue.subscribe do |payload|
-          check_request = Oj.load(payload)
+          check_request = MultiJson.load(payload)
           expect(check_request[:name]).to eq('foobar')
           expect(check_request[:command]).to eq('echo WARNING && exit 1')
           expect(check_request[:issued]).to be_within(10).of(epoch)
@@ -428,7 +428,7 @@ describe 'Sensu::Server' do
       amq.fanout('test') do
         expected = ['tokens', 'merger', 'sensu_cpu_time']
         amq.queue('', :auto_delete => true).bind('test').subscribe do |payload|
-          check_request = Oj.load(payload)
+          check_request = MultiJson.load(payload)
           expect(check_request[:issued]).to be_within(10).of(epoch)
           expect(expected.delete(check_request[:name])).not_to be_nil
           if expected.empty?
@@ -447,7 +447,7 @@ describe 'Sensu::Server' do
         check = result_template[:check]
         @server.publish_result(client, check)
         queue.subscribe do |payload|
-          result = Oj.load(payload)
+          result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
           expect(result[:check][:name]).to eq('foobar')
           async_done
@@ -468,18 +468,18 @@ describe 'Sensu::Server' do
       client2 = client_template
       client2[:name] = 'bar'
       client2[:timestamp] = epoch - 120
-      redis.set('client:foo', Oj.dump(client1)) do
+      redis.set('client:foo', MultiJson.dump(client1)) do
         redis.sadd('clients', 'foo') do
-          redis.set('client:bar', Oj.dump(client2)) do
+          redis.set('client:bar', MultiJson.dump(client2)) do
             redis.sadd('clients', 'bar') do
               @server.determine_stale_clients
               timer(1) do
                 redis.hget('events:foo', 'keepalive') do |event_json|
-                  event = Oj.load(event_json)
+                  event = MultiJson.load(event_json)
                   expect(event[:status]).to eq(1)
                   expect(event[:handlers]).to eq(['debug'])
                   redis.hget('events:bar', 'keepalive') do |event_json|
-                    event = Oj.load(event_json)
+                    event = MultiJson.load(event_json)
                     expect(event[:status]).to eq(2)
                     expect(event[:handlers]).to eq(['default'])
                     async_done
@@ -498,7 +498,7 @@ describe 'Sensu::Server' do
       @server.setup_redis
       redis.flushdb do
         client = client_template
-        redis.set('client:i-424242', Oj.dump(client)) do
+        redis.set('client:i-424242', MultiJson.dump(client)) do
           timestamp = epoch - 26
           26.times do |index|
             result = result_template

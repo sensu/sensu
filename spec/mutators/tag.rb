@@ -1,11 +1,9 @@
 #!/usr/bin/env ruby
 
 require 'rubygems'
-require 'oj'
+require 'multi_json'
 
-Oj.default_options = {:mode => :compat, :symbol_keys => true}
-
-event = Oj.load(STDIN.read)
+event = MultiJson.load(STDIN.read, :symbolize_keys => true)
 event.merge!(:mutated => true)
 
-puts Oj.dump(event)
+puts MultiJson.dump(event)

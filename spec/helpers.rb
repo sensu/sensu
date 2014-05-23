@@ -150,7 +150,7 @@ module Helpers
     }
     request_options = default_options.merge(options)
     if request_options[:body].is_a?(Hash) || request_options[:body].is_a?(Array)
-      request_options[:body] = Oj.dump(request_options[:body])
+      request_options[:body] = MultiJson.dump(request_options[:body])
     end
     http = EM::HttpRequest.new('http://localhost:4567' + uri).send(method, request_options)
     http.callback do
@@ -158,7 +158,7 @@ module Helpers
       when http.response.empty?
         http.response
       else
-        Oj.load(http.response)
+        MultiJson.load(http.response)
       end
       block.call(http, body)
     end

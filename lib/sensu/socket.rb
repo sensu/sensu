@@ -20,7 +20,7 @@ module Sensu
           :data => data
         })
         begin
-          check = Oj.load(data)
+          check = MultiJson.load(data)
           check[:issued] = Time.now.to_i
           check[:status] ||= 0
           validates = [
@@ -36,7 +36,7 @@ module Sensu
             @logger.info('publishing check result', {
               :payload => payload
             })
-            @transport.publish(:direct, 'results', Oj.dump(payload))
+            @transport.publish(:direct, 'results', MultiJson.dump(payload))
             respond('ok')
           else
             @logger.warn('invalid check result', {
@@ -44,7 +44,7 @@ module Sensu
             })
             respond('invalid')
           end
-        rescue Oj::ParseError => error
+        rescue MultiJson::ParseError => error
           @logger.warn('check result must be valid json', {
             :data => data,
             :error => error.to_s

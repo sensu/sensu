@@ -1,6 +1,5 @@
 source 'https://rubygems.org'
 
-gem "sensu-em", :git => "git@github.com:sensu/sensu-em.git"
 gem "sensu-logger", :git => "git@github.com:sensu/sensu-logger.git"
 gem "sensu-settings", :git => "git@github.com:sensu/sensu-settings.git"
 gem "sensu-extensions", :git => "git@github.com:sensu/sensu-extensions.git"

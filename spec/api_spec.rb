@@ -12,9 +12,9 @@ describe 'Sensu::API' do
       client = client_template
       client[:timestamp] = epoch
       redis.flushdb do
-        redis.set('client:i-424242', Oj.dump(client)) do
+        redis.set('client:i-424242', MultiJson.dump(client)) do
           redis.sadd('clients', 'i-424242') do
-            redis.hset('events:i-424242', 'test', Oj.dump(
+            redis.hset('events:i-424242', 'test', MultiJson.dump(
               :output => 'CRITICAL',
               :status => 2,
               :issued => Time.now.to_i,
@@ -169,7 +169,7 @@ describe 'Sensu::API' do
           expect(http.response_header.status).to eq(202)
           expect(body).to include(:issued)
           queue.subscribe do |payload|
-            result = Oj.load(payload)
+            result = MultiJson.load(payload)
             expect(result[:client]).to eq('i-424242')
             expect(result[:check][:name]).to eq('test')
             expect(result[:check][:status]).to eq(0)
@@ -203,7 +203,7 @@ describe 'Sensu::API' do
           expect(http.response_header.status).to eq(202)
           expect(body).to include(:issued)
           queue.subscribe do |payload|
-            result = Oj.load(payload)
+            result = MultiJson.load(payload)
             expect(result[:client]).to eq('i-424242')
             expect(result[:check][:name]).to eq('test')
             expect(result[:check][:status]).to eq(0)
@@ -423,7 +423,7 @@ describe 'Sensu::API' do
         expect(body).to include(:path)
         expect(body[:path]).to eq('tester')
         redis.get('stash:tester') do |stash_json|
-          stash = Oj.load(stash_json)
+          stash = MultiJson.load(stash_json)
           expect(stash).to eq({:key => 'value'})
           redis.ttl('stash:tester') do |ttl|
             expect(ttl).to eq(-1)
@@ -482,7 +482,7 @@ describe 'Sensu::API' do
         expect(http.response_header.status).to eq(201)
         expect(body).to include(:path)
         redis.get('stash:tester') do |stash_json|
-          stash = Oj.load(stash_json)
+          stash = MultiJson.load(stash_json)
           expect(stash).to eq({:key => 'value'})
           async_done
         end
