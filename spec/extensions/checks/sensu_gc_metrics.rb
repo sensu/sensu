@@ -39,7 +39,7 @@ module Sensu
           end
           metrics.merge!(:count => Hash[object_counts])
         end
-        block.call(Oj.dump(metrics), 0)
+        block.call(MultiJson.dump(metrics), 0)
       end
     end
   end

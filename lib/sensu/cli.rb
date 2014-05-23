@@ -1,3 +1,4 @@
+require 'sensu/logger/constants'
 require 'optparse'
 
 module Sensu
@@ -27,7 +28,7 @@ module Sensu
         end
         opts.on('-L', '--log_level LEVEL', 'Log severity LEVEL') do |level|
           log_level = level.to_s.downcase.to_sym
-          unless LOG_LEVELS.include?(log_level)
+          unless Logger::LEVELS.include?(log_level)
             puts 'Unknown log level: ' + level.to_s
             exit 1
           end
