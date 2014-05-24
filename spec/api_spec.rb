@@ -1,8 +1,7 @@
-require 'em-http-request'
-
-require File.dirname(__FILE__) + '/../lib/sensu/api.rb'
-require File.dirname(__FILE__) + '/../lib/sensu/server.rb'
 require File.dirname(__FILE__) + '/helpers.rb'
+
+require 'sensu/api'
+require 'sensu/server'
 
 describe 'Sensu::API' do
   include Helpers

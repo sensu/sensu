@@ -1,5 +1,5 @@
-require File.dirname(__FILE__) + '/../lib/sensu/server.rb'
 require File.dirname(__FILE__) + '/helpers.rb'
+require 'sensu/server'
 
 describe 'Sensu::Server' do
   include Helpers

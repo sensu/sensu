@@ -6,7 +6,7 @@ module Sensu
       end
 
       def description
-        'outputs json formatted sensu ruby garbage collection metrics'
+        'returns json formatted sensu ruby garbage collection metrics'
       end
 
       def definition
