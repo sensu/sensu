@@ -6,7 +6,7 @@ module Sensu
       end
 
       def description
-        'outputs json formatted sensu cpu time metrics'
+        'returns json formatted sensu cpu time metrics'
       end
 
       def definition
@@ -19,14 +19,14 @@ module Sensu
       end
 
       def run(&block)
-        cpu_times = ::Process.times
+        cpu_times = Process.times
         metrics = {
           :cpu => {
             :user => cpu_times.utime,
             :system => cpu_times.stime
           }
         }
-        block.call(Oj.dump(metrics), 0)
+        block.call(MultiJson.dump(metrics), 0)
       end
     end
   end

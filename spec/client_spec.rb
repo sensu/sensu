@@ -1,5 +1,5 @@
-require File.dirname(__FILE__) + '/../lib/sensu/client.rb'
 require File.dirname(__FILE__) + '/helpers.rb'
+require 'sensu/client'
 
 describe 'Sensu::Client' do
   include Helpers
@@ -21,7 +21,7 @@ describe 'Sensu::Client' do
         @client.setup_transport
         @client.publish_keepalive
         queue.subscribe do |payload|
-          keepalive = Oj.load(payload)
+          keepalive = MultiJson.load(payload)
           expect(keepalive[:name]).to eq('i-424242')
           expect(keepalive[:service][:password]).to eq('REDACTED')
           async_done
@@ -36,7 +36,7 @@ describe 'Sensu::Client' do
         @client.setup_transport
         @client.setup_keepalives
         queue.subscribe do |payload|
-          keepalive = Oj.load(payload)
+          keepalive = MultiJson.load(payload)
           expect(keepalive[:name]).to eq('i-424242')
           async_done
         end
@@ -51,7 +51,7 @@ describe 'Sensu::Client' do
         check = result_template[:check]
         @client.publish_result(check)
         queue.subscribe do |payload|
-          result = Oj.load(payload)
+          result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
           expect(result[:check][:name]).to eq('foobar')
           async_done
@@ -66,7 +66,7 @@ describe 'Sensu::Client' do
         @client.setup_transport
         @client.execute_check_command(check_template)
         queue.subscribe do |payload|
-          result = Oj.load(payload)
+          result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
           expect(result[:check][:output]).to eq("WARNING\n")
           expect(result[:check]).to have_key(:executed)
@@ -84,7 +84,7 @@ describe 'Sensu::Client' do
         check[:command] = 'echo :::nested.attribute|default::: :::missing|default::: :::missing|::: :::nested.attribute:::::::nested.attribute:::'
         @client.execute_check_command(check)
         queue.subscribe do |payload|
-          result = Oj.load(payload)
+          result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
           expect(result[:check][:output]).to eq("true default true:true\n")
           async_done
@@ -102,7 +102,7 @@ describe 'Sensu::Client' do
         }
         @client.run_check_extension(check)
         queue.subscribe do |payload|
-          result = Oj.load(payload)
+          result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
           expect(result[:check][:output]).to start_with('{')
           expect(result[:check]).to have_key(:executed)
@@ -132,10 +132,10 @@ describe 'Sensu::Client' do
         @client.setup_transport
         @client.setup_subscriptions
         timer(1) do
-          amq.fanout('test').publish(Oj.dump(check_template))
+          amq.fanout('test').publish(MultiJson.dump(check_template))
         end
         queue.subscribe do |payload|
-          result = Oj.load(payload)
+          result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
           expect(result[:check][:output]).to eq("WARNING\n")
           expect(result[:check][:status]).to eq(1)
@@ -152,10 +152,10 @@ describe 'Sensu::Client' do
         @client.setup_transport
         @client.setup_subscriptions
         timer(1) do
-          amq.fanout('test').publish(Oj.dump(check_template))
+          amq.fanout('test').publish(MultiJson.dump(check_template))
         end
         queue.subscribe do |payload|
-          result = Oj.load(payload)
+          result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
           expect(result[:check][:output]).to include('safe mode')
           expect(result[:check][:status]).to eq(3)
@@ -172,7 +172,7 @@ describe 'Sensu::Client' do
         @client.setup_standalone
         expected = ['standalone', 'sensu_gc_metrics']
         queue.subscribe do |payload|
-          result = Oj.load(payload)
+          result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
           expect(result[:check]).to have_key(:issued)
           expect(result[:check]).to have_key(:output)
@@ -204,7 +204,7 @@ describe 'Sensu::Client' do
         end
         expected = ['tcp', 'udp']
         queue.subscribe do |payload|
-          result = Oj.load(payload)
+          result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
           expect(expected.delete(result[:check][:name])).not_to be_nil
           if expected.empty?

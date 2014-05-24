@@ -1,6 +1,5 @@
-require File.dirname(__FILE__) + '/../lib/sensu/cli.rb'
-require File.dirname(__FILE__) + '/../lib/sensu/constants.rb'
 require File.dirname(__FILE__) + '/helpers.rb'
+require 'sensu/cli'
 
 describe 'Sensu::CLI' do
   include Helpers
