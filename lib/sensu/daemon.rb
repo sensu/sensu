@@ -179,7 +179,7 @@ module Sensu
 
     def write_pid(file)
       begin
-        IO.write(file, Process.pid)
+        IO.write(file, Process.pid.to_s + "\n")
       rescue
         @logger.fatal('could not write to pid file', {
           :pid_file => file
