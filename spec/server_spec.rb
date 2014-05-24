@@ -11,14 +11,18 @@ describe 'Sensu::Server' do
   it 'can connect to redis' do
     async_wrapper do
       @server.setup_redis
-      async_done
+      timer(1) do
+        async_done
+      end
     end
   end
 
   it 'can connect to rabbitmq' do
     async_wrapper do
       @server.setup_transport
-      async_done
+      timer(1) do
+        async_done
+      end
     end
   end
 

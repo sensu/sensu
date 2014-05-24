@@ -1,7 +1,14 @@
 require 'rubygems'
 
-gem 'sensu-em', '2.0.0'
 gem 'multi_json', '1.10.1'
+
+gem 'sensu-em', '2.0.0'
+gem 'sensu-logger', '0.0.1'
+gem 'sensu-settings', '0.0.3'
+gem 'sensu-extension', '0.0.2'
+gem 'sensu-extensions', '0.0.2'
+gem 'sensu-spawn', '0.0.2'
+gem 'sensu-transport', '0.0.2'
 
 require 'time'
 require 'uri'
@@ -134,8 +141,10 @@ module Sensu
         stop
       end
       @transport.before_reconnect do
-        @logger.warn('reconnecting to transport')
-        pause
+        unless testing?
+          @logger.warn('reconnecting to transport')
+          pause
+        end
       end
       @transport.after_reconnect do
         @logger.info('reconnected to transport')
