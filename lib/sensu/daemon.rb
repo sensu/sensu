@@ -7,8 +7,8 @@ gem 'sensu-logger', '0.0.1'
 gem 'sensu-settings', '0.0.3'
 gem 'sensu-extension', '0.0.2'
 gem 'sensu-extensions', '0.0.2'
-gem 'sensu-spawn', '0.0.2'
 gem 'sensu-transport', '0.0.2'
+gem 'sensu-spawn', '0.0.3'
 
 require 'time'
 require 'uri'
@@ -179,7 +179,9 @@ module Sensu
 
     def write_pid(file)
       begin
-        IO.write(file, Process.pid.to_s + "\n")
+        File.open(file, 'w') do |pid_file|
+          pid_file.puts(Process.pid)
+        end
       rescue
         @logger.fatal('could not write to pid file', {
           :pid_file => file
