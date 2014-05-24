@@ -109,7 +109,7 @@ module Helpers
 
   def check_template
     {
-      :name => 'foobar',
+      :name => 'test',
       :command => 'echo WARNING && exit 1',
       :issued => epoch
     }
@@ -133,6 +133,7 @@ module Helpers
     check[:status] = 1
     check[:history] = [1]
     {
+      :id => UUIDTools::UUID.random_create.to_s,
       :client => client,
       :check => check,
       :occurrences => 1,

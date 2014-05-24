@@ -1,3 +1,7 @@
+gem 'uuidtools', '2.1.4'
+
+require 'uuidtools'
+
 module Sensu
   module Utilities
     def testing?
@@ -25,6 +29,10 @@ module Sensu
         end
       end
       merged
+    end
+
+    def random_uuid
+      UUIDTools::UUID.random_create.to_s
     end
 
     def redact_sensitive(hash, keys=nil)

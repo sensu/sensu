@@ -326,10 +326,10 @@ describe 'Sensu::Server' do
           @server.aggregate_result(result)
         end
         timer(2) do
-          result_set = 'foobar:' + timestamp.to_s
-          redis.sismember('aggregates', 'foobar') do |exists|
+          result_set = 'test:' + timestamp.to_s
+          redis.sismember('aggregates', 'test') do |exists|
             expect(exists).to be_true
-            redis.sismember('aggregates:foobar', timestamp.to_s) do |exists|
+            redis.sismember('aggregates:test', timestamp.to_s) do |exists|
               expect(exists).to be_true
               redis.hgetall('aggregate:' + result_set) do |aggregate|
                 expect(aggregate['total']).to eq('4')
@@ -365,11 +365,11 @@ describe 'Sensu::Server' do
             @server.process_result(result)
           end
           timer(1) do
-            redis.llen('history:i-424242:foobar') do |length|
+            redis.llen('history:i-424242:test') do |length|
               expect(length).to eq(21)
-              redis.hget('events:i-424242', 'foobar') do |event_json|
+              redis.hget('events:i-424242', 'test') do |event_json|
                 event = MultiJson.load(event_json)
-                expect(event[:flapping]).to be_true
+                expect(event[:action]).to eq('flapping')
                 expect(event[:occurrences]).to be_within(2).of(1)
                 async_done
               end
@@ -392,9 +392,10 @@ describe 'Sensu::Server' do
             result = result_template
             amq.direct('results').publish(MultiJson.dump(result))
             timer(1) do
-              redis.hget('events:i-424242', 'foobar') do |event_json|
+              redis.hget('events:i-424242', 'test') do |event_json|
                 event = MultiJson.load(event_json)
-                expect(event[:status]).to eq(1)
+                expect(event[:id]).to be_kind_of(String)
+                expect(event[:check][:status]).to eq(1)
                 expect(event[:occurrences]).to eq(1)
                 async_done
               end
@@ -416,7 +417,7 @@ describe 'Sensu::Server' do
         end
         queue.subscribe do |payload|
           check_request = MultiJson.load(payload)
-          expect(check_request[:name]).to eq('foobar')
+          expect(check_request[:name]).to eq('test')
           expect(check_request[:command]).to eq('echo WARNING && exit 1')
           expect(check_request[:issued]).to be_within(10).of(epoch)
           async_done
@@ -453,7 +454,7 @@ describe 'Sensu::Server' do
         queue.subscribe do |payload|
           result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
-          expect(result[:check][:name]).to eq('foobar')
+          expect(result[:check][:name]).to eq('test')
           async_done
         end
       end
@@ -480,12 +481,11 @@ describe 'Sensu::Server' do
               timer(1) do
                 redis.hget('events:foo', 'keepalive') do |event_json|
                   event = MultiJson.load(event_json)
-                  expect(event[:status]).to eq(1)
-                  expect(event[:handlers]).to eq(['debug'])
+                  expect(event[:check][:status]).to eq(1)
+                  expect(event[:check][:handler]).to eq('debug')
                   redis.hget('events:bar', 'keepalive') do |event_json|
                     event = MultiJson.load(event_json)
-                    expect(event[:status]).to eq(2)
-                    expect(event[:handlers]).to eq(['default'])
+                    expect(event[:check][:status]).to eq(2)
                     async_done
                   end
                 end
@@ -511,16 +511,16 @@ describe 'Sensu::Server' do
             @server.aggregate_result(result)
           end
           timer(1) do
-            redis.smembers('aggregates:foobar') do |aggregates|
+            redis.smembers('aggregates:test') do |aggregates|
               aggregates.sort!
               expect(aggregates.size).to eq(26)
               oldest = aggregates.shift
               @server.prune_aggregations
               timer(1) do
-                redis.smembers('aggregates:foobar') do |aggregates|
+                redis.smembers('aggregates:test') do |aggregates|
                   expect(aggregates.size).to eq(20)
                   expect(aggregates).not_to include(oldest)
-                  result_set = 'foobar:' + oldest
+                  result_set = 'test:' + oldest
                   redis.exists('aggregate:' + result_set) do |exists|
                     expect(exists).to be_false
                     redis.exists('aggregation:' + result_set) do |exists|

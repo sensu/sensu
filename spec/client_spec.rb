@@ -53,7 +53,7 @@ describe 'Sensu::Client' do
         queue.subscribe do |payload|
           result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
-          expect(result[:check][:name]).to eq('foobar')
+          expect(result[:check][:name]).to eq('test')
           async_done
         end
       end
