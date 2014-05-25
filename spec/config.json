@@ -110,16 +110,17 @@
     "subscriptions": [
       "test"
     ],
+    "keepalive": {
+      "thresholds": {
+        "warning": 10
+      }
+    },
+    "version": "TOBEREPLACED",
     "nested": {
       "attribute": true
     },
     "service": {
       "password": "secret"
-    },
-    "keepalive": {
-      "thresholds": {
-        "warning": 10
-      }
     }
   }
 }

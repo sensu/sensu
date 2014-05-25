@@ -22,7 +22,10 @@ module Sensu
     end
 
     def publish_keepalive
-      keepalive = @settings[:client].merge(:timestamp => Time.now.to_i)
+      keepalive = @settings[:client].merge({
+        :version => VERSION,
+        :timestamp => Time.now.to_i
+      })
       payload = redact_sensitive(keepalive, @settings[:client][:redact])
       @logger.debug('publishing keepalive', {
         :payload => payload
