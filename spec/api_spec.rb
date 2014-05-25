@@ -10,16 +10,11 @@ describe 'Sensu::API' do
     async_wrapper do
       client = client_template
       client[:timestamp] = epoch
+      event = event_template
       redis.flushdb do
         redis.set('client:i-424242', MultiJson.dump(client)) do
           redis.sadd('clients', 'i-424242') do
-            redis.hset('events:i-424242', 'test', MultiJson.dump(
-              :output => 'CRITICAL',
-              :status => 2,
-              :issued => Time.now.to_i,
-              :flapping => false,
-              :occurrences => 1
-            )) do
+            redis.hset('events:i-424242', 'test', MultiJson.dump(event)) do
               redis.set('stash:test/test', '{"key": "value"}') do
                 redis.expire('stash:test/test', 3600) do
                   redis.sadd('stashes', 'test/test') do
@@ -84,7 +79,7 @@ describe 'Sensu::API' do
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_event = Proc.new do |event|
-          event[:check] == 'test'
+          event[:check][:name] == 'test'
         end
         expect(body).to contain(test_event)
         async_done
@@ -98,7 +93,7 @@ describe 'Sensu::API' do
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_event = Proc.new do |event|
-          event[:check] == 'test'
+          event[:check][:name] == 'test'
         end
         expect(body).to contain(test_event)
         async_done
@@ -139,13 +134,15 @@ describe 'Sensu::API' do
       api_request('/event/i-424242/test') do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
-        expect(body[:client]).to eq('i-424242')
-        expect(body[:check]).to eq('test')
-        expect(body[:output]).to eq('CRITICAL')
-        expect(body[:status]).to eq(2)
-        expect(body[:flapping]).to be_false
+        expect(body[:client]).to be_kind_of(Hash)
+        expect(body[:check]).to be_kind_of(Hash)
+        expect(body[:client][:name]).to eq('i-424242')
+        expect(body[:check][:name]).to eq('test')
+        expect(body[:check][:output]).to eq('WARNING')
+        expect(body[:check][:status]).to eq(1)
+        expect(body[:check][:issued]).to be_within(10).of(epoch)
+        expect(body[:action]).to eq('create')
         expect(body[:occurrences]).to eq(1)
-        expect(body[:issued]).to be_within(10).of(epoch)
         async_done
       end
     end
@@ -572,7 +569,7 @@ describe 'Sensu::API' do
         api_request('/aggregates') do |http, body|
           expect(body).to be_kind_of(Array)
           test_aggregate = Proc.new do |aggregate|
-            aggregate[:check] == 'foobar'
+            aggregate[:check] == 'test'
           end
           expect(body).to contain(test_aggregate)
           async_done
@@ -592,13 +589,13 @@ describe 'Sensu::API' do
         server.aggregate_result(result)
       end
       timer(1) do
-        api_request('/aggregates/foobar') do |http, body|
+        api_request('/aggregates/test') do |http, body|
           expect(body).to be_kind_of(Array)
           expect(body.size).to eq(3)
           expect(body).to include(timestamp)
-          api_request('/aggregates/foobar?limit=1') do |http, body|
+          api_request('/aggregates/test?limit=1') do |http, body|
             expect(body.size).to eq(1)
-            api_request('/aggregates/foobar?limit=1&age=30') do |http, body|
+            api_request('/aggregates/test?limit=1&age=30') do |http, body|
               expect(body).to be_empty
               async_done
             end
@@ -614,10 +611,10 @@ describe 'Sensu::API' do
       server.setup_redis
       server.aggregate_result(result_template)
       timer(1) do
-        api_request('/aggregates/foobar', :delete) do |http, body|
+        api_request('/aggregates/test', :delete) do |http, body|
           expect(http.response_header.status).to eq(204)
           expect(body).to be_empty
-          redis.sismember('aggregates', 'foobar') do |exists|
+          redis.sismember('aggregates', 'test') do |exists|
             expect(exists).to be_false
             async_done
           end
@@ -646,7 +643,7 @@ describe 'Sensu::API' do
       server.aggregate_result(result)
       timer(1) do
         parameters = '?results=true&summarize=output'
-        api_request('/aggregates/foobar/' + timestamp.to_s + parameters) do |http, body|
+        api_request('/aggregates/test/' + timestamp.to_s + parameters) do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body).to be_kind_of(Hash)
           expect(body[:ok]).to eq(0)
@@ -670,7 +667,7 @@ describe 'Sensu::API' do
 
   it 'can not provide a nonexistent aggregate' do
     api_test do
-      api_request('/aggregates/foobar/' + epoch.to_s) do |http, body|
+      api_request('/aggregates/test/' + epoch.to_s) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done

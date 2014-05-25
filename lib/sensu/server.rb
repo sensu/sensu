@@ -387,7 +387,7 @@ module Sensu
                 previous_occurrence = event_json ? MultiJson.load(event_json) : false
                 is_flapping = false
                 if check.has_key?(:low_flap_threshold) && check.has_key?(:high_flap_threshold)
-                  was_flapping = previous_occurrence ? previous_occurrence[:flapping] : false
+                  was_flapping = previous_occurrence && previous_occurrence[:action] == 'flapping'
                   is_flapping = case
                   when total_state_change >= check[:high_flap_threshold]
                     true
@@ -398,6 +398,7 @@ module Sensu
                   end
                 end
                 event = {
+                  :id => random_uuid,
                   :client => client,
                   :check => check,
                   :occurrences => 1
@@ -406,25 +407,18 @@ module Sensu
                   if previous_occurrence && check[:status] == previous_occurrence[:status]
                     event[:occurrences] = previous_occurrence[:occurrences] + 1
                   end
-                  @redis.hset('events:' + client[:name], check[:name], MultiJson.dump(
-                    :output => check[:output],
-                    :status => check[:status],
-                    :issued => check[:issued],
-                    :handlers => Array((check[:handlers] || check[:handler]) || 'default'),
-                    :flapping => is_flapping,
-                    :occurrences => event[:occurrences]
-                  )) do
+                  event[:action] = is_flapping ? :flapping : :create
+                  @redis.hset('events:' + client[:name], check[:name], MultiJson.dump(event)) do
                     unless check[:handle] == false
-                      event[:action] = is_flapping ? :flapping : :create
                       handle_event(event)
                     end
                   end
                 elsif previous_occurrence
+                  event[:occurrences] = previous_occurrence[:occurrences]
+                  event[:action] = :resolve
                   unless check[:auto_resolve] == false && !check[:force_resolve]
                     @redis.hdel('events:' + client[:name], check[:name]) do
                       unless check[:handle] == false
-                        event[:occurrences] = previous_occurrence[:occurrences]
-                        event[:action] = :resolve
                         handle_event(event)
                       end
                     end

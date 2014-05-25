@@ -176,24 +176,19 @@ module Sensu
         end
       end
 
-      def event_hash(event_json, client_name, check_name)
-        MultiJson.load(event_json).merge(
-          :client => client_name,
-          :check => check_name
+      def resolve_event(event_json)
+        event = MultiJson.load(event_json)
+        check = event[:check].merge(
+          :output => 'Resolving on request of the API',
+          :status => 0,
+          :issued => Time.now.to_i,
+          :executed => Time.now.to_i,
+          :force_resolve => true
         )
-      end
-
-      def resolve_event(event)
+        check.delete(:history)
         payload = {
-          :client => event[:client],
-          :check => {
-            :name => event[:check],
-            :output => 'Resolving on request of the API',
-            :status => 0,
-            :issued => Time.now.to_i,
-            :handlers => event[:handlers],
-            :force_resolve => true
-          }
+          :client => event[:client][:name],
+          :check => check
         }
         settings.logger.info('publishing check result', {
           :payload => payload
@@ -317,7 +312,7 @@ module Sensu
         unless client_json.nil?
           settings.redis.hgetall('events:' + client_name) do |events|
             events.each do |check_name, event_json|
-              resolve_event(event_hash(event_json, client_name, check_name))
+              resolve_event(event_json)
             end
             EM::Timer.new(5) do
               client = MultiJson.load(client_json)
@@ -400,7 +395,7 @@ module Sensu
           clients.each_with_index do |client_name, index|
             settings.redis.hgetall('events:' + client_name) do |events|
               events.each do |check_name, event_json|
-                response << event_hash(event_json, client_name, check_name)
+                response << MultiJson.load(event_json)
               end
               if index == clients.size - 1
                 body MultiJson.dump(response)
@@ -417,7 +412,7 @@ module Sensu
       response = Array.new
       settings.redis.hgetall('events:' + client_name) do |events|
         events.each do |check_name, event_json|
-          response << event_hash(event_json, client_name, check_name)
+          response << MultiJson.load(event_json)
         end
         body MultiJson.dump(response)
       end
@@ -427,7 +422,7 @@ module Sensu
       settings.redis.hgetall('events:' + client_name) do |events|
         event_json = events[check_name]
         unless event_json.nil?
-          body MultiJson.dump(event_hash(event_json, client_name, check_name))
+          body event_json
         else
           not_found!
         end
@@ -437,7 +432,7 @@ module Sensu
     adelete %r{/events?/([\w\.-]+)/([\w\.-]+)/?$} do |client_name, check_name|
       settings.redis.hgetall('events:' + client_name) do |events|
         if events.include?(check_name)
-          resolve_event(event_hash(events[check_name], client_name, check_name))
+          resolve_event(events[check_name])
           issued!
         else
           not_found!
@@ -453,7 +448,7 @@ module Sensu
       read_data(rules) do |data|
         settings.redis.hgetall('events:' + data[:client]) do |events|
           if events.include?(data[:check])
-            resolve_event(event_hash(events[data[:check]], data[:client], data[:check]))
+            resolve_event(events[data[:check]])
             issued!
           else
             not_found!

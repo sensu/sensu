@@ -1,5 +1,5 @@
-require 'sensu/logger/constants'
 require 'optparse'
+require 'sensu/logger/constants'
 
 module Sensu
   class CLI
