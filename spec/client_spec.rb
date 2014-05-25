@@ -24,6 +24,8 @@ describe 'Sensu::Client' do
           keepalive = MultiJson.load(payload)
           expect(keepalive[:name]).to eq('i-424242')
           expect(keepalive[:service][:password]).to eq('REDACTED')
+          expect(keepalive[:version]).to eq(Sensu::VERSION)
+          expect(keepalive[:timestamp]).to be_within(10).of(epoch)
           async_done
         end
       end
