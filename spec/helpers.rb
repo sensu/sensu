@@ -172,7 +172,7 @@ module Helpers
     attr_accessor :expected
 
     def receive_data(data)
-      expect(data).to eq(expected)
+      expect(MultiJson.load(data)).to eq(MultiJson.load(expected))
       EM::stop_event_loop
     end
   end

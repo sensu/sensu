@@ -197,7 +197,7 @@ module Sensu
       mutator_name ||= 'json'
       return_output = Proc.new do |output, status|
         if status == 0
-          block.call(output)
+          block.dup.call(output)
         else
           @logger.error('mutator error', {
             :event => event,
