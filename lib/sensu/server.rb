@@ -345,6 +345,19 @@ module Sensu
       end
     end
 
+    def event_bridges(event)
+      @extensions[:bridges].each do |name, bridge|
+        bridge.safe_run(event) do |output, status|
+          output.each_line do |line|
+            @logger.info('bridge extension output', {
+              :extension => bridge.definition,
+              :output => line
+            })
+          end
+        end
+      end
+    end
+
     def process_result(result)
       @logger.debug('processing result', {
         :result => result
@@ -426,6 +439,7 @@ module Sensu
                 elsif check[:type] == 'metric'
                   handle_event(event)
                 end
+                event_bridges(event)
               end
             end
           end

@@ -397,6 +397,7 @@ describe 'Sensu::Server' do
                 expect(event[:id]).to be_kind_of(String)
                 expect(event[:check][:status]).to eq(1)
                 expect(event[:occurrences]).to eq(1)
+                expect(IO.read('/tmp/sensu-event.json')).to eq(event_json)
                 async_done
               end
             end
