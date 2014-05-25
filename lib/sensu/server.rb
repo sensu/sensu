@@ -194,40 +194,31 @@ module Sensu
     end
 
     def mutate_event_data(mutator_name, event, &block)
+      mutator_name ||= 'json'
+      return_output = Proc.new do |output, status|
+        if status == 0
+          block.dup.call(output)
+        else
+          @logger.error('mutator error', {
+            :event => event,
+            :output => output,
+            :status => status
+          })
+          @handlers_in_progress_count -= 1
+        end
+      end
+      @logger.debug('mutating event data', {
+        :event => event,
+        :mutator_name => mutator_name
+      })
       case
-      when mutator_name.nil?
-        block.call(MultiJson.dump(event))
       when @settings.mutator_exists?(mutator_name)
         mutator = @settings[:mutators][mutator_name]
         options = {:data => MultiJson.dump(event), :timeout => mutator[:timeout]}
-        Spawn.process(mutator[:command], options) do |output, status|
-          if status == 0
-            block.call(output)
-          else
-            @logger.error('mutator error', {
-              :event => event,
-              :mutator => mutator,
-              :output => output,
-              :status => status
-            })
-            @handlers_in_progress_count -= 1
-          end
-        end
+        Spawn.process(mutator[:command], options, &return_output)
       when @extensions.mutator_exists?(mutator_name)
         extension = @extensions[:mutators][mutator_name]
-        extension.safe_run(event) do |output, status|
-          if status == 0
-            block.call(output)
-          else
-            @logger.error('mutator extension error', {
-              :event => event,
-              :extension => extension.definition,
-              :output => output,
-              :status => status
-            })
-            @handlers_in_progress_count -= 1
-          end
-        end
+        extension.safe_run(event, &return_output)
       else
         @logger.error('unknown mutator', {
           :mutator_name => mutator_name

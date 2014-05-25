@@ -235,7 +235,8 @@ describe 'Sensu::Server' do
         raise 'should never get here'
       end
       @server.mutate_event_data(nil, event) do |event_data|
-        expect(event_data).to eq(MultiJson.dump(event))
+        expected = MultiJson.dump(event)
+        expect(MultiJson.load(event_data)).to eq(MultiJson.load(expected))
         @server.mutate_event_data('only_check_output', event) do |event_data|
           expect(event_data).to eq('WARNING')
           @server.mutate_event_data('tag', event) do |event_data|
@@ -295,7 +296,8 @@ describe 'Sensu::Server' do
           @server.handle_event(event)
         end
         queue.subscribe do |payload|
-          expect(payload).to eq(MultiJson.dump(event))
+          expected = MultiJson.dump(event)
+          expect(MultiJson.load(payload)).to eq(MultiJson.load(expected))
           async_done
         end
       end
