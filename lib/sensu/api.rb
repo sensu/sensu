@@ -25,7 +25,7 @@ module Sensu
         end
       end
 
-      def on_reactor_start
+      def on_reactor_run
         EM::next_tick do
           setup_redis
           set :redis, @redis
@@ -46,7 +46,7 @@ module Sensu
           end
         end
         setup_process(options)
-        on_reactor_start
+        on_reactor_run
       end
 
       def start_server
