@@ -1,10 +1,13 @@
 require 'sensu/daemon'
 
-gem 'thin', '1.5.0'
 gem 'sinatra', '1.3.5'
 gem 'async_sinatra', '1.0.0'
 
-require 'thin'
+unless RUBY_PLATFORM =~ /java/
+  gem 'thin', '1.5.0'
+  require 'thin'
+end
+
 require 'sinatra/async'
 
 module Sensu
@@ -22,28 +25,39 @@ module Sensu
         end
       end
 
+      def on_reactor_start
+        EM::next_tick do
+          setup_redis
+          set :redis, @redis
+          setup_transport
+          set :transport, @transport
+        end
+      end
+
       def bootstrap(options)
         setup_logger(options)
         set :logger, @logger
         load_settings(options)
+        set :checks, @settings[:checks]
+        set :all_checks, @settings.checks
         if @settings[:api][:user] && @settings[:api][:password]
           use Rack::Auth::Basic do |user, password|
             user == @settings[:api][:user] && password == @settings[:api][:password]
           end
         end
-        set :checks, @settings[:checks]
-        set :all_checks, @settings.checks
         setup_process(options)
+        on_reactor_start
       end
 
-      def start
-        setup_redis
-        set :redis, @redis
-        setup_transport
-        set :transport, @transport
+      def run_server
         Thin::Logging.silent = true
         bind = @settings[:api][:bind] || '0.0.0.0'
         Thin::Server.start(bind, @settings[:api][:port], self)
+      end
+
+      def start
+        run_server
+        super
       end
 
       def stop
