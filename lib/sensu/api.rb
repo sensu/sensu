@@ -47,6 +47,7 @@ module Sensu
           end
         end
         on_reactor_run
+        self
       end
 
       def start_server
