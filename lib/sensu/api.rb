@@ -19,6 +19,7 @@ module Sensu
 
       def run(options={})
         bootstrap(options)
+        setup_process(options)
         EM::run do
           start
           setup_signal_traps
@@ -45,7 +46,6 @@ module Sensu
             user == @settings[:api][:user] && password == @settings[:api][:password]
           end
         end
-        setup_process(options)
         on_reactor_run
       end
 
