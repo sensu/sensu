@@ -49,22 +49,35 @@ module Sensu
         on_reactor_start
       end
 
-      def run_server
+      def start_server
         Thin::Logging.silent = true
         bind = @settings[:api][:bind] || '0.0.0.0'
-        Thin::Server.start(bind, @settings[:api][:port], self)
+        @thin = Thin::Server.new(bind, @settings[:api][:port], self)
+        @thin.start
+      end
+
+      def stop_server(&block)
+        @thin.stop
+        retry_until_true do
+          unless @thin.running?
+            block.call
+            true
+          end
+        end
       end
 
       def start
-        run_server
+        start_server
         super
       end
 
       def stop
         @logger.warn('stopping')
-        @redis.close
-        @transport.close
-        super
+        stop_server do
+          @redis.close
+          @transport.close
+          super
+        end
       end
 
       def test(options={})
