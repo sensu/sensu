@@ -1,10 +1,13 @@
 require 'sensu/daemon'
 
-gem 'thin', '1.5.0'
 gem 'sinatra', '1.3.5'
 gem 'async_sinatra', '1.0.0'
 
-require 'thin'
+unless RUBY_PLATFORM =~ /java/
+  gem 'thin', '1.5.0'
+  require 'thin'
+end
+
 require 'sinatra/async'
 
 module Sensu
@@ -16,9 +19,19 @@ module Sensu
 
       def run(options={})
         bootstrap(options)
+        setup_process(options)
         EM::run do
           start
           setup_signal_traps
+        end
+      end
+
+      def on_reactor_run
+        EM::next_tick do
+          setup_redis
+          set :redis, @redis
+          setup_transport
+          set :transport, @transport
         end
       end
 
@@ -26,31 +39,46 @@ module Sensu
         setup_logger(options)
         set :logger, @logger
         load_settings(options)
+        set :checks, @settings[:checks]
+        set :all_checks, @settings.checks
         if @settings[:api][:user] && @settings[:api][:password]
           use Rack::Auth::Basic do |user, password|
             user == @settings[:api][:user] && password == @settings[:api][:password]
           end
         end
-        set :checks, @settings[:checks]
-        set :all_checks, @settings.checks
-        setup_process(options)
+        on_reactor_run
+        self
+      end
+
+      def start_server
+        Thin::Logging.silent = true
+        bind = @settings[:api][:bind] || '0.0.0.0'
+        @thin = Thin::Server.new(bind, @settings[:api][:port], self)
+        @thin.start
+      end
+
+      def stop_server(&block)
+        @thin.stop
+        retry_until_true do
+          unless @thin.running?
+            block.call
+            true
+          end
+        end
       end
 
       def start
-        setup_redis
-        set :redis, @redis
-        setup_transport
-        set :transport, @transport
-        Thin::Logging.silent = true
-        bind = @settings[:api][:bind] || '0.0.0.0'
-        Thin::Server.start(bind, @settings[:api][:port], self)
+        start_server
+        super
       end
 
       def stop
         @logger.warn('stopping')
-        @redis.close
-        @transport.close
-        super
+        stop_server do
+          @redis.close
+          @transport.close
+          super
+        end
       end
 
       def test(options={})
