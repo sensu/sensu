@@ -340,7 +340,7 @@ module Sensu
       @extensions[:bridges].each do |name, bridge|
         bridge.safe_run(event) do |output, status|
           output.each_line do |line|
-            @logger.info('bridge extension output', {
+            @logger.debug('bridge extension output', {
               :extension => bridge.definition,
               :output => line
             })
