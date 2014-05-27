@@ -4,9 +4,9 @@ gem 'multi_json', '1.10.1'
 
 gem 'sensu-em', '2.0.0'
 gem 'sensu-logger', '0.0.1'
-gem 'sensu-settings', '0.0.4'
+gem 'sensu-settings', '0.0.5'
 gem 'sensu-extension', '0.0.3'
-gem 'sensu-extensions', '0.0.4'
+gem 'sensu-extensions', '0.0.5'
 gem 'sensu-transport', '0.0.2'
 gem 'sensu-spawn', '0.0.3'
 
@@ -56,7 +56,7 @@ module Sensu
     end
 
     def load_settings(options={})
-      @settings = Settings.load(options)
+      @settings = Settings.get(options)
       log_concerns(@settings.warnings)
       failures = @settings.validate
       unless failures.empty?
@@ -68,7 +68,7 @@ module Sensu
     end
 
     def load_extensions(options={})
-      @extensions = Extensions.load(options)
+      @extensions = Extensions.get(options)
       log_concerns(@extensions.warnings)
       extension_settings = @settings.to_hash.dup
       @extensions.all.each do |extension|
