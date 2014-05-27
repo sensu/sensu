@@ -549,10 +549,9 @@ describe 'Sensu::Server' do
         @server.request_master_election
         timer(1) do
           expect(@server.is_master).to be_true
-          @server.resign_as_master do
-            expect(@server.is_master).to be_false
-            async_done
-          end
+          @server.resign_as_master
+          expect(@server.is_master).to be_false
+          async_done
         end
       end
     end
