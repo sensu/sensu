@@ -632,7 +632,7 @@ module Sensu
           master_duties
         else
           @redis.get('lock:master') do |timestamp|
-            if Time.now.to_i - timestamp.to_i >= 60
+            if Time.now.to_i - timestamp.to_i >= 30
               @redis.getset('lock:master', Time.now.to_i) do |previous|
                 if previous == timestamp
                   @is_master = true
@@ -648,7 +648,7 @@ module Sensu
 
     def setup_master_monitor
       request_master_election
-      @timers[:run] << EM::PeriodicTimer.new(20) do
+      @timers[:run] << EM::PeriodicTimer.new(10) do
         if @is_master
           @redis.set('lock:master', Time.now.to_i) do
             @logger.debug('updated master lock timestamp')
@@ -659,35 +659,16 @@ module Sensu
       end
     end
 
-    def resign_as_master(&block)
-      block ||= Proc.new {}
+    def resign_as_master
       if @is_master
         @logger.warn('resigning as master')
         @timers[:master].each do |timer|
           timer.cancel
         end
         @timers[:master].clear
-        if @redis.connected?
-          @redis.del('lock:master') do
-            @logger.info('removed master lock')
-            @is_master = false
-          end
-        end
-        timestamp = Time.now.to_i
-        retry_until_true do
-          if !@is_master
-            block.call
-            true
-          elsif Time.now.to_i - timestamp >= 3
-            @logger.warn('failed to remove master lock')
-            @is_master = false
-            block.call
-            true
-          end
-        end
+        @is_master = false
       else
         @logger.debug('not currently master')
-        block.call
       end
     end
 
@@ -729,11 +710,10 @@ module Sensu
         end
         @timers[:run].clear
         unsubscribe
-        resign_as_master do
-          @state = :paused
-          if block
-            block.call
-          end
+        resign_as_master
+        @state = :paused
+        if block
+          block.call
         end
       end
     end
@@ -751,8 +731,8 @@ module Sensu
 
     def stop
       @logger.warn('stopping')
-      @state = :stopping
       pause do
+        @state = :stopping
         complete_handlers_in_progress do
           @redis.close
           @transport.close
