@@ -5,6 +5,8 @@
 API GET /events now provides all event data, the same data passed to event
 handlers.
 
+AMQP handler type ("amqp") has been replaced by "transport".
+
 Standalone check results are no longer merged with check definitions
 residing on the server(s).
 

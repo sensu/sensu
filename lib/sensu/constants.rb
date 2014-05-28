@@ -1,6 +1,6 @@
 module Sensu
   unless defined?(Sensu::VERSION)
-    VERSION = '0.13.0.alpha.2'
+    VERSION = '0.13.0.beta'
 
     SEVERITIES = %w[ok warning critical unknown]
 
