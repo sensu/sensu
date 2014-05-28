@@ -4,10 +4,10 @@ gem 'multi_json', '1.10.1'
 
 gem 'sensu-em', '2.0.0'
 gem 'sensu-logger', '0.0.1'
-gem 'sensu-settings', '0.0.5'
+gem 'sensu-settings', '0.0.7'
 gem 'sensu-extension', '0.0.3'
 gem 'sensu-extensions', '0.0.5'
-gem 'sensu-transport', '0.0.2'
+gem 'sensu-transport', '0.0.6'
 gem 'sensu-spawn', '0.0.3'
 
 require 'time'
@@ -123,17 +123,14 @@ module Sensu
     end
 
     def setup_transport
-      if @settings[:transport].is_a?(Hash)
-        transport_name = @settings[:transport][:name]
-      end
-      transport_name ||= 'rabbitmq'
-      transport_settings = @settings[transport_name.to_sym]
+      transport_name = @settings[:transport][:name] || 'rabbitmq'
+      transport_settings = @settings[transport_name]
       @logger.debug('connecting to transport', {
         :name => transport_name,
         :settings => transport_settings
       })
+      Transport.logger = @logger
       @transport = Transport.connect(transport_name, transport_settings)
-      @transport.logger = @logger
       @transport.on_error do |error|
         @logger.fatal('transport connection error', {
           :error => error.to_s
