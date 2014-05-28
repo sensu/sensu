@@ -68,17 +68,21 @@ module Sensu
       end
     end
 
+    def find_attribute_with_default(configTree, path, default)
+      pathElement = path.shift()
+      attribute = configTree[pathElement]
+      if attribute.is_a?(Hash) and path.length > 0
+        find_attribute_with_default(attribute, path, default)
+      else
+        attribute.nil? ? default : attribute
+      end
+    end
+
     def substitute_command_tokens(check)
       unmatched_tokens = Array.new
-      substituted = check[:command].gsub(/:::([^:]*?):::/) do
+      substituted = check[:command].gsub(/:::([^:].*?):::/) do
         token, default = $1.to_s.split('|', -1)
-        matched = token.split('.').inject(@settings[:client]) do |client, attribute|
-          if client[attribute].nil?
-            default.nil? ? break : default
-          else
-            client[attribute]
-          end
-        end
+        matched = find_attribute_with_default(@settings[:client], token.split('.'), default)
         if matched.nil?
           unmatched_tokens << token
         end
