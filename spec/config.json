@@ -122,6 +122,7 @@
     "service": {
       "password": "secret"
     },
-    "empty": {}
+    "empty": {},
+    "localhost": "fail"
   }
 }
