@@ -105,12 +105,12 @@ describe 'Sensu::Client' do
       result_queue do |queue|
         @client.setup_transport
         check = check_template
-        check[:command] = 'echo :::nonexistent::: :::noexistent.hash:::'
+        check[:command] = 'echo :::nonexistent::: :::noexistent.hash::: :::empty.hash:::'
         @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
-          expect(result[:check][:output]).to eq("Unmatched command tokens: nonexistent, noexistent.hash")
+          expect(result[:check][:output]).to eq("Unmatched command tokens: nonexistent, noexistent.hash, empty.hash")
           async_done
         end
       end
