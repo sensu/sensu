@@ -11,7 +11,9 @@ describe 'Sensu::Client' do
   it 'can connect to rabbitmq' do
     async_wrapper do
       @client.setup_transport
-      async_done
+      timer(0.5) do
+        async_done
+      end
     end
   end
 
@@ -83,12 +85,32 @@ describe 'Sensu::Client' do
       result_queue do |queue|
         @client.setup_transport
         check = check_template
-        check[:command] = 'echo :::nested.attribute|default::: :::missing|default::: :::missing|::: :::nested.attribute:::::::nested.attribute:::'
+        command = 'echo :::nested.attribute|default::: :::missing|default:::'
+        command << ' :::missing|::: :::nested.attribute:::::::nested.attribute:::'
+        command << ' :::empty|localhost::: :::empty.hash|localhost:8080:::'
+        check[:command] = command
         @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
-          expect(result[:check][:output]).to eq("true default true:true\n")
+          expect(result[:check][:output]).to eq("true default true:true localhost localhost:8080\n")
+          async_done
+        end
+      end
+    end
+  end
+
+  it 'can substitute check command tokens with attributes and handle unmatched tokens' do
+    async_wrapper do
+      result_queue do |queue|
+        @client.setup_transport
+        check = check_template
+        check[:command] = 'echo :::nonexistent::: :::noexistent.hash:::'
+        @client.execute_check_command(check)
+        queue.subscribe do |payload|
+          result = MultiJson.load(payload)
+          expect(result[:client]).to eq('i-424242')
+          expect(result[:check][:output]).to eq("Unmatched command tokens: nonexistent, noexistent.hash")
           async_done
         end
       end

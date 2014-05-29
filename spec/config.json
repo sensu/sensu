@@ -121,6 +121,7 @@
     },
     "service": {
       "password": "secret"
-    }
+    },
+    "empty": {}
   }
 }
