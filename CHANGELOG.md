@@ -32,7 +32,8 @@ everything but check extensions.
 
 Fixed standalone check scheduling, no longer mutating definitions.
 
-Fixed command token substitution, allowing for the use of colons.
+Fixed command token substitution, allowing for the use of colons and
+working value defaults.
 
 Log events are flushed when the eventmachine reactor stops.
 
