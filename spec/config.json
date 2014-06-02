@@ -37,6 +37,12 @@
         "debug"
       ]
     },
+    "keepalive": {
+      "type": "set",
+      "handlers": [
+        "debug"
+      ]
+    },
     "file": {
       "type": "pipe",
       "command": "cat > /tmp/sensu_event"

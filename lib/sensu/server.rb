@@ -537,17 +537,21 @@ module Sensu
 
     def determine_stale_clients
       @logger.info('determining stale clients')
+      keepalive_check = {
+        :thresholds => {
+          :warning => 120,
+          :critical => 180
+        }
+      }
+      if @settings.handler_exists?(:keepalive)
+        keepalive_check[:handler] = "keepalive"
+      end
       @redis.smembers('clients') do |clients|
         clients.each do |client_name|
           @redis.get('client:' + client_name) do |client_json|
             unless client_json.nil?
               client = MultiJson.load(client_json)
-              check = {
-                :thresholds => {
-                  :warning => 120,
-                  :critical => 180
-                }
-              }
+              check = keepalive_check.dup
               if client.has_key?(:keepalive)
                 check = deep_merge(check, client[:keepalive])
               end
