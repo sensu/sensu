@@ -6,7 +6,7 @@ describe 'Sensu::Utilities' do
   include Sensu::Utilities
 
   it 'can determine that we are testing' do
-    expect(testing?).to be_true
+    expect(testing?).to be(true)
   end
 
   it 'can retry a block call until it returns true' do

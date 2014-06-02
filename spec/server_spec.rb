@@ -38,7 +38,7 @@ describe 'Sensu::Server' do
           amq.direct('keepalives').publish(MultiJson.dump(keepalive))
           timer(1) do
             redis.sismember('clients', 'i-424242') do |exists|
-              expect(exists).to be_true
+              expect(exists).to be(true)
               redis.get('client:i-424242') do |client_json|
                 client = MultiJson.load(client_json)
                 expect(client).to eq(keepalive)
@@ -52,41 +52,41 @@ describe 'Sensu::Server' do
   end
 
   it 'can determine if an action is subdued' do
-    expect(@server.action_subdued?(Hash.new)).to be_false
+    expect(@server.action_subdued?(Hash.new)).to be(false)
     condition = {
       :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
       :end => (Time.now + 3600).strftime('%l:00 %p').strip
     }
-    expect(@server.action_subdued?(condition)).to be_true
+    expect(@server.action_subdued?(condition)).to be(true)
     condition = {
       :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
       :end => (Time.now + 7200).strftime('%l:00 %p').strip
     }
-    expect(@server.action_subdued?(condition)).to be_false
+    expect(@server.action_subdued?(condition)).to be(false)
     condition = {
       :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
       :end => (Time.now - 7200).strftime('%l:00 %p').strip
     }
-    expect(@server.action_subdued?(condition)).to be_true
+    expect(@server.action_subdued?(condition)).to be(true)
     condition = {
       :begin => (Time.now + 3600).strftime('%l:00 %p').strip,
       :end => (Time.now - 7200).strftime('%l:00 %p').strip
     }
-    expect(@server.action_subdued?(condition)).to be_false
+    expect(@server.action_subdued?(condition)).to be(false)
     condition = {
       :days => [
         Time.now.strftime('%A'),
         'wednesday'
       ]
     }
-    expect(@server.action_subdued?(condition)).to be_true
+    expect(@server.action_subdued?(condition)).to be(true)
     condition = {
       :days => [
         (Time.now + 86400).strftime('%A'),
         (Time.now + 172800).strftime('%A')
       ]
     }
-    expect(@server.action_subdued?(condition)).to be_false
+    expect(@server.action_subdued?(condition)).to be(false)
     condition = {
       :days => %w[sunday monday tuesday wednesday thursday friday saturday],
       :exceptions => [
@@ -96,7 +96,7 @@ describe 'Sensu::Server' do
         }
       ]
     }
-    expect(@server.action_subdued?(condition)).to be_true
+    expect(@server.action_subdued?(condition)).to be(true)
     condition = {
       :days => %w[sunday monday tuesday wednesday thursday friday saturday],
       :exceptions => [
@@ -106,26 +106,26 @@ describe 'Sensu::Server' do
         }
       ]
     }
-    expect(@server.action_subdued?(condition)).to be_false
+    expect(@server.action_subdued?(condition)).to be(false)
     check = {
       :subdue => {
         :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
         :end => (Time.now + 3600).strftime('%l:00 %p').strip
       }
     }
-    expect(@server.check_request_subdued?(check)).to be_false
+    expect(@server.check_request_subdued?(check)).to be(false)
     handler = Hash.new
-    expect(@server.handler_subdued?(handler, check)).to be_true
+    expect(@server.handler_subdued?(handler, check)).to be(true)
     check[:subdue][:at] = 'publisher'
-    expect(@server.check_request_subdued?(check)).to be_true
-    expect(@server.handler_subdued?(handler, check)).to be_false
+    expect(@server.check_request_subdued?(check)).to be(true)
+    expect(@server.handler_subdued?(handler, check)).to be(false)
     handler = {
       :subdue => {
         :begin => (Time.now - 3600).strftime('%l:00 %p').strip,
         :end => (Time.now + 3600).strftime('%l:00 %p').strip
       }
     }
-    expect(@server.handler_subdued?(handler, check)).to be_true
+    expect(@server.handler_subdued?(handler, check)).to be(true)
   end
 
   it 'can determine if filter attributes match an event' do
@@ -133,23 +133,23 @@ describe 'Sensu::Server' do
       :occurrences => 1
     }
     event = event_template
-    expect(@server.filter_attributes_match?(attributes, event)).to be_true
+    expect(@server.filter_attributes_match?(attributes, event)).to be(true)
     event[:occurrences] = 2
-    expect(@server.filter_attributes_match?(attributes, event)).to be_false
+    expect(@server.filter_attributes_match?(attributes, event)).to be(false)
     attributes[:occurrences] = "eval: value == 1 || value % 60 == 0"
     event[:occurrences] = 1
-    expect(@server.filter_attributes_match?(attributes, event)).to be_true
+    expect(@server.filter_attributes_match?(attributes, event)).to be(true)
     event[:occurrences] = 2
-    expect(@server.filter_attributes_match?(attributes, event)).to be_false
+    expect(@server.filter_attributes_match?(attributes, event)).to be(false)
     event[:occurrences] = 120
-    expect(@server.filter_attributes_match?(attributes, event)).to be_true
+    expect(@server.filter_attributes_match?(attributes, event)).to be(true)
   end
 
   it 'can determine if a event is to be filtered' do
     event = event_template
     event[:client][:environment] = 'production'
-    expect(@server.event_filtered?('production', event)).to be_false
-    expect(@server.event_filtered?('development', event)).to be_true
+    expect(@server.event_filtered?('production', event)).to be(false)
+    expect(@server.event_filtered?('development', event)).to be(true)
   end
 
   it 'can derive handlers from a handler list' do
@@ -260,7 +260,7 @@ describe 'Sensu::Server' do
         async_done
       end
     end
-    expect(File.exists?('/tmp/sensu_event')).to be_true
+    expect(File.exists?('/tmp/sensu_event')).to be(true)
     File.delete('/tmp/sensu_event')
   end
 
@@ -330,9 +330,9 @@ describe 'Sensu::Server' do
         timer(2) do
           result_set = 'test:' + timestamp.to_s
           redis.sismember('aggregates', 'test') do |exists|
-            expect(exists).to be_true
+            expect(exists).to be(true)
             redis.sismember('aggregates:test', timestamp.to_s) do |exists|
-              expect(exists).to be_true
+              expect(exists).to be(true)
               redis.hgetall('aggregate:' + result_set) do |aggregate|
                 expect(aggregate['total']).to eq('4')
                 expect(aggregate['ok']).to eq('1')
@@ -526,9 +526,9 @@ describe 'Sensu::Server' do
                   expect(aggregates).not_to include(oldest)
                   result_set = 'test:' + oldest
                   redis.exists('aggregate:' + result_set) do |exists|
-                    expect(exists).to be_false
+                    expect(exists).to be(false)
                     redis.exists('aggregation:' + result_set) do |exists|
-                      expect(exists).to be_false
+                      expect(exists).to be(false)
                       async_done
                     end
                   end
@@ -548,9 +548,9 @@ describe 'Sensu::Server' do
       redis.flushdb do
         @server.request_master_election
         timer(1) do
-          expect(@server.is_master).to be_true
+          expect(@server.is_master).to be(true)
           @server.resign_as_master
-          expect(@server.is_master).to be_false
+          expect(@server.is_master).to be(false)
           async_done
         end
       end
