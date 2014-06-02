@@ -490,6 +490,7 @@ describe 'Sensu::Server' do
                   redis.hget('events:bar', 'keepalive') do |event_json|
                     event = MultiJson.load(event_json)
                     expect(event[:check][:status]).to eq(2)
+                    expect(event[:check][:handler]).to eq('keepalive')
                     async_done
                   end
                 end
