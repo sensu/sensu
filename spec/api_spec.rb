@@ -45,8 +45,8 @@ describe 'Sensu::API' do
       api_request('/info') do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body[:sensu][:version]).to eq(Sensu::VERSION)
-        expect(body[:redis][:connected]).to be_true
-        expect(body[:transport][:connected]).to be_true
+        expect(body[:redis][:connected]).to be(true)
+        expect(body[:transport][:connected]).to be(true)
         expect(body[:transport][:keepalives][:messages]).to be_kind_of(Integer)
         expect(body[:transport][:keepalives][:consumers]).to be_kind_of(Integer)
         expect(body[:transport][:results][:messages]).to be_kind_of(Integer)
@@ -441,7 +441,7 @@ describe 'Sensu::API' do
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         redis.exists('stash:tester') do |exists|
-          expect(exists).to be_false
+          expect(exists).to be(false)
           async_done
         end
       end
@@ -460,7 +460,7 @@ describe 'Sensu::API' do
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         redis.exists('stash:tester') do |exists|
-          expect(exists).to be_false
+          expect(exists).to be(false)
           async_done
         end
       end
@@ -495,7 +495,7 @@ describe 'Sensu::API' do
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         redis.exists('stash:tester') do |exists|
-          expect(exists).to be_false
+          expect(exists).to be(false)
           async_done
         end
       end
@@ -543,7 +543,7 @@ describe 'Sensu::API' do
         expect(http.response_header.status).to eq(204)
         expect(body).to be_empty
         redis.exists('stash:test/test') do |exists|
-          expect(exists).to be_false
+          expect(exists).to be(false)
           async_done
         end
       end
@@ -615,7 +615,7 @@ describe 'Sensu::API' do
           expect(http.response_header.status).to eq(204)
           expect(body).to be_empty
           redis.sismember('aggregates', 'test') do |exists|
-            expect(exists).to be_false
+            expect(exists).to be(false)
             async_done
           end
         end
