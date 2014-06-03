@@ -7,7 +7,7 @@ gem 'sensu-logger', '0.0.1'
 gem 'sensu-settings', '0.0.7'
 gem 'sensu-extension', '0.0.3'
 gem 'sensu-extensions', '0.0.5'
-gem 'sensu-transport', '0.0.6'
+gem 'sensu-transport', '0.0.7'
 gem 'sensu-spawn', '0.0.3'
 
 require 'time'
