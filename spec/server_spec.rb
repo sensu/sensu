@@ -155,6 +155,20 @@ describe 'Sensu::Server' do
   it 'can derive handlers from a handler list' do
     handler_list = ['default', 'file', 'missing']
     handlers = @server.derive_handlers(handler_list)
+    expect(handlers.size).to eq(2)
+    expect(handlers.first).to be_an_instance_of(Sensu::Extension::Debug)
+    expected = {
+      :name => 'file',
+      :type => 'pipe',
+      :command => 'cat > /tmp/sensu_event'
+    }
+    expect(handlers.last).to eq(expected)
+  end
+
+  it 'can derive handlers from a handler list containing a nested set' do
+    handler_list = ['nested_set_one']
+    handlers = @server.derive_handlers(handler_list)
+    expect(handlers.size).to eq(2)
     expect(handlers.first).to be_an_instance_of(Sensu::Extension::Debug)
     expected = {
       :name => 'file',

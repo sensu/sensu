@@ -116,12 +116,18 @@ module Sensu
       end
     end
 
-    def derive_handlers(handler_list)
+    def derive_handlers(handler_list, depth=0)
       handler_list.compact.inject(Array.new) do |handlers, handler_name|
         if @settings.handler_exists?(handler_name)
           handler = @settings[:handlers][handler_name].merge(:name => handler_name)
           if handler[:type] == 'set'
-            handlers = handlers + derive_handlers(handler[:handlers])
+            if depth < 2
+              handlers = handlers + derive_handlers(handler[:handlers], depth + 1)
+            else
+              @logger.error('handler sets cannot be deeply nested', {
+                :handler => handler
+              })
+            end
           else
             handlers << handler
           end

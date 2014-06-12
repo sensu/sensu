@@ -25,6 +25,8 @@ services.
 
 Client keepalives now contain the Sensu version.
 
+Support for nested handler sets (not deep).
+
 ### Other
 
 Clients now only load instances of check extensions, and servers load

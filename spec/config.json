@@ -85,6 +85,28 @@
         "type": "direct",
         "name": "events"
       }
+    },
+    "nested_set_one": {
+        "type": "set",
+        "handlers": [
+            "nested_set_two"
+        ]
+    },
+    "nested_set_two": {
+        "type": "set",
+        "handlers": [
+            "debug",
+            "file",
+            "nested_set_three"
+        ]
+    },
+    "nested_set_three": {
+        "type": "set",
+        "handlers": [
+            "udp",
+            "tcp",
+            "transport"
+        ]
     }
   },
   "checks": {
