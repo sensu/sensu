@@ -1,4 +1,4 @@
-## 0.13.0 - TBD
+## 0.13.0 - 2014-06-12
 
 ### Non-backwards compatible changes
 
