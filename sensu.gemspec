@@ -9,20 +9,20 @@ Gem::Specification.new do |s|
   s.email       = ['portertech@gmail.com', 'justin.kolberg@sonian.net']
   s.homepage    = 'https://github.com/sensu/sensu'
   s.summary     = 'A monitoring framework'
-  s.description = 'A monitoring framework that aims to be simple, malleable, and scalable. Uses the publish/subscribe model.'
+  s.description = 'A monitoring framework that aims to be simple, malleable, and scalable.'
   s.license     = 'MIT'
   s.has_rdoc    = false
 
   s.add_dependency('json') if RUBY_VERSION < "1.9"
   s.add_dependency('multi_json', '1.10.1')
   s.add_dependency('uuidtools', '2.1.4')
-  s.add_dependency('sensu-em', '2.2.0')
-  s.add_dependency('sensu-logger', '0.0.1')
-  s.add_dependency('sensu-settings', '0.0.7')
-  s.add_dependency('sensu-extension', '0.0.3')
-  s.add_dependency('sensu-extensions', '0.0.5')
-  s.add_dependency('sensu-transport', '0.0.7')
-  s.add_dependency('sensu-spawn', '0.0.3')
+  s.add_dependency('sensu-em', '2.4.0')
+  s.add_dependency('sensu-logger', '1.0.0')
+  s.add_dependency('sensu-settings', '1.0.0')
+  s.add_dependency('sensu-extension', '1.0.0')
+  s.add_dependency('sensu-extensions', '1.0.0')
+  s.add_dependency('sensu-transport', '1.0.0')
+  s.add_dependency('sensu-spawn', '1.0.0')
   s.add_dependency('em-redis-unified', '0.5.0')
   s.add_dependency('sinatra', '1.3.5')
   s.add_dependency('async_sinatra', '1.0.0')
