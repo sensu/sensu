@@ -27,6 +27,8 @@ Client keepalives now contain the Sensu version.
 
 Support for nested handler sets (not deep).
 
+Setting validation reports all invalid definitions before Sensu exits.
+
 ### Other
 
 Clients now only load instances of check extensions, and servers load
@@ -43,6 +45,8 @@ Dropped the Oj JSON parser, heap allocation issues and memory leaks.
 
 Client RabbitMQ queues are no longer server named (bugs), they are now
 composed of the client name, Sensu version, and the timestamp at creation.
+
+Server master election lock updates and queries are more frequent.
 
 ## 0.12.6 - 2014-02-19
 
