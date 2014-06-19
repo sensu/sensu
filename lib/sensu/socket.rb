@@ -8,6 +8,12 @@ module Sensu
       end
     end
 
+    def post_init
+      @data = ""
+      @expected_data_len = nil
+      @first_packet = true
+    end
+
     def receive_data(data)
       if data =~ /[\x80-\xff]/n
         @logger.warn('socket received non-ascii characters')
@@ -16,11 +22,34 @@ module Sensu
         @logger.debug('socket received ping')
         respond('pong')
       else
+        if @first_packet
+          if data =~ /^(\d+)\n/n
+            @expected_data_len = $1.to_i
+            @logger.debug("expecting data of length #{@expected_data_len}")
+            data = data[data.index("\n")+1..-1]
+          end
+          @first_packet = false
+        end
+        if @expected_data_len and @data.length < @expected_data_len
+          @data += data
+          # Check whether this last packet completes the data
+          if @data.length < @expected_data_len
+            @logger.debug("expecting #{@expected_data_len - @data.length} bytes more")
+            return
+          end
+          # Remove any extra bytes the client might have sent
+          @data = @data[0..@expected_data_len-1]
+          @logger.debug("received data of expected length #{@expected_data_len}")
+        end
+        # Handle the existing behaviour
+        if @expected_data_len.nil?
+          @data = data
+        end
         @logger.debug('socket received data', {
-          :data => data
+          :data => @data
         })
         begin
-          check = MultiJson.load(data)
+          check = MultiJson.load(@data)
           check[:issued] = Time.now.to_i
           check[:status] ||= 0
           validates = [
@@ -46,7 +75,7 @@ module Sensu
           end
         rescue MultiJson::ParseError => error
           @logger.warn('check result must be valid json', {
-            :data => data,
+            :data => @data,
             :error => error.to_s
           })
           respond('invalid')
