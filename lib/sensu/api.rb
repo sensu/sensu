@@ -39,13 +39,9 @@ module Sensu
         setup_logger(options)
         set :logger, @logger
         load_settings(options)
+        set :api, @settings[:api]
         set :checks, @settings[:checks]
         set :all_checks, @settings.checks
-        if @settings[:api][:user] && @settings[:api][:password]
-          use Rack::Auth::Basic do |user, password|
-            user == @settings[:api][:user] && password == @settings[:api][:password]
-          end
-        end
         on_reactor_run
         self
       end
@@ -112,8 +108,28 @@ module Sensu
         env['rack.input'].rewind
       end
 
+      def protected!
+        if settings.api[:user] && settings.api[:password]
+          return if !(settings.api[:user] && settings.api[:password]) || authorized?
+          headers['WWW-Authenticate'] = 'Basic realm="Restricted Area"'
+          unauthorized!
+        end
+      end
+
+      def authorized?
+        @auth ||=  Rack::Auth::Basic::Request.new(request.env)
+        @auth.provided? &&
+          @auth.basic? &&
+          @auth.credentials &&
+          @auth.credentials == ["foo", "bar"]
+      end
+
       def bad_request!
         ahalt 400
+      end
+
+      def unauthorized!
+        ahalt 401
       end
 
       def not_found!
@@ -235,6 +251,16 @@ module Sensu
     before do
       request_log_line
       content_type 'application/json'
+      headers['Access-Control-Allow-Origin'] = '*'
+      headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+      headers['Access-Control-Allow-Credentials'] = 'true'
+      headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, ' \
+      'Content-Type, Accept, Authorization'
+      protected! unless env['REQUEST_METHOD'] == 'OPTIONS'
+    end
+
+    aoptions '/*' do
+      body ''
     end
 
     aget '/info/?' do
