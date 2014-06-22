@@ -121,7 +121,7 @@ module Sensu
         @auth.provided? &&
           @auth.basic? &&
           @auth.credentials &&
-          @auth.credentials == ["foo", "bar"]
+          @auth.credentials == [settings.api[:user], settings.api[:password]]
       end
 
       def bad_request!
