@@ -408,7 +408,7 @@ describe 'Sensu::Server' do
             result = result_template
             amq.direct('results').publish(MultiJson.dump(result))
             amq.direct('results').publish(MultiJson.dump(result))
-            timer(1) do
+            timer(2) do
               redis.hget('events:i-424242', 'test') do |event_json|
                 event = MultiJson.load(event_json)
                 expect(event[:id]).to be_kind_of(String)
