@@ -414,7 +414,7 @@ module Sensu
                   :occurrences => 1
                 }
                 if check[:status] != 0 || is_flapping
-                  if previous_occurrence && check[:status] == previous_occurrence[:status]
+                  if previous_occurrence && check[:status] == previous_occurrence[:check][:status]
                     event[:occurrences] = previous_occurrence[:occurrences] + 1
                   end
                   event[:action] = is_flapping ? :flapping : :create
