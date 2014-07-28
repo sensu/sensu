@@ -1,3 +1,9 @@
+## 0.13.1 - 2014-07-28
+
+### Other
+
+Fixed event occurrence count.
+
 ## 0.13.0 - 2014-06-12
 
 ### Non-backwards compatible changes
