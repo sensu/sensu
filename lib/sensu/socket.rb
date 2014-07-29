@@ -1,5 +1,8 @@
 module Sensu
   class Socket < EM::Connection
+
+    class DataError < StandardError; end
+
     attr_accessor :logger, :settings, :transport, :reply
 
     def respond(data)
@@ -9,9 +12,17 @@ module Sensu
     end
 
     def receive_data(data)
-      if data.bytes.find { |char| char > 0x80 }
-        @logger.warn('socket received non-ascii characters')
+      begin
+        process_data(data)
+      rescue DataError => exception
+        @logger.warn(exception.to_s)
         respond('invalid')
+      end
+    end
+
+    def process_data(data)
+      if data.bytes.find { |char| char > 0x80 }
+        fail(DataError, 'socket received non-ascii characters')
       elsif data.strip == 'ping'
         @logger.debug('socket received ping')
         respond('pong')
@@ -19,38 +30,60 @@ module Sensu
         @logger.debug('socket received data', {
           :data => data
         })
-        begin
-          check = MultiJson.load(data)
-          check[:issued] = Time.now.to_i
-          check[:status] ||= 0
-          validates = [
-            check[:name] =~ /^[\w\.-]+$/,
-            check[:output].is_a?(String),
-            check[:status].is_a?(Integer)
-          ].all?
-          if validates
-            payload = {
-              :client => @settings[:client][:name],
-              :check => check
-            }
-            @logger.info('publishing check result', {
-              :payload => payload
-            })
-            @transport.publish(:direct, 'results', MultiJson.dump(payload))
-            respond('ok')
-          else
-            @logger.warn('invalid check result', {
-              :check => check
-            })
-            respond('invalid')
-          end
-        rescue MultiJson::ParseError => error
-          @logger.warn('check result must be valid json', {
-            :data => data,
-            :error => error.to_s
-          })
-          respond('invalid')
-        end
+        process_json(data)
+        respond('ok')
+      end
+    end
+
+    def process_json(data)
+      check = self.class.load_json(data)
+
+      check[:status] ||= 0
+
+      self.class.validate_check_data(check)
+
+      publish_check_data(check)
+    end
+
+    def publish_check_data(check)
+      payload = {
+        :client => @settings[:client][:name],
+        :check => check.merge(:issued => Time.now.to_i),
+      }
+
+      @logger.info('publishing check result', {
+        :payload => payload
+      })
+
+      @transport.publish(:direct, 'results', MultiJson.dump(payload))
+    end
+
+    def self.load_json(data)
+      begin
+        MultiJson.load(data)
+      rescue MultiJson::ParseError => error
+        fail(DataError, "check result is not valid json: error: #{error.to_s}")
+      end
+    end
+
+    def self.validate_check_data(check)
+      #
+      # Basic sanity checks.
+      #
+      fail(DataError, "invalid check name: '#{check[:name]}'") unless check[:name] =~ /^[\w\.-]+$/
+      fail(DataError, "check output must be a String, got #{check[:output].class.name} instead") unless check[:output].is_a?(String)
+
+      #
+      # Status code validation.
+      #
+      status_code = check[:status]
+
+      unless status_code.is_a?(Integer)
+        fail(DataError, "check status must be an Integer, got #{status_code.class.name} instead") unless status_code.is_a?(Integer)
+      end
+
+      unless 0 <= status_code && status_code <= 3
+        fail(DataError, "check status must be in {0, 1, 2, 3}, got #{status_code} instead")
       end
     end
   end

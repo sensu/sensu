@@ -16,7 +16,7 @@ describe Sensu::Socket do
     {
       :name => 'o-hai',
       :output => 'DEADBEEF' * 2,
-      :status => 0,
+      :status => 3,
     }
   end
 
@@ -36,67 +36,104 @@ describe Sensu::Socket do
     allow(Time).to receive_messages(:now => Time.at(1234))
   end
 
-  it 'detects non-ASCII characters' do
-    expect(logger).to receive_messages(:warn => 'socket received non-ascii characters')
-    expect(subject).to receive_messages(:respond => 'invalid')
-
-    subject.receive_data("\x80\x88\x99\xAA\xBB")
-  end
-
-  it 'responds to a `ping`' do
-    expect(logger).to receive_messages(:debug => 'socket received ping')
-    expect(subject).to receive_messages(:respond => 'pong')
-
-    subject.receive_data('  ping  ')
-  end
-
-  context 'data' do
-    it 'must be valid json' do
-      expect(logger).to receive(:debug).with('socket received data', :data => 'a relentless stream of garbage' )
-      expect(logger).to receive(:warn).with('check result must be valid json', kind_of(Hash))
-
+  describe '#receive_data' do
+    it "responds 'invalid' there is a data error detected further in the processing chain" do
+      expect(subject).to receive(:process_data).with(:nonce).and_raise(described_class::DataError, "OH NOES")
+      expect(logger).to receive(:warn).with('OH NOES')
       expect(subject).to receive(:respond).with('invalid')
 
-      subject.receive_data('a relentless stream of garbage')
+      subject.receive_data(:nonce)
+    end
+  end
+
+  describe '#process_data' do
+    it 'detects non-ASCII characters' do
+      expect { subject.process_data("\x80\x88\x99\xAA\xBB") }.to\
+        raise_error(described_class::DataError, 'socket received non-ascii characters')
     end
 
-    it 'is validated as a check' do
-      check_report_data.delete(:output)
+    it 'responds to a `ping`' do
+      expect(logger).to receive_messages(:debug => 'socket received ping')
+      expect(subject).to receive_messages(:respond => 'pong')
 
-      expect(logger).to receive(:debug).with('socket received data', { :data => check_report_data.to_json })
-      expect(logger).to receive(:warn).with('invalid check result', { :check => check_report_data.merge(:issued => 1234) })
+      subject.process_data('  ping  ')
+    end
 
-      expect(subject).to receive(:respond).with('invalid')
+    it 'debug-logs data blobs passing through it' do
+      expect(logger).to receive(:debug).with('socket received data', :data => 'a relentless stream of garbage' )
+      expect(subject).to receive_messages(:process_json => 'a relentless stream of garbage', :respond => 'ok')
 
-      subject.receive_data(check_report_data.to_json)
+      subject.process_data('a relentless stream of garbage')
+    end
+  end
+
+  describe '#process_json' do
+    it 'must be valid json' do
+      expect { subject.process_json('a relentless stream of garbage') }.to\
+        raise_error(
+          described_class::DataError,
+          /check result is not valid json: error: \d+: unexpected token at 'a relentless stream of garbage'/
+        )
     end
 
     it 'publishes valid check results' do
-      payload = {
-        :payload => {
-          :client => 'example_client_name',
-          :check => check_report_data.merge(:issued => 1234),
-        },
-      }
+      expect(described_class).to receive(:validate_check_data).with(check_report_data)
+      expect(subject).to receive(:publish_check_data).with(check_report_data)
 
-      expect(logger).to receive(:debug).with('socket received data', { :data => check_report_data.to_json })
+      subject.process_json(check_report_data.to_json)
+    end
+  end
 
-      expect(logger).to receive(:info)\
-        .with(
-          'publishing check result',
-          payload
-        )
+  describe '#publish_check_data' do
+    it 'publishes check data' do
+      payload = { :client => 'example_client_name', :check => { :o => :lol, :issued => 1234 } }
 
-      expect(transport).to receive(:publish)\
-        .with(
-          :direct,
-          'results',
-          payload.fetch(:payload).to_json
-        )
+      expect(logger).to receive(:info).with('publishing check result', { :payload => payload })
+      expect(transport).to receive(:publish).with(:direct, 'results', payload.to_json)
 
-      expect(subject).to receive(:respond).with('ok')
+      subject.publish_check_data({:o => :lol})
+    end
+  end
 
-      subject.receive_data(check_report_data.to_json)
+  describe '.validate_check_data' do
+    it 'must contain a non-empty check name' do
+      check_report_data.merge!(:name => '')
+
+      expect { described_class.validate_check_data(check_report_data) }.to\
+        raise_error(described_class::DataError, "invalid check name: ''")
+    end
+
+    it 'must contain an acceptable check name' do
+      check_report_data.merge!(:name => 'o hai')
+
+      expect { described_class.validate_check_data(check_report_data) }.to\
+        raise_error(described_class::DataError, "invalid check name: 'o hai'")
+    end
+
+    it 'must have check output that is a string' do
+      check_report_data.merge!(:output => 1234)
+
+      expect { described_class.validate_check_data(check_report_data) }.to\
+        raise_error(described_class::DataError, 'check output must be a String, got Fixnum instead')
+    end
+
+    it 'must have an integer status' do
+      check_report_data.merge!(:status => '1234')
+
+      expect { described_class.validate_check_data(check_report_data) }.to\
+        raise_error(described_class::DataError, 'check status must be an Integer, got String instead')
+    end
+
+    it 'must have a status code in the valid range' do
+      check_report_data.merge!(:status => -2)
+
+      expect { described_class.validate_check_data(check_report_data) }.to\
+        raise_error(described_class::DataError, 'check status must be in {0, 1, 2, 3}, got -2 instead')
+
+      check_report_data.merge!(:status => 4)
+
+      expect { described_class.validate_check_data(check_report_data) }.to\
+        raise_error(described_class::DataError, 'check status must be in {0, 1, 2, 3}, got 4 instead')
     end
   end
 end
