@@ -42,6 +42,12 @@ module Sensu
         set :api, @settings[:api]
         set :checks, @settings[:checks]
         set :all_checks, @settings.checks
+        set :cors, @settings[:cors] || {
+          'Origin' => '*',
+          'Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
+          'Credentials' => 'true',
+          'Headers' => 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+        }
         on_reactor_run
         self
       end
@@ -251,11 +257,9 @@ module Sensu
     before do
       request_log_line
       content_type 'application/json'
-      headers['Access-Control-Allow-Origin'] = '*'
-      headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-      headers['Access-Control-Allow-Credentials'] = 'true'
-      headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, ' \
-      'Content-Type, Accept, Authorization'
+      settings.cors.each do |header, value|
+        headers['Access-Control-Allow-' + header] = value
+      end
       protected! unless env['REQUEST_METHOD'] == 'OPTIONS'
     end
 
