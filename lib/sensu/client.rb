@@ -170,11 +170,15 @@ module Sensu
         })
         funnel = [@settings[:client][:name], VERSION, Time.now.to_i].join('-')
         @transport.subscribe(:fanout, subscription, funnel) do |message_info, message|
-          check = MultiJson.load(message)
-          @logger.info('received check request', {
-            :check => check
-          })
-          process_check(check)
+          begin
+            check = MultiJson.load(message)
+            @logger.info('received check request', {
+              :check => check
+            })
+            process_check(check)
+          rescue MultiJson::ParseError => exception
+            @logger.error("Failed to parse the check request: " + message + " with the following error: " + exception.cause.to_s)
+          end
         end
       end
     end
