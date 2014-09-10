@@ -464,7 +464,7 @@ module Sensu
             @transport.ack(message_info)
           end
         rescue MultiJson::ParseError => error
-          @logger.error('Failed to parse the result with the listed error message'
+          @logger.error('Failed to parse the result with the listed error message', {
             :raw_result => message,
             :error => error.to_s
           })
