@@ -176,10 +176,10 @@ module Sensu
               :check => check
             })
             process_check(check)
-          rescue MultiJson::ParseError => exception
+          rescue MultiJson::ParseError => error
             @logger.error('Failed to parse the check request with listed error',{
               :raw_check_request => message,
-              :error => exception.cause.to_s
+              :error => error.to_s
             })
           end
         end

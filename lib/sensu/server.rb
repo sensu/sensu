@@ -36,10 +36,10 @@ module Sensu
               @transport.ack(message_info)
             end
           end
-        rescue MultiJson::ParseError => exception
+        rescue MultiJson::ParseError => error
           @logger.error('Failed to parse the keepalive with the listed error', {
             :raw_keepalive => message,
-            :error => exception.cause.to_s
+            :error => error.to_s
           })
         end
       end
@@ -463,10 +463,10 @@ module Sensu
           EM::next_tick do
             @transport.ack(message_info)
           end
-        rescue MultiJson::ParseError => exception
+        rescue MultiJson::ParseError => error
           @logger.error('Failed to parse the result with the listed error message'
             :raw_result => message,
-            :error => exception.cause.to_s
+            :error => error.to_s
           })
         end
       end
