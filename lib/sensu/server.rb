@@ -26,14 +26,21 @@ module Sensu
     def setup_keepalives
       @logger.debug('subscribing to keepalives')
       @transport.subscribe(:direct, 'keepalives', 'keepalives', :ack => true) do |message_info, message|
-        client = MultiJson.load(message)
-        @logger.debug('received keepalive', {
-          :client => client
-        })
-        @redis.set('client:' + client[:name], MultiJson.dump(client)) do
-          @redis.sadd('clients', client[:name]) do
-            @transport.ack(message_info)
+        begin
+          client = MultiJson.load(message)
+          @logger.debug('received keepalive', {
+            :client => client
+          })
+          @redis.set('client:' + client[:name], MultiJson.dump(client)) do
+            @redis.sadd('clients', client[:name]) do
+              @transport.ack(message_info)
+            end
           end
+        rescue MultiJson::ParseError => error
+          @logger.error('Failed to parse the keepalive with the listed error', {
+            :raw_keepalive => message,
+            :error => error.to_s
+          })
         end
       end
     end
@@ -447,13 +454,20 @@ module Sensu
     def setup_results
       @logger.debug('subscribing to results')
       @transport.subscribe(:direct, 'results', 'results', :ack => true) do |message_info, message|
-        result = MultiJson.load(message)
-        @logger.debug('received result', {
-          :result => result
-        })
-        process_result(result)
-        EM::next_tick do
-          @transport.ack(message_info)
+        begin
+          result = MultiJson.load(message)
+          @logger.debug('received result', {
+            :result => result
+          })
+          process_result(result)
+          EM::next_tick do
+            @transport.ack(message_info)
+          end
+        rescue MultiJson::ParseError => error
+          @logger.error('Failed to parse the result with the listed error message', {
+            :raw_result => message,
+            :error => error.to_s
+          })
         end
       end
     end
