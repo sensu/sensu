@@ -674,4 +674,38 @@ describe 'Sensu::API' do
       end
     end
   end
+
+  it 'can accept options requests without authentication' do
+    api_test do
+      options = {
+        :head => {
+          :authorization => nil
+        }
+      }
+      api_request('/events', :options, options) do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it 'can provide cors headers' do
+    api_test do
+      api_request('/events') do |http, body|
+        cors_headers = {
+          :origin => http.response_header['ACCESS_CONTROL_ALLOW_ORIGIN'],
+          :methods => http.response_header['ACCESS_CONTROL_ALLOW_METHODS'],
+          :credentials => http.response_header['ACCESS_CONTROL_ALLOW_CREDENTIALS'],
+          :headers => http.response_header['ACCESS_CONTROL_ALLOW_HEADERS']
+        }
+        expected_headers = 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+        expect(cors_headers[:origin]).to eq('*')
+        expect(cors_headers[:methods]).to eq('GET, POST, PUT, DELETE, OPTIONS')
+        expect(cors_headers[:credentials]).to eq('true')
+        expect(cors_headers[:headers]).to eq(expected_headers)
+        async_done
+      end
+    end
+  end
 end
