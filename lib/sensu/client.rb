@@ -177,8 +177,8 @@ module Sensu
             })
             process_check(check)
           rescue MultiJson::ParseError => error
-            @logger.error('Failed to parse the check request with listed error', {
-              :raw_check_request => message,
+            @logger.error('failed to parse the check request payload', {
+              :message => message,
               :error => error.to_s
             })
           end
