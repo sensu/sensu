@@ -37,8 +37,8 @@ module Sensu
             end
           end
         rescue MultiJson::ParseError => error
-          @logger.error('Failed to parse the keepalive with the listed error', {
-            :raw_keepalive => message,
+          @logger.error('failed to parse keepalive payload', {
+            :message => message,
             :error => error.to_s
           })
         end
@@ -464,8 +464,8 @@ module Sensu
             @transport.ack(message_info)
           end
         rescue MultiJson::ParseError => error
-          @logger.error('Failed to parse the result with the listed error message', {
-            :raw_result => message,
+          @logger.error('failed to parse result payload', {
+            :message => message,
             :error => error.to_s
           })
         end
