@@ -29,7 +29,7 @@ Gem::Specification.new do |s|
   s.add_dependency('thin', '1.5.0') unless RUBY_PLATFORM =~ /java/
 
   s.add_development_dependency('rake', '~> 10.3')
-  s.add_development_dependency('rspec', '~> 3')
+  s.add_development_dependency('rspec', '~> 3.0.0')
   s.add_development_dependency('em-http-request', '~> 1.1')
 
   s.files         = Dir.glob('{bin,lib}/**/*') + %w[sensu.gemspec README.md CHANGELOG.md MIT-LICENSE.txt]
