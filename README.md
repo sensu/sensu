@@ -8,4 +8,4 @@ A monitoring framework that aims to be simple, malleable, and scalable.
   Please refer to the [Sensu Docs](http://docs.sensuapp.org/).
 
 ## License
-  Sensu is released under the [MIT license](https://raw.github.com/sensu/sensu/master/MIT-LICENSE.txt).
+  Sensu is released under the [MIT license](https://raw.github.com/sensu/sensu/master/MIT-LICENSE.txt). 
