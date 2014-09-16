@@ -46,7 +46,7 @@ describe Sensu::Socket do
     #
     it "responds 'invalid' there is a data error detected further in the processing chain" do
       expect(subject).to receive(:process_data).with('NONCE').and_raise(described_class::DataError, "OH NOES")
-      expect(logger).to receive(:warn).with('OH NOES')
+      expect(logger).to receive(:warn).with('failed to process data from the client socket', {:data_buffer=>'NONCE', :error=>'OH NOES'})
       expect(subject).to receive(:respond).with('invalid')
 
       subject.receive_data('NONCE')
@@ -167,7 +167,7 @@ describe Sensu::Socket do
 
   describe '#process_json' do
     it 'rejects invalid check results' do
-      invalid_check_result = check_report_data.merge(:status => 24601)
+      invalid_check_result = check_report_data.merge(:status => "2")
       expect { subject.process_json(invalid_check_result.to_json) }.to raise_error(described_class::DataError)
     end
 
@@ -200,27 +200,23 @@ describe Sensu::Socket do
       end
     end
 
-    it_should_behave_like 'a validator', 'must contain a non-empty', {:name => ''}, "invalid check name: ''"
-    it_should_behave_like 'a validator', 'must contain an acceptable check name', {:name => 'o hai'}, "invalid check name: 'o hai'"
+    it_should_behave_like 'a validator',
+      'must contain a non-empty',
+      {:name => ''},
+      'check name must be a string and cannot contain spaces or special characters'
+    it_should_behave_like 'a validator',
+      'must contain an acceptable check name',
+      {:name => 'check name'},
+      'check name must be a string and cannot contain spaces or special characters'
 
     it_should_behave_like 'a validator',
       'must have check output that is a string',
       {:output => 1234},
-      'check output must be a String, got Fixnum instead'
+      'check output must be a string'
 
     it_should_behave_like 'a validator',
       'must have an integer status',
-      {:status => '1234'},
-      'check status must be an Integer, got String instead'
-
-    it_should_behave_like 'a validator',
-      'must have a status code in the valid range',
-      {:status => -2},
-      'check status must be in {0, 1, 2, 3}, got -2 instead'
-
-    it_should_behave_like 'a validator',
-      'must have a status code in the valid range',
-      {:status => 4},
-      'check status must be in {0, 1, 2, 3}, got 4 instead'
+      {:status => '2'},
+      'check status must be an integer'
   end
 end

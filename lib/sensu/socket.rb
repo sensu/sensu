@@ -85,8 +85,11 @@ module Sensu
       @data_buffer << data
       begin
         process_data(@data_buffer)
-      rescue DataError => exception
-        @logger.warn(exception.to_s)
+      rescue DataError => error
+        @logger.warn('failed to process data from the client socket', {
+          :data_buffer => @data_buffer,
+          :error => error.to_s
+        })
         respond('invalid')
       end
     end
@@ -166,17 +169,17 @@ module Sensu
       #
       # Basic sanity checks.
       #
-      fail(DataError, "invalid check name: '#{check[:name]}'") unless check[:name] =~ /^[\w\.-]+$/
-      fail(DataError, "check output must be a String, got #{check[:output].class.name} instead") unless check[:output].is_a?(String)
+      unless check[:name] =~ /^[\w\.-]+$/
+        raise DataError, 'check name must be a string and cannot contain spaces or special characters'
+      end
+      unless check[:output].is_a?(String)
+        raise DataError, 'check output must be a string'
+      end
       #
       # Status code validation.
       #
-      status_code = check[:status]
-      unless status_code.is_a?(Integer)
-        fail(DataError, "check status must be an Integer, got #{status_code.class.name} instead") unless status_code.is_a?(Integer)
-      end
-      unless 0 <= status_code && status_code <= 3
-        fail(DataError, "check status must be in {0, 1, 2, 3}, got #{status_code} instead")
+      unless check[:status].is_a?(Integer)
+        raise DataError, 'check status must be an integer'
       end
     end
   end
