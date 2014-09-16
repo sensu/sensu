@@ -76,8 +76,12 @@ module Sensu
     # For a UDP "session" this gets called once. For a TCP session, gets called one or more times.
     # @param [String] data a buffer containing the data the client sent us.
     def receive_data(data)
-      reset_watchdog if EventMachine.reactor_running?
-      return if @mode == MODE_REJECT
+      if EM.reactor_running?
+        reset_watchdog
+      end
+      if @mode == MODE_REJECT
+        return
+      end
       @data_buffer << data
       begin
         process_data(@data_buffer)
@@ -108,7 +112,9 @@ module Sensu
           @parse_errors << error.to_s
         else
           process_json(data)
-          @watchdog.cancel if @watchdog
+          if @watchdog
+            @watchdog.cancel
+          end
           respond('ok')
         end
       end
@@ -139,7 +145,9 @@ module Sensu
 
     # Start or reset the watchdog.
     def reset_watchdog
-      @watchdog.cancel if @watchdog
+      if @watchdog
+        @watchdog.cancel
+      end
       @watchdog = EventMachine::Timer.new(WATCHDOG_DELAY) do
         @mode = MODE_REJECT
         @logger.warn('giving up on data buffer from client', {
@@ -160,7 +168,6 @@ module Sensu
       #
       fail(DataError, "invalid check name: '#{check[:name]}'") unless check[:name] =~ /^[\w\.-]+$/
       fail(DataError, "check output must be a String, got #{check[:output].class.name} instead") unless check[:output].is_a?(String)
-
       #
       # Status code validation.
       #
