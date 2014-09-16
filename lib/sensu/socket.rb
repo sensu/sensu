@@ -1,5 +1,4 @@
 module Sensu
-
   # EventMachine connection handler for the Sensu client's local-agent protocol.
   #
   # Sensu-client listens on localhost port 3030 (by default) for UDP and TCP traffic. This
@@ -36,7 +35,6 @@ module Sensu
   # showed up, the agent will give up on receiving any more from the client, and instead respond +'invalid'+
   # and close the connection.
   class Socket < EM::Connection
-
     class DataError < StandardError; end
 
     attr_accessor :logger, :settings, :transport, :reply
@@ -79,11 +77,8 @@ module Sensu
     # @param [String] data a buffer containing the data the client sent us.
     def receive_data(data)
       reset_watchdog if EventMachine.reactor_running?
-
       return if @mode == MODE_REJECT
-
       @data_buffer << data
-
       begin
         process_data(@data_buffer)
       rescue DataError => exception
@@ -105,7 +100,6 @@ module Sensu
         @logger.debug('socket received data', {
           :data => data
         })
-
         # See if we've got a complete JSON blob. If we do, forward it on. If we don't, store
         # the exception so the watchdog can log it if it fires.
         begin
@@ -125,11 +119,8 @@ module Sensu
     # @raise [DataError] if +data+ describes an invalid check result.
     def process_json(data)
       check = MultiJson.load(data)
-
       check[:status] ||= 0
-
       self.class.validate_check_data(check)
-
       publish_check_data(check)
     end
 
@@ -140,11 +131,9 @@ module Sensu
         :client => @settings[:client][:name],
         :check => check.merge(:issued => Time.now.to_i),
       }
-
       @logger.info('publishing check result', {
         :payload => payload
       })
-
       @transport.publish(:direct, 'results', MultiJson.dump(payload))
     end
 
@@ -153,7 +142,6 @@ module Sensu
       @watchdog.cancel if @watchdog
       @watchdog = EventMachine::Timer.new(WATCHDOG_DELAY) do
         @mode = MODE_REJECT
-
         @logger.warn('giving up on data buffer from client', {
           :data_buffer => @data_buffer,
           :parse_errors => @parse_errors
@@ -177,11 +165,9 @@ module Sensu
       # Status code validation.
       #
       status_code = check[:status]
-
       unless status_code.is_a?(Integer)
         fail(DataError, "check status must be an Integer, got #{status_code.class.name} instead") unless status_code.is_a?(Integer)
       end
-
       unless 0 <= status_code && status_code <= 3
         fail(DataError, "check status must be in {0, 1, 2, 3}, got #{status_code} instead")
       end
