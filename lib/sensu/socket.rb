@@ -61,7 +61,7 @@ module Sensu
 
     def initialize(*)
       @data_buffer = ''
-      @last_parse_error = nil
+      @parse_errors = []
       @watchdog = nil
       @mode = MODE_ACCEPT
     end
@@ -111,7 +111,7 @@ module Sensu
         begin
           MultiJson.load(data, :symbolize_keys => false)
         rescue MultiJson::ParseError => error
-          @last_parse_error = error
+          @parse_errors << error.to_s
         else
           process_json(data)
           @watchdog.cancel if @watchdog
@@ -156,7 +156,7 @@ module Sensu
 
         @logger.warn('giving up on data buffer from client', {
           :data_buffer => @data_buffer,
-          :last_parse_error => @last_parse_error.to_s,
+          :parse_errors => @parse_errors
         })
         respond('invalid')
         close_connection_after_writing
