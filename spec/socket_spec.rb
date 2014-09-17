@@ -46,7 +46,7 @@ describe Sensu::Socket do
     #
     it "responds 'invalid' there is a data error detected further in the processing chain" do
       expect(subject).to receive(:process_data).with('NONCE').and_raise(described_class::DataError, "OH NOES")
-      expect(logger).to receive(:warn).with('failed to process data from the client socket', {:data_buffer=>'NONCE', :error=>'OH NOES'})
+      expect(logger).to receive(:warn).with('failed to process data buffer for sender', {:data_buffer=>'NONCE', :error=>'OH NOES'})
       expect(subject).to receive(:respond).with('invalid')
 
       subject.receive_data('NONCE')
@@ -133,7 +133,7 @@ describe Sensu::Socket do
 
         allow(logger).to receive(:debug)
         expect(logger).to receive(:warn).with(
-          'giving up on data buffer from client',
+          'discarding data buffer for sender and closing connection',
           kind_of(Hash)
         )
 
@@ -165,37 +165,38 @@ describe Sensu::Socket do
     end
   end
 
-  describe '#process_json' do
+  describe '#process_check_result' do
     it 'rejects invalid check results' do
       invalid_check_result = check_report_data.merge(:status => "2")
-      expect { subject.process_json(invalid_check_result.to_json) }.to raise_error(described_class::DataError)
+      expect { subject.process_check_result(invalid_check_result) }.to raise_error(described_class::DataError)
     end
 
     it 'publishes valid check results' do
-      expect(described_class).to receive(:validate_check_data).with(check_report_data)
-      expect(subject).to receive(:publish_check_data).with(check_report_data)
+      expect(subject).to receive(:validate_check_result).with(check_report_data)
+      expect(subject).to receive(:publish_check_result).with(check_report_data)
 
-      subject.process_json(check_report_data.to_json)
+      subject.reply = false
+      subject.process_check_result(check_report_data)
     end
   end
 
-  describe '#publish_check_data' do
-    it 'publishes check data' do
+  describe '#publish_check_result' do
+    it 'publishes check result' do
       payload = { :client => 'example_client_name', :check => { :o => :lol, :issued => 1234 } }
 
       expect(logger).to receive(:info).with('publishing check result', { :payload => payload })
       expect(transport).to receive(:publish).with(:direct, 'results', payload.to_json)
 
-      subject.publish_check_data({:o => :lol})
+      subject.publish_check_result({:o => :lol})
     end
   end
 
-  describe '.validate_check_data' do
+  describe '.validate_check_result' do
     shared_examples_for "a validator" do |description, overlay, error_message|
       it description do
         check_report_data.merge!(overlay)
 
-        expect { described_class.validate_check_data(check_report_data) }.to\
+        expect { subject.validate_check_result(check_report_data) }.to\
           raise_error(described_class::DataError, error_message)
       end
     end
