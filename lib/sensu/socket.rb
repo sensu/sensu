@@ -190,8 +190,8 @@ module Sensu
             @watchdog.cancel
           end
           process_check_result(check)
-        rescue MultiJson::ParseError => error
-          @parse_errors << error.to_s rescue nil
+        rescue MultiJson::ParseError, ArgumentError => error
+          @parse_errors << error.to_s
         end
       end
     end
