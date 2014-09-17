@@ -175,7 +175,7 @@ module Sensu
     # @param [String] data to be processed.
     # @raise [DataError] when the data contains non-ASCII characters.
     def process_data(data)
-      if data.bytes.find { |char| char > 0x80 }
+      if !data.empty? && data.bytes.find { |char| char > 0x80 }
         raise DataError, 'socket received non-ascii characters'
       elsif data.strip == 'ping'
         @logger.debug('socket received ping')
