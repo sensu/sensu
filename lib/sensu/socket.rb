@@ -68,29 +68,43 @@ module Sensu
     # closed.
     MODE_REJECT = :REJECT
 
-    # Initialize instance variables that will be used throughout the
-    # lifetime of the connection.
-    def post_init
+    # Initialize/reset instance variables that will be used throughout
+    # the lifetime of the connection.
+    def reset
       @data_buffer = ''
       @parse_errors = []
       @watchdog = nil
       @mode = MODE_ACCEPT
     end
 
-    # Send a response to the sender, if possible.
+    # This method is called immediately after the network connection
+    # has been established, reset instance variables.
+    def post_init
+      reset
+    end
+
+    # Send a response to the sender and close the
+    # connection.
     #
     # @param [String] data to send as a response.
     def respond(data)
       unless @reply == false
         send_data(data)
+        close_connection_after_writing
+      end
+      reset
+    end
+
+    # Cancel the watchdog, if there is one.
+    def cancel_watchdog
+      if @watchdog
+        @watchdog.cancel
       end
     end
 
     # Start or reset the connection watchdog.
     def reset_watchdog
-      if @watchdog
-        @watchdog.cancel
-      end
+      cancel_watchdog
       @watchdog = EM::Timer.new(WATCHDOG_DELAY) do
         @mode = MODE_REJECT
         @logger.warn('discarding data buffer for sender and closing connection', {
@@ -98,7 +112,6 @@ module Sensu
           :parse_errors => @parse_errors
         })
         respond('invalid')
-        close_connection_after_writing
       end
     end
 
@@ -186,9 +199,7 @@ module Sensu
         })
         begin
           check = MultiJson.load(data)
-          if @watchdog
-            @watchdog.cancel
-          end
+          cancel_watchdog
           process_check_result(check)
         rescue MultiJson::ParseError, ArgumentError => error
           @parse_errors << error.to_s
