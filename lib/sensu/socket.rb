@@ -4,17 +4,16 @@ module Sensu
   #
   # Sensu client listens on localhost port 3030 (by default) for UDP
   # and TCP traffic. This allows software running on the host to push
-  # check results (that may contain metrics) into Sensu from the edge,
-  # without needing to know anything about Sensu's internal
-  # implementation.
+  # check results (that may contain metrics) into Sensu, without
+  # needing to know anything about Sensu's internal implementation.
   #
   # The local-socket protocol accepts only 7-bit ASCII-encoded data.
   #
   # Although the Sensu client accepts UDP and TCP traffic, you must be
-  # aware the UDP protocol is limited in the extreme. Any data you
-  # send over UDP must fit in a single datagram and you will not
-  # receive a response. You will have no idea of whether your data was
-  # accepted or rejected.
+  # aware the UDP protocol is very limited. Any data you send over UDP
+  # must fit in a single datagram and you will not receive a response.
+  # You will have no idea of whether your data was accepted or
+  # rejected.
   #
   # == UDP Protocol ==
   #
@@ -78,7 +77,7 @@ module Sensu
       @mode = MODE_ACCEPT
     end
 
-    # Send a response to sender, if possible.
+    # Send a response to the sender, if possible.
     #
     # @param [String] data to send as a response.
     def respond(data)
@@ -170,7 +169,8 @@ module Sensu
     end
 
     # Process data, parse and validate it. Parsing errors are
-    # recorded, so the watchdog can log them when it is triggered.
+    # recorded, so the connection watchdog can log them when it is
+    # triggered.
     #
     # @param [String] data to be processed.
     # @raise [DataError] when the data contains non-ASCII characters.
