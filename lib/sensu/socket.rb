@@ -115,29 +115,6 @@ module Sensu
       end
     end
 
-    # This method is called whenever data is received. For a UDP
-    # "session", this gets called once. For a TCP session, gets called
-    # one or more times.
-    #
-    # @param [String] data received from the sender.
-    def receive_data(data)
-      if EM.reactor_running?
-        reset_watchdog
-      end
-      unless @mode == MODE_REJECT
-        @data_buffer << data
-        begin
-          process_data(@data_buffer)
-        rescue DataError => error
-          @logger.warn('failed to process data buffer for sender', {
-            :data_buffer => @data_buffer,
-            :error => error.to_s
-          })
-          respond('invalid')
-        end
-      end
-    end
-
     # Validate a check result.
     #
     # @param [Hash] check result to validate.
@@ -203,6 +180,29 @@ module Sensu
           process_check_result(check)
         rescue MultiJson::ParseError, ArgumentError => error
           @parse_errors << error.to_s
+        end
+      end
+    end
+
+    # This method is called whenever data is received. For a UDP
+    # "session", this gets called once. For a TCP session, gets called
+    # one or more times.
+    #
+    # @param [String] data received from the sender.
+    def receive_data(data)
+      if EM.reactor_running?
+        reset_watchdog
+      end
+      unless @mode == MODE_REJECT
+        @data_buffer << data
+        begin
+          process_data(@data_buffer)
+        rescue DataError => error
+          @logger.warn('failed to process data buffer for sender', {
+            :data_buffer => @data_buffer,
+            :error => error.to_s
+          })
+          respond('invalid')
         end
       end
     end
