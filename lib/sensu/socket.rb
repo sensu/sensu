@@ -1,19 +1,17 @@
 module Sensu
-  # EventMachine connection handler for the Sensu client's
-  # local-socket protocol.
+  # EventMachine connection handler for the Sensu client's socket.
   #
-  # Sensu client listens on localhost port 3030 (by default) for UDP
-  # and TCP traffic. This allows software running on the host to push
-  # check results (that may contain metrics) into Sensu, without
+  # The Sensu client listens on localhost, port 3030 (by default), for
+  # UDP and TCP traffic. This allows software running on the host to
+  # push check results (that may contain metrics) into Sensu, without
   # needing to know anything about Sensu's internal implementation.
   #
-  # The local-socket protocol accepts only 7-bit ASCII-encoded data.
+  # The socket only accepts 7-bit ASCII-encoded data.
   #
   # Although the Sensu client accepts UDP and TCP traffic, you must be
-  # aware the UDP protocol is very limited. Any data you send over UDP
-  # must fit in a single datagram and you will not receive a response.
-  # You will have no idea of whether your data was accepted or
-  # rejected.
+  # aware of the UDP protocol limitations. Any data you send over UDP
+  # must fit in a single datagram and you will not receive a response
+  # (no confirmation).
   #
   # == UDP Protocol ==
   #
@@ -21,8 +19,8 @@ module Sensu
   # string +'ping'+, it will ignore it.
   #
   # The socket assumes all other messages will contain a single,
-  # complete, JSON hash. The hash must be a valid JSON result.
-  # Deserialization failures will be logged at the WARN level by the
+  # complete, JSON hash. The hash must be a valid JSON check result.
+  # Deserialization failures will be logged at the ERROR level by the
   # Sensu client, but the sender of the invalid data will not be
   # notified.
   #
@@ -35,16 +33,16 @@ module Sensu
   # JSON hash. A deserialization failure will be logged at the WARN
   # level by the Sensu client and respond with the message
   # +'invalid'+. An +'ok'+ response indicates the Sensu client
-  # successfully received the JSON hash and will publish the result.
+  # successfully received the JSON hash and will publish the check
+  # result.
   #
-  # Streams can be of any length. The local-socket protocol does not
-  # require any headers, instead the socket tries to parse everything
-  # it has been sent each time a chunk of data arrives. Once the JSON
-  # parses successfully, the Sensu client publishes the result. After
+  # Streams can be of any length. The socket protocol does not require
+  # any headers, instead the socket tries to parse everything it has
+  # been sent each time a chunk of data arrives. Once the JSON parses
+  # successfully, the Sensu client publishes the result. After
   # +WATCHDOG_DELAY+ (default is 500 msec) since the most recent chunk
-  # of data showed up, the agent will give up on receiving any more
-  # from the client, and instead respond +'invalid'+ and close the
-  # connection.
+  # of data was received, the agent will give up on the sender, and
+  # instead respond +'invalid'+ and close the connection.
   class Socket < EM::Connection
     class DataError < StandardError; end
 
@@ -64,12 +62,13 @@ module Sensu
     MODE_ACCEPT = :ACCEPT
 
     # REJECT mode. No longer receiving data from sender. Discard
-    # chunks of data in this mode because the connection is being
-    # closed.
+    # chunks of data in this mode, the connection is being closed.
     MODE_REJECT = :REJECT
 
     # Initialize instance variables that will be used throughout the
-    # lifetime of the connection.
+    # lifetime of the connection. This method is called when the
+    # network connection has been established, and immediately after
+    # responding to a sender.
     def post_init
       @protocol ||= :tcp
       @data_buffer = ''
@@ -90,14 +89,14 @@ module Sensu
       post_init
     end
 
-    # Cancel the watchdog, if there is one.
+    # Cancel the current connection watchdog.
     def cancel_watchdog
       if @watchdog
         @watchdog.cancel
       end
     end
 
-    # Start or reset the connection watchdog.
+    # Reset (or start) the connection watchdog.
     def reset_watchdog
       cancel_watchdog
       @watchdog = EM::Timer.new(WATCHDOG_DELAY) do
@@ -125,8 +124,7 @@ module Sensu
       end
     end
 
-    # Publish a check result to the Sensu transport and respond to the
-    # sender, with the message +'ok'+.
+    # Publish a check result to the Sensu transport.
     #
     # @param [Hash] check result.
     def publish_check_result(check)
@@ -144,7 +142,7 @@ module Sensu
     # validate the attributes, publish the check result to the Sensu
     # transport, and respond to the sender with the message +'ok'+.
     #
-    # @param [String] check result to be validated and published.
+    # @param [Hash] check result to be validated and published.
     # @raise [DataError] if +check+ is invalid.
     def process_check_result(check)
       check[:status] ||= 0
@@ -153,9 +151,9 @@ module Sensu
       respond('ok')
     end
 
-    # Parse a JSON check result. For UDP, immediately raise parser
-    # errors, to be rescued. For TCP, record parser errors, so the
-    # connection +watchdog+ can report them.
+    # Parse a JSON check result. For UDP, immediately raise a parser
+    # error. For TCP, record parser errors, so the connection
+    # +watchdog+ can report them.
     #
     # @param [String] data to parse for a check result.
     def parse_check_result(data)
@@ -174,7 +172,7 @@ module Sensu
 
     # Process the data received. This method validates the data
     # encoding, provides ping/pong functionality, and passes potential
-    # check results on for parsing.
+    # check results on for further processing.
     #
     # @param [String] data to be processed.
     def process_data(data)
