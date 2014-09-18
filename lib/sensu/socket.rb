@@ -1,3 +1,5 @@
+require 'multi_json'
+
 module Sensu
   # EventMachine connection handler for the Sensu client's socket.
   #
