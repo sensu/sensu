@@ -37,15 +37,6 @@ describe Sensu::Socket do
   end
 
   describe '#receive_data' do
-    it "responds 'invalid' when there is a data error detected further in the processing chain" do
-      expect(subject).to receive(:process_data).
-        with('ERROR').and_raise(described_class::DataError, "ERROR RAISED")
-      expect(logger).to receive(:warn).
-        with('failed to process data buffer for sender', {:data_buffer=>'ERROR', :error=>'ERROR RAISED'})
-      expect(subject).to receive(:respond).with('invalid')
-      subject.receive_data('ERROR')
-    end
-
     it 'allows incremental receipt of data' do
       payload = {:client => 'client_name', :check => check_result_data.merge(:issued => 1234)}
       expect(logger).to receive(:info).with('publishing check result', {:payload => payload})
@@ -120,8 +111,9 @@ describe Sensu::Socket do
 
   describe '#process_data' do
     it 'detects non-ASCII characters' do
-      expect { subject.process_data("\x80\x88\x99\xAA\xBB") }.to \
-        raise_error(described_class::DataError, 'socket received non-ascii characters')
+      expect(logger).to receive_messages(:warn => 'socket received non-ascii characters')
+      subject.protocol = :udp
+      subject.process_data("\x80\x88\x99\xAA\xBB")
     end
 
     it 'responds to a `ping`' do
@@ -152,7 +144,7 @@ describe Sensu::Socket do
     it 'publishes valid check results' do
       expect(subject).to receive(:validate_check_result).with(check_result_data)
       expect(subject).to receive(:publish_check_result).with(check_result_data)
-      subject.reply = false
+      subject.protocol = :udp
       subject.process_check_result(check_result_data)
     end
   end
