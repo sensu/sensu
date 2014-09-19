@@ -708,4 +708,43 @@ describe 'Sensu::API' do
       end
     end
   end
+
+  it 'does not receive a response body when not authorized' do
+    api_test do
+      options = {
+        :head => {
+          :authorization => nil
+        }
+      }
+      api_request('/events', :put, options) do |http, body|
+        expect(http.response_header.status).to eq(401)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it 'does not create a stash when not authorized' do
+    api_test do
+      options = {
+        :head => {
+          :authorization => nil
+        },
+        :body => {
+          :path => 'not_authorized',
+          :content => {
+            :key => 'value'
+          }
+        }
+      }
+      api_request('/stashes', :post, options) do |http, body|
+        expect(http.response_header.status).to eq(401)
+        expect(body).to be_empty
+        redis.exists('stash:not_authorized') do |exists|
+          expect(exists).to eq(false)
+          async_done
+        end
+      end
+    end
+  end
 end
