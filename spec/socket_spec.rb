@@ -41,7 +41,7 @@ describe Sensu::Socket do
       end
     end
 
-    it 'receives data as part of an eventmachine socket server' do
+    it 'receives data as part of an eventmachine tcp socket server' do
       check_result = result_template
       async_wrapper do
         EM.start_server('127.0.0.1', 3030, described_class) do |socket|
@@ -49,7 +49,9 @@ describe Sensu::Socket do
           socket.settings = settings
           socket.transport = transport
           expect(socket).to receive(:respond).with('ok') do
-            timer(described_class::WATCHDOG_DELAY * 1.1) { async_done}
+            timer(described_class::WATCHDOG_DELAY * 1.1) do
+              async_done
+            end
           end
         end
         expect(logger).not_to receive(:warn)
@@ -94,6 +96,39 @@ describe Sensu::Socket do
         timer(0.1) do
           EM.connect('127.0.0.1', 3030) do |socket|
             socket.send_data('{"partial":')
+          end
+        end
+      end
+    end
+
+    it 'receives data as part of an eventmachine udp socket server' do
+      check_result = result_template
+      async_wrapper do
+        EM::open_datagram_socket('127.0.0.1', 3030, described_class) do |socket|
+          socket.logger = logger
+          socket.settings = settings
+          socket.transport = transport
+          socket.protocol = :udp
+          expect(socket).to receive(:respond).with('invalid')
+          expect(socket).to receive(:respond).with('ok') do
+            timer(0.5) do
+              async_done
+            end
+          end
+        end
+        allow(logger).to receive(:debug)
+        expect(logger).to receive(:error).
+          with('failed to process check result from socket', kind_of(Hash))
+        expect(logger).to receive(:info).
+          with('publishing check result', {:payload => check_result})
+        expect(transport).to receive(:publish).
+          with(:direct, 'results', kind_of(String)) do |_, _, json_string|
+            expect(MultiJson.load(json_string)).to eq(check_result)
+          end
+        timer(0.1) do
+          EM::open_datagram_socket('0.0.0.0', 0, nil) do |socket|
+            socket.send_datagram('{"partial":', '127.0.0.1', 3030)
+            socket.send_datagram(MultiJson.dump(check_result[:check]), '127.0.0.1', 3030)
           end
         end
       end
