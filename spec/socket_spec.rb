@@ -25,6 +25,17 @@ describe Sensu::Socket do
     subject.transport = transport
   end
 
+  describe '#publish_check_result' do
+    it 'publishes check result' do
+      check_result = result_template
+      expect(logger).to receive(:info).
+        with('publishing check result', {:payload => check_result})
+      expect(transport).to receive(:publish).
+        with(:direct, 'results', MultiJson.dump(check_result))
+      subject.publish_check_result(check_result[:check])
+    end
+  end
+
   describe '#process_check_result' do
     it 'rejects invalid check results' do
       invalid_check = result_template[:check].merge(:status => "2")
