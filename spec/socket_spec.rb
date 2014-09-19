@@ -82,6 +82,32 @@ describe Sensu::Socket do
     end
   end
 
+  describe '#process_data' do
+    it 'detects non-ASCII characters' do
+      expect(logger).to receive_messages(:warn => 'socket received non-ascii characters')
+      subject.protocol = :udp
+      subject.process_data("\x80\x88\x99\xAA\xBB")
+    end
+
+    it 'responds to a `ping`' do
+      expect(logger).to receive_messages(:debug => 'socket received ping')
+      expect(subject).to receive_messages(:respond => 'pong')
+      subject.process_data('ping')
+    end
+
+    it 'responds to a `  ping  `' do
+      expect(logger).to receive_messages(:debug => 'socket received ping')
+      expect(subject).to receive_messages(:respond => 'pong')
+      subject.process_data('  ping  ')
+    end
+
+    it 'debug-logs data chunks passing through it' do
+      expect(logger).to receive(:debug).
+        with('socket received data', :data => 'a relentless stream')
+      subject.process_data('a relentless stream')
+    end
+  end
+
   describe '#receive_data' do
     it 'allows incremental receipt of data for tcp connections' do
       check_result = result_template
