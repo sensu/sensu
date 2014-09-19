@@ -83,6 +83,22 @@ describe Sensu::Socket do
     end
   end
 
+  describe '#parse_check_result' do
+    it 'rejects invalid json' do
+      subject.protocol = :udp
+      expect { subject.parse_check_result('{"invalid"') }.to \
+        raise_error(MultiJson::ParseError)
+    end
+
+    it 'cancels connection watchdog and processes valid json' do
+      check = result_template[:check]
+      json_check_data = MultiJson.dump(check)
+      expect(subject).to receive(:cancel_watchdog)
+      expect(subject).to receive(:process_check_result).with(check)
+      subject.parse_check_result(json_check_data)
+    end
+  end
+
   describe '#process_data' do
     it 'detects non-ASCII characters' do
       expect(logger).to receive_messages(:warn => 'socket received non-ascii characters')
