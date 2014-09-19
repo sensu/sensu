@@ -62,7 +62,9 @@ describe Sensu::Socket do
       expect(logger).to receive(:info).
         with('publishing check result', {:payload => check_result})
       expect(transport).to receive(:publish).
-        with(:direct, 'results', MultiJson.dump(check_result))
+        with(:direct, 'results', kind_of(String)) do |_, _, json_string|
+          expect(MultiJson.load(json_string)).to eq(check_result)
+        end
       subject.publish_check_result(check_result[:check])
     end
   end
