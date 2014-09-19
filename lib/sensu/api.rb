@@ -135,7 +135,7 @@ module Sensu
       end
 
       def unauthorized!
-        ahalt 401
+        throw(:halt, [401, ''])
       end
 
       def not_found!
