@@ -25,6 +25,36 @@ describe Sensu::Socket do
     subject.transport = transport
   end
 
+  describe '#validate_check_result' do
+    shared_examples_for "a validator" do |description, overlay, error_message|
+      it description do
+        invalid_check = result_template[:check].merge!(overlay)
+        expect { subject.validate_check_result(invalid_check) }.to \
+          raise_error(described_class::DataError, error_message)
+      end
+    end
+
+    it_should_behave_like 'a validator',
+      'must contain a non-empty',
+      {:name => ''},
+      'check name must be a string and cannot contain spaces or special characters'
+
+    it_should_behave_like 'a validator',
+      'must contain an acceptable check name',
+      {:name => 'check name'},
+      'check name must be a string and cannot contain spaces or special characters'
+
+    it_should_behave_like 'a validator',
+      'must have check output that is a string',
+      {:output => 1234},
+      'check output must be a string'
+
+    it_should_behave_like 'a validator',
+      'must have an integer status',
+      {:status => '2'},
+      'check status must be an integer'
+  end
+
   describe '#publish_check_result' do
     it 'publishes check result' do
       check_result = result_template
