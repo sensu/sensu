@@ -1,3 +1,20 @@
+## 0.14.0 - TBD
+
+### Features
+
+Client socket now supports sending a result via a TCP stream. This feature
+allows check results to have larger output (metrics, backtraces, etc).
+
+API now supports CORS (configurable).
+
+### Other
+
+Child process manager now supports check output larger than the max OS
+buffer size. The parent process was waiting on the child to exit before
+closing its write end of the pipe.
+
+Client & server are now guarding against invalid JSON transport payloads.
+
 ## 0.13.1 - 2014-07-28
 
 ### Other
