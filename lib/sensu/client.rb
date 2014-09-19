@@ -231,7 +231,7 @@ module Sensu
         socket.logger = @logger
         socket.settings = @settings
         socket.transport = @transport
-        socket.reply = false
+        socket.protocol = :udp
       end
     end
 

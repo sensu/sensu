@@ -1,103 +1,186 @@
-module Sensu
+require 'multi_json'
 
-  # EventMachine connection handler for the Sensu client's local-agent protocol.
+module Sensu
+  # EventMachine connection handler for the Sensu client's socket.
   #
-  # Sensu-client listens on localhost port 3030 (by default) for UDP and TCP traffic. This
-  # is so that software running on the host can push check results or metrics into sensu
-  # from the edge without needing to know anything about sensu's internal implementation.
+  # The Sensu client listens on localhost, port 3030 (by default), for
+  # UDP and TCP traffic. This allows software running on the host to
+  # push check results (that may contain metrics) into Sensu, without
+  # needing to know anything about Sensu's internal implementation.
   #
-  # The local-agent protocol accepts only 7-bit ASCII-encoded data.
+  # The socket only accepts 7-bit ASCII-encoded data.
   #
-  # Although Sensu-client accepts UDP and TCP traffic, you must be aware the UDP protocol is limited
-  # in the extreme. Any data you send over UDP must fit in a single datagram and you will receive no
-  # response at all. You will have no idea of whether your data was accepted or rejected.
+  # Although the Sensu client accepts UDP and TCP traffic, you must be
+  # aware of the UDP protocol limitations. Any data you send over UDP
+  # must fit in a single datagram and you will not receive a response
+  # (no confirmation).
   #
   # == UDP Protocol ==
   #
-  # If the client sends a message containing whitespace and the string +'ping'+, Sensu will accept it and
-  # ignore it.
+  # If the socket receives a message containing whitespace and the
+  # string +'ping'+, it will ignore it.
   #
-  # Sensu assumes all other packets will contain a single, complete JSON hash. The hash must be a valid
-  # JSON result. Deserialization failures will be logged at the WARN level by sensu-client, but the sender
-  # of the invalid data will not be notified.
+  # The socket assumes all other messages will contain a single,
+  # complete, JSON hash. The hash must be a valid JSON check result.
+  # Deserialization failures will be logged at the ERROR level by the
+  # Sensu client, but the sender of the invalid data will not be
+  # notified.
   #
   # == TCP Protocol ==
   #
-  # If the client (i.e., someone else's software) sends the agent (i.e., Sensu-client) a message
-  # containing only whitespace and the string +'ping'+, the agent responds back with +'pong'+.
+  # If the socket receives a message containing whitespace and the
+  # string +'ping'+, it will respond with the message +'pong'+.
   #
-  # Sensu assumes any other stream will be a single, complete, and valid JSON hash. A deserialization failure
-  # will be logged at the WARN level by sensu-client and cause an +'invalid'+ response. An +'ok'+ response
-  # indicates the agent successfully received the JSON hash and has already passed it on.
+  # The socket assumes any other stream will be a single, complete,
+  # JSON hash. A deserialization failure will be logged at the WARN
+  # level by the Sensu client and respond with the message
+  # +'invalid'+. An +'ok'+ response indicates the Sensu client
+  # successfully received the JSON hash and will publish the check
+  # result.
   #
-  # Streams can be of any length. The agent protocol does not require any headers, instead the agent tries
-  # to parse everything it's been sent each time a chunk of data arrives. Once the JSON parses successfully,
-  # the agent relays the data. After +WATCHDOG_DELAY+ (normally 500 msec) since the most recent chunk of data
-  # showed up, the agent will give up on receiving any more from the client, and instead respond +'invalid'+
-  # and close the connection.
+  # Streams can be of any length. The socket protocol does not require
+  # any headers, instead the socket tries to parse everything it has
+  # been sent each time a chunk of data arrives. Once the JSON parses
+  # successfully, the Sensu client publishes the result. After
+  # +WATCHDOG_DELAY+ (default is 500 msec) since the most recent chunk
+  # of data was received, the agent will give up on the sender, and
+  # instead respond +'invalid'+ and close the connection.
   class Socket < EM::Connection
-
     class DataError < StandardError; end
 
-    attr_accessor :logger, :settings, :transport, :reply
+    attr_accessor :logger, :settings, :transport, :protocol
 
-    # How many seconds may elapse between chunks of data coming over the
-    # socket before we give up and decide the client is never going to
-    # send more data.
+    # The number of seconds that may elapse between chunks of data
+    # from a sender before it is considered dead, and the connection
+    # is close.
     WATCHDOG_DELAY = 0.5
 
     #
     # Sensu::Socket operating mode enum.
     #
 
-    # ACCEPT mode. We append chunks of data to a running buffer and
-    # test to see whether the buffer contents are valid JSON.
+    # ACCEPT mode. Append chunks of data to a buffer and test to see
+    # whether the buffer contents are valid JSON.
     MODE_ACCEPT = :ACCEPT
 
-    # REJECT mode. We have given up on receiving data. We discard
-    # arriving data in this mode because we are shutting the socket
-    # down.
+    # REJECT mode. No longer receiving data from sender. Discard
+    # chunks of data in this mode, the connection is being closed.
     MODE_REJECT = :REJECT
 
-    def initialize(*)
+    # Initialize instance variables that will be used throughout the
+    # lifetime of the connection. This method is called when the
+    # network connection has been established, and immediately after
+    # responding to a sender.
+    def post_init
+      @protocol ||= :tcp
       @data_buffer = ''
-      @last_parse_error = nil
+      @parse_error = nil
       @watchdog = nil
       @mode = MODE_ACCEPT
     end
 
-    # Send a response to the client, if possible.
-    # @param [String] data the data buffer to reply to the client with.
+    # Send a response to the sender, close the
+    # connection, and call post_init().
+    #
+    # @param [String] data to send as a response.
     def respond(data)
-      unless @reply == false
+      if @protocol == :tcp
         send_data(data)
+        close_connection_after_writing
+      end
+      post_init
+    end
+
+    # Cancel the current connection watchdog.
+    def cancel_watchdog
+      if @watchdog
+        @watchdog.cancel
       end
     end
 
-    # EventMachine::Connection callback. EM calls this method each time a buffer of data shows up from the client.
-    # For a UDP "session" this gets called once. For a TCP session, gets called one or more times.
-    # @param [String] data a buffer containing the data the client sent us.
-    def receive_data(data)
-      reset_watchdog if EventMachine.reactor_running?
-
-      return if @mode == MODE_REJECT
-
-      @data_buffer << data
-
-      begin
-        process_data(@data_buffer)
-      rescue DataError => exception
-        @logger.warn(exception.to_s)
+    # Reset (or start) the connection watchdog.
+    def reset_watchdog
+      cancel_watchdog
+      @watchdog = EM::Timer.new(WATCHDOG_DELAY) do
+        @mode = MODE_REJECT
+        @logger.warn('discarding data buffer for sender and closing connection', {
+          :data => @data_buffer,
+          :parse_error => @parse_error
+        })
         respond('invalid')
       end
     end
 
-    # Process what the client's sent us so far.
-    # @param [String] data all the data to attempt to process.
-    # @raise [DataError] when the buffer contains data that is not 7-bit ASCII
+    # Validate check result attributes.
+    #
+    # @param [Hash] check result to validate.
+    def validate_check_result(check)
+      unless check[:name] =~ /^[\w\.-]+$/
+        raise DataError, 'check name must be a string and cannot contain spaces or special characters'
+      end
+      unless check[:output].is_a?(String)
+        raise DataError, 'check output must be a string'
+      end
+      unless check[:status].is_a?(Integer)
+        raise DataError, 'check status must be an integer'
+      end
+    end
+
+    # Publish a check result to the Sensu transport.
+    #
+    # @param [Hash] check result.
+    def publish_check_result(check)
+      payload = {
+        :client => @settings[:client][:name],
+        :check => check.merge(:issued => Time.now.to_i)
+      }
+      @logger.info('publishing check result', {
+        :payload => payload
+      })
+      @transport.publish(:direct, 'results', MultiJson.dump(payload))
+    end
+
+    # Process a check result. Set check result attribute defaults,
+    # validate the attributes, publish the check result to the Sensu
+    # transport, and respond to the sender with the message +'ok'+.
+    #
+    # @param [Hash] check result to be validated and published.
+    # @raise [DataError] if +check+ is invalid.
+    def process_check_result(check)
+      check[:status] ||= 0
+      validate_check_result(check)
+      publish_check_result(check)
+      respond('ok')
+    end
+
+    # Parse a JSON check result. For UDP, immediately raise a parser
+    # error. For TCP, record parser errors, so the connection
+    # +watchdog+ can report them.
+    #
+    # @param [String] data to parse for a check result.
+    def parse_check_result(data)
+      begin
+        check = MultiJson.load(data)
+        cancel_watchdog
+        process_check_result(check)
+      rescue MultiJson::ParseError, ArgumentError => error
+        if @protocol == :tcp
+          @parse_error = error.to_s
+        else
+          raise error
+        end
+      end
+    end
+
+    # Process the data received. This method validates the data
+    # encoding, provides ping/pong functionality, and passes potential
+    # check results on for further processing.
+    #
+    # @param [String] data to be processed.
     def process_data(data)
       if data.bytes.find { |char| char > 0x80 }
-        fail(DataError, 'socket received non-ascii characters')
+        @logger.warn('socket received non-ascii characters')
+        respond('invalid')
       elsif data.strip == 'ping'
         @logger.debug('socket received ping')
         respond('pong')
@@ -105,85 +188,36 @@ module Sensu
         @logger.debug('socket received data', {
           :data => data
         })
-
-        # See if we've got a complete JSON blob. If we do, forward it on. If we don't, store
-        # the exception so the watchdog can log it if it fires.
         begin
-          MultiJson.load(data, :symbolize_keys => false)
-        rescue MultiJson::ParseError => error
-          @last_parse_error = error
-        else
-          process_json(data)
-          @watchdog.cancel if @watchdog
-          respond('ok')
+          parse_check_result(data)
+        rescue => error
+          @logger.error('failed to process check result from socket', {
+            :data => data,
+            :error => error.to_s
+          })
+          respond('invalid')
         end
       end
     end
 
-    # Process a complete JSON structure.
-    # @param [String] data a parseable blob of JSON.
-    # @raise [DataError] if +data+ describes an invalid check result.
-    def process_json(data)
-      check = MultiJson.load(data)
-
-      check[:status] ||= 0
-
-      self.class.validate_check_data(check)
-
-      publish_check_data(check)
-    end
-
-    # Publish the check result into Sensu.
-    # @param [Hash] check a valid check result.
-    def publish_check_data(check)
-      payload = {
-        :client => @settings[:client][:name],
-        :check => check.merge(:issued => Time.now.to_i),
-      }
-
-      @logger.info('publishing check result', {
-        :payload => payload
-      })
-
-      @transport.publish(:direct, 'results', MultiJson.dump(payload))
-    end
-
-    # Start or reset the watchdog.
-    def reset_watchdog
-      @watchdog.cancel if @watchdog
-      @watchdog = EventMachine::Timer.new(WATCHDOG_DELAY) do
-        @mode = MODE_REJECT
-
-        @logger.warn('giving up on data buffer from client', {
-          :data_buffer => @data_buffer,
-          :last_parse_error => @last_parse_error.to_s,
-        })
-        respond('invalid')
-        close_connection_after_writing
-      end
-    end
-
-    # Validate the given check is well-formed.
-    # @param [Hash] check the check to validate.
-    # @raise [DataError] when a validation fails. The exception's message describes the problem.
-    def self.validate_check_data(check)
-      #
-      # Basic sanity checks.
-      #
-      fail(DataError, "invalid check name: '#{check[:name]}'") unless check[:name] =~ /^[\w\.-]+$/
-      fail(DataError, "check output must be a String, got #{check[:output].class.name} instead") unless check[:output].is_a?(String)
-
-      #
-      # Status code validation.
-      #
-      status_code = check[:status]
-
-      unless status_code.is_a?(Integer)
-        fail(DataError, "check status must be an Integer, got #{status_code.class.name} instead") unless status_code.is_a?(Integer)
-      end
-
-      unless 0 <= status_code && status_code <= 3
-        fail(DataError, "check status must be in {0, 1, 2, 3}, got #{status_code} instead")
+    # This method is called whenever data is received. For UDP, it
+    # will only be called once, the original data length can be
+    # expected. For TCP, this method may be called several times, data
+    # received is buffered. TCP connections require a +watchdog+.
+    #
+    # @param [String] data received from the sender.
+    def receive_data(data)
+      unless @mode == MODE_REJECT
+        case @protocol
+        when :udp
+          process_data(data)
+        when :tcp
+          if EM.reactor_running?
+            reset_watchdog
+          end
+          @data_buffer << data
+          process_data(@data_buffer)
+        end
       end
     end
   end
