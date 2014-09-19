@@ -64,7 +64,7 @@ describe Sensu::Socket do
           end
         timer(0.1) do
           EM.connect('127.0.0.1', 3030) do |socket|
-            # Send data one byte at a time.
+            # send data one byte at a time.
             pending = MultiJson.dump(check_result[:check]).chars.to_a
             EM.tick_loop do
               if pending.empty?
@@ -73,6 +73,27 @@ describe Sensu::Socket do
                 socket.send_data(pending.shift)
               end
             end
+          end
+        end
+      end
+    end
+
+    it 'will discard data from a sender that has stopped sending for too long' do
+      async_wrapper do
+        EM::start_server('127.0.0.1', 3030, described_class) do |socket|
+          socket.logger = logger
+          socket.settings = settings
+          socket.transport = transport
+          expect(socket).to receive(:respond).with('invalid') do
+            async_done
+          end
+        end
+        allow(logger).to receive(:debug)
+        expect(logger).to receive(:warn).
+          with('discarding data buffer for sender and closing connection', kind_of(Hash))
+        timer(0.1) do
+          EM.connect('127.0.0.1', 3030) do |socket|
+            socket.send_data('{"partial":')
           end
         end
       end
