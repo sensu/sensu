@@ -25,6 +25,22 @@ describe Sensu::Socket do
     subject.transport = transport
   end
 
+  describe '#process_check_result' do
+    it 'rejects invalid check results' do
+      invalid_check = result_template[:check].merge(:status => "2")
+      expect { subject.process_check_result(invalid_check) }.to \
+        raise_error(described_class::DataError)
+    end
+
+    it 'publishes valid check results' do
+      check = result_template[:check]
+      expect(subject).to receive(:validate_check_result).with(check)
+      expect(subject).to receive(:publish_check_result).with(check)
+      subject.protocol = :udp
+      subject.process_check_result(check)
+    end
+  end
+
   describe '#receive_data' do
     it 'allows incremental receipt of data for tcp connections' do
       check_result = result_template
