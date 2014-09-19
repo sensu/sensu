@@ -708,4 +708,19 @@ describe 'Sensu::API' do
       end
     end
   end
+
+  it 'does not receive a response body when not authorized' do
+    api_test do
+      options = {
+        :head => {
+          :authorization => nil
+        }
+      }
+      api_request('/events', :get, options) do |http, body|
+        expect(http.response_header.status).to eq(401)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
 end
