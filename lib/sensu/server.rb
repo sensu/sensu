@@ -460,14 +460,14 @@ module Sensu
             :result => result
           })
           process_result(result)
-          EM::next_tick do
-            @transport.ack(message_info)
-          end
         rescue MultiJson::ParseError => error
           @logger.error('failed to parse result payload', {
             :message => message,
             :error => error.to_s
           })
+        end
+        EM::next_tick do
+          @transport.ack(message_info)
         end
       end
     end
