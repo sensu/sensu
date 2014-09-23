@@ -436,6 +436,7 @@ describe 'Sensu::Server' do
           redis.set('client:i-424242', MultiJson.dump(client)) do
             result = result_template
             result[:check][:masquerade] = 'i-777777'
+            result[:check][:handler] = 'debug'
             amq.direct('results').publish(MultiJson.dump(result))
             amq.direct('results').publish(MultiJson.dump(result))
             timer(3) do
@@ -447,8 +448,6 @@ describe 'Sensu::Server' do
                 expect(event[:client][:true_name]).to eq('i-424242')
                 expect(event[:check][:status]).to eq(1)
                 expect(event[:occurrences]).to eq(2)
-                latest_event_file = IO.read('/tmp/sensu-event.json')
-                expect(MultiJson.load(latest_event_file)).to eq(event)
                 async_done
               end
             end
