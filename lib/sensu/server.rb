@@ -400,6 +400,11 @@ module Sensu
                 total_state_change = (state_changes.fdiv(20) * 100).to_i
                 @redis.ltrim(history_key, -21, -1)
               end
+              if check[:masquerade]
+                client[:masquerading] = true
+                client[:true_name] = client[:name]
+                client[:name] = check[:masquerade]
+              end
               @redis.hget('events:' + client[:name], check[:name]) do |event_json|
                 previous_occurrence = event_json ? MultiJson.load(event_json) : false
                 is_flapping = false

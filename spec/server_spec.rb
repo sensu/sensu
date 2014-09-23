@@ -425,6 +425,39 @@ describe 'Sensu::Server' do
     end
   end
 
+  it 'can consume results that masquerade clients' do
+    async_wrapper do
+      @server.setup_transport
+      @server.setup_redis
+      @server.setup_results
+      redis.flushdb do
+        timer(1) do
+          client = client_template
+          redis.set('client:i-424242', MultiJson.dump(client)) do
+            result = result_template
+            result[:check][:masquerade] = 'i-777777'
+            amq.direct('results').publish(MultiJson.dump(result))
+            amq.direct('results').publish(MultiJson.dump(result))
+            timer(3) do
+              redis.hget('events:i-777777', 'test') do |event_json|
+                event = MultiJson.load(event_json)
+                expect(event[:id]).to be_kind_of(String)
+                expect(event[:client][:name]).to eq('i-777777')
+                expect(event[:client][:masquerading]).to eq(true)
+                expect(event[:client][:true_name]).to eq('i-424242')
+                expect(event[:check][:status]).to eq(1)
+                expect(event[:occurrences]).to eq(2)
+                latest_event_file = IO.read('/tmp/sensu-event.json')
+                expect(MultiJson.load(latest_event_file)).to eq(event)
+                async_done
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it 'can publish check requests' do
     async_wrapper do
       @server.setup_transport
