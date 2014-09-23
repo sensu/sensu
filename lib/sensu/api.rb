@@ -237,7 +237,7 @@ module Sensu
         )
         check.delete(:history)
         payload = {
-          :client => event[:client][:name],
+          :client => event[:client][:true_name] || event[:client][:name],
           :check => check
         }
         settings.logger.info('publishing check result', {
