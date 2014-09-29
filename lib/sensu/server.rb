@@ -41,6 +41,7 @@ module Sensu
             :message => message,
             :error => error.to_s
           })
+          @transport.ack(message_info)
         end
       end
     end
