@@ -7,6 +7,9 @@ allows check results to have larger output (metrics, backtraces, etc).
 
 API now supports CORS (configurable).
 
+Check "source" attribute validation; it must be a string, event data
+consumers no longer have to validate it.
+
 ### Other
 
 Child process manager now supports check output larger than the max OS
