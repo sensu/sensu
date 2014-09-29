@@ -414,9 +414,11 @@ describe 'Sensu::Server' do
                 expect(event[:id]).to be_kind_of(String)
                 expect(event[:check][:status]).to eq(1)
                 expect(event[:occurrences]).to eq(2)
-                latest_event_file = IO.read('/tmp/sensu-event.json')
-                expect(MultiJson.load(latest_event_file)).to eq(event)
-                async_done
+                timer(1) do
+                  latest_event_file = IO.read('/tmp/sensu-event.json')
+                  expect(MultiJson.load(latest_event_file)).to eq(event)
+                  async_done
+                end
               end
             end
           end
