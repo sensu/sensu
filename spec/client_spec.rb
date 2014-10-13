@@ -210,6 +210,15 @@ describe 'Sensu::Client' do
     end
   end
 
+  it 'can calculate an initial splay interval' do
+    allow(Time).to receive(:now).and_return('1414213569.032')
+    check = { :name => 'test_check', :interval => 97, }
+    expect(@client.calculate_initial_splay(check)).to eq(26.857)
+    check = { :name => 'test_check', :interval => 3607, }
+    expect(@client.calculate_initial_splay(check)).to eq(920.857)
+
+  end
+
   it 'can accept external result input via sockets' do
     async_wrapper do
       result_queue do |queue|

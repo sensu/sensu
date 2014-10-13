@@ -184,18 +184,29 @@ module Sensu
       end
     end
 
+    def calculate_initial_splay(check)
+      hash_key = [@settings[:client][:name], check[:name]].join(':')
+      splay_hash = Digest::MD5.digest(hash_key).unpack('Q<')[0]
+      current_time = (Time.now.to_f * 1000).to_i
+
+      (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
+    end
+
     def schedule_checks(checks)
       check_count = 0
-      stagger = testing? ? 0 : 2
       checks.each do |check|
         check_count += 1
-        scheduling_delay = stagger * check_count % 30
-        @timers[:run] << EM::Timer.new(scheduling_delay) do
-          interval = testing? ? 0.5 : check[:interval]
-          @timers[:run] << EM::PeriodicTimer.new(interval) do
+        execute_check = Proc.new do
+          unless @state == :paused
             check[:issued] = Time.now.to_i
             process_check(check.dup)
           end
+        end
+        initial_splay = testing? ? 0 : calculate_initial_splay(check)
+        interval = testing? ? 0.5 : check[:interval]
+        @timers[:run] << EM::Timer.new(initial_splay) do
+          execute_check.call
+          @timers[:run] << EM::PeriodicTimer.new(interval, &execute_check)
         end
       end
     end
