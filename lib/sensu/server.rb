@@ -727,19 +727,10 @@ module Sensu
       bootstrap
     end
 
-    def pause(&block)
-      unless @state == :pausing || @state == :paused
-        @state = :pausing
-        @timers[:run].each do |timer|
-          timer.cancel
-        end
-        @timers[:run].clear
+    def pause
+      super do
         unsubscribe
         resign_as_master
-        @state = :paused
-      end
-      if block
-        block.call
       end
     end
 
@@ -756,13 +747,12 @@ module Sensu
 
     def stop
       @logger.warn('stopping')
-      pause do
-        @state = :stopping
-        complete_handlers_in_progress do
-          @redis.close
-          @transport.close
-          super
-        end
+      pause
+      @state = :stopping
+      complete_handlers_in_progress do
+        @redis.close
+        @transport.close
+        super
       end
     end
   end

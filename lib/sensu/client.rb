@@ -256,6 +256,12 @@ module Sensu
       bootstrap
     end
 
+    def pause
+      super do
+        @transport.unsubscribe
+      end
+    end
+
     def resume
       retry_until_true(1) do
         if @state == :paused
@@ -267,28 +273,13 @@ module Sensu
       end
     end
 
-    def pause(&block)
-      unless @state == :pausing || @state == :paused
-        @state = :pausing
-        @timers[:run].each do |timer|
-          timer.cancel
-        end
-        @timers[:run].clear
-        @transport.unsubscribe
-        @state = :paused
-      end
-      if block
-        block.call
-      end
-    end
-
     def stop
       @logger.warn('stopping')
-      pause do
-        complete_checks_in_progress do
-          @transport.close
-          super
-        end
+      pause
+      @state = :stopping
+      complete_checks_in_progress do
+        @transport.close
+        super
       end
     end
   end
