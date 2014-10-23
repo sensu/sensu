@@ -737,9 +737,9 @@ module Sensu
         unsubscribe
         resign_as_master
         @state = :paused
-        if block
-          block.call
-        end
+      end
+      if block
+        block.call
       end
     end
 
