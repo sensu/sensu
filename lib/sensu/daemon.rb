@@ -7,7 +7,7 @@ gem 'sensu-logger', '1.0.0'
 gem 'sensu-settings', '1.2.0'
 gem 'sensu-extension', '1.0.0'
 gem 'sensu-extensions', '1.0.0'
-gem 'sensu-transport', '1.0.0'
+gem 'sensu-transport', '2.0.0'
 gem 'sensu-spawn', '1.1.0'
 
 require 'time'
@@ -90,8 +90,18 @@ module Sensu
       @state = :running
     end
 
-    def pause
-      @state = :paused
+    def pause(&block)
+      unless @state == :pausing || @state == :paused
+        @state = :pausing
+        @timers[:run].each do |timer|
+          timer.cancel
+        end
+        @timers[:run].clear
+        if block
+          block.call
+        end
+        @state = :paused
+      end
     end
 
     def resume

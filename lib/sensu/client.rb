@@ -44,9 +44,7 @@ module Sensu
       @logger.debug('scheduling keepalives')
       publish_keepalive
       @timers[:run] << EM::PeriodicTimer.new(20) do
-        unless @state == :paused
-          publish_keepalive
-        end
+        publish_keepalive
       end
     end
 
@@ -195,10 +193,8 @@ module Sensu
         @timers[:run] << EM::Timer.new(scheduling_delay) do
           interval = testing? ? 0.5 : check[:interval]
           @timers[:run] << EM::PeriodicTimer.new(interval) do
-            unless @state == :paused
-              check[:issued] = Time.now.to_i
-              process_check(check.dup)
-            end
+            check[:issued] = Time.now.to_i
+            process_check(check.dup)
           end
         end
       end
@@ -247,21 +243,40 @@ module Sensu
       end
     end
 
-    def start
-      setup_transport
+    def bootstrap
       setup_keepalives
       setup_subscriptions
       setup_standalone
+      @state = :running
+    end
+
+    def start
+      setup_transport
       setup_sockets
-      super
+      bootstrap
+    end
+
+    def pause
+      super do
+        @transport.unsubscribe
+      end
+    end
+
+    def resume
+      retry_until_true(1) do
+        if @state == :paused
+          if @transport.connected?
+            bootstrap
+            true
+          end
+        end
+      end
     end
 
     def stop
       @logger.warn('stopping')
-      @timers[:run].each do |timer|
-        timer.cancel
-      end
-      @transport.unsubscribe
+      pause
+      @state = :stopping
       complete_checks_in_progress do
         @transport.close
         super
