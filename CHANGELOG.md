@@ -1,3 +1,11 @@
+## 0.15.0 - TBD
+
+### Features
+
+RabbitMQ transport now supports multiple broker connection options,
+enabling connection fail-over to brokers in a cluster without
+using a load balancer.
+
 ## 0.14.0 - 2014-09-29
 
 ### Features
