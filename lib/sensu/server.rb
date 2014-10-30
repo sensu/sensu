@@ -728,9 +728,15 @@ module Sensu
     end
 
     def pause
-      super do
+      unless @state == :pausing || @state == :paused
+        @state = :pausing
+        @timers[:run].each do |timer|
+          timer.cancel
+        end
+        @timers[:run].clear
         unsubscribe
         resign_as_master
+        @state = :paused
       end
     end
 

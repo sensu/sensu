@@ -90,18 +90,8 @@ module Sensu
       @state = :running
     end
 
-    def pause(&block)
-      unless @state == :pausing || @state == :paused
-        @state = :pausing
-        @timers[:run].each do |timer|
-          timer.cancel
-        end
-        @timers[:run].clear
-        if block
-          block.call
-        end
-        @state = :paused
-      end
+    def pause
+      @state = :paused
     end
 
     def resume
