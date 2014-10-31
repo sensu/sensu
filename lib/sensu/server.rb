@@ -672,7 +672,9 @@ module Sensu
     end
 
     def setup_master_monitor
-      request_master_election
+      @timers[:run] << EM::Timer.new(2) do
+        request_master_election
+      end
       @timers[:run] << EM::PeriodicTimer.new(10) do
         if @is_master
           @redis.set('lock:master', Time.now.to_i) do
