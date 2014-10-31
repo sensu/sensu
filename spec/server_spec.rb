@@ -587,7 +587,7 @@ describe 'Sensu::Server' do
         redis.set('lock:master', epoch - 60) do
           server1.setup_master_monitor
           server2.setup_master_monitor
-          timer(1) do
+          timer(3) do
             expect([server1.is_master, server2.is_master].uniq.size).to eq(2)
             async_done
           end
