@@ -1,3 +1,9 @@
+## 0.16.0 - 2014-10-31
+
+### Other
+
+Fixed RabbitMQ transport configuration backwards compatibility.
+
 ## 0.15.0 - 2014-10-31
 
 ### Features
