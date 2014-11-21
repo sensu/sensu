@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+
+unless $:.include?(File.dirname(__FILE__) + '/../lib/')
+  $: << File.dirname(__FILE__) + '/../lib'
+end
+
+require 'sensu/agents'
+
+options = Sensu::CLI.read
+Sensu::Agents.run(options)
