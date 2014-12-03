@@ -266,7 +266,8 @@ module Sensu
               output.each_line do |line|
                 @logger.info('handler output', {
                   :handler => handler,
-                  :output => line
+                  :output => line,
+                  :event_id => event['id']
                 })
               end
               @handlers_in_progress_count -= 1
