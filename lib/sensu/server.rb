@@ -580,22 +580,18 @@ module Sensu
               check[:issued] = Time.now.to_i
               check[:executed] = Time.now.to_i
               time_since_last_keepalive = Time.now.to_i - client[:timestamp]
-              lag_message = time_since_last_keepalive.to_s
+              check[:output] = 'No keepalive sent from client for '
+              check[:output] << time_since_last_keepalive.to_s + ' seconds'
               case
               when time_since_last_keepalive >= check[:thresholds][:critical]
-                check[:output] = 'No keep-alive sent from client in over '
-                check[:output] << check[:thresholds][:critical].to_s + ' seconds'
-                check[:output] << ' (last check ' + lag_message + ' seconds ago)'
+                check[:output] << ' (>=' + check[:thresholds][:critical].to_s + ')'
                 check[:status] = 2
               when time_since_last_keepalive >= check[:thresholds][:warning]
-                check[:output] = 'No keep-alive sent from client in over '
-                check[:output] << check[:thresholds][:warning].to_s + ' seconds'
-                check[:output] << ' (last check ' + lag_message + ' seconds ago)'
+                check[:output] << ' (>=' + check[:thresholds][:warning].to_s + ')'
                 check[:status] = 1
               else
-                check[:output] = 'Keep-alive sent from client less than '
-                check[:output] << check[:thresholds][:warning].to_s + ' seconds ago'
-                check[:output] << ' (last check ' + lag_message + ' seconds ago)'
+                check[:output] = 'Keepalive sent from client '
+                check[:output] << time_since_last_keepalive.to_s + ' seconds ago'
                 check[:status] = 0
               end
               publish_result(client, check)
