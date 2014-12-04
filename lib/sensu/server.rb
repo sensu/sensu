@@ -263,12 +263,11 @@ module Sensu
           when 'pipe'
             options = {:data => event_data, :timeout => handler[:timeout]}
             Spawn.process(handler[:command], options) do |output, status|
-              output.each_line do |line|
-                @logger.info('handler output', {
-                  :handler => handler,
-                  :output => line
-                })
-              end
+              @logger.info('handler output', {
+                :handler => handler,
+                :output => output.lines,
+                :event_id => event[:id]
+              })
               @handlers_in_progress_count -= 1
             end
           when 'tcp'
