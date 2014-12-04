@@ -262,15 +262,18 @@ module Sensu
           case handler[:type]
           when 'pipe'
             options = {:data => event_data, :timeout => handler[:timeout]}
+            msg = []
             Spawn.process(handler[:command], options) do |output, status|
               output.each_line do |line|
-                @logger.info('handler output', {
-                  :handler => handler,
-                  :output => line
-                })
+                msg << line
               end
               @handlers_in_progress_count -= 1
             end
+            @logger.info('handler output', {
+              :handler => handler,
+              :output => msg,
+              :event_id => event['id']
+            })
           when 'tcp'
             begin
               EM::connect(handler[:socket][:host], handler[:socket][:port], SocketHandler) do |socket|
