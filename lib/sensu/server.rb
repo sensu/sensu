@@ -312,12 +312,11 @@ module Sensu
             @handlers_in_progress_count -= 1
           when 'extension'
             handler.safe_run(event_data) do |output, status|
-              output.each_line do |line|
-                @logger.info('handler extension output', {
-                  :extension => handler.definition,
-                  :output => line
-                })
-              end
+              @logger.info('handler extension output', {
+                :extension => handler.definition,
+                :output => output,
+                :event_id => event[:id]
+              })
               @handlers_in_progress_count -= 1
             end
           end
