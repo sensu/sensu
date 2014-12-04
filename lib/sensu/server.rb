@@ -506,23 +506,28 @@ module Sensu
       end
     end
 
+    def calculate_execution_splay(check)
+      splay_hash = Digest::MD5.digest(check[:name]).unpack('Q<').first
+      current_time = (Time.now.to_f * 1000).to_i
+      (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
+    end
+
     def schedule_checks(checks)
-      check_count = 0
-      stagger = testing? ? 0 : 2
       checks.each do |check|
-        check_count += 1
-        scheduling_delay = stagger * check_count % 30
-        @timers[:master] << EM::Timer.new(scheduling_delay) do
-          interval = testing? ? 0.5 : check[:interval]
-          @timers[:master] << EM::PeriodicTimer.new(interval) do
-            unless check_request_subdued?(check)
-              publish_check_request(check)
-            else
-              @logger.info('check request was subdued', {
-                :check => check
-              })
-            end
+        process_check_request = Proc.new do
+          unless check_request_subdued?(check)
+            publish_check_request(check)
+          else
+            @logger.info('check request was subdued', {
+              :check => check
+            })
           end
+        end
+        execution_splay = testing? ? 0 : calculate_execution_splay(check)
+        interval = testing? ? 0.5 : check[:interval]
+        @timers[:master] << EM::Timer.new(execution_splay) do
+          process_check_request.call
+          @timers[:master] << EM::PeriodicTimer.new(interval, &process_check_request)
         end
       end
     end
