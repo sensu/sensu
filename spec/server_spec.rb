@@ -447,6 +447,15 @@ describe 'Sensu::Server' do
     end
   end
 
+  it 'can calculate a check execution splay interval' do
+    allow(Time).to receive(:now).and_return('1414213569.032')
+    check = check_template
+    check[:interval] = 60
+    expect(@server.calculate_execution_splay(check)).to eq(17.601)
+    check[:interval] = 3600
+    expect(@server.calculate_execution_splay(check)).to eq(3497.601)
+  end
+
   it 'can schedule check request publishing' do
     async_wrapper do
       @server.setup_transport

@@ -210,13 +210,13 @@ describe 'Sensu::Client' do
     end
   end
 
-  it 'can calculate an execution splay interval' do
+  it 'can calculate a check execution splay interval' do
     allow(Time).to receive(:now).and_return('1414213569.032')
     check = check_template
-    check[:interval] = 97
-    expect(@client.calculate_execution_splay(check)).to eq(2.321)
-    check[:interval] = 3607
-    expect(@client.calculate_execution_splay(check)).to eq(2655.321)
+    check[:interval] = 60
+    expect(@client.calculate_execution_splay(check)).to eq(3.321)
+    check[:interval] = 3600
+    expect(@client.calculate_execution_splay(check)).to eq(783.321)
   end
 
   it 'can accept external result input via sockets' do
