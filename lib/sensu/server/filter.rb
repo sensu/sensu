@@ -3,7 +3,6 @@ require "sensu/sandbox"
 module Sensu
   module Server
     module Filter
-
       def subdue_time?(condition)
         if condition.has_key?(:begin) && condition.has_key?(:end)
           begin_time = Time.parse(condition[:begin])
@@ -55,6 +54,14 @@ module Sensu
           subdued << action_subdued?(check[:subdue])
         end
         subdued.any?
+      end
+
+      def check_request_subdued?(check)
+        if check[:subdue] && check[:subdue][:at] == "publisher"
+          action_subdued?(check[:subdue])
+        else
+          false
+        end
       end
 
       def handle_action?(handler, event)
@@ -132,7 +139,7 @@ module Sensu
       def event_filtered?(handler, event, &callback)
         if handler.has_key?(:filters) || handler.has_key?(:filter)
           filter_list = Array(handler[:filters] || handler[:filter])
-          iterator = EM::Iterator.new(filter_list)
+          filter_results = EM::Iterator.new(filter_list)
           run_filters = Proc.new do |filter_name, iterator|
             event_filter(filter_name, event) do |filtered|
               iterator.return(filtered)
@@ -141,7 +148,7 @@ module Sensu
           filtered = Proc.new do |results|
             callback.call(results.any?)
           end
-          iterator.each(run_filters, filtered)
+          filter_results.map(run_filters, filtered)
         else
           callback.call(false)
         end
@@ -165,7 +172,6 @@ module Sensu
           end
         end
       end
-
     end
   end
 end
