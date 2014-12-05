@@ -1,6 +1,7 @@
 require 'rspec'
 require 'eventmachine'
 require 'em-http-request'
+require 'uuidtools'
 
 module Helpers
   def setup_options

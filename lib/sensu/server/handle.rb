@@ -3,7 +3,6 @@ require "sensu/socket"
 module Sensu
   module Server
     module Handle
-
       def handler_error(handler, event_data)
         Proc.new do |error|
           @logger.error("handler error", {
@@ -74,8 +73,7 @@ module Sensu
         handler.safe_run(event_data) do |output, status|
           @logger.info("handler extension output", {
             :extension => handler.definition,
-            :output => output,
-            :event_id => event[:id]
+            :output => output
           })
           @handlers_in_progress_count -= 1
         end
@@ -98,15 +96,13 @@ module Sensu
 
       def handle_event(handler, event_data)
         @handlers_in_progress_count += 1
-        log_level = event[:check][:type] == "metric" ? :debug : :info
         definition = handler.is_a?(Hash) ? handler : handler.definition
-        @logger.send(log_level, "handling event", {
+        @logger.debug("handling event", {
           :event_data => event_data,
           :handler => definition
         })
         handler_type_router(handler, event_data)
       end
-
     end
   end
 end
