@@ -158,7 +158,7 @@ module Sensu
         details = {:handler => handler, :event => event}
         if !handle_action?(handler, event)
           @logger.info("handler does not handle action", details)
-        elsif !handle_severities(handler, event)
+        elsif !handle_severity?(handler, event)
           @logger.info("handler does not handle event severity", details)
         elsif handler_subdued?(handler, event)
           @logger.info("handler is subdued", details)

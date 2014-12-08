@@ -103,6 +103,23 @@ describe "Sensu::Server::Filter" do
     expect(@server.check_request_subdued?(check)).to be(true)
   end
 
+
+  it "can determine if a handler handles a severity" do
+    handler = {
+      :severities => ["critical"]
+    }
+    expect(@server.handle_severity?(handler, @event)).to be(false)
+    @event[:check][:status] = 2
+    expect(@server.handle_severity?(handler, @event)).to be(true)
+    @event[:check][:status] = 0
+    expect(@server.handle_severity?(handler, @event)).to be(false)
+    @event[:action] = :resolve
+    @event[:check][:history] = [1, 0]
+    expect(@server.handle_severity?(handler, @event)).to be(false)
+    @event[:check][:history] = [1, 2, 0]
+    expect(@server.handle_severity?(handler, @event)).to be(true)
+  end
+
   it "can determine if filter attributes match an event" do
     attributes = {
       :occurrences => 1
@@ -119,9 +136,9 @@ describe "Sensu::Server::Filter" do
     expect(@server.filter_attributes_match?(attributes, @event)).to be(true)
   end
 
-  it "can filter an event" do
-    @event[:client][:environment] = "production"
+  it "can filter an event using a filter" do
     async_wrapper do
+      @event[:client][:environment] = "production"
       @server.event_filter("production", @event) do |filtered|
         expect(filtered).to be(false)
         @server.event_filter("development", @event) do |filtered|
@@ -147,6 +164,37 @@ describe "Sensu::Server::Filter" do
             end
           end
         end
+      end
+    end
+  end
+
+  it "can filter events" do
+    async_wrapper do
+      handler = {
+        :handle_flapping => false
+      }
+      @event[:action] = :flapping
+      @server.filter_event(handler, @event) do
+        raise "not filtered"
+      end
+      handler.delete(:handle_flapping)
+      @event[:action] = :create
+      handler[:severities] = ["critical"]
+      @server.filter_event(handler, @event) do
+        raise "not filtered"
+      end
+      handler.delete(:severities)
+      handler[:subdue] = {
+        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 3600).strftime("%l:00 %p").strip
+      }
+      @server.filter_event(handler, @event) do
+        raise "not filtered"
+      end
+      handler.delete(:subdue)
+      @server.filter_event(handler, @event) do |event|
+        expect(event).to be(@event)
+        async_done
       end
     end
   end
