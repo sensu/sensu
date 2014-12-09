@@ -1,5 +1,6 @@
 require "sensu/daemon"
 require "sensu/server/filter"
+require "sensu/server/mutate"
 require "sensu/server/handle"
 
 module Sensu
@@ -7,9 +8,10 @@ module Sensu
     class Process
       include Daemon
       include Filter
+      include Mutate
       include Handle
 
-      attr_reader :is_master, :handlers_in_progress_count
+      attr_reader :is_master, :event_processing_count
 
       def self.run(options={})
         server = self.new(options)
@@ -23,7 +25,7 @@ module Sensu
         super
         @is_master = false
         @timers[:master] = Array.new
-        @handlers_in_progress_count = 0
+        @event_processing_count = 0
       end
     end
   end

@@ -10,7 +10,7 @@ module Sensu
             :event_data => event_data,
             :error => error.to_s
           })
-          @handlers_in_progress_count -= 1
+          @event_processing_count -= 1 if @event_processing_count
         end
       end
 
@@ -21,7 +21,7 @@ module Sensu
             :handler => handler,
             :output => output.lines
           })
-          @handlers_in_progress_count -= 1
+          @event_processing_count -= 1 if @event_processing_count
         end
       end
 
@@ -30,7 +30,7 @@ module Sensu
         begin
           EM::connect(handler[:socket][:host], handler[:socket][:port], SocketHandler) do |socket|
             socket.on_success = Proc.new do
-              @handlers_in_progress_count -= 1
+              @event_processing_count -= 1 if @event_processing_count
             end
             socket.on_error = on_error
             timeout = handler[:timeout] || 10
@@ -49,7 +49,7 @@ module Sensu
           EM::open_datagram_socket("0.0.0.0", 0, nil) do |socket|
             socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
             socket.close_connection_after_writing
-            @handlers_in_progress_count -= 1
+            @event_processing_count -= 1 if @event_processing_count
           end
         rescue => error
           handler_error(handler, event_data).call(error)
@@ -66,7 +66,7 @@ module Sensu
             end
           end
         end
-        @handlers_in_progress_count -= 1
+        @event_processing_count -= 1 if @event_processing_count
       end
 
       def handler_extension(handler, event_data)
@@ -75,7 +75,7 @@ module Sensu
             :extension => handler.definition,
             :output => output
           })
-          @handlers_in_progress_count -= 1
+          @event_processing_count -= 1 if @event_processing_count
         end
       end
 
@@ -95,7 +95,6 @@ module Sensu
       end
 
       def handle_event(handler, event_data)
-        @handlers_in_progress_count += 1
         definition = handler.is_a?(Hash) ? handler : handler.definition
         @logger.debug("handling event", {
           :event_data => event_data,
