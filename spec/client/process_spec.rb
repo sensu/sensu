@@ -1,11 +1,12 @@
-require File.dirname(__FILE__) + '/helpers.rb'
-require 'sensu/client'
+require File.join(File.dirname(__FILE__), "..", "helpers.rb")
 
-describe 'Sensu::Client' do
+require 'sensu/client/process'
+
+describe 'Sensu::Client::Process' do
   include Helpers
 
   before do
-    @client = Sensu::Client.new(options)
+    @client = Sensu::Client::Process.new(options)
   end
 
   it 'can connect to rabbitmq' do
