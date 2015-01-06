@@ -1,4 +1,4 @@
-require "sensu/sandbox"
+require "sensu/server/sandbox"
 
 module Sensu
   module Server
