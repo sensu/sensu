@@ -11,7 +11,7 @@ module Sensu
       include Mutate
       include Handle
 
-      attr_reader :is_master, :event_processing_count
+      attr_reader :is_master, :handling_event_count
 
       def self.run(options={})
         server = self.new(options)
@@ -25,7 +25,7 @@ module Sensu
         super
         @is_master = false
         @timers[:master] = Array.new
-        @event_processing_count = 0
+        @handling_event_count = 0
       end
 
       def update_client_registry(client, &callback)
@@ -102,7 +102,7 @@ module Sensu
         handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || "default")
         handlers = derive_handlers(handler_list)
         handlers.each do |handler|
-          @event_processing_count += 1
+          @handling_event_count += 1
           filter_event(handler, event) do |event|
             mutate_event(handler, event) do |event_data|
               handle_event(handler, event_data)
@@ -478,12 +478,12 @@ module Sensu
         @transport.unsubscribe
       end
 
-      def complete_event_processing(&block)
-        @logger.info("completing event processing in progress", {
-          :event_processing_count => @event_processing_count
+      def complete_event_handling(&block)
+        @logger.info("completing event handling in progress", {
+          :handling_event_count => @handling_event_count
         })
         retry_until_true do
-          if @event_processing_count == 0
+          if @handling_event_count == 0
             block.call
             true
           end
@@ -531,7 +531,7 @@ module Sensu
         @logger.warn("stopping")
         pause
         @state = :stopping
-        complete_event_processing do
+        complete_event_handling do
           @redis.close
           @transport.close
           super

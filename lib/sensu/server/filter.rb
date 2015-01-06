@@ -174,7 +174,7 @@ module Sensu
               callback.call(event)
             else
               @logger.info("event was filtered", details)
-              @event_processing_count -= 1 if @event_processing_count
+              @handling_event_count -= 1 if @handling_event_count
             end
           end
         end

@@ -13,7 +13,7 @@ module Sensu
               :output => output,
               :status => status
             })
-            @event_processing_count -= 1 if @event_processing_count
+            @handling_event_count -= 1 if @handling_event_count
           end
         end
       end
@@ -42,7 +42,7 @@ module Sensu
           @logger.error("unknown mutator", {
             :mutator_name => mutator_name
           })
-          @event_processing_count -= 1 if @event_processing_count
+          @handling_event_count -= 1 if @handling_event_count
         end
       end
     end

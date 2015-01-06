@@ -10,7 +10,7 @@ module Sensu
             :event_data => event_data,
             :error => error.to_s
           })
-          @event_processing_count -= 1 if @event_processing_count
+          @handling_event_count -= 1 if @handling_event_count
         end
       end
 
@@ -21,7 +21,7 @@ module Sensu
             :handler => handler,
             :output => output.lines
           })
-          @event_processing_count -= 1 if @event_processing_count
+          @handling_event_count -= 1 if @handling_event_count
         end
       end
 
@@ -30,7 +30,7 @@ module Sensu
         begin
           EM::connect(handler[:socket][:host], handler[:socket][:port], SocketHandler) do |socket|
             socket.on_success = Proc.new do
-              @event_processing_count -= 1 if @event_processing_count
+              @handling_event_count -= 1 if @handling_event_count
             end
             socket.on_error = on_error
             timeout = handler[:timeout] || 10
@@ -49,7 +49,7 @@ module Sensu
           EM::open_datagram_socket("0.0.0.0", 0, nil) do |socket|
             socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
             socket.close_connection_after_writing
-            @event_processing_count -= 1 if @event_processing_count
+            @handling_event_count -= 1 if @handling_event_count
           end
         rescue => error
           handler_error(handler, event_data).call(error)
@@ -66,7 +66,7 @@ module Sensu
             end
           end
         end
-        @event_processing_count -= 1 if @event_processing_count
+        @handling_event_count -= 1 if @handling_event_count
       end
 
       def handler_extension(handler, event_data)
@@ -75,7 +75,7 @@ module Sensu
             :extension => handler.definition,
             :output => output
           })
-          @event_processing_count -= 1 if @event_processing_count
+          @handling_event_count -= 1 if @handling_event_count
         end
       end
 
