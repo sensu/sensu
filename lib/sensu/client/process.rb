@@ -1,5 +1,5 @@
-require 'sensu/daemon'
-require 'sensu/socket'
+require "sensu/daemon"
+require "sensu/socket"
 
 module Sensu
   module Client
@@ -22,18 +22,20 @@ module Sensu
         @checks_in_progress = Array.new
       end
 
-      def publish_keepalive
-        keepalive = @settings[:client].merge({
+      def keepalive_payload
+        payload = @settings[:client].merge({
           :version => VERSION,
           :timestamp => Time.now.to_i
         })
-        payload = redact_sensitive(keepalive, @settings[:client][:redact])
-        @logger.debug('publishing keepalive', {
-          :payload => payload
-        })
-        @transport.publish(:direct, 'keepalives', MultiJson.dump(payload)) do |info|
+        redact_sensitive(payload, @settings[:client][:redact])
+      end
+
+      def publish_keepalive
+        payload = keepalive_payload
+        @logger.debug("publishing keepalive", :payload => payload)
+        @transport.publish(:direct, "keepalives", MultiJson.dump(payload)) do |info|
           if info[:error]
-            @logger.error('failed to publish keepalive', {
+            @logger.error("failed to publish keepalive", {
               :payload => payload,
               :error => info[:error].to_s
             })
@@ -42,24 +44,22 @@ module Sensu
       end
 
       def setup_keepalives
-        @logger.debug('scheduling keepalives')
+        @logger.debug("scheduling keepalives")
         publish_keepalive
         @timers[:run] << EM::PeriodicTimer.new(20) do
           publish_keepalive
         end
       end
 
-      def publish_result(check)
+      def publish_check_result(check)
         payload = {
           :client => @settings[:client][:name],
           :check => check
         }
-        @logger.info('publishing check result', {
-          :payload => payload
-        })
-        @transport.publish(:direct, 'results', MultiJson.dump(payload)) do |info|
+        @logger.info("publishing check result", :payload => payload)
+        @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
           if info[:error]
-            @logger.error('failed to publish check result', {
+            @logger.error("failed to publish check result", {
               :payload => payload,
               :error => info[:error].to_s
             })
@@ -79,8 +79,8 @@ module Sensu
       def substitute_command_tokens(check)
         unmatched_tokens = Array.new
         substituted = check[:command].gsub(/:::([^:].*?):::/) do
-          token, default = $1.to_s.split('|', -1)
-          matched = find_client_attribute(@settings[:client], token.split('.'), default)
+          token, default = $1.to_s.split("|", -1)
+          matched = find_client_attribute(@settings[:client], token.split("."), default)
           if matched.nil?
             unmatched_tokens << token
           end
@@ -90,9 +90,7 @@ module Sensu
       end
 
       def execute_check_command(check)
-        @logger.debug('attempting to execute check command', {
-          :check => check
-        })
+        @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
           command, unmatched_tokens = substitute_command_tokens(check)
@@ -100,53 +98,47 @@ module Sensu
             check[:executed] = Time.now.to_i
             started = Time.now.to_f
             Spawn.process(command, :timeout => check[:timeout]) do |output, status|
-              check[:duration] = ('%.3f' % (Time.now.to_f - started)).to_f
+              check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               check[:output] = output
               check[:status] = status
-              publish_result(check)
+              publish_check_result(check)
               @checks_in_progress.delete(check[:name])
             end
           else
-            check[:output] = 'Unmatched command tokens: ' + unmatched_tokens.join(', ')
+            check[:output] = "Unmatched command tokens: " + unmatched_tokens.join(", ")
             check[:status] = 3
             check[:handle] = false
-            publish_result(check)
+            publish_check_result(check)
             @checks_in_progress.delete(check[:name])
           end
         else
-          @logger.warn('previous check command execution in progress', {
-            :check => check
-          })
+          @logger.warn("previous check command execution in progress", :check => check)
         end
       end
 
       def run_check_extension(check)
-        @logger.debug('attempting to run check extension', {
-          :check => check
-        })
+        @logger.debug("attempting to run check extension", :check => check)
         check[:executed] = Time.now.to_i
         extension = @extensions[:checks][check[:name]]
         extension.safe_run do |output, status|
           check[:output] = output
           check[:status] = status
-          publish_result(check)
+          publish_check_result(check)
         end
       end
 
       def process_check(check)
-        @logger.debug('processing check', {
-          :check => check
-        })
+        @logger.debug("processing check", :check => check)
         if check.has_key?(:command)
           if @settings.check_exists?(check[:name])
             check.merge!(@settings[:checks][check[:name]])
             execute_check_command(check)
           elsif @safe_mode
-            check[:output] = 'Check is not locally defined (safe mode)'
+            check[:output] = "Check is not locally defined (safe mode)"
             check[:status] = 3
             check[:handle] = false
             check[:executed] = Time.now.to_i
-            publish_result(check)
+            publish_check_result(check)
           else
             execute_check_command(check)
           end
@@ -154,29 +146,23 @@ module Sensu
           if @extensions.check_exists?(check[:name])
             run_check_extension(check)
           else
-            @logger.warn('unknown check extension', {
-              :check => check
-            })
+            @logger.warn("unknown check extension", :check => check)
           end
         end
       end
 
       def setup_subscriptions
-        @logger.debug('subscribing to client subscriptions')
+        @logger.debug("subscribing to client subscriptions")
         @settings[:client][:subscriptions].each do |subscription|
-          @logger.debug('subscribing to a subscription', {
-            :subscription => subscription
-          })
-          funnel = [@settings[:client][:name], VERSION, Time.now.to_i].join('-')
+          @logger.debug("subscribing to a subscription", :subscription => subscription)
+          funnel = [@settings[:client][:name], VERSION, Time.now.to_i].join("-")
           @transport.subscribe(:fanout, subscription, funnel) do |message_info, message|
             begin
               check = MultiJson.load(message)
-              @logger.info('received check request', {
-                :check => check
-              })
+              @logger.info("received check request", :check => check)
               process_check(check)
             rescue MultiJson::ParseError => error
-              @logger.error('failed to parse the check request payload', {
+              @logger.error("failed to parse the check request payload", {
                 :message => message,
                 :error => error.to_s
               })
@@ -186,8 +172,8 @@ module Sensu
       end
 
       def calculate_execution_splay(check)
-        key = [@settings[:client][:name], check[:name]].join(':')
-        splay_hash = Digest::MD5.digest(key).unpack('Q<').first
+        key = [@settings[:client][:name], check[:name]].join(":")
+        splay_hash = Digest::MD5.digest(key).unpack("Q<").first
         current_time = (Time.now.to_f * 1000).to_i
         (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
       end
@@ -208,7 +194,7 @@ module Sensu
       end
 
       def setup_standalone
-        @logger.debug('scheduling standalone checks')
+        @logger.debug("scheduling standalone checks")
         standard_checks = @settings.checks.select do |check|
           check[:standalone]
         end
@@ -220,11 +206,9 @@ module Sensu
 
       def setup_sockets
         options = @settings[:client][:socket] || Hash.new
-        options[:bind] ||= '127.0.0.1'
+        options[:bind] ||= "127.0.0.1"
         options[:port] ||= 3030
-        @logger.debug('binding client tcp and udp sockets', {
-          :options => options
-        })
+        @logger.debug("binding client tcp and udp sockets", :options => options)
         EM::start_server(options[:bind], options[:port], Socket) do |socket|
           socket.logger = @logger
           socket.settings = @settings
@@ -239,9 +223,7 @@ module Sensu
       end
 
       def complete_checks_in_progress(&block)
-        @logger.info('completing checks in progress', {
-          :checks_in_progress => @checks_in_progress
-        })
+        @logger.info("completing checks in progress", :checks_in_progress => @checks_in_progress)
         retry_until_true do
           if @checks_in_progress.empty?
             block.call
@@ -287,7 +269,7 @@ module Sensu
       end
 
       def stop
-        @logger.warn('stopping')
+        @logger.warn("stopping")
         pause
         @state = :stopping
         complete_checks_in_progress do

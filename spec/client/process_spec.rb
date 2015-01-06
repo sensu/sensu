@@ -54,7 +54,7 @@ describe 'Sensu::Client::Process' do
       result_queue do |queue|
         @client.setup_transport
         check = result_template[:check]
-        @client.publish_result(check)
+        @client.publish_check_result(check)
         queue.subscribe do |payload|
           result = MultiJson.load(payload)
           expect(result[:client]).to eq('i-424242')
