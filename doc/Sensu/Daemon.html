@@ -1,0 +1,1300 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>
+  Module: Sensu::Daemon
+  
+    &mdash; Documentation by YARD 0.8.7.6
+  
+</title>
+
+  <link rel="stylesheet" href="../css/style.css" type="text/css" charset="utf-8" />
+
+  <link rel="stylesheet" href="../css/common.css" type="text/css" charset="utf-8" />
+
+<script type="text/javascript" charset="utf-8">
+  hasFrames = window.top.frames.main ? true : false;
+  relpath = '../';
+  framesUrl = "../frames.html#!Sensu/Daemon.html";
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="header">
+      <div id="menu">
+  
+    <a href="../_index.html">Index (D)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../Sensu.html" title="Sensu (module)">Sensu</a></span></span>
+     &raquo; 
+    <span class="title">Daemon</span>
+  
+
+  <div class="noframes"><span class="title">(</span><a href="." target="_top">no frames</a><span class="title">)</span></div>
+</div>
+
+      <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../class_list.html">
+      Class List
+    </a>
+  
+    <a class="full_list_link" id="method_list_link"
+        href="../method_list.html">
+      Method List
+    </a>
+  
+    <a class="full_list_link" id="file_list_link"
+        href="../file_list.html">
+      File List
+    </a>
+  
+</div>
+      <div class="clear"></div>
+    </div>
+
+    <iframe id="search_frame"></iframe>
+
+    <div id="content"><h1>Module: Sensu::Daemon
+  
+  
+  
+</h1>
+
+<dl class="box">
+  
+  
+    
+  
+    
+      <dt class="r1">Includes:</dt>
+      <dd class="r1"><span class='object_link'><a href="Utilities.html" title="Sensu::Utilities (module)">Utilities</a></span></dd>
+      
+    
+  
+  
+    <dt class="r2">Included in:</dt>
+    <dd class="r2"><span class='object_link'><a href="API/Process.html" title="Sensu::API::Process (class)">API::Process</a></span>, <span class='object_link'><a href="Client/Process.html" title="Sensu::Client::Process (class)">Client::Process</a></span>, <span class='object_link'><a href="Server/Process.html" title="Sensu::Server::Process (class)">Server::Process</a></span></dd>
+    
+  
+  
+    <dt class="r1 last">Defined in:</dt>
+    <dd class="r1 last">lib/sensu/daemon.rb</dd>
+  
+</dl>
+<div class="clear"></div>
+
+
+
+
+
+
+
+
+  
+    <h2>
+      Instance Method Summary
+      <small>(<a href="#" class="summary_toggle">collapse</a>)</small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#initialize-instance_method" title="#initialize (instance method)">- (Object) <strong>initialize</strong>(options = {}) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Initialize the Sensu process.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#load_extensions-instance_method" title="#load_extensions (instance method)">- (Object) <strong>load_extensions</strong>(options = {}) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Load Sensu extensions and log any concerns.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#load_settings-instance_method" title="#load_settings (instance method)">- (Object) <strong>load_settings</strong>(options = {}) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Load Sensu settings and validate them.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#log_concerns-instance_method" title="#log_concerns (instance method)">- (Object) <strong>log_concerns</strong>(concerns = [], level = :warn) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Log setting or extension loading concerns, sensitive information is
+redacted.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#pause-instance_method" title="#pause (instance method)">- (Object) <strong>pause</strong> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Pause the Sensu service and set the service state to `:paused`.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#resume-instance_method" title="#resume (instance method)">- (Object) <strong>resume</strong> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Resume the paused Sensu service and set the service state to `:running`.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#setup_logger-instance_method" title="#setup_logger (instance method)">- (Object) <strong>setup_logger</strong>(options = {}) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Set up the Sensu logger and its process signal traps for log rotation and
+debug log level toggling.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#setup_process-instance_method" title="#setup_process (instance method)">- (Object) <strong>setup_process</strong>(options) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Manage the current process, optionally daemonize and/or write the current
+process ID to a PID file.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#setup_redis-instance_method" title="#setup_redis (instance method)">- (Object) <strong>setup_redis</strong> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Set up the Redis connection.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#setup_signal_traps-instance_method" title="#setup_signal_traps (instance method)">- (Object) <strong>setup_signal_traps</strong> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Set up process signal traps.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#setup_transport-instance_method" title="#setup_transport (instance method)">- (Object) <strong>setup_transport</strong> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Set up the Sensu transport connection.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#start-instance_method" title="#start (instance method)">- (Object) <strong>start</strong> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Start the Sensu service and set the service state to `:running`.</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#stop-instance_method" title="#stop (instance method)">- (Object) <strong>stop</strong> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'>
+<p>Stop the Sensu service and set the service state to `:stopped`.</p>
+</div></span>
+  
+</li>
+
+      
+    </ul>
+  
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  <h3 class="inherited">Methods included from <span class='object_link'><a href="Utilities.html" title="Sensu::Utilities (module)">Utilities</a></span></h3>
+  <p class="inherited"><span class='object_link'><a href="Utilities.html#deep_merge-instance_method" title="Sensu::Utilities#deep_merge (method)">#deep_merge</a></span>, <span class='object_link'><a href="Utilities.html#random_uuid-instance_method" title="Sensu::Utilities#random_uuid (method)">#random_uuid</a></span>, <span class='object_link'><a href="Utilities.html#redact_sensitive-instance_method" title="Sensu::Utilities#redact_sensitive (method)">#redact_sensitive</a></span>, <span class='object_link'><a href="Utilities.html#retry_until_true-instance_method" title="Sensu::Utilities#retry_until_true (method)">#retry_until_true</a></span>, <span class='object_link'><a href="Utilities.html#testing%3F-instance_method" title="Sensu::Utilities#testing? (method)">#testing?</a></span></p>
+
+
+  <div id="instance_method_details" class="method_details_list">
+    <h2>Instance Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="initialize-instance_method">
+  
+    - (<tt>Object</tt>) <strong>initialize</strong>(options = {}) 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Initialize the Sensu process. Set the initial service state, set up the
+logger, load settings, load extensions, and optionally daemonize the
+process and/or create a PID file. A subclass may override this method.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>options</span>
+      
+      
+        <span class='type'>(<tt>Hash</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>{}</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+40
+41
+42
+43
+44
+45
+46
+47</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 40</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='op'>=</span><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
+  <span class='ivar'>@state</span> <span class='op'>=</span> <span class='symbol'>:initializing</span>
+  <span class='ivar'>@timers</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='symbol'>:run</span> <span class='op'>=&gt;</span> <span class='lbracket'>[</span><span class='rbracket'>]</span><span class='rbrace'>}</span>
+  <span class='id identifier rubyid_setup_logger'>setup_logger</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_load_settings'>load_settings</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_load_extensions'>load_extensions</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_setup_process'>setup_process</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="load_extensions-instance_method">
+  
+    - (<tt>Object</tt>) <strong>load_extensions</strong>(options = {}) 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Load Sensu extensions and log any concerns. Set the logger and settings for
+each extension instance. This method creates the extensions instance
+variable: `@extensions`.</p>
+
+<p><a
+href="https://github.com/sensu/sensu-extensions">github.com/sensu/sensu-extensions</a>
+<a
+href="https://github.com/sensu/sensu-extension">github.com/sensu/sensu-extension</a></p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>options</span>
+      
+      
+        <span class='type'>(<tt>Hash</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>{}</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+101
+102
+103
+104
+105
+106
+107
+108
+109</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 101</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_load_extensions'>load_extensions</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='op'>=</span><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
+  <span class='ivar'>@extensions</span> <span class='op'>=</span> <span class='const'>Extensions</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_log_concerns'>log_concerns</span><span class='lparen'>(</span><span class='ivar'>@extensions</span><span class='period'>.</span><span class='id identifier rubyid_warnings'>warnings</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_extension_settings'>extension_settings</span> <span class='op'>=</span> <span class='ivar'>@settings</span><span class='period'>.</span><span class='id identifier rubyid_to_hash'>to_hash</span><span class='period'>.</span><span class='id identifier rubyid_dup'>dup</span>
+  <span class='ivar'>@extensions</span><span class='period'>.</span><span class='id identifier rubyid_all'>all</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_extension'>extension</span><span class='op'>|</span>
+    <span class='id identifier rubyid_extension'>extension</span><span class='period'>.</span><span class='id identifier rubyid_logger'>logger</span> <span class='op'>=</span> <span class='ivar'>@logger</span>
+    <span class='id identifier rubyid_extension'>extension</span><span class='period'>.</span><span class='id identifier rubyid_settings'>settings</span> <span class='op'>=</span> <span class='id identifier rubyid_extension_settings'>extension_settings</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="load_settings-instance_method">
+  
+    - (<tt>Object</tt>) <strong>load_settings</strong>(options = {}) 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Load Sensu settings and validate them. If there are validation failures,
+log them (concerns), then cause the Sensu process to exit (2). This method
+creates the settings instance variable: `@settings`.</p>
+
+<p><a
+href="https://github.com/sensu/sensu-settings">github.com/sensu/sensu-settings</a></p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>options</span>
+      
+      
+        <span class='type'>(<tt>Hash</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>{}</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 81</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_load_settings'>load_settings</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='op'>=</span><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
+  <span class='ivar'>@settings</span> <span class='op'>=</span> <span class='const'>Settings</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_log_concerns'>log_concerns</span><span class='lparen'>(</span><span class='ivar'>@settings</span><span class='period'>.</span><span class='id identifier rubyid_warnings'>warnings</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_failures'>failures</span> <span class='op'>=</span> <span class='ivar'>@settings</span><span class='period'>.</span><span class='id identifier rubyid_validate'>validate</span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_failures'>failures</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_fatal'>fatal</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>invalid settings</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_log_concerns'>log_concerns</span><span class='lparen'>(</span><span class='id identifier rubyid_failures'>failures</span><span class='comma'>,</span> <span class='symbol'>:fatal</span><span class='rparen'>)</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_fatal'>fatal</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>SENSU NOT RUNNING!</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_exit'>exit</span> <span class='int'>2</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="log_concerns-instance_method">
+  
+    - (<tt>Object</tt>) <strong>log_concerns</strong>(concerns = [], level = :warn) 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Log setting or extension loading concerns, sensitive information is
+redacted.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>concerns</span>
+      
+      
+        <span class='type'>(<tt>Array</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>[]</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>to be logged.</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>level</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>:warn</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>to log the concerns at.</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+66
+67
+68
+69
+70
+71</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 66</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_log_concerns'>log_concerns</span><span class='lparen'>(</span><span class='id identifier rubyid_concerns'>concerns</span><span class='op'>=</span><span class='lbracket'>[</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_level'>level</span><span class='op'>=</span><span class='symbol'>:warn</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_concerns'>concerns</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_concern'>concern</span><span class='op'>|</span>
+    <span class='id identifier rubyid_message'>message</span> <span class='op'>=</span> <span class='id identifier rubyid_concern'>concern</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='symbol'>:message</span><span class='rparen'>)</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_send'>send</span><span class='lparen'>(</span><span class='id identifier rubyid_level'>level</span><span class='comma'>,</span> <span class='id identifier rubyid_message'>message</span><span class='comma'>,</span> <span class='id identifier rubyid_redact_sensitive'>redact_sensitive</span><span class='lparen'>(</span><span class='id identifier rubyid_concern'>concern</span><span class='rparen'>)</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="pause-instance_method">
+  
+    - (<tt>Object</tt>) <strong>pause</strong> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Pause the Sensu service and set the service state to `:paused`. This method
+will likely be overridden by a subclass.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+128
+129
+130</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 128</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_pause'>pause</span>
+  <span class='ivar'>@state</span> <span class='op'>=</span> <span class='symbol'>:paused</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="resume-instance_method">
+  
+    - (<tt>Object</tt>) <strong>resume</strong> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Resume the paused Sensu service and set the service state to `:running`.
+This method will likely be overridden by a subclass.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+134
+135
+136</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 134</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_resume'>resume</span>
+  <span class='ivar'>@state</span> <span class='op'>=</span> <span class='symbol'>:running</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="setup_logger-instance_method">
+  
+    - (<tt>Object</tt>) <strong>setup_logger</strong>(options = {}) 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Set up the Sensu logger and its process signal traps for log rotation and
+debug log level toggling. This method creates the logger instance variable:
+`@logger`.</p>
+
+<p><a
+href="https://github.com/sensu/sensu-logger">github.com/sensu/sensu-logger</a></p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>options</span>
+      
+      
+        <span class='type'>(<tt>Hash</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>{}</tt>)</em>
+      
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+56
+57
+58
+59</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 56</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_setup_logger'>setup_logger</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='op'>=</span><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
+  <span class='ivar'>@logger</span> <span class='op'>=</span> <span class='const'>Logger</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='rparen'>)</span>
+  <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_setup_signal_traps'>setup_signal_traps</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="setup_process-instance_method">
+  
+    - (<tt>Object</tt>) <strong>setup_process</strong>(options) 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Manage the current process, optionally daemonize and/or write the current
+process ID to a PID file.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>options</span>
+      
+      
+        <span class='type'>(<tt>Hash</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+115
+116
+117
+118</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 115</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_setup_process'>setup_process</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_daemonize'>daemonize</span> <span class='kw'>if</span> <span class='id identifier rubyid_options'>options</span><span class='lbracket'>[</span><span class='symbol'>:daemonize</span><span class='rbracket'>]</span>
+  <span class='id identifier rubyid_write_pid'>write_pid</span><span class='lparen'>(</span><span class='id identifier rubyid_options'>options</span><span class='lbracket'>[</span><span class='symbol'>:pid_file</span><span class='rbracket'>]</span><span class='rparen'>)</span> <span class='kw'>if</span> <span class='id identifier rubyid_options'>options</span><span class='lbracket'>[</span><span class='symbol'>:pid_file</span><span class='rbracket'>]</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="setup_redis-instance_method">
+  
+    - (<tt>Object</tt>) <strong>setup_redis</strong> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Set up the Redis connection. Sensu uses Redis as a data store, to store the
+client registry, current events, etc. The Sensu service will stop
+gracefully in the event of a Redis error, and pause/resume in the event of
+connectivity issues. This method creates the Redis instance variable:
+`@redis`.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 206</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_setup_redis'>setup_redis</span>
+  <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_debug'>debug</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>connecting to redis</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='symbol'>:settings</span> <span class='op'>=&gt;</span> <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:redis</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='ivar'>@redis</span> <span class='op'>=</span> <span class='const'>Redis</span><span class='period'>.</span><span class='id identifier rubyid_connect'>connect</span><span class='lparen'>(</span><span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:redis</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+  <span class='ivar'>@redis</span><span class='period'>.</span><span class='id identifier rubyid_on_error'>on_error</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_error'>error</span><span class='op'>|</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_fatal'>fatal</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>redis connection error</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='symbol'>:error</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_stop'>stop</span>
+  <span class='kw'>end</span>
+  <span class='ivar'>@redis</span><span class='period'>.</span><span class='id identifier rubyid_before_reconnect'>before_reconnect</span> <span class='kw'>do</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_testing?'>testing?</span>
+      <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_warn'>warn</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>reconnecting to redis</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_pause'>pause</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='ivar'>@redis</span><span class='period'>.</span><span class='id identifier rubyid_after_reconnect'>after_reconnect</span> <span class='kw'>do</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_info'>info</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>reconnected to redis</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_resume'>resume</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="setup_signal_traps-instance_method">
+  
+    - (<tt>Object</tt>) <strong>setup_signal_traps</strong> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Set up process signal traps. This method uses the `STOP_SIGNALS` constant
+to determine which process signals will result in a graceful service stop.
+A periodic timer must be used to poll for received signals, as Mutex#lock
+cannot be used within the context of `trap()`.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 152</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_setup_signal_traps'>setup_signal_traps</span>
+  <span class='ivar'>@signals</span> <span class='op'>=</span> <span class='lbracket'>[</span><span class='rbracket'>]</span>
+  <span class='const'>STOP_SIGNALS</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_signal'>signal</span><span class='op'>|</span>
+    <span class='const'>Signal</span><span class='period'>.</span><span class='id identifier rubyid_trap'>trap</span><span class='lparen'>(</span><span class='id identifier rubyid_signal'>signal</span><span class='rparen'>)</span> <span class='kw'>do</span>
+      <span class='ivar'>@signals</span> <span class='op'>&lt;&lt;</span> <span class='id identifier rubyid_signal'>signal</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='const'>EM</span><span class='op'>::</span><span class='const'>PeriodicTimer</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span><span class='lparen'>(</span><span class='int'>1</span><span class='rparen'>)</span> <span class='kw'>do</span>
+    <span class='id identifier rubyid_signal'>signal</span> <span class='op'>=</span> <span class='ivar'>@signals</span><span class='period'>.</span><span class='id identifier rubyid_shift'>shift</span>
+    <span class='kw'>if</span> <span class='const'>STOP_SIGNALS</span><span class='period'>.</span><span class='id identifier rubyid_include?'>include?</span><span class='lparen'>(</span><span class='id identifier rubyid_signal'>signal</span><span class='rparen'>)</span>
+      <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_warn'>warn</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>received signal</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='symbol'>:signal</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_signal'>signal</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_stop'>stop</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="setup_transport-instance_method">
+  
+    - (<tt>Object</tt>) <strong>setup_transport</strong> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Set up the Sensu transport connection. Sensu uses a transport API, allowing
+it to use various message brokers. By default, Sensu will use the built-in
+“rabbitmq” transport. The Sensu service will stop gracefully in the event
+of a transport error, and pause/resume in the event of connectivity issues.
+This method creates the transport instance variable: `@transport`.</p>
+
+<p><a
+href="https://github.com/sensu/sensu-transport">github.com/sensu/sensu-transport</a></p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 176</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_setup_transport'>setup_transport</span>
+  <span class='id identifier rubyid_transport_name'>transport_name</span> <span class='op'>=</span> <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='symbol'>:transport</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>rabbitmq</span><span class='tstring_end'>&quot;</span></span>
+  <span class='id identifier rubyid_transport_settings'>transport_settings</span> <span class='op'>=</span> <span class='ivar'>@settings</span><span class='lbracket'>[</span><span class='id identifier rubyid_transport_name'>transport_name</span><span class='rbracket'>]</span>
+  <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_debug'>debug</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>connecting to transport</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='lbrace'>{</span>
+    <span class='symbol'>:name</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_transport_name'>transport_name</span><span class='comma'>,</span>
+    <span class='symbol'>:settings</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_transport_settings'>transport_settings</span>
+  <span class='rbrace'>}</span><span class='rparen'>)</span>
+  <span class='const'>Transport</span><span class='period'>.</span><span class='id identifier rubyid_logger'>logger</span> <span class='op'>=</span> <span class='ivar'>@logger</span>
+  <span class='ivar'>@transport</span> <span class='op'>=</span> <span class='const'>Transport</span><span class='period'>.</span><span class='id identifier rubyid_connect'>connect</span><span class='lparen'>(</span><span class='id identifier rubyid_transport_name'>transport_name</span><span class='comma'>,</span> <span class='id identifier rubyid_transport_settings'>transport_settings</span><span class='rparen'>)</span>
+  <span class='ivar'>@transport</span><span class='period'>.</span><span class='id identifier rubyid_on_error'>on_error</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_error'>error</span><span class='op'>|</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_fatal'>fatal</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>transport connection error</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='symbol'>:error</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_stop'>stop</span>
+  <span class='kw'>end</span>
+  <span class='ivar'>@transport</span><span class='period'>.</span><span class='id identifier rubyid_before_reconnect'>before_reconnect</span> <span class='kw'>do</span>
+    <span class='kw'>unless</span> <span class='id identifier rubyid_testing?'>testing?</span>
+      <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_warn'>warn</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>reconnecting to transport</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_pause'>pause</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='ivar'>@transport</span><span class='period'>.</span><span class='id identifier rubyid_after_reconnect'>after_reconnect</span> <span class='kw'>do</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_info'>info</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>reconnected to transport</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+    <span class='id identifier rubyid_resume'>resume</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="start-instance_method">
+  
+    - (<tt>Object</tt>) <strong>start</strong> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Start the Sensu service and set the service state to `:running`. This
+method will likely be overridden by a subclass.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+122
+123
+124</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 122</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_start'>start</span>
+  <span class='ivar'>@state</span> <span class='op'>=</span> <span class='symbol'>:running</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="stop-instance_method">
+  
+    - (<tt>Object</tt>) <strong>stop</strong> 
+  
+
+  
+
+  
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Stop the Sensu service and set the service state to `:stopped`. This method
+will likely be overridden by a subclass. This method should stop the
+EventMachine event loop.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+141
+142
+143
+144
+145</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/daemon.rb', line 141</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_stop'>stop</span>
+  <span class='ivar'>@state</span> <span class='op'>=</span> <span class='symbol'>:stopped</span>
+  <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_warn'>warn</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>stopping reactor</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='const'>EM</span><span class='op'>::</span><span class='id identifier rubyid_stop_event_loop'>stop_event_loop</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+    <div id="footer">
+  Generated on Tue Feb 10 17:09:28 2015 by
+  <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.8.7.6 (ruby-2.1.2).
+</div>
+
+  </body>
+</html>

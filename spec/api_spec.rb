@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/helpers.rb'
 
 require 'sensu/api'
-require 'sensu/server'
+require 'sensu/server/process'
 
 describe 'Sensu::API' do
   include Helpers
@@ -562,9 +562,9 @@ describe 'Sensu::API' do
 
   it 'can provide a list of aggregates' do
     api_test do
-      server = Sensu::Server.new(options)
+      server = Sensu::Server::Process.new(options)
       server.setup_redis
-      server.aggregate_result(result_template)
+      server.aggregate_check_result(result_template)
       timer(1) do
         api_request('/aggregates') do |http, body|
           expect(body).to be_kind_of(Array)
@@ -580,13 +580,13 @@ describe 'Sensu::API' do
 
   it 'can provide an aggregate list' do
     api_test do
-      server = Sensu::Server.new(options)
+      server = Sensu::Server::Process.new(options)
       server.setup_redis
       timestamp = epoch
       3.times do |index|
         result = result_template
         result[:check][:issued] = timestamp + index
-        server.aggregate_result(result)
+        server.aggregate_check_result(result)
       end
       timer(1) do
         api_request('/aggregates/test') do |http, body|
@@ -607,9 +607,9 @@ describe 'Sensu::API' do
 
   it 'can delete aggregates' do
     api_test do
-      server = Sensu::Server.new(options)
+      server = Sensu::Server::Process.new(options)
       server.setup_redis
-      server.aggregate_result(result_template)
+      server.aggregate_check_result(result_template)
       timer(1) do
         api_request('/aggregates/test', :delete) do |http, body|
           expect(http.response_header.status).to eq(204)
@@ -635,12 +635,12 @@ describe 'Sensu::API' do
 
   it 'can provide a specific aggregate with parameters' do
     api_test do
-      server = Sensu::Server.new(options)
+      server = Sensu::Server::Process.new(options)
       server.setup_redis
       result = result_template
       timestamp = epoch
       result[:timestamp] = timestamp
-      server.aggregate_result(result)
+      server.aggregate_check_result(result)
       timer(1) do
         parameters = '?results=true&summarize=output'
         api_request('/aggregates/test/' + timestamp.to_s + parameters) do |http, body|

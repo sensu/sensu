@@ -1,0 +1,678 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>
+  Module: Sensu::Server::Handle
+  
+    &mdash; Documentation by YARD 0.8.7.6
+  
+</title>
+
+  <link rel="stylesheet" href="../../css/style.css" type="text/css" charset="utf-8" />
+
+  <link rel="stylesheet" href="../../css/common.css" type="text/css" charset="utf-8" />
+
+<script type="text/javascript" charset="utf-8">
+  hasFrames = window.top.frames.main ? true : false;
+  relpath = '../../';
+  framesUrl = "../../frames.html#!Sensu/Server/Handle.html";
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="../../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="header">
+      <div id="menu">
+  
+    <a href="../../_index.html">Index (H)</a> &raquo;
+    <span class='title'><span class='object_link'><a href="../../Sensu.html" title="Sensu (module)">Sensu</a></span></span> &raquo; <span class='title'><span class='object_link'><a href="../Server.html" title="Sensu::Server (module)">Server</a></span></span>
+     &raquo; 
+    <span class="title">Handle</span>
+  
+
+  <div class="noframes"><span class="title">(</span><a href="." target="_top">no frames</a><span class="title">)</span></div>
+</div>
+
+      <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="../../class_list.html">
+      Class List
+    </a>
+  
+    <a class="full_list_link" id="method_list_link"
+        href="../../method_list.html">
+      Method List
+    </a>
+  
+    <a class="full_list_link" id="file_list_link"
+        href="../../file_list.html">
+      File List
+    </a>
+  
+</div>
+      <div class="clear"></div>
+    </div>
+
+    <iframe id="search_frame"></iframe>
+
+    <div id="content"><h1>Module: Sensu::Server::Handle
+  
+  
+  
+</h1>
+
+<dl class="box">
+  
+  
+    
+  
+    
+  
+  
+    <dt class="r1">Included in:</dt>
+    <dd class="r1"><span class='object_link'><a href="Process.html" title="Sensu::Server::Process (class)">Process</a></span></dd>
+    
+  
+  
+    <dt class="r2 last">Defined in:</dt>
+    <dd class="r2 last">lib/sensu/server/handle.rb</dd>
+  
+</dl>
+<div class="clear"></div>
+
+
+
+
+
+
+
+
+  
+    <h2>
+      Instance Method Summary
+      <small>(<a href="#" class="summary_toggle">collapse</a>)</small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#handle_event-instance_method" title="#handle_event (instance method)">- (Object) <strong>handle_event</strong>(handler, event_data) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#handler_error-instance_method" title="#handler_error (instance method)">- (Object) <strong>handler_error</strong>(handler, event_data) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#handler_extension-instance_method" title="#handler_extension (instance method)">- (Object) <strong>handler_extension</strong>(handler, event_data) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#handler_type_router-instance_method" title="#handler_type_router (instance method)">- (Object) <strong>handler_type_router</strong>(handler, event_data) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#pipe_handler-instance_method" title="#pipe_handler (instance method)">- (Object) <strong>pipe_handler</strong>(handler, event_data) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#tcp_handler-instance_method" title="#tcp_handler (instance method)">- (Object) <strong>tcp_handler</strong>(handler, event_data) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#transport_handler-instance_method" title="#transport_handler (instance method)">- (Object) <strong>transport_handler</strong>(handler, event_data) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#udp_handler-instance_method" title="#udp_handler (instance method)">- (Object) <strong>udp_handler</strong>(handler, event_data) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'></div></span>
+  
+</li>
+
+      
+    </ul>
+  
+
+
+
+  <div id="instance_method_details" class="method_details_list">
+    <h2>Instance Method Details</h2>
+
+    
+      <div class="method_details first">
+  <h3 class="signature first" id="handle_event-instance_method">
+  
+    - (<tt>Object</tt>) <strong>handle_event</strong>(handler, event_data) 
+  
+
+  
+
+  
+</h3><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+97
+98
+99
+100
+101
+102
+103
+104</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/server/handle.rb', line 97</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_handle_event'>handle_event</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_definition'>definition</span> <span class='op'>=</span> <span class='id identifier rubyid_handler'>handler</span><span class='period'>.</span><span class='id identifier rubyid_is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>Hash</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_handler'>handler</span> <span class='op'>:</span> <span class='id identifier rubyid_handler'>handler</span><span class='period'>.</span><span class='id identifier rubyid_definition'>definition</span>
+  <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_debug'>debug</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>handling event</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='lbrace'>{</span>
+    <span class='symbol'>:event_data</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='comma'>,</span>
+    <span class='symbol'>:handler</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_definition'>definition</span>
+  <span class='rbrace'>}</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_handler_type_router'>handler_type_router</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="handler_error-instance_method">
+  
+    - (<tt>Object</tt>) <strong>handler_error</strong>(handler, event_data) 
+  
+
+  
+
+  
+</h3><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/server/handle.rb', line 6</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_handler_error'>handler_error</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='const'>Proc</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_error'>error</span><span class='op'>|</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_error'>error</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>handler error</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='lbrace'>{</span>
+      <span class='symbol'>:handler</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span>
+      <span class='symbol'>:event_data</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='comma'>,</span>
+      <span class='symbol'>:error</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_error'>error</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span>
+    <span class='rbrace'>}</span><span class='rparen'>)</span>
+    <span class='ivar'>@handling_event_count</span> <span class='op'>-=</span> <span class='int'>1</span> <span class='kw'>if</span> <span class='ivar'>@handling_event_count</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="handler_extension-instance_method">
+  
+    - (<tt>Object</tt>) <strong>handler_extension</strong>(handler, event_data) 
+  
+
+  
+
+  
+</h3><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+72
+73
+74
+75
+76
+77
+78
+79
+80</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/server/handle.rb', line 72</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_handler_extension'>handler_extension</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_handler'>handler</span><span class='period'>.</span><span class='id identifier rubyid_safe_run'>safe_run</span><span class='lparen'>(</span><span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_output'>output</span><span class='comma'>,</span> <span class='id identifier rubyid_status'>status</span><span class='op'>|</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_info'>info</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>handler extension output</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='lbrace'>{</span>
+      <span class='symbol'>:extension</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_handler'>handler</span><span class='period'>.</span><span class='id identifier rubyid_definition'>definition</span><span class='comma'>,</span>
+      <span class='symbol'>:output</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_output'>output</span>
+    <span class='rbrace'>}</span><span class='rparen'>)</span>
+    <span class='ivar'>@handling_event_count</span> <span class='op'>-=</span> <span class='int'>1</span> <span class='kw'>if</span> <span class='ivar'>@handling_event_count</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="handler_type_router-instance_method">
+  
+    - (<tt>Object</tt>) <strong>handler_type_router</strong>(handler, event_data) 
+  
+
+  
+
+  
+</h3><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/server/handle.rb', line 82</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_handler_type_router'>handler_type_router</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='kw'>case</span> <span class='id identifier rubyid_handler'>handler</span><span class='lbracket'>[</span><span class='symbol'>:type</span><span class='rbracket'>]</span>
+  <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>pipe</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_pipe_handler'>pipe_handler</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>tcp</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_tcp_handler'>tcp_handler</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>udp</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_udp_handler'>udp_handler</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>transport</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_transport_handler'>transport_handler</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='kw'>when</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>extension</span><span class='tstring_end'>&quot;</span></span>
+    <span class='id identifier rubyid_handler_extension'>handler_extension</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="pipe_handler-instance_method">
+  
+    - (<tt>Object</tt>) <strong>pipe_handler</strong>(handler, event_data) 
+  
+
+  
+
+  
+</h3><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/server/handle.rb', line 17</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_pipe_handler'>pipe_handler</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_options'>options</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='symbol'>:data</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='comma'>,</span> <span class='symbol'>:timeout</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_handler'>handler</span><span class='lbracket'>[</span><span class='symbol'>:timeout</span><span class='rbracket'>]</span><span class='rbrace'>}</span>
+  <span class='const'>Spawn</span><span class='period'>.</span><span class='id identifier rubyid_process'>process</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='lbracket'>[</span><span class='symbol'>:command</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_options'>options</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_output'>output</span><span class='comma'>,</span> <span class='id identifier rubyid_status'>status</span><span class='op'>|</span>
+    <span class='ivar'>@logger</span><span class='period'>.</span><span class='id identifier rubyid_info'>info</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>handler output</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='lbrace'>{</span>
+      <span class='symbol'>:handler</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span>
+      <span class='symbol'>:output</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_output'>output</span><span class='period'>.</span><span class='id identifier rubyid_lines'>lines</span>
+    <span class='rbrace'>}</span><span class='rparen'>)</span>
+    <span class='ivar'>@handling_event_count</span> <span class='op'>-=</span> <span class='int'>1</span> <span class='kw'>if</span> <span class='ivar'>@handling_event_count</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="tcp_handler-instance_method">
+  
+    - (<tt>Object</tt>) <strong>tcp_handler</strong>(handler, event_data) 
+  
+
+  
+
+  
+</h3><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/server/handle.rb', line 28</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_tcp_handler'>tcp_handler</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_on_error'>on_error</span> <span class='op'>=</span> <span class='id identifier rubyid_handler_error'>handler_error</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='kw'>begin</span>
+    <span class='const'>EM</span><span class='op'>::</span><span class='id identifier rubyid_connect'>connect</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='lbracket'>[</span><span class='symbol'>:socket</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='symbol'>:host</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_handler'>handler</span><span class='lbracket'>[</span><span class='symbol'>:socket</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='symbol'>:port</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='const'>Socket</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_socket'>socket</span><span class='op'>|</span>
+      <span class='id identifier rubyid_socket'>socket</span><span class='period'>.</span><span class='id identifier rubyid_on_success'>on_success</span> <span class='op'>=</span> <span class='const'>Proc</span><span class='period'>.</span><span class='id identifier rubyid_new'>new</span> <span class='kw'>do</span>
+        <span class='ivar'>@handling_event_count</span> <span class='op'>-=</span> <span class='int'>1</span> <span class='kw'>if</span> <span class='ivar'>@handling_event_count</span>
+      <span class='kw'>end</span>
+      <span class='id identifier rubyid_socket'>socket</span><span class='period'>.</span><span class='id identifier rubyid_on_error'>on_error</span> <span class='op'>=</span> <span class='id identifier rubyid_on_error'>on_error</span>
+      <span class='id identifier rubyid_timeout'>timeout</span> <span class='op'>=</span> <span class='id identifier rubyid_handler'>handler</span><span class='lbracket'>[</span><span class='symbol'>:timeout</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='int'>10</span>
+      <span class='id identifier rubyid_socket'>socket</span><span class='period'>.</span><span class='id identifier rubyid_pending_connect_timeout'>pending_connect_timeout</span> <span class='op'>=</span> <span class='id identifier rubyid_timeout'>timeout</span>
+      <span class='id identifier rubyid_socket'>socket</span><span class='period'>.</span><span class='id identifier rubyid_comm_inactivity_timeout'>comm_inactivity_timeout</span> <span class='op'>=</span> <span class='id identifier rubyid_timeout'>timeout</span>
+      <span class='id identifier rubyid_socket'>socket</span><span class='period'>.</span><span class='id identifier rubyid_send_data'>send_data</span><span class='lparen'>(</span><span class='id identifier rubyid_event_data'>event_data</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_socket'>socket</span><span class='period'>.</span><span class='id identifier rubyid_close_connection_after_writing'>close_connection_after_writing</span>
+    <span class='kw'>end</span>
+  <span class='kw'>rescue</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_error'>error</span>
+    <span class='id identifier rubyid_on_error'>on_error</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='id identifier rubyid_error'>error</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="transport_handler-instance_method">
+  
+    - (<tt>Object</tt>) <strong>transport_handler</strong>(handler, event_data) 
+  
+
+  
+
+  
+</h3><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/server/handle.rb', line 59</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_transport_handler'>transport_handler</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='kw'>unless</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='period'>.</span><span class='id identifier rubyid_empty?'>empty?</span>
+    <span class='id identifier rubyid_pipe'>pipe</span> <span class='op'>=</span> <span class='id identifier rubyid_handler'>handler</span><span class='lbracket'>[</span><span class='symbol'>:pipe</span><span class='rbracket'>]</span>
+    <span class='id identifier rubyid_pipe_options'>pipe_options</span> <span class='op'>=</span> <span class='id identifier rubyid_pipe'>pipe</span><span class='lbracket'>[</span><span class='symbol'>:options</span><span class='rbracket'>]</span> <span class='op'>||</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+    <span class='ivar'>@transport</span><span class='period'>.</span><span class='id identifier rubyid_publish'>publish</span><span class='lparen'>(</span><span class='id identifier rubyid_pipe'>pipe</span><span class='lbracket'>[</span><span class='symbol'>:type</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_to_sym'>to_sym</span><span class='comma'>,</span> <span class='id identifier rubyid_pipe'>pipe</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='comma'>,</span> <span class='id identifier rubyid_pipe_options'>pipe_options</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_info'>info</span><span class='op'>|</span>
+      <span class='kw'>if</span> <span class='id identifier rubyid_info'>info</span><span class='lbracket'>[</span><span class='symbol'>:error</span><span class='rbracket'>]</span>
+        <span class='id identifier rubyid_handler_error'>handler_error</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='id identifier rubyid_info'>info</span><span class='lbracket'>[</span><span class='symbol'>:error</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+      <span class='kw'>end</span>
+    <span class='kw'>end</span>
+  <span class='kw'>end</span>
+  <span class='ivar'>@handling_event_count</span> <span class='op'>-=</span> <span class='int'>1</span> <span class='kw'>if</span> <span class='ivar'>@handling_event_count</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <h3 class="signature " id="udp_handler-instance_method">
+  
+    - (<tt>Object</tt>) <strong>udp_handler</strong>(handler, event_data) 
+  
+
+  
+
+  
+</h3><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sensu/server/handle.rb', line 47</span>
+
+<span class='kw'>def</span> <span class='id identifier rubyid_udp_handler'>udp_handler</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span>
+  <span class='kw'>begin</span>
+    <span class='const'>EM</span><span class='op'>::</span><span class='id identifier rubyid_open_datagram_socket'>open_datagram_socket</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>0.0.0.0</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='int'>0</span><span class='comma'>,</span> <span class='kw'>nil</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_socket'>socket</span><span class='op'>|</span>
+      <span class='id identifier rubyid_socket'>socket</span><span class='period'>.</span><span class='id identifier rubyid_send_datagram'>send_datagram</span><span class='lparen'>(</span><span class='id identifier rubyid_event_data'>event_data</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='comma'>,</span> <span class='id identifier rubyid_handler'>handler</span><span class='lbracket'>[</span><span class='symbol'>:socket</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='symbol'>:host</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id identifier rubyid_handler'>handler</span><span class='lbracket'>[</span><span class='symbol'>:socket</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='symbol'>:port</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+      <span class='id identifier rubyid_socket'>socket</span><span class='period'>.</span><span class='id identifier rubyid_close_connection_after_writing'>close_connection_after_writing</span>
+      <span class='ivar'>@handling_event_count</span> <span class='op'>-=</span> <span class='int'>1</span> <span class='kw'>if</span> <span class='ivar'>@handling_event_count</span>
+    <span class='kw'>end</span>
+  <span class='kw'>rescue</span> <span class='op'>=&gt;</span> <span class='id identifier rubyid_error'>error</span>
+    <span class='id identifier rubyid_handler_error'>handler_error</span><span class='lparen'>(</span><span class='id identifier rubyid_handler'>handler</span><span class='comma'>,</span> <span class='id identifier rubyid_event_data'>event_data</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_call'>call</span><span class='lparen'>(</span><span class='id identifier rubyid_error'>error</span><span class='rparen'>)</span>
+  <span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+
+    <div id="footer">
+  Generated on Tue Feb 10 17:09:28 2015 by
+  <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.8.7.6 (ruby-2.1.2).
+</div>
+
+  </body>
+</html>

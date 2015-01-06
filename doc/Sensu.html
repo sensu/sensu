@@ -1,0 +1,174 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>
+  Module: Sensu
+  
+    &mdash; Documentation by YARD 0.8.7.6
+  
+</title>
+
+  <link rel="stylesheet" href="css/style.css" type="text/css" charset="utf-8" />
+
+  <link rel="stylesheet" href="css/common.css" type="text/css" charset="utf-8" />
+
+<script type="text/javascript" charset="utf-8">
+  hasFrames = window.top.frames.main ? true : false;
+  relpath = '';
+  framesUrl = "frames.html#!Sensu.html";
+</script>
+
+
+  <script type="text/javascript" charset="utf-8" src="js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="js/app.js"></script>
+
+
+  </head>
+  <body>
+    <div id="header">
+      <div id="menu">
+  
+    <a href="_index.html">Index (S)</a> &raquo;
+    
+    
+    <span class="title">Sensu</span>
+  
+
+  <div class="noframes"><span class="title">(</span><a href="." target="_top">no frames</a><span class="title">)</span></div>
+</div>
+
+      <div id="search">
+  
+    <a class="full_list_link" id="class_list_link"
+        href="class_list.html">
+      Class List
+    </a>
+  
+    <a class="full_list_link" id="method_list_link"
+        href="method_list.html">
+      Method List
+    </a>
+  
+    <a class="full_list_link" id="file_list_link"
+        href="file_list.html">
+      File List
+    </a>
+  
+</div>
+      <div class="clear"></div>
+    </div>
+
+    <iframe id="search_frame"></iframe>
+
+    <div id="content"><h1>Module: Sensu
+  
+  
+  
+</h1>
+
+<dl class="box">
+  
+  
+    
+  
+    
+  
+  
+  
+    <dt class="r1 last">Defined in:</dt>
+    <dd class="r1 last">lib/sensu.rb<span class="defines">,<br />
+  lib/sensu/cli.rb,<br /> lib/sensu/redis.rb,<br /> lib/sensu/daemon.rb,<br /> lib/sensu/constants.rb,<br /> lib/sensu/utilities.rb,<br /> lib/sensu/api/process.rb,<br /> lib/sensu/server/handle.rb,<br /> lib/sensu/server/socket.rb,<br /> lib/sensu/client/socket.rb,<br /> lib/sensu/server/filter.rb,<br /> lib/sensu/server/mutate.rb,<br /> lib/sensu/server/process.rb,<br /> lib/sensu/server/sandbox.rb,<br /> lib/sensu/client/process.rb</span>
+</dd>
+  
+</dl>
+<div class="clear"></div>
+
+<h2>Defined Under Namespace</h2>
+<p class="children">
+  
+    
+      <strong class="modules">Modules:</strong> <span class='object_link'><a href="Sensu/API.html" title="Sensu::API (module)">API</a></span>, <span class='object_link'><a href="Sensu/Client.html" title="Sensu::Client (module)">Client</a></span>, <span class='object_link'><a href="Sensu/Daemon.html" title="Sensu::Daemon (module)">Daemon</a></span>, <span class='object_link'><a href="Sensu/Server.html" title="Sensu::Server (module)">Server</a></span>, <span class='object_link'><a href="Sensu/Utilities.html" title="Sensu::Utilities (module)">Utilities</a></span>
+    
+  
+    
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="Sensu/CLI.html" title="Sensu::CLI (class)">CLI</a></span>, <span class='object_link'><a href="Sensu/Redis.html" title="Sensu::Redis (class)">Redis</a></span>
+    
+  
+</p>
+
+  <h2>Constant Summary</h2>
+  
+    <dl class="constants">
+      
+        <dt id="VERSION-constant" class="">VERSION =
+          <div class="docstring">
+  <div class="discussion">
+    
+<p>Sensu release version.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>0.16.0</span><span class='tstring_end'>&quot;</span></span></pre></dd>
+      
+        <dt id="SEVERITIES-constant" class="">SEVERITIES =
+          <div class="docstring">
+  <div class="discussion">
+    
+<p>Sensu check severities.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>ok</span><span class='words_sep'> </span><span class='tstring_content'>warning</span><span class='words_sep'> </span><span class='tstring_content'>critical</span><span class='words_sep'> </span><span class='tstring_content'>unknown</span><span class='words_sep'>]</span></pre></dd>
+      
+        <dt id="STOP_SIGNALS-constant" class="">STOP_SIGNALS =
+          <div class="docstring">
+  <div class="discussion">
+    
+<p>Process signals that trigger a Sensu process stop.</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div>
+        </dt>
+        <dd><pre class="code"><span class='qwords_beg'>%w[</span><span class='tstring_content'>INT</span><span class='words_sep'> </span><span class='tstring_content'>TERM</span><span class='words_sep'>]</span></pre></dd>
+      
+    </dl>
+  
+
+
+
+
+
+
+
+
+
+</div>
+
+    <div id="footer">
+  Generated on Tue Feb 10 17:09:28 2015 by
+  <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.8.7.6 (ruby-2.1.2).
+</div>
+
+  </body>
+</html>
