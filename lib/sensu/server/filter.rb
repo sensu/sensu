@@ -64,9 +64,13 @@ module Sensu
         end
       end
 
+      def handling_disabled?(event)
+        event[:check][:handle] == false
+      end
+
       def handle_action?(handler, event)
         event[:action] != :flapping ||
-          (event[:action] == :flapping && handler[:handle_flapping])
+          (event[:action] == :flapping && !!handler[:handle_flapping])
       end
 
       def handle_severity?(handler, event)
@@ -156,7 +160,9 @@ module Sensu
 
       def filter_event(handler, event, &callback)
         details = {:handler => handler, :event => event}
-        if !handle_action?(handler, event)
+        if handling_disabled?(event)
+          @logger.info("event handling disabled for event", details)
+        elsif !handle_action?(handler, event)
           @logger.info("handler does not handle action", details)
         elsif !handle_severity?(handler, event)
           @logger.info("handler does not handle event severity", details)
@@ -168,6 +174,7 @@ module Sensu
               callback.call(event)
             else
               @logger.info("event was filtered", details)
+              @event_processing_count -= 1 if @event_processing_count
             end
           end
         end

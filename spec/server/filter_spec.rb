@@ -9,6 +9,7 @@ describe "Sensu::Server::Filter" do
     @server = Sensu::Server::Process.new(options)
     settings = Sensu::Settings.get(options)
     @filters = settings[:filters]
+    @handler = {}
     @event = event_template
   end
 
@@ -71,24 +72,21 @@ describe "Sensu::Server::Filter" do
   end
 
   it "can determine if a handler is subdued" do
-    handler = {}
-    expect(@server.handler_subdued?(handler, @event)).to be(false)
+    expect(@server.handler_subdued?(@handler, @event)).to be(false)
     @event[:check] = {
       :subdue => {
         :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
         :end => (Time.now + 3600).strftime("%l:00 %p").strip
       }
     }
-    expect(@server.handler_subdued?(handler, @event)).to be(true)
+    expect(@server.handler_subdued?(@handler, @event)).to be(true)
     @event[:check][:subdue][:at] = "publisher"
-    expect(@server.handler_subdued?(handler, @event)).to be(false)
-    handler = {
-      :subdue => {
-        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-        :end => (Time.now + 3600).strftime("%l:00 %p").strip
-      }
+    expect(@server.handler_subdued?(@handler, @event)).to be(false)
+    @handler[:subdue] = {
+      :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+      :end => (Time.now + 3600).strftime("%l:00 %p").strip
     }
-    expect(@server.handler_subdued?(handler, @event)).to be(true)
+    expect(@server.handler_subdued?(@handler, @event)).to be(true)
   end
 
   it "can determine if a check request is subdued" do
@@ -103,6 +101,19 @@ describe "Sensu::Server::Filter" do
     expect(@server.check_request_subdued?(check)).to be(true)
   end
 
+  it "can determine if handling is disabled for an event" do
+    expect(@server.handling_disabled?(@event)).to be(false)
+    @event[:check][:handle] = false
+    expect(@server.handling_disabled?(@event)).to be(true)
+  end
+
+  it "can determine if a handler handles an action" do
+    expect(@server.handle_action?(@handler, @event)).to be(true)
+    @event[:action] = :flapping
+    expect(@server.handle_action?(@handler, @event)).to be(false)
+    @handler[:handle_flapping] = true
+    expect(@server.handle_action?(@handler, @event)).to be(true)
+  end
 
   it "can determine if a handler handles a severity" do
     handler = {
@@ -179,6 +190,11 @@ describe "Sensu::Server::Filter" do
       end
       handler.delete(:handle_flapping)
       @event[:action] = :create
+      @event[:check][:handle] = false
+      @server.filter_event(handler, @event) do
+        raise "not filtered"
+      end
+      @event[:check].delete(:handle)
       handler[:severities] = ["critical"]
       @server.filter_event(handler, @event) do
         raise "not filtered"
