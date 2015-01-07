@@ -67,7 +67,7 @@ module Helpers
 
   def api_test(&callback)
     async_wrapper do
-      Sensu::API.test(options)
+      Sensu::API::Process.test(options)
       timer(0.5) do
         callback.call
       end

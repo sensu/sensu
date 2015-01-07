@@ -1,9 +1,9 @@
-require File.dirname(__FILE__) + '/helpers.rb'
+require File.join(File.dirname(__FILE__), "..", "helpers.rb")
 
-require 'sensu/api'
+require 'sensu/api/process'
 require 'sensu/server/process'
 
-describe 'Sensu::API' do
+describe 'Sensu::API::Process' do
   include Helpers
 
   before do
