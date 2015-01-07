@@ -1,6 +1,6 @@
 module Sensu
   module Server
-    class SocketHandler < EM::Connection
+    class Socket < EM::Connection
       attr_accessor :on_success, :on_error
 
       def connection_completed

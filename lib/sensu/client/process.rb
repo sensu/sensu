@@ -1,5 +1,5 @@
 require "sensu/daemon"
-require "sensu/socket"
+require "sensu/client/socket"
 
 module Sensu
   module Client

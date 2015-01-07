@@ -28,7 +28,7 @@ module Sensu
       def tcp_handler(handler, event_data)
         on_error = handler_error(handler, event_data)
         begin
-          EM::connect(handler[:socket][:host], handler[:socket][:port], SocketHandler) do |socket|
+          EM::connect(handler[:socket][:host], handler[:socket][:port], Socket) do |socket|
             socket.on_success = Proc.new do
               @handling_event_count -= 1 if @handling_event_count
             end
