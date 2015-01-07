@@ -1,14 +1,14 @@
-require 'sensu/daemon'
+require "sensu/daemon"
 
-gem 'sinatra', '1.3.5'
-gem 'async_sinatra', '1.0.0'
+gem "sinatra", "1.3.5"
+gem "async_sinatra", "1.0.0"
 
 unless RUBY_PLATFORM =~ /java/
-  gem 'thin', '1.5.0'
-  require 'thin'
+  gem "thin", "1.5.0"
+  require "thin"
 end
 
-require 'sinatra/async'
+require "sinatra/async"
 
 module Sensu
   module API
@@ -44,10 +44,10 @@ module Sensu
           set :checks, @settings[:checks]
           set :all_checks, @settings.checks
           set :cors, @settings[:cors] || {
-            'Origin' => '*',
-            'Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
-            'Credentials' => 'true',
-            'Headers' => 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+            "Origin" => "*",
+            "Methods" => "GET, POST, PUT, DELETE, OPTIONS",
+            "Credentials" => "true",
+            "Headers" => "Origin, X-Requested-With, Content-Type, Accept, Authorization"
           }
           on_reactor_run
           self
@@ -55,7 +55,7 @@ module Sensu
 
         def start_server
           Thin::Logging.silent = true
-          bind = @settings[:api][:bind] || '0.0.0.0'
+          bind = @settings[:api][:bind] || "0.0.0.0"
           @thin = Thin::Server.new(bind, @settings[:api][:port], self)
           @thin.start
         end
@@ -76,7 +76,7 @@ module Sensu
         end
 
         def stop
-          @logger.warn('stopping')
+          @logger.warn("stopping")
           stop_server do
             @redis.close
             @transport.close
@@ -96,29 +96,29 @@ module Sensu
       end
 
       not_found do
-        ''
+        ""
       end
 
       error do
-        ''
+        ""
       end
 
       helpers do
         def request_log_line
-          settings.logger.info([env['REQUEST_METHOD'], env['REQUEST_PATH']].join(' '), {
-            :remote_address => env['REMOTE_ADDR'],
-            :user_agent => env['HTTP_USER_AGENT'],
-            :request_method => env['REQUEST_METHOD'],
-            :request_uri => env['REQUEST_URI'],
-            :request_body => env['rack.input'].read
+          settings.logger.info([env["REQUEST_METHOD"], env["REQUEST_PATH"]].join(" "), {
+            :remote_address => env["REMOTE_ADDR"],
+            :user_agent => env["HTTP_USER_AGENT"],
+            :request_method => env["REQUEST_METHOD"],
+            :request_uri => env["REQUEST_URI"],
+            :request_body => env["rack.input"].read
           })
-          env['rack.input'].rewind
+          env["rack.input"].rewind
         end
 
         def protected!
           if settings.api[:user] && settings.api[:password]
             return if !(settings.api[:user] && settings.api[:password]) || authorized?
-            headers['WWW-Authenticate'] = 'Basic realm="Restricted Area"'
+            headers["WWW-Authenticate"] = 'Basic realm="Restricted Area"'
             unauthorized!
           end
         end
@@ -136,7 +136,7 @@ module Sensu
         end
 
         def unauthorized!
-          throw(:halt, [401, ''])
+          throw(:halt, [401, ""])
         end
 
         def not_found!
@@ -163,12 +163,12 @@ module Sensu
 
         def no_content!
           status 204
-          body ''
+          body ""
         end
 
         def read_data(rules={}, &block)
           begin
-            data = MultiJson.load(env['rack.input'].read)
+            data = MultiJson.load(env["rack.input"].read)
             valid = rules.all? do |key, rule|
               data[key].is_a?(rule[:type]) || (rule[:nil_ok] && data[key].nil?)
             end
@@ -190,7 +190,7 @@ module Sensu
           limit = integer_parameter(params[:limit])
           offset = integer_parameter(params[:offset]) || 0
           unless limit.nil?
-            headers['X-Pagination'] = MultiJson.dump(
+            headers["X-Pagination"] = MultiJson.dump(
               :limit => limit,
               :offset => offset,
               :total => items.size
@@ -215,9 +215,9 @@ module Sensu
             :connected => settings.transport.connected?
           }
           if settings.transport.connected?
-            settings.transport.stats('keepalives') do |stats|
+            settings.transport.stats("keepalives") do |stats|
               info[:keepalives] = stats
-              settings.transport.stats('results') do |stats|
+              settings.transport.stats("results") do |stats|
                 info[:results] = stats
                 block.call(info)
               end
@@ -230,7 +230,7 @@ module Sensu
         def resolve_event(event_json)
           event = MultiJson.load(event_json)
           check = event[:check].merge(
-            :output => 'Resolving on request of the API',
+            :output => "Resolving on request of the API",
             :status => 0,
             :issued => Time.now.to_i,
             :executed => Time.now.to_i,
@@ -241,12 +241,10 @@ module Sensu
             :client => event[:client][:name],
             :check => check
           }
-          settings.logger.info('publishing check result', {
-            :payload => payload
-          })
-          settings.transport.publish(:direct, 'results', MultiJson.dump(payload)) do |info|
+          settings.logger.info("publishing check result", :payload => payload)
+          settings.transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
             if info[:error]
-              settings.logger.error('failed to publish check result', {
+              settings.logger.error("failed to publish check result", {
                 :payload => payload,
                 :error => info[:error].to_s
               })
@@ -257,18 +255,18 @@ module Sensu
 
       before do
         request_log_line
-        content_type 'application/json'
+        content_type "application/json"
         settings.cors.each do |header, value|
-          headers['Access-Control-Allow-' + header] = value
+          headers["Access-Control-Allow-#{header}"] = value
         end
-        protected! unless env['REQUEST_METHOD'] == 'OPTIONS'
+        protected! unless env["REQUEST_METHOD"] == "OPTIONS"
       end
 
-      aoptions '/*' do
-        body ''
+      aoptions "/*" do
+        body ""
       end
 
-      aget '/info/?' do
+      aget "/info/?" do
         transport_info do |info|
           response = {
             :sensu => {
@@ -283,7 +281,7 @@ module Sensu
         end
       end
 
-      aget '/health/?' do
+      aget "/health/?" do
         if settings.redis.connected? && settings.transport.connected?
           healthy = Array.new
           min_consumers = integer_parameter(params[:consumers])
@@ -304,13 +302,13 @@ module Sensu
         end
       end
 
-      aget '/clients/?' do
+      aget "/clients/?" do
         response = Array.new
-        settings.redis.smembers('clients') do |clients|
+        settings.redis.smembers("clients") do |clients|
           clients = pagination(clients)
           unless clients.empty?
             clients.each_with_index do |client_name, index|
-              settings.redis.get('client:' + client_name) do |client_json|
+              settings.redis.get("client:#{client_name}") do |client_json|
                 response << MultiJson.load(client_json)
                 if index == clients.size - 1
                   body MultiJson.dump(response)
@@ -324,7 +322,7 @@ module Sensu
       end
 
       aget %r{/clients?/([\w\.-]+)/?$} do |client_name|
-        settings.redis.get('client:' + client_name) do |client_json|
+        settings.redis.get("client:#{client_name}") do |client_json|
           unless client_json.nil?
             body client_json
           else
@@ -335,15 +333,15 @@ module Sensu
 
       aget %r{/clients/([\w\.-]+)/history/?$} do |client_name|
         response = Array.new
-        settings.redis.smembers('history:' + client_name) do |checks|
+        settings.redis.smembers("history:#{client_name}") do |checks|
           unless checks.empty?
             checks.each_with_index do |check_name, index|
-              history_key = 'history:' + client_name + ':' + check_name
+              history_key = "history:#{client_name}:#{check_name}"
               settings.redis.lrange(history_key, -21, -1) do |history|
                 history.map! do |status|
                   status.to_i
                 end
-                execution_key = 'execution:' + client_name + ':' + check_name
+                execution_key = "execution:#{client_name}:#{check_name}"
                 settings.redis.get(execution_key) do |last_execution|
                   unless history.empty? || last_execution.nil?
                     item = {
@@ -367,26 +365,26 @@ module Sensu
       end
 
       adelete %r{/clients?/([\w\.-]+)/?$} do |client_name|
-        settings.redis.get('client:' + client_name) do |client_json|
+        settings.redis.get("client:#{client_name}") do |client_json|
           unless client_json.nil?
-            settings.redis.hgetall('events:' + client_name) do |events|
+            settings.redis.hgetall("events:#{client_name}") do |events|
               events.each do |check_name, event_json|
                 resolve_event(event_json)
               end
               EM::Timer.new(5) do
                 client = MultiJson.load(client_json)
-                settings.logger.info('deleting client', {
+                settings.logger.info("deleting client", {
                   :client => client
                 })
-                settings.redis.srem('clients', client_name) do
-                  settings.redis.del('client:' + client_name)
-                  settings.redis.del('events:' + client_name)
-                  settings.redis.smembers('history:' + client_name) do |checks|
+                settings.redis.srem("clients", client_name) do
+                  settings.redis.del("client:#{client_name}")
+                  settings.redis.del("events:#{client_name}")
+                  settings.redis.smembers("history:#{client_name}") do |checks|
                     checks.each do |check_name|
-                      settings.redis.del('history:' + client_name + ':' + check_name)
-                      settings.redis.del('execution:' + client_name + ':' + check_name)
+                      settings.redis.del("history:#{client_name}:#{check_name}")
+                      settings.redis.del("execution:#{client_name}:#{check_name}")
                     end
-                    settings.redis.del('history:' + client_name)
+                    settings.redis.del("history:#{client_name}")
                   end
                 end
               end
@@ -398,7 +396,7 @@ module Sensu
         end
       end
 
-      aget '/checks/?' do
+      aget "/checks/?" do
         body MultiJson.dump(settings.all_checks)
       end
 
@@ -411,7 +409,7 @@ module Sensu
         end
       end
 
-      apost '/request/?' do
+      apost "/request/?" do
         rules = {
           :check => {:type => String, :nil_ok => false},
           :subscribers => {:type => Array, :nil_ok => true}
@@ -425,14 +423,14 @@ module Sensu
               :command => check[:command],
               :issued => Time.now.to_i
             }
-            settings.logger.info('publishing check request', {
+            settings.logger.info("publishing check request", {
               :payload => payload,
               :subscribers => subscribers
             })
             subscribers.uniq.each do |exchange_name|
               settings.transport.publish(:fanout, exchange_name, MultiJson.dump(payload)) do |info|
                 if info[:error]
-                  settings.logger.error('failed to publish check request', {
+                  settings.logger.error("failed to publish check request", {
                     :exchange_name => exchange_name,
                     :payload => payload,
                     :error => info[:error].to_s
@@ -447,12 +445,12 @@ module Sensu
         end
       end
 
-      aget '/events/?' do
+      aget "/events/?" do
         response = Array.new
-        settings.redis.smembers('clients') do |clients|
+        settings.redis.smembers("clients") do |clients|
           unless clients.empty?
             clients.each_with_index do |client_name, index|
-              settings.redis.hgetall('events:' + client_name) do |events|
+              settings.redis.hgetall("events:#{client_name}") do |events|
                 events.each do |check_name, event_json|
                   response << MultiJson.load(event_json)
                 end
@@ -469,7 +467,7 @@ module Sensu
 
       aget %r{/events/([\w\.-]+)/?$} do |client_name|
         response = Array.new
-        settings.redis.hgetall('events:' + client_name) do |events|
+        settings.redis.hgetall("events:#{client_name}") do |events|
           events.each do |check_name, event_json|
             response << MultiJson.load(event_json)
           end
@@ -478,7 +476,7 @@ module Sensu
       end
 
       aget %r{/events?/([\w\.-]+)/([\w\.-]+)/?$} do |client_name, check_name|
-        settings.redis.hgetall('events:' + client_name) do |events|
+        settings.redis.hgetall("events:#{client_name}") do |events|
           event_json = events[check_name]
           unless event_json.nil?
             body event_json
@@ -489,7 +487,7 @@ module Sensu
       end
 
       adelete %r{/events?/([\w\.-]+)/([\w\.-]+)/?$} do |client_name, check_name|
-        settings.redis.hgetall('events:' + client_name) do |events|
+        settings.redis.hgetall("events:#{client_name}") do |events|
           if events.include?(check_name)
             resolve_event(events[check_name])
             issued!
@@ -499,13 +497,13 @@ module Sensu
         end
       end
 
-      apost '/resolve/?' do
+      apost "/resolve/?" do
         rules = {
           :client => {:type => String, :nil_ok => false},
           :check => {:type => String, :nil_ok => false}
         }
         read_data(rules) do |data|
-          settings.redis.hgetall('events:' + data[:client]) do |events|
+          settings.redis.hgetall("events:#{data[:client]}") do |events|
             if events.include?(data[:check])
               resolve_event(events[data[:check]])
               issued!
@@ -516,12 +514,12 @@ module Sensu
         end
       end
 
-      aget '/aggregates/?' do
+      aget "/aggregates/?" do
         response = Array.new
-        settings.redis.smembers('aggregates') do |checks|
+        settings.redis.smembers("aggregates") do |checks|
           unless checks.empty?
             checks.each_with_index do |check_name, index|
-              settings.redis.smembers('aggregates:' + check_name) do |aggregates|
+              settings.redis.smembers("aggregates:#{check_name}") do |aggregates|
                 aggregates.reverse!
                 aggregates.map! do |issued|
                   issued.to_i
@@ -543,7 +541,7 @@ module Sensu
       end
 
       aget %r{/aggregates/([\w\.-]+)/?$} do |check_name|
-        settings.redis.smembers('aggregates:' + check_name) do |aggregates|
+        settings.redis.smembers("aggregates:#{check_name}") do |aggregates|
           unless aggregates.empty?
             aggregates.reverse!
             aggregates.map! do |issued|
@@ -564,15 +562,15 @@ module Sensu
       end
 
       adelete %r{/aggregates/([\w\.-]+)/?$} do |check_name|
-        settings.redis.smembers('aggregates:' + check_name) do |aggregates|
+        settings.redis.smembers("aggregates:#{check_name}") do |aggregates|
           unless aggregates.empty?
             aggregates.each do |check_issued|
-              result_set = check_name + ':' + check_issued
-              settings.redis.del('aggregation:' + result_set)
-              settings.redis.del('aggregate:' + result_set)
+              result_set = "#{check_name}:#{check_issued}"
+              settings.redis.del("aggregation:#{result_set}")
+              settings.redis.del("aggregate:#{result_set}")
             end
-            settings.redis.del('aggregates:' + check_name) do
-              settings.redis.srem('aggregates', check_name) do
+            settings.redis.del("aggregates:#{check_name}") do
+              settings.redis.srem("aggregates", check_name) do
                 no_content!
               end
             end
@@ -583,21 +581,21 @@ module Sensu
       end
 
       aget %r{/aggregates?/([\w\.-]+)/([\w\.-]+)/?$} do |check_name, check_issued|
-        result_set = check_name + ':' + check_issued
-        settings.redis.hgetall('aggregate:' + result_set) do |aggregate|
+        result_set = "#{check_name}:#{check_issued}"
+        settings.redis.hgetall("aggregate:#{result_set}") do |aggregate|
           unless aggregate.empty?
             response = aggregate.inject(Hash.new) do |totals, (status, count)|
               totals[status] = Integer(count)
               totals
             end
-            settings.redis.hgetall('aggregation:' + result_set) do |results|
+            settings.redis.hgetall("aggregation:#{result_set}") do |results|
               parsed_results = results.inject(Array.new) do |parsed, (client_name, check_json)|
                 check = MultiJson.load(check_json)
                 parsed << check.merge(:client => client_name)
               end
               if params[:summarize]
-                options = params[:summarize].split(',')
-                if options.include?('output')
+                options = params[:summarize].split(",")
+                if options.include?("output")
                   outputs = Hash.new(0)
                   parsed_results.each do |result|
                     outputs[result[:output]] += 1
@@ -618,8 +616,8 @@ module Sensu
 
       apost %r{/stash(?:es)?/(.*)/?} do |path|
         read_data do |data|
-          settings.redis.set('stash:' + path, MultiJson.dump(data)) do
-            settings.redis.sadd('stashes', path) do
+          settings.redis.set("stash:#{path}", MultiJson.dump(data)) do
+            settings.redis.sadd("stashes", path) do
               created!(MultiJson.dump(:path => path))
             end
           end
@@ -627,7 +625,7 @@ module Sensu
       end
 
       aget %r{/stash(?:es)?/(.*)/?} do |path|
-        settings.redis.get('stash:' + path) do |stash_json|
+        settings.redis.get("stash:#{path}") do |stash_json|
           unless stash_json.nil?
             body stash_json
           else
@@ -637,10 +635,10 @@ module Sensu
       end
 
       adelete %r{/stash(?:es)?/(.*)/?} do |path|
-        settings.redis.exists('stash:' + path) do |stash_exists|
+        settings.redis.exists("stash:#{path}") do |stash_exists|
           if stash_exists
-            settings.redis.srem('stashes', path) do
-              settings.redis.del('stash:' + path) do
+            settings.redis.srem("stashes", path) do
+              settings.redis.del("stash:#{path}") do
                 no_content!
               end
             end
@@ -650,13 +648,13 @@ module Sensu
         end
       end
 
-      aget '/stashes/?' do
+      aget "/stashes/?" do
         response = Array.new
-        settings.redis.smembers('stashes') do |stashes|
+        settings.redis.smembers("stashes") do |stashes|
           unless stashes.empty?
             stashes.each_with_index do |path, index|
-              settings.redis.get('stash:' + path) do |stash_json|
-                settings.redis.ttl('stash:' + path) do |ttl|
+              settings.redis.get("stash:#{path}") do |stash_json|
+                settings.redis.ttl("stash:#{path}") do |ttl|
                   unless stash_json.nil?
                     item = {
                       :path => path,
@@ -665,7 +663,7 @@ module Sensu
                     }
                     response << item
                   else
-                    settings.redis.srem('stashes', path)
+                    settings.redis.srem("stashes", path)
                   end
                   if index == stashes.size - 1
                     body MultiJson.dump(pagination(response))
@@ -679,16 +677,16 @@ module Sensu
         end
       end
 
-      apost '/stashes/?' do
+      apost "/stashes/?" do
         rules = {
           :path => {:type => String, :nil_ok => false},
           :content => {:type => Hash, :nil_ok => false},
           :expire => {:type => Integer, :nil_ok => true}
         }
         read_data(rules) do |data|
-          stash_key = 'stash:' + data[:path]
+          stash_key = "stash:#{data[:path]}"
           settings.redis.set(stash_key, MultiJson.dump(data[:content])) do
-            settings.redis.sadd('stashes', data[:path]) do
+            settings.redis.sadd("stashes", data[:path]) do
               response = MultiJson.dump(:path => data[:path])
               if data[:expire]
                 settings.redis.expire(stash_key, data[:expire]) do
