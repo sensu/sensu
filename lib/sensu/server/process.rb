@@ -136,10 +136,9 @@ module Sensu
           result_key = "#{client[:name]}:#{check[:name]}"
           history_key = "history:#{result_key}"
           @redis.rpush(history_key, check[:status]) do
+            @redis.set("execution:#{result_key}", check[:executed])
             @redis.ltrim(history_key, -21, -1)
-            @redis.set("execution:#{result_key}", check[:executed]) do
-              callback.call
-            end
+            callback.call
           end
         end
       end
