@@ -1,11 +1,11 @@
-gem 'uuidtools', '2.1.4'
+gem "uuidtools", "2.1.4"
 
-require 'uuidtools'
+require "uuidtools"
 
 module Sensu
   module Utilities
     def testing?
-      File.basename($0) == 'rspec'
+      File.basename($0) == "rspec"
     end
 
     def retry_until_true(wait=0.5, &block)
