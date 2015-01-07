@@ -1,4 +1,4 @@
-require "sensu/socket"
+require "sensu/server/socket"
 
 module Sensu
   module Server
