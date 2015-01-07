@@ -37,7 +37,7 @@ describe "Sensu::Server::Process" do
       keepalive[:timestamp] = epoch
       redis.flushdb do
         timer(1) do
-          amq.direct("keepalives").publish(MultiJson.dump(keepalive))
+          transport.publish(:direct, "keepalives", MultiJson.dump(keepalive))
           timer(1) do
             redis.sismember("clients", "i-424242") do |exists|
               expect(exists).to be(true)
@@ -143,15 +143,15 @@ describe "Sensu::Server::Process" do
           client = client_template
           redis.set("client:i-424242", MultiJson.dump(client)) do
             result = result_template
-            amq.direct("results").publish(MultiJson.dump(result))
-            amq.direct("results").publish(MultiJson.dump(result))
+            transport.publish(:direct, "results", MultiJson.dump(result))
+            transport.publish(:direct, "results", MultiJson.dump(result))
             timer(3) do
               redis.hget("events:i-424242", "test") do |event_json|
                 event = MultiJson.load(event_json)
                 expect(event[:id]).to be_kind_of(String)
                 expect(event[:check][:status]).to eq(1)
                 expect(event[:occurrences]).to eq(2)
-                timer(1) do
+                timer(2) do
                   latest_event_file = IO.read("/tmp/sensu-event.json")
                   expect(MultiJson.load(latest_event_file)).to eq(event)
                   async_done
@@ -166,20 +166,18 @@ describe "Sensu::Server::Process" do
 
   it "can publish check requests" do
     async_wrapper do
-      @server.setup_transport
-      amq.fanout("test") do
+      transport.subscribe(:fanout, "test") do |_, payload|
+        check_request = MultiJson.load(payload)
+        expect(check_request[:name]).to eq("test")
+        expect(check_request[:command]).to eq("echo WARNING && exit 1")
+        expect(check_request[:issued]).to be_within(10).of(epoch)
+        async_done
+      end
+      timer(0.5) do
+        @server.setup_transport
         check = check_template
         check[:subscribers] = ["test"]
-        queue = amq.queue("", :auto_delete => true).bind("test") do
-          @server.publish_check_request(check)
-        end
-        queue.subscribe do |payload|
-          check_request = MultiJson.load(payload)
-          expect(check_request[:name]).to eq("test")
-          expect(check_request[:command]).to eq("echo WARNING && exit 1")
-          expect(check_request[:issued]).to be_within(10).of(epoch)
-          async_done
-        end
+        @server.publish_check_request(check)
       end
     end
   end
@@ -195,35 +193,33 @@ describe "Sensu::Server::Process" do
 
   it "can schedule check request publishing" do
     async_wrapper do
-      @server.setup_transport
-      @server.setup_check_request_publisher
-      amq.fanout("test") do
-        expected = ["tokens", "merger", "sensu_cpu_time"]
-        amq.queue("", :auto_delete => true).bind("test").subscribe do |payload|
-          check_request = MultiJson.load(payload)
-          expect(check_request[:issued]).to be_within(10).of(epoch)
-          expect(expected.delete(check_request[:name])).not_to be_nil
-          if expected.empty?
-            async_done
-          end
-        end
+      expected = ["tokens", "merger", "sensu_cpu_time"]
+      transport.subscribe(:fanout, "test") do |_, payload|
+        check_request = MultiJson.load(payload)
+        expect(check_request[:issued]).to be_within(10).of(epoch)
+        expect(expected.delete(check_request[:name])).not_to be_nil
+        async_done if expected.empty?
+      end
+      timer(0.5) do
+        @server.setup_transport
+        @server.setup_check_request_publisher
       end
     end
   end
 
   it "can send a check result" do
     async_wrapper do
-      result_queue do |queue|
+      result_queue do |payload|
+        result = MultiJson.load(payload)
+        expect(result[:client]).to eq("i-424242")
+        expect(result[:check][:name]).to eq("test")
+        async_done
+      end
+      timer(0.5) do
         @server.setup_transport
         client = client_template
         check = result_template[:check]
         @server.publish_check_result(client, check)
-        queue.subscribe do |payload|
-          result = MultiJson.load(payload)
-          expect(result[:client]).to eq("i-424242")
-          expect(result[:check][:name]).to eq("test")
-          async_done
-        end
       end
     end
   end

@@ -49,15 +49,13 @@ describe "Sensu::Server::Handle" do
 
   it "can handle an event with a transport handler" do
     async_wrapper do
-      @server.setup_transport
-      amq.direct("events") do
-        queue = amq.queue("", :auto_delete => true).bind("events") do
-          @server.handle_event(@handlers[:transport], @event_data)
-        end
-        queue.subscribe do |payload|
-          expect(MultiJson.load(payload)).to eq(MultiJson.load(@event_data))
-          async_done
-        end
+      transport.subscribe(:direct, "events") do |_, payload|
+        expect(MultiJson.load(payload)).to eq(MultiJson.load(@event_data))
+        async_done
+      end
+      timer(0.5) do
+        @server.setup_transport
+        @server.handle_event(@handlers[:transport], @event_data)
       end
     end
   end

@@ -160,17 +160,19 @@ describe 'Sensu::API' do
 
   it 'can delete an event' do
     api_test do
-      result_queue do |queue|
+      result_queue do |payload|
+        result = MultiJson.load(payload)
+        expect(result[:client]).to eq('i-424242')
+        expect(result[:check][:name]).to eq('test')
+        expect(result[:check][:status]).to eq(0)
+        timer(0.5) do
+          async_done
+        end
+      end
+      timer(0.5) do
         api_request('/event/i-424242/test', :delete) do |http, body|
           expect(http.response_header.status).to eq(202)
           expect(body).to include(:issued)
-          queue.subscribe do |payload|
-            result = MultiJson.load(payload)
-            expect(result[:client]).to eq('i-424242')
-            expect(result[:check][:name]).to eq('test')
-            expect(result[:check][:status]).to eq(0)
-            async_done
-          end
         end
       end
     end
@@ -188,7 +190,16 @@ describe 'Sensu::API' do
 
   it 'can resolve an event' do
     api_test do
-      result_queue do |queue|
+      result_queue do |payload|
+        result = MultiJson.load(payload)
+        expect(result[:client]).to eq('i-424242')
+        expect(result[:check][:name]).to eq('test')
+        expect(result[:check][:status]).to eq(0)
+        timer(0.5) do
+          async_done
+        end
+      end
+      timer(0.5) do
         options = {
           :body => {
             :client => 'i-424242',
@@ -198,13 +209,6 @@ describe 'Sensu::API' do
         api_request('/resolve', :post, options) do |http, body|
           expect(http.response_header.status).to eq(202)
           expect(body).to include(:issued)
-          queue.subscribe do |payload|
-            result = MultiJson.load(payload)
-            expect(result[:client]).to eq('i-424242')
-            expect(result[:check][:name]).to eq('test')
-            expect(result[:check][:status]).to eq(0)
-            async_done
-          end
         end
       end
     end
