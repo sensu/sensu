@@ -132,14 +132,13 @@ module Sensu
       end
 
       def store_check_result(client, check, &callback)
-        @redis.sadd("history:#{client[:name]}", check[:name]) do
-          result_key = "#{client[:name]}:#{check[:name]}"
-          history_key = "history:#{result_key}"
-          @redis.rpush(history_key, check[:status]) do
-            @redis.set("execution:#{result_key}", check[:executed])
-            @redis.ltrim(history_key, -21, -1)
-            callback.call
-          end
+        @redis.sadd("history:#{client[:name]}", check[:name])
+        result_key = "#{client[:name]}:#{check[:name]}"
+        history_key = "history:#{result_key}"
+        @redis.rpush(history_key, check[:status]) do
+          @redis.set("execution:#{result_key}", check[:executed])
+          @redis.ltrim(history_key, -21, -1)
+          callback.call
         end
       end
 
