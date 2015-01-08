@@ -8,7 +8,7 @@ module Sensu
     # provide users with information, such as the Sensu version.
     #
     # @param arguments [Array] to parse.
-    # @return options [Hash]
+    # @return [Hash] options
     def self.read(arguments=ARGV)
       options = {}
       optparse = OptionParser.new do |opts|
