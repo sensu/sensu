@@ -3,8 +3,14 @@ require "sensu/logger/constants"
 
 module Sensu
   class CLI
+    # Parse CLI arguments using Ruby stdlib `optparse`. This method
+    # provides Sensu with process options (eg. log file), and can
+    # provide users with information, such as the Sensu version.
+    #
+    # @param arguments [Array] to parse.
+    # @return options [Hash]
     def self.read(arguments=ARGV)
-      options = Hash.new
+      options = {}
       optparse = OptionParser.new do |opts|
         opts.on("-h", "--help", "Display this message") do
           puts opts
