@@ -8,6 +8,11 @@ module Sensu
 
       attr_accessor :safe_mode
 
+      # Create an instance of the Sensu client process, start the
+      # client within the EventMachine event loop, and set up client
+      # process signal traps (for stopping).
+      #
+      # @param options [Hash]
       def self.run(options={})
         client = self.new(options)
         EM::run do
@@ -16,12 +21,22 @@ module Sensu
         end
       end
 
+      # Override Daemon initialize() to support Sensu client check
+      # execution safe mode and checks in progress.
+      #
+      # @param options [Hash]
       def initialize(options={})
         super
         @safe_mode = @settings[:client][:safe_mode] || false
-        @checks_in_progress = Array.new
+        @checks_in_progress = []
       end
 
+      # Create a Sensu client keepalive payload, to be sent over the
+      # transport for processing. A client keepalive is composed of
+      # its settings definition, the Sensu version, and a timestamp.
+      # Sensitive information is redacted from the keepalive payload.
+      #
+      # @return [Hash] keepalive payload
       def keepalive_payload
         payload = @settings[:client].merge({
           :version => VERSION,
@@ -30,6 +45,8 @@ module Sensu
         redact_sensitive(payload, @settings[:client][:redact])
       end
 
+      # Publish a Sensu client keepalive to the transport for
+      # processing. JSON serialization is used for transport messages.
       def publish_keepalive
         payload = keepalive_payload
         @logger.debug("publishing keepalive", :payload => payload)
@@ -43,6 +60,10 @@ module Sensu
         end
       end
 
+      # Schedule Sensu client keepalives. Immediately publish a
+      # keepalive to register the client, then publish a keepalive
+      # every 20 seconds. Sensu client keepalives are used to
+      # determine client (& machine) health.
       def setup_keepalives
         @logger.debug("scheduling keepalives")
         publish_keepalive
@@ -51,6 +72,12 @@ module Sensu
         end
       end
 
+      # Publish a check result to the transport for processing. A
+      # check result is composed of a client (name) and a check
+      # definition, containing check output and status. JSON
+      # serialization is used for transport messages.
+      #
+      # @param check [Hash]
       def publish_check_result(check)
         payload = {
           :client => @settings[:client][:name],
@@ -67,6 +94,13 @@ module Sensu
         end
       end
 
+      # Traverse the Sensu client definition (hash) for an attribute
+      # value, with a fallback default value if nil.
+      #
+      # @param tree [Hash] to traverse.
+      # @param path [Array] of attribute keys.
+      # @param default [Object] value if attribute value is nil.
+      # @return [Object] attribute or fallback default value.
       def find_client_attribute(tree, path, default)
         attribute = tree[path.shift]
         if attribute.is_a?(Hash)
@@ -76,8 +110,15 @@ module Sensu
         end
       end
 
-      def substitute_command_tokens(check)
-        unmatched_tokens = Array.new
+      # Substitue check command tokens (eg. :::db.name|production:::)
+      # with the associated client definition attribute value. Command
+      # tokens can provide a fallback default value, following a pipe.
+      #
+      # @param check [Hash]
+      # @return [Array] containing the check command string with
+      #   tokens substituted and an array of unmatched command tokens.
+      def substitute_check_command_tokens(check)
+        unmatched_tokens = []
         substituted = check[:command].gsub(/:::([^:].*?):::/) do
           token, default = $1.to_s.split("|", -1)
           matched = find_client_attribute(@settings[:client], token.split("."), default)
@@ -89,11 +130,21 @@ module Sensu
         [substituted, unmatched_tokens]
       end
 
+      # Execute a check command, capturing its output (STDOUT/ERR),
+      # exit status code, execution duration, timestamp, and publish
+      # the result. This method guards against multiple executions for
+      # the same check. Check command tokens are substituted with the
+      # associated client attribute values. If there are unmatched
+      # check command tokens, the check command will not be executed,
+      # instead a check result will be published reporting the
+      # unmatched tokens.
+      #
+      # @param check [Hash]
       def execute_check_command(check)
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          command, unmatched_tokens = substitute_command_tokens(check)
+          command, unmatched_tokens = substitute_check_command_tokens(check)
           if unmatched_tokens.empty?
             check[:executed] = Time.now.to_i
             started = Time.now.to_f
@@ -116,6 +167,14 @@ module Sensu
         end
       end
 
+      # Run a check extension and publish the result. The Sensu client
+      # loads check extensions, checks that run within the Sensu Ruby
+      # VM and the EventMachine event loop, using the Sensu Extension
+      # API.
+      #
+      # https://github.com/sensu/sensu-extension
+      #
+      # @param check [Hash]
       def run_check_extension(check)
         @logger.debug("attempting to run check extension", :check => check)
         check[:executed] = Time.now.to_i
