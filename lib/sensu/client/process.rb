@@ -222,11 +222,11 @@ module Sensu
         end
       end
 
-      def complete_checks_in_progress(&block)
+      def complete_checks_in_progress(&callback)
         @logger.info("completing checks in progress", :checks_in_progress => @checks_in_progress)
         retry_until_true do
           if @checks_in_progress.empty?
-            block.call
+            callback.call
             true
           end
         end

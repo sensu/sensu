@@ -8,10 +8,10 @@ module Sensu
       File.basename($0) == "rspec"
     end
 
-    def retry_until_true(wait=0.5, &block)
+    def retry_until_true(wait=0.5, &callback)
       EM::Timer.new(wait) do
-        unless block.call
-          retry_until_true(wait, &block)
+        unless callback.call
+          retry_until_true(wait, &callback)
         end
       end
     end

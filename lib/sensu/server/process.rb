@@ -476,13 +476,13 @@ module Sensu
         @transport.unsubscribe
       end
 
-      def complete_event_handling(&block)
+      def complete_event_handling(&callback)
         @logger.info("completing event handling in progress", {
           :handling_event_count => @handling_event_count
         })
         retry_until_true do
           if @handling_event_count == 0
-            block.call
+            callback.call
             true
           end
         end
