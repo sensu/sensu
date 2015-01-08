@@ -24,12 +24,19 @@ require "sensu/utilities"
 require "sensu/cli"
 require "sensu/redis"
 
+# Symbolize hash keys when parsing JSON.
 MultiJson.load_options = {:symbolize_keys => true}
 
 module Sensu
   module Daemon
     include Utilities
 
+    # Initialize the Sensu process. Set the initial service state, set
+    # up the logger, load settings, load extensions, and optionally
+    # daemonize the process and/or create a PID file. A subclass may
+    # override this method.
+    #
+    # @param options [Hash]
     def initialize(options={})
       @state = :initializing
       @timers = {:run => []}
@@ -39,11 +46,23 @@ module Sensu
       setup_process(options)
     end
 
+    # Set up the Sensu logger and its process signal traps for log
+    # rotation and debug log level toggling. This method creates the
+    # logger instance variable: `@logger`.
+    #
+    # https://github.com/sensu/sensu-logger
+    #
+    # @param options [Hash]
     def setup_logger(options={})
       @logger = Logger.get(options)
       @logger.setup_signal_traps
     end
 
+    # Log setting or extension loading concerns, sensitive information
+    # is redacted.
+    #
+    # @param concerns [Array] to be logged.
+    # @param level [Symbol] to log the concerns at.
     def log_concerns(concerns=[], level=:warn)
       concerns.each do |concern|
         message = concern.delete(:message)
@@ -51,6 +70,14 @@ module Sensu
       end
     end
 
+    # Load Sensu settings and validate them. If there are validation
+    # failures, log them (concerns), then cause the Sensu process to
+    # exit (2). This method creates the settings instance variable:
+    # `@settings`.
+    #
+    # https://github.com/sensu/sensu-settings
+    #
+    # @param options [Hash]
     def load_settings(options={})
       @settings = Settings.get(options)
       log_concerns(@settings.warnings)
@@ -63,6 +90,14 @@ module Sensu
       end
     end
 
+    # Load Sensu extensions and log any concerns. Set the logger and
+    # settings for each extension instance. This method creates the
+    # extensions instance variable: `@extensions`.
+    #
+    # https://github.com/sensu/sensu-extensions
+    # https://github.com/sensu/sensu-extension
+    #
+    # @param options [Hash]
     def load_extensions(options={})
       @extensions = Extensions.get(options)
       log_concerns(@extensions.warnings)
@@ -73,31 +108,49 @@ module Sensu
       end
     end
 
+    # Manage the current process, optionally daemonize and/or write
+    # the current process ID to a PID file.
+    #
+    # @param options [Hash]
     def setup_process(options)
       daemonize if options[:daemonize]
       write_pid(options[:pid_file]) if options[:pid_file]
     end
 
+    # Start the Sensu service and set the service state to `:running`.
+    # This method will likely be overridden by a subclass.
     def start
       @state = :running
     end
 
+    # Pause the Sensu service and set the service state to `:paused`.
+    # This method will likely be overridden by a subclass.
     def pause
       @state = :paused
     end
 
+    # Resume the paused Sensu service and set the service state to
+    # `:running`. This method will likely be overridden by a subclass.
     def resume
       @state = :running
     end
 
+    # Stop the Sensu service and set the service state to `:stopped`.
+    # This method will likely be overridden by a subclass. This method
+    # should stop the EventMachine event loop.
     def stop
       @state = :stopped
       @logger.warn("stopping reactor")
       EM::stop_event_loop
     end
 
+    # Set up process signal traps. This method uses the `STOP_SIGNALS`
+    # constant to determine which process signals will result in a
+    # graceful service stop. A periodic timer must be used to poll for
+    # received signals, as Mutex#lock cannot be used within the
+    # context of `trap()`.
     def setup_signal_traps
-      @signals = Array.new
+      @signals = []
       STOP_SIGNALS.each do |signal|
         Signal.trap(signal) do
           @signals << signal
@@ -112,6 +165,14 @@ module Sensu
       end
     end
 
+    # Set up the Sensu transport connection. Sensu uses a transport
+    # API, allowing it to use various message brokers. By default,
+    # Sensu will use the built-in "rabbitmq" transport. The Sensu
+    # service will stop gracefully in the event of a transport error,
+    # and pause/resume in the event of connectivity issues. This
+    # method creates the transport instance variable: `@transport`.
+    #
+    # https://github.com/sensu/sensu-transport
     def setup_transport
       transport_name = @settings[:transport][:name] || "rabbitmq"
       transport_settings = @settings[transport_name]
@@ -137,6 +198,11 @@ module Sensu
       end
     end
 
+    # Set up the Redis connection. Sensu uses Redis as a data store,
+    # to store the client registry, current events, etc. The Sensu
+    # service will stop gracefully in the event of a Redis error, and
+    # pause/resume in the event of connectivity issues. This method
+    # creates the Redis instance variable: `@redis`.
     def setup_redis
       @logger.debug("connecting to redis", :settings => @settings[:redis])
       @redis = Redis.connect(@settings[:redis])
@@ -158,6 +224,11 @@ module Sensu
 
     private
 
+    # Write the current process ID (PID) to a file (PID file). This
+    # method will cause the Sensu service to exit (2) if the PID file
+    # cannot be written to.
+    #
+    # @param file [String] to write the current PID to.
     def write_pid(file)
       begin
         File.open(file, "w") do |pid_file|
@@ -170,6 +241,11 @@ module Sensu
       end
     end
 
+    # Daemonize the current process. Seed the random number generator,
+    # fork (& exit), detach from controlling terminal, ignore SIGHUP,
+    # fork (& exit), use root '/' as the current working directory,
+    # and close STDIN/OUT/ERR since the process is no longer attached
+    # to a terminal.
     def daemonize
       Kernel.srand
       exit if Kernel.fork
