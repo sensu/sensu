@@ -3,6 +3,7 @@
 .DS_Store
 *.lock
 vendor
+coverage
 dump.rdb
 *.png
 pkg/*
