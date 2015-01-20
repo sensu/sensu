@@ -50,8 +50,7 @@ module Sensu
       subdued = false
       if condition.has_key?(:schedule)
         now = Time.now
-        day_of_week = now.wday
-        timepairs = condition[:schedule][day_of_week]
+        timepairs = condition[:schedule][now.wday.to_s]
         # If timepairs isn't an array, then there was no entry for today
         if timepairs.kind_of?(Array)
            if timepairs.length == 0
