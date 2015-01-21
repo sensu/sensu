@@ -90,7 +90,7 @@ module Sensu
     def filter_attributes_match?(hash_one, hash_two)
       hash_one.keys.all? do |key|
         case
-        when hash_one[key] == hash_two[key]
+        when hash_one[key].to_s == hash_two[key].to_s
           true
         when hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
           filter_attributes_match?(hash_one[key], hash_two[key])
