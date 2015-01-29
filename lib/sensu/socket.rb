@@ -1,4 +1,5 @@
 require 'multi_json'
+require 'json'
 
 module Sensu
   # EventMachine connection handler for the Sensu client's socket.
@@ -160,10 +161,17 @@ module Sensu
     # @param [String] data to parse for a check result.
     def parse_check_result(data)
       begin
+        # Certain strings, such as "{\"type\":\"me", when processed by Yajl, will yield a string, instead of raising any kind of
+        # error. In addition, strings like
+        # "{\"name\":\"test\",\"command\":\"echo WARNING && exit 1\",\"issued\":1234,\"output\":\"WARNING\"", will be parsed
+        # and yield a hash. Because the code relies on the presence of JSON parse exceptions to know when a tcp stream has
+        # stopped, we'll use the basic JSON gem to detect any abnormalities. But since we need symbolized keys, if JSON
+        # successfully parses the data, we'll go back to using MultiJson to load the data.
+        JSON.parse(data)
         check = MultiJson.load(data)
         cancel_watchdog
         process_check_result(check)
-      rescue MultiJson::ParseError, ArgumentError => error
+      rescue MultiJson::ParseError, JSON::ParserError, ArgumentError => error
         if @protocol == :tcp
           @parse_error = error.to_s
         else
