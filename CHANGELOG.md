@@ -1,3 +1,20 @@
+## 0.17.0 - TBD
+
+### Features
+
+Improved Sensu client keepalive event check output.
+
+Hashed initial check request/execution scheduling splay, consistent over
+process restarts/reloads.
+
+Sensu event ID logged for event handler output.
+
+### Other
+
+Fixed TLS/SSL on Windows.
+
+Fixed event filtering with event action, eg. `"action": "create"`.
+
 ## 0.16.0 - 2014-10-31
 
 ### Other
