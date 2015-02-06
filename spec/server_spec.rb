@@ -130,9 +130,12 @@ describe 'Sensu::Server' do
 
   it 'can determine if filter attributes match an event' do
     attributes = {
-      :occurrences => 1
+      :occurrences => 1,
+      :action => 'resolve'
     }
     event = event_template
+    expect(@server.filter_attributes_match?(attributes, event)).to be(false)
+    attributes[:action] = 'create'
     expect(@server.filter_attributes_match?(attributes, event)).to be(true)
     event[:occurrences] = 2
     expect(@server.filter_attributes_match?(attributes, event)).to be(false)

@@ -94,6 +94,8 @@ module Sensu
           true
         when hash_one[key].is_a?(Hash) && hash_two[key].is_a?(Hash)
           filter_attributes_match?(hash_one[key], hash_two[key])
+        when hash_one[key].to_s == hash_two[key].to_s
+          true
         when hash_one[key].is_a?(String) && hash_one[key].start_with?('eval:')
           begin
             expression = hash_one[key].gsub(/^eval:(\s+)?/, '')
