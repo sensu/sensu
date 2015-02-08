@@ -48,6 +48,24 @@ module Sensu
 
     def action_subdued?(condition)
       subdued = false
+      if condition.has_key?(:schedule)
+        now = Time.now
+        timepairs = condition[:schedule][now.wday.to_s]
+        # If timepairs isn't an array, then there was no entry for today
+        if timepairs.kind_of?(Array)
+           if timepairs.length == 0
+             # No times given - subdue for the whole day
+             subdued = true
+           else
+             timepairs.each do |timepair|
+              if now.between?(Time.parse(timepair[0]), Time.parse(timepair[1]))
+                subdued = true
+                break
+              end
+            end
+          end
+        end
+      end
       if condition.has_key?(:begin) && condition.has_key?(:end)
         begin_time = Time.parse(condition[:begin])
         end_time = Time.parse(condition[:end])
