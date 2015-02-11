@@ -132,10 +132,11 @@ module Sensu
       Transport.logger = @logger
       @transport = Transport.connect(transport_name, transport_settings)
       @transport.on_error do |error|
-        @logger.fatal('transport connection error', {
+        @logger.error('transport connection error', {
           :error => error.to_s
         })
-        stop
+        pause
+        setup_transport
       end
       @transport.before_reconnect do
         unless testing?
@@ -155,10 +156,11 @@ module Sensu
       })
       @redis = Redis.connect(@settings[:redis])
       @redis.on_error do |error|
-        @logger.fatal('redis connection error', {
+        @logger.error('redis connection error', {
           :error => error.to_s
         })
-        stop
+        pause
+        setup_redis
       end
       @redis.before_reconnect do
         unless testing?
