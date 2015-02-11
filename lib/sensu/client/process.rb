@@ -186,7 +186,18 @@ module Sensu
         end
       end
 
-      def process_check(check)
+      # Process a check request. If a check request has a check
+      # command, it will be executed. A check request without a check
+      # command indicates a check extension run. A check request will
+      # be merged with a local check definition, if present. Client
+      # safe mode is enforced in this method, requiring a local check
+      # definition in order to execute the check command. If a local
+      # check definition does not exist when operating with client
+      # safe mode, a check result will be published to report the
+      # missing check definition.
+      #
+      # @param check [Hash]
+      def process_check_request(check)
         @logger.debug("processing check", :check => check)
         if check.has_key?(:command)
           if @settings.check_exists?(check[:name])
@@ -210,6 +221,14 @@ module Sensu
         end
       end
 
+      # Set up Sensu client subscriptions. Subscriptions determine the
+      # kinds of check requests the client will receive. A unique
+      # transport funnel is created for the Sensu client, using a
+      # combination of it's name, the Sensu version, and the current
+      # timestamp (epoch). The unique funnel is bound to each
+      # transport pipe, named after the client subscription. The Sensu
+      # client will receive JSON serialized check requests from its
+      # funnel, that get parsed and processed.
       def setup_subscriptions
         @logger.debug("subscribing to client subscriptions")
         @settings[:client][:subscriptions].each do |subscription|
@@ -219,7 +238,7 @@ module Sensu
             begin
               check = MultiJson.load(message)
               @logger.info("received check request", :check => check)
-              process_check(check)
+              process_check_request(check)
             rescue MultiJson::ParseError => error
               @logger.error("failed to parse the check request payload", {
                 :message => message,
@@ -230,6 +249,11 @@ module Sensu
         end
       end
 
+      # Calculate a check execution splay, taking into account the
+      # current time and the execution interval to ensure it's
+      # consistent between process restarts.
+      #
+      # @param check [Hash] definition
       def calculate_execution_splay(check)
         key = [@settings[:client][:name], check[:name]].join(":")
         splay_hash = Digest::MD5.digest(key).unpack("Q<").first
@@ -237,11 +261,19 @@ module Sensu
         (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
       end
 
+      # Schedule check executions, using EventMachine periodic timers,
+      # using a calculated execution splay. The timers are stored in
+      # the timers hash under `:run`, so they can be cancelled etc.
+      # Check definitions are duplicated before processing them, in
+      # case they are mutated. The check `:issued` timestamp is set
+      # here, to mimic check requests issued by a Sensu server.
+      #
+      # @param checks [Array] of definitions.
       def schedule_checks(checks)
         checks.each do |check|
           execute_check = Proc.new do
             check[:issued] = Time.now.to_i
-            process_check(check.dup)
+            process_check_request(check.dup)
           end
           execution_splay = testing? ? 0 : calculate_execution_splay(check)
           interval = testing? ? 0.5 : check[:interval]
@@ -252,6 +284,10 @@ module Sensu
         end
       end
 
+      # Setup standalone check executions, scheduling standard check
+      # definition and check extension executions. Check definitions
+      # and extensions with `:standalone` set to `true` will be
+      # scheduled by the Sensu client for execution.
       def setup_standalone
         @logger.debug("scheduling standalone checks")
         standard_checks = @settings.checks.select do |check|
@@ -263,6 +299,12 @@ module Sensu
         schedule_checks(standard_checks + extension_checks)
       end
 
+      # Setup the Sensu client socket, for external check result
+      # input. By default, the client socket is bound to localhost on
+      # TCP & UDP port 3030. The socket can be configured via the
+      # client definition, `:socket` with `:bind` and `:port`. The
+      # current instance of the Sensu logger, settings, and transport
+      # are passed to the socket handler, `Sensu::Client::Socket`.
       def setup_sockets
         options = @settings[:client][:socket] || Hash.new
         options[:bind] ||= "127.0.0.1"
@@ -281,6 +323,14 @@ module Sensu
         end
       end
 
+      # Call a callback (Ruby block) when there are no longer check
+      # executions in progress. This method is used when stopping the
+      # Sensu client. The `retry_until_true` helper method is used to
+      # check the condition every 0.5 seconds until `true` is
+      # returned.
+      #
+      # @param callback [Proc] called when there are no check
+      #   executions in progress.
       def complete_checks_in_progress(&callback)
         @logger.info("completing checks in progress", :checks_in_progress => @checks_in_progress)
         retry_until_true do
@@ -291,6 +341,9 @@ module Sensu
         end
       end
 
+      # Bootstrap the Sensu client, setting up client keepalives,
+      # subscriptions, and standalone check executions. This method
+      # sets the process/daemon state to `:running`.
       def bootstrap
         setup_keepalives
         setup_subscriptions
@@ -298,12 +351,20 @@ module Sensu
         @state = :running
       end
 
+      # Start the Sensu client process, setting up the client
+      # transport connection, the sockets, and bootstrap.
       def start
         setup_transport
         setup_sockets
         bootstrap
       end
 
+      # Pause the Sensu client process, unless it is being paused or
+      # has already been paused. The process/daemon state is first set
+      # to `:pausing`, to indicate that it's in progress. All run
+      # timers are cancelled, and the references are cleared. The
+      # Sensu client will unsubscribe from all subscriptions, then set
+      # the process/daemon state to `:paused`.
       def pause
         unless @state == :pausing || @state == :paused
           @state = :pausing
@@ -316,6 +377,11 @@ module Sensu
         end
       end
 
+      # Resume the Sensu client process if it is currently or will
+      # soon be paused. The `retry_until_true` helper method is used
+      # to determine if the process is paused and if the transport is
+      # connected. If the conditions are met, `bootstrap()` will be
+      # called and true is returned to stop `retry_until_true`.
       def resume
         retry_until_true(1) do
           if @state == :paused
@@ -327,6 +393,10 @@ module Sensu
         end
       end
 
+      # Stop the Sensu client process, pausing it, completing check
+      # executions in progress, closing the transport connection, and
+      # exiting the process (exit 0). After pausing the process, the
+      # process/daemon state is set to `:stopping`.
       def stop
         @logger.warn("stopping")
         pause
