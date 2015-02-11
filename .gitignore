@@ -8,6 +8,7 @@ coverage
 rdoc
 doc
 _yardoc
+.yardoc
 dump.rdb
 *.png
 pkg/*
