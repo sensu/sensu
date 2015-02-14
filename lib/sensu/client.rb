@@ -85,6 +85,14 @@ module Sensu
         end
         matched
       end
+      substituted = substituted.gsub(/@@@([^:].*?)@@@/) do
+        token = $1.to_s
+        matched = find_client_attribute(check, token.split('.'), nil)
+        if matched.nil?
+          unmatched_tokens << token
+        end
+        matched
+      end
       [substituted, unmatched_tokens]
     end
 
