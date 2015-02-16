@@ -12,6 +12,7 @@ module Sensu
       # @param mutator [Object] definition or extension.
       # @param event [Hash] data.
       # @param callback [Proc] to call when the mutator status is `0`.
+      # @return [Proc] mutator callback.
       def mutator_callback(mutator, event, &callback)
         Proc.new do |output, status|
           if status == 0
