@@ -416,6 +416,7 @@ module Sensu
         :subscribers => {:type => Array, :nil_ok => true},
         :kwargs =>  {:type => Hash, :nil_ok => true}
       }
+      
       read_data(rules) do |data|
         if settings.checks[data[:check]]
           check = settings.checks[data[:check]]
