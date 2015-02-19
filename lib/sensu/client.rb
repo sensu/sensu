@@ -79,7 +79,15 @@ module Sensu
       unmatched_tokens = Array.new
       substituted = check[:command].gsub(/:::([^:].*?):::/) do
         token, default = $1.to_s.split('|', -1)
-        matched = find_client_attribute(@settings[:client], token.split('.'), default)
+
+
+        kwargs=@settings[:client]
+        if check.has_key?(:kwargs)
+          unless check[:kwargs].nil?
+            kwargs.merge!(check[:kwargs])
+          end
+        end
+        matched = find_client_attribute(kwargs, token.split('.'), default)
         if matched.nil?
           unmatched_tokens << token
         end

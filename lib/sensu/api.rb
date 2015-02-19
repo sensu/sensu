@@ -413,8 +413,10 @@ module Sensu
     apost '/request/?' do
       rules = {
         :check => {:type => String, :nil_ok => false},
-        :subscribers => {:type => Array, :nil_ok => true}
+        :subscribers => {:type => Array, :nil_ok => true},
+        :kwargs =>  {:type => Hash, :nil_ok => true}
       }
+      
       read_data(rules) do |data|
         if settings.checks[data[:check]]
           check = settings.checks[data[:check]]
@@ -422,6 +424,7 @@ module Sensu
           payload = {
             :name => data[:check],
             :command => check[:command],
+            :kwargs =>  data[:kwargs],
             :issued => Time.now.to_i
           }
           settings.logger.info('publishing check request', {
