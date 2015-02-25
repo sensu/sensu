@@ -367,88 +367,111 @@ module Sensu
       @logger.debug('processing result', {
         :result => result
       })
-      @redis.get('client:' + result[:client]) do |client_json|
-        unless client_json.nil?
-          client = MultiJson.load(client_json)
-          check = case
-          when @settings.check_exists?(result[:check][:name]) && !result[:check][:standalone]
-            @settings[:checks][result[:check][:name]].merge(result[:check])
-          else
-            result[:check]
-          end
-          if check[:aggregate]
-            aggregate_result(result)
-          end
-          @redis.sadd('history:' + client[:name], check[:name])
-          history_key = 'history:' + client[:name] + ':' + check[:name]
-          @redis.rpush(history_key, check[:status]) do
-            execution_key = 'execution:' + client[:name] + ':' + check[:name]
-            @redis.set(execution_key, check[:executed])
-            @redis.lrange(history_key, -21, -1) do |history|
-              check[:history] = history
-              total_state_change = 0
-              unless history.size < 21
-                state_changes = 0
-                change_weight = 0.8
-                previous_status = history.first
-                history.each do |status|
-                  unless status == previous_status
-                    state_changes += change_weight
-                  end
-                  change_weight += 0.02
-                  previous_status = status
-                end
-                total_state_change = (state_changes.fdiv(20) * 100).to_i
-                @redis.ltrim(history_key, -21, -1)
+
+      # Create a dummy 'floating' client hash if the result is
+      # from a floating check. This must be added to redis to
+      # ensure sensu-api/uchiwa/other API consumers do not break
+      if result[:check][:transport] == 'direct'
+        result[:check][:floating_host] = result[:client]
+        result[:client] = 'floating'
+        client = {
+            :name => 'floating',
+            :address => '127.0.0.2',
+            :subscriptions => [],
+            :timestamp => Time.now.to_i,
+            :version => '0.16.0'
+        }
+        @redis.sadd('clients', client[:name])
+        @redis.set('client:' + client[:name], MultiJson.dump(client))
+      else
+        @redis.get('client:' + result[:client]) do |client_json|
+          client = client_json ? MultiJson.load(client_json) : nil
+        end
+      end
+
+      @logger.debug('processed result type ', {
+                                           :result => result,
+                                           :client => client
+                                       })
+
+      return unless client
+      check = case
+      when @settings.check_exists?(result[:check][:name]) && !result[:check][:standalone]
+        @settings[:checks][result[:check][:name]].merge(result[:check])
+      else
+        result[:check]
+      end
+      if check[:aggregate]
+        aggregate_result(result)
+      end
+      @redis.sadd('history:' + client[:name], check[:name])
+      history_key = 'history:' + client[:name] + ':' + check[:name]
+      @redis.rpush(history_key, check[:status]) do
+        execution_key = 'execution:' + client[:name] + ':' + check[:name]
+        @redis.set(execution_key, check[:executed])
+        @redis.lrange(history_key, -21, -1) do |history|
+          check[:history] = history
+          total_state_change = 0
+          unless history.size < 21
+            state_changes = 0
+            change_weight = 0.8
+            previous_status = history.first
+            history.each do |status|
+              unless status == previous_status
+                state_changes += change_weight
               end
-              @redis.hget('events:' + client[:name], check[:name]) do |event_json|
-                previous_occurrence = event_json ? MultiJson.load(event_json) : false
-                is_flapping = false
-                if check.has_key?(:low_flap_threshold) && check.has_key?(:high_flap_threshold)
-                  was_flapping = previous_occurrence && previous_occurrence[:action] == 'flapping'
-                  is_flapping = case
-                  when total_state_change >= check[:high_flap_threshold]
-                    true
-                  when was_flapping && total_state_change <= check[:low_flap_threshold]
-                    false
-                  else
-                    was_flapping
-                  end
-                end
-                event = {
-                  :id => random_uuid,
-                  :client => client,
-                  :check => check,
-                  :occurrences => 1
-                }
-                if check[:status] != 0 || is_flapping
-                  if previous_occurrence && check[:status] == previous_occurrence[:check][:status]
-                    event[:occurrences] = previous_occurrence[:occurrences] + 1
-                  end
-                  event[:action] = is_flapping ? :flapping : :create
-                  @redis.hset('events:' + client[:name], check[:name], MultiJson.dump(event)) do
-                    unless check[:handle] == false
-                      handle_event(event)
-                    end
-                  end
-                elsif previous_occurrence
-                  event[:occurrences] = previous_occurrence[:occurrences]
-                  event[:action] = :resolve
-                  unless check[:auto_resolve] == false && !check[:force_resolve]
-                    @redis.hdel('events:' + client[:name], check[:name]) do
-                      unless check[:handle] == false
-                        handle_event(event)
-                      end
-                    end
-                  end
-                elsif check[:type] == 'metric'
-                  handle_event(event)
-                end
-                event_bridges(event)
+              change_weight += 0.02
+              previous_status = status
+            end
+            total_state_change = (state_changes.fdiv(20) * 100).to_i
+            @redis.ltrim(history_key, -21, -1)
+          end
+          @redis.hget('events:' + client[:name], check[:name]) do |event_json|
+            previous_occurrence = event_json ? MultiJson.load(event_json) : false
+            is_flapping = false
+            if check.has_key?(:low_flap_threshold) && check.has_key?(:high_flap_threshold)
+              was_flapping = previous_occurrence && previous_occurrence[:action] == 'flapping'
+              is_flapping = case
+              when total_state_change >= check[:high_flap_threshold]
+                true
+              when was_flapping && total_state_change <= check[:low_flap_threshold]
+                false
+              else
+                was_flapping
               end
             end
+            event = {
+              :id => random_uuid,
+              :client => client,
+              :check => check,
+              :occurrences => 1
+            }
+            if check[:status] != 0 || is_flapping
+              if previous_occurrence && check[:status] == previous_occurrence[:check][:status]
+                event[:occurrences] = previous_occurrence[:occurrences] + 1
+              end
+              event[:action] = is_flapping ? :flapping : :create
+              @redis.hset('events:' + client[:name], check[:name], MultiJson.dump(event)) do
+                unless check[:handle] == false
+                  handle_event(event)
+                end
+              end
+            elsif previous_occurrence
+              event[:occurrences] = previous_occurrence[:occurrences]
+              event[:action] = :resolve
+              unless check[:auto_resolve] == false && !check[:force_resolve]
+                @redis.hdel('events:' + client[:name], check[:name]) do
+                  unless check[:handle] == false
+                    handle_event(event)
+                  end
+                end
+              end
+            elsif check[:type] == 'metric'
+              handle_event(event)
+            end
+            event_bridges(event)
           end
-        end
+    end
       end
     end
 
@@ -482,8 +505,10 @@ module Sensu
     end
 
     def publish_check_request(check)
+      transport =  (check[:transport] || 'fanout').to_sym
       payload = {
         :name => check[:name],
+        :transport => transport,
         :issued => Time.now.to_i
       }
       if check.has_key?(:command)
@@ -491,13 +516,18 @@ module Sensu
       end
       @logger.info('publishing check request', {
         :payload => payload,
+        :transport => transport,
         :subscribers => check[:subscribers]
       })
       check[:subscribers].each do |subscription|
-        @transport.publish(:fanout, subscription, MultiJson.dump(payload)) do |info|
+        # Temporary fix - if transport is direct then prefix direct on the front of the subscription
+        # to avoid collisions but allow backward compat with earlier sensu clients
+        subscription = "direct_#{subscription}" if transport == :direct
+        @transport.publish(transport, subscription, MultiJson.dump(payload)) do |info|
           if info[:error]
             @logger.error('failed to publish check request', {
               :subscription => subscription,
+              :transport => transport,
               :payload => payload,
               :error => info[:error].to_s
             })
