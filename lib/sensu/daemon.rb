@@ -158,7 +158,11 @@ module Sensu
         @logger.fatal('redis connection error', {
           :error => error.to_s
         })
-        stop
+        if @settings[:redis][:reconnect_on_error]
+          @redis.close
+        else
+          stop
+        end
       end
       @redis.before_reconnect do
         unless testing?
