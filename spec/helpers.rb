@@ -1,13 +1,19 @@
-require 'rspec'
-require 'eventmachine'
-require 'em-http-request'
+require "rspec"
+require "eventmachine"
+require "em-http-request"
+require "uuidtools"
+
+unless RUBY_VERSION < "1.9" || RUBY_PLATFORM =~ /java/
+  require "codeclimate-test-reporter"
+  CodeClimate::TestReporter.start
+end
 
 module Helpers
   def setup_options
     @options = {
-      :config_file => File.join(File.dirname(__FILE__), 'config.json'),
-      :config_dirs => [File.join(File.dirname(__FILE__), 'conf.d')],
-      :extension_dir => File.join(File.dirname(__FILE__), 'extensions'),
+      :config_file => File.join(File.dirname(__FILE__), "config.json"),
+      :config_dirs => [File.join(File.dirname(__FILE__), "conf.d")],
+      :extension_dir => File.join(File.dirname(__FILE__), "extensions"),
       :log_level => :fatal
     }
   end
@@ -18,52 +24,45 @@ module Helpers
 
   def setup_redis
     @redis = EM::Protocols::Redis.connect
-    @redis
   end
 
   def redis
     @redis ? @redis : setup_redis
   end
 
-  def setup_amq
-    rabbitmq = AMQP.connect
-    @amq = AMQP::Channel.new(rabbitmq)
-    @amq
+  def setup_transport
+    @transport = Sensu::Transport.connect("rabbitmq", {})
   end
 
-  def amq
-    @amq ? @amq : setup_amq
+  def transport
+    @transport ? @transport : setup_transport
   end
 
-  def keepalive_queue(&block)
-    amq.queue('keepalives', :auto_delete => true) do |queue|
-      queue.bind(amq.direct('keepalives')) do
-        block.call(queue)
-      end
+  def keepalive_queue(&callback)
+    transport.subscribe(:direct, "keepalives", "keepalives") do |_, payload|
+      callback.call(payload)
     end
   end
 
-  def result_queue(&block)
-    amq.queue('results', :auto_delete => true) do |queue|
-      queue.bind(amq.direct('results')) do
-        block.call(queue)
-      end
+  def result_queue(&callback)
+    transport.subscribe(:direct, "results", "results") do |_, payload|
+      callback.call(payload)
     end
   end
 
-  def timer(delay, &block)
+  def timer(delay, &callback)
     periodic_timer = EM::PeriodicTimer.new(delay) do
-      block.call
+      callback.call
       periodic_timer.cancel
     end
   end
 
-  def async_wrapper(&block)
+  def async_wrapper(&callback)
     EM::run do
       timer(10) do
-        raise 'test timed out'
+        raise "test timed out"
       end
-      block.call
+      callback.call
     end
   end
 
@@ -71,19 +70,19 @@ module Helpers
     EM::stop_event_loop
   end
 
-  def api_test(&block)
+  def api_test(&callback)
     async_wrapper do
-      Sensu::API.test(options)
+      Sensu::API::Process.test(options)
       timer(0.5) do
-        block.call
+        callback.call
       end
     end
   end
 
-  def with_stdout_redirect(&block)
+  def with_stdout_redirect(&callback)
     stdout = STDOUT.clone
-    STDOUT.reopen(File.open('/dev/null', 'w'))
-    block.call
+    STDOUT.reopen(File.open("/dev/null", "w"))
+    callback.call
     STDOUT.reopen(stdout)
   end
 
@@ -93,10 +92,10 @@ module Helpers
 
   def client_template
     {
-      :name => 'i-424242',
-      :address => '127.0.0.1',
+      :name => "i-424242",
+      :address => "127.0.0.1",
       :subscriptions => [
-        'test'
+        "test"
       ],
       :keepalive => {
         :thresholds => {
@@ -109,18 +108,18 @@ module Helpers
 
   def check_template
     {
-      :name => 'test',
-      :command => 'echo WARNING && exit 1',
+      :name => "test",
+      :command => "echo WARNING && exit 1",
       :issued => epoch
     }
   end
 
   def result_template
     check = check_template
-    check[:output] = 'WARNING'
+    check[:output] = "WARNING"
     check[:status] = 1
     {
-      :client => 'i-424242',
+      :client => "i-424242",
       :check => check
     }
   end
@@ -129,7 +128,7 @@ module Helpers
     client = client_template
     client[:timestamp] = epoch
     check = check_template
-    check[:output] = 'WARNING'
+    check[:output] = "WARNING"
     check[:status] = 1
     check[:history] = [1]
     {
@@ -141,12 +140,12 @@ module Helpers
     }
   end
 
-  def api_request(uri, method=:get, options={}, &block)
+  def api_request(uri, method=:get, options={}, &callback)
     default_options = {
       :head => {
         :authorization => [
-          'foo',
-          'bar'
+          "foo",
+          "bar"
         ]
       }
     }
@@ -154,7 +153,7 @@ module Helpers
     if request_options[:body].is_a?(Hash) || request_options[:body].is_a?(Array)
       request_options[:body] = MultiJson.dump(request_options[:body])
     end
-    http = EM::HttpRequest.new('http://localhost:4567' + uri).send(method, request_options)
+    http = EM::HttpRequest.new("http://localhost:4567#{uri}").send(method, request_options)
     http.callback do
       body = case
       when http.response.empty?
@@ -162,7 +161,7 @@ module Helpers
       else
         MultiJson.load(http.response)
       end
-      block.call(http, body)
+      callback.call(http, body)
     end
   end
 
@@ -178,10 +177,10 @@ module Helpers
   end
 end
 
-RSpec::Matchers.define :contain do |block|
+RSpec::Matchers.define :contain do |callback|
   match do |actual|
     actual.any? do |item|
-      block.call(item)
+      callback.call(item)
     end
   end
 end

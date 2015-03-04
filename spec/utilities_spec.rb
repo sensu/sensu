@@ -1,15 +1,16 @@
-require File.dirname(__FILE__) + '/helpers.rb'
-require 'sensu/utilities'
+require File.dirname(__FILE__) + "/helpers.rb"
 
-describe 'Sensu::Utilities' do
+require "sensu/utilities"
+
+describe "Sensu::Utilities" do
   include Helpers
   include Sensu::Utilities
 
-  it 'can determine that we are testing' do
+  it "can determine that we are testing" do
     expect(testing?).to be(true)
   end
 
-  it 'can retry a block call until it returns true' do
+  it "can retry a block call until it returns true" do
     async_wrapper do
       times = 0
       retry_until_true(0.05) do
@@ -23,7 +24,7 @@ describe 'Sensu::Utilities' do
     end
   end
 
-  it 'can deep merge two hashes' do
+  it "can deep merge two hashes" do
     hash_one = {
       :foo => 1,
       :bar => {
@@ -62,22 +63,29 @@ describe 'Sensu::Utilities' do
     expect(deep_merge(hash_one, hash_two)).to eq(expected)
   end
 
-  it 'can redact sensitive info from a hash' do
+  it "can generate a random uuid" do
+    uuid = random_uuid
+    expect(uuid).to be_kind_of(String)
+    expect(uuid.size).to eq(36)
+    expect(uuid).not_to eq(random_uuid)
+  end
+
+  it "can redact sensitive info from a hash" do
     hash = {
       :one => 1,
-      :password => 'foo',
+      :password => "foo",
       :nested => {
-        :password => 'bar'
+        :password => "bar"
       },
-      :diff_one => [nil, {:secret => 'baz'}],
-      :diff_two => [{:secret => 'baz'}, {:secret => 'qux'}]
+      :diff_one => [nil, {:secret => "baz"}],
+      :diff_two => [{:secret => "baz"}, {:secret => "qux"}]
     }
     redacted = redact_sensitive(hash)
     expect(redacted[:one]).to eq(1)
-    expect(redacted[:password]).to eq('REDACTED')
-    expect(redacted[:nested][:password]).to eq('REDACTED')
-    expect(redacted[:diff_one][1][:secret]).to eq('REDACTED')
-    expect(redacted[:diff_two][0][:secret]).to eq('REDACTED')
-    expect(redacted[:diff_two][1][:secret]).to eq('REDACTED')
+    expect(redacted[:password]).to eq("REDACTED")
+    expect(redacted[:nested][:password]).to eq("REDACTED")
+    expect(redacted[:diff_one][1][:secret]).to eq("REDACTED")
+    expect(redacted[:diff_two][0][:secret]).to eq("REDACTED")
+    expect(redacted[:diff_two][1][:secret]).to eq("REDACTED")
   end
 end

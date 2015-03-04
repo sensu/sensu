@@ -1,10 +1,10 @@
 #!/usr/bin/env ruby
 
-unless $:.include?(File.dirname(__FILE__) + '/../lib/')
-  $: << File.dirname(__FILE__) + '/../lib'
+unless $:.include?(File.dirname(__FILE__) + "/../lib/")
+  $: << File.dirname(__FILE__) + "/../lib"
 end
 
-require 'sensu/client'
+require "sensu/client/process"
 
 options = Sensu::CLI.read
-Sensu::Client.run(options)
+Sensu::Client::Process.run(options)

@@ -1,10 +1,17 @@
 .bundle
 .vagrant
 .DS_Store
+.yardoc
 *.lock
 vendor
+coverage
+rdoc
+doc
+_yardoc
+.yardoc
 dump.rdb
 *.png
 pkg/*
 *~
 \#*
+coverage
