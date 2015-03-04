@@ -74,8 +74,9 @@ module Sensu
 
       # Publish a check result to the transport for processing. A
       # check result is composed of a client (name) and a check
-      # definition, containing check output and status. JSON
-      # serialization is used for transport messages.
+      # definition, containing check `:output` and `:status`. JSON
+      # serialization is used when publishing the check result payload
+      # to the transport pipe. Transport errors are logged.
       #
       # @param check [Hash]
       def publish_check_result(check)
@@ -253,7 +254,7 @@ module Sensu
       # current time and the execution interval to ensure it's
       # consistent between process restarts.
       #
-      # @param check [Hash] definition
+      # @param check [Hash] definition.
       def calculate_execution_splay(check)
         key = [@settings[:client][:name], check[:name]].join(":")
         splay_hash = Digest::MD5.digest(key).unpack("Q<").first
@@ -343,7 +344,7 @@ module Sensu
 
       # Bootstrap the Sensu client, setting up client keepalives,
       # subscriptions, and standalone check executions. This method
-      # sets the process/daemon state to `:running`.
+      # sets the process/daemon `@state` to `:running`.
       def bootstrap
         setup_keepalives
         setup_subscriptions
@@ -352,7 +353,8 @@ module Sensu
       end
 
       # Start the Sensu client process, setting up the client
-      # transport connection, the sockets, and bootstrap.
+      # transport connection, the sockets, and calling the
+      # `bootstrap()` method.
       def start
         setup_transport
         setup_sockets
@@ -360,11 +362,12 @@ module Sensu
       end
 
       # Pause the Sensu client process, unless it is being paused or
-      # has already been paused. The process/daemon state is first set
-      # to `:pausing`, to indicate that it's in progress. All run
+      # has already been paused. The process/daemon `@state` is first
+      # set to `:pausing`, to indicate that it's in progress. All run
       # timers are cancelled, and the references are cleared. The
-      # Sensu client will unsubscribe from all subscriptions, then set
-      # the process/daemon state to `:paused`.
+      # Sensu client will unsubscribe from all transport
+      # subscriptions, then set the process/daemon `@state` to
+      # `:paused`.
       def pause
         unless @state == :pausing || @state == :paused
           @state = :pausing
@@ -396,7 +399,7 @@ module Sensu
       # Stop the Sensu client process, pausing it, completing check
       # executions in progress, closing the transport connection, and
       # exiting the process (exit 0). After pausing the process, the
-      # process/daemon state is set to `:stopping`.
+      # process/daemon `@state` is set to `:stopping`.
       def stop
         @logger.warn("stopping")
         pause
