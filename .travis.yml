@@ -17,6 +17,3 @@ env:
 notifications:
   irc:
     - "irc.freenode.net#sensu"
-addons:
-  code_climate:
-    repo_token: 0c97ad4114782ec17486d05f9fb4bc544a49f95bb231e536512ad3b324bea048
