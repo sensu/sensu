@@ -4,7 +4,6 @@
 .yardoc
 *.lock
 vendor
-coverage
 rdoc
 doc
 _yardoc
@@ -14,4 +13,3 @@ dump.rdb
 pkg/*
 *~
 \#*
-coverage
