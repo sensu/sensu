@@ -31,7 +31,11 @@ Gem::Specification.new do |s|
   s.add_development_dependency "rake", "~> 10.3"
   s.add_development_dependency "rspec", "~> 3.0.0"
   s.add_development_dependency "em-http-request", "~> 1.1"
-  s.add_development_dependency "codeclimate-test-reporter" unless RUBY_VERSION < "1.9"
+
+  unless RUBY_VERSION < "1.9"
+    s.add_development_dependency "simplecov", "0.9.1"
+    s.add_development_dependency "codeclimate-test-reporter"
+  end
 
   s.files         = Dir.glob("{bin,lib}/**/*") + %w[sensu.gemspec README.md CHANGELOG.md MIT-LICENSE.txt]
   s.executables   = Dir.glob("bin/**/*").map { |file| File.basename(file) }
