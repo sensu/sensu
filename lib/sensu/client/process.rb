@@ -230,12 +230,15 @@ module Sensu
       # transport pipe, named after the client subscription. The Sensu
       # client will receive JSON serialized check requests from its
       # funnel, that get parsed and processed.
-      def setup_subscriptions
-        @logger.debug("subscribing to client subscriptions")
-        @settings[:client][:subscriptions].each do |subscription|
-          @logger.debug("subscribing to a subscription", :subscription => subscription)
+      def setup_subscriptions_type(list, transport)
+        list.each do |subscription|
+          # Temporary fix - if transport is direct then prefix direct on the front of the subscription
+          # to avoid collisions but allow backward compat with earlier sensu clients
+          subscription = "direct_#{subscription}" if transport == :direct
+          @logger.debug("subscribing to a subscription",
+            :transport => transport, :subscription => subscription)
           funnel = [@settings[:client][:name], VERSION, Time.now.to_i].join("-")
-          @transport.subscribe(:fanout, subscription, funnel) do |message_info, message|
+          @transport.subscribe(transport, subscription, funnel) do |message_info, message|
             begin
               check = MultiJson.load(message)
               @logger.info("received check request", :check => check)
@@ -248,6 +251,13 @@ module Sensu
             end
           end
         end
+      end
+
+      def setup_subscriptions
+        @logger.debug('subscribing to client subscriptions')
+        setup_subscriptions_type(@settings[:client].fetch(:subscriptions, []), :fanout)
+        @logger.debug('subscribing to client floating subscriptions')
+        setup_subscriptions_type(@settings[:client].fetch(:floating, []), :direct)
       end
 
       # Calculate a check execution splay, taking into account the

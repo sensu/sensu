@@ -150,6 +150,40 @@ describe "Sensu::Server::Process" do
                 event = MultiJson.load(event_json)
                 expect(event[:id]).to be_kind_of(String)
                 expect(event[:check][:status]).to eq(1)
+                expect(event[:client][:name]).to eq('i-424242')
+                expect(event[:occurrences]).to eq(2)
+                timer(2) do
+                  latest_event_file = IO.read("/tmp/sensu-event.json")
+                  expect(MultiJson.load(latest_event_file)).to eq(event)
+                  async_done
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can consume results" do
+    async_wrapper do
+      @server.setup_transport
+      @server.setup_redis
+      @server.setup_results
+      redis.flushdb do
+        timer(1) do
+          client = client_template
+          redis.set("client:i-424242", MultiJson.dump(client)) do
+            result = result_template
+            result[:check][:transport] = 'direct'
+            transport.publish(:direct, "results", MultiJson.dump(result))
+            transport.publish(:direct, "results", MultiJson.dump(result))
+            timer(3) do
+              redis.hget("events:floating", "test") do |event_json|
+                event = MultiJson.load(event_json)
+                expect(event[:id]).to be_kind_of(String)
+                expect(event[:check][:status]).to eq(1)
+                expect(event[:client][:name]).to eq('floating')
                 expect(event[:occurrences]).to eq(2)
                 timer(2) do
                   latest_event_file = IO.read("/tmp/sensu-event.json")
