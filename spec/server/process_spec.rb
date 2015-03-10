@@ -149,6 +149,7 @@ describe "Sensu::Server::Process" do
               redis.hget("events:i-424242", "test") do |event_json|
                 event = MultiJson.load(event_json)
                 expect(event[:id]).to be_kind_of(String)
+                expect(event[:first_id]).to be_kind_of(String)
                 expect(event[:check][:status]).to eq(1)
                 expect(event[:occurrences]).to eq(2)
                 timer(2) do

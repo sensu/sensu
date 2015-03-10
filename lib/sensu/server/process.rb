@@ -311,8 +311,13 @@ module Sensu
             :occurrences => 1
           }
           if check[:status] != 0 || flapping
-            if stored_event && check[:status] == stored_event[:check][:status]
+            if stored_event && check[:status] != 0
               event[:occurrences] = stored_event[:occurrences] + 1
+            end
+            if stored_event
+              event[:first_id] = stored_event.fetch(:first_id, event[:id])
+            else
+              event[:first_id] = event[:id]
             end
             event[:action] = flapping ? :flapping : :create
             @redis.hset("events:#{client[:name]}", check[:name], MultiJson.dump(event)) do
@@ -320,6 +325,7 @@ module Sensu
             end
           elsif stored_event
             event[:occurrences] = stored_event[:occurrences]
+            event[:first_id] = stored_event.fetch(:first_id, event[:id])
             event[:action] = :resolve
             unless check[:auto_resolve] == false && !check[:force_resolve]
               @redis.hdel("events:#{client[:name]}", check[:name]) do
