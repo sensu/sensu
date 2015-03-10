@@ -16,6 +16,7 @@ Gem::Specification.new do |s|
   s.add_dependency "json" if RUBY_VERSION < "1.9"
   s.add_dependency "multi_json", "1.10.1"
   s.add_dependency "uuidtools", "2.1.4"
+  s.add_dependency "eventmachine", "1.0.3"
   s.add_dependency "sensu-em", "2.4.1"
   s.add_dependency "sensu-logger", "1.0.0"
   s.add_dependency "sensu-settings", "1.2.0"
