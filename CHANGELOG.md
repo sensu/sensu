@@ -7,13 +7,17 @@ Improved Sensu client keepalive event check output.
 Hashed initial check request/execution scheduling splay, consistent over
 process restarts/reloads.
 
-Sensu event ID logged for event handler output.
+Handler output with multiple lines is now logged as a single log event.
+
+Support for Sensu filter extensions.
 
 ### Other
 
 Fixed TLS/SSL on Windows.
 
 Fixed event filtering with event action, eg. `"action": "create"`.
+
+Restructured and documented Sensu core with YARD.
 
 ## 0.16.0 - 2014-10-31
 
