@@ -184,15 +184,9 @@ module Sensu
       # @param check [Hash]
       def run_check_extension(check)
         @logger.debug("attempting to run check extension", :check => check)
-        if check.has_key?(:extension) and @extensions[:checks].has_key?(check[:extension])
-          extension = @extensions[:checks][check[:extension]]
-          config = check
-        else
-          extension = @extensions[:checks][check[:name]]
-          config = nil
-        end
         check[:executed] = Time.now.to_i
-        extension.safe_run(config) do |output, status|
+        extension = @extensions[:checks][check[:extension]] || @extensions[:checks][check[:name]]
+        extension.safe_run(check) do |output, status|
           check[:output] = output
           check[:status] = status
           publish_check_result(check)
@@ -227,10 +221,8 @@ module Sensu
           else
             execute_check_command(check)
           end
-        elsif check.has_key?(:extension)
-          if @extensions.check_exists?(check[:extension])
-            run_check_extension(check)
-          end
+        elsif @extensions.check_exists?(check[:extension])
+          run_check_extension(check)
         else
           if @extensions.check_exists?(check[:name])
             run_check_extension(check)
