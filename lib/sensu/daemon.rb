@@ -185,7 +185,11 @@ module Sensu
       @transport = Transport.connect(transport_name, transport_settings)
       @transport.on_error do |error|
         @logger.fatal("transport connection error", :error => error.to_s)
-        stop
+        if @settings[:transport][:reconnect_on_error]
+          @transport.reconnect
+        else
+          stop
+        end
       end
       @transport.before_reconnect do
         unless testing?
