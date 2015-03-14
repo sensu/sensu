@@ -173,14 +173,20 @@ module Sensu
       # VM and the EventMachine event loop, using the Sensu Extension
       # API.
       #
+      # If the check hash has an "extension" key, it will run the
+      # extension whose name that is the value of that key and 
+      # pass the check hash as an argument to safe_run(). 
+      # Otherwise, it will run the extension whose name that 
+      # is the value of the "name" key and pass nil to safe_run().
+      #
       # https://github.com/sensu/sensu-extension
       #
       # @param check [Hash]
       def run_check_extension(check)
         @logger.debug("attempting to run check extension", :check => check)
         check[:executed] = Time.now.to_i
-        extension = @extensions[:checks][check[:name]]
-        extension.safe_run do |output, status|
+        extension = @extensions[:checks][check[:extension]] || @extensions[:checks][check[:name]]
+        extension.safe_run(check) do |output, status|
           check[:output] = output
           check[:status] = status
           publish_check_result(check)
@@ -188,10 +194,12 @@ module Sensu
       end
 
       # Process a check request. If a check request has a check
-      # command, it will be executed. A check request without a check
-      # command indicates a check extension run. A check request will
-      # be merged with a local check definition, if present. Client
-      # safe mode is enforced in this method, requiring a local check
+      # command, it will be executed. If a check request has an extension
+      # name as the value of its "extension" key, run the extension passing
+      # through the check request. A check request without a check
+      # command or "extension" key indicates a check extension run. 
+      # A check request will be merged with a local check definition, if present.
+      # Client safe mode is enforced in this method, requiring a local check
       # definition in order to execute the check command. If a local
       # check definition does not exist when operating with client
       # safe mode, a check result will be published to report the
@@ -214,7 +222,7 @@ module Sensu
             execute_check_command(check)
           end
         else
-          if @extensions.check_exists?(check[:name])
+          if @extensions.check_exists?(check[:extension]) || @extensions.check_exists?(check[:name])
             run_check_extension(check)
           else
             @logger.warn("unknown check extension", :check => check)
