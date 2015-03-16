@@ -11,6 +11,19 @@ Handler output with multiple lines is now logged as a single log event.
 
 Support for Sensu filter extensions.
 
+Check definitions can now specify a Sensu check extension to run,
+"extension", instead of a command.
+
+Sensu transport "reconnect_on_error" configuration option, to enable
+transport reconnect in the event of an unexpected error. This is set to
+false by default, as some errors are unrecoverable. The Sensu transport
+will always reconnect when there is a loss of connectivity.
+
+Sensu Redis "reconnect_on_error" configuration option, to enable Redis
+reconnect in the event of an unexpected error. This is set to false by
+default, as some errors are unrecoverable. The Redis client will always
+reconnect when there is a loss of connectivity.
+
 ### Other
 
 Fixed TLS/SSL on Windows.
