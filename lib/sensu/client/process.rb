@@ -171,13 +171,10 @@ module Sensu
       # Run a check extension and publish the result. The Sensu client
       # loads check extensions, checks that run within the Sensu Ruby
       # VM and the EventMachine event loop, using the Sensu Extension
-      # API.
-      #
-      # If the check hash has an "extension" key, it will run the
-      # extension whose name that is the value of that key and 
-      # pass the check hash as an argument to safe_run(). 
-      # Otherwise, it will run the extension whose name that 
-      # is the value of the "name" key and pass nil to safe_run().
+      # API. If a check definition includes `:extension`, use it's
+      # value for the extension name, otherwise use the check name.
+      # The check definition is passed to the extension `safe_run()`
+      # method as a parameter, the extension may utilize it.
       #
       # https://github.com/sensu/sensu-extension
       #
@@ -185,7 +182,8 @@ module Sensu
       def run_check_extension(check)
         @logger.debug("attempting to run check extension", :check => check)
         check[:executed] = Time.now.to_i
-        extension = @extensions[:checks][check[:extension]] || @extensions[:checks][check[:name]]
+        extension_name = check[:extension] || check[:name]
+        extension = @extensions[:checks][extension_name]
         extension.safe_run(check) do |output, status|
           check[:output] = output
           check[:status] = status
@@ -194,16 +192,19 @@ module Sensu
       end
 
       # Process a check request. If a check request has a check
-      # command, it will be executed. If a check request has an extension
-      # name as the value of its "extension" key, run the extension passing
-      # through the check request. A check request without a check
-      # command or "extension" key indicates a check extension run. 
-      # A check request will be merged with a local check definition, if present.
-      # Client safe mode is enforced in this method, requiring a local check
+      # command, it will be executed. A standard check request will be
+      # merged with a local check definition, if present. Client safe
+      # mode is enforced in this method, requiring a local check
       # definition in order to execute the check command. If a local
       # check definition does not exist when operating with client
       # safe mode, a check result will be published to report the
-      # missing check definition.
+      # missing check definition. A check request without a
+      # command indicates a check extension run. The check request may
+      # contain `:extension`, the name of the extension to run. If
+      # `:extension` is not present, the check name is used for the
+      # extension name. If a check extension does not exist for a
+      # name, a check result will be published to report the unknown
+      # check extension.
       #
       # @param check [Hash]
       def process_check_request(check)
@@ -222,7 +223,8 @@ module Sensu
             execute_check_command(check)
           end
         else
-          if @extensions.check_exists?(check[:extension]) || @extensions.check_exists?(check[:name])
+          extension_name = check[:extension] || check[:name]
+          if @extensions.check_exists?(extension_name)
             run_check_extension(check)
           else
             @logger.warn("unknown check extension", :check => check)
