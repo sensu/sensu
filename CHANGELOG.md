@@ -32,6 +32,9 @@ Fixed event filtering with event action, eg. `"action": "create"`.
 
 Restructured and documented Sensu core with YARD.
 
+Bumped MultiJSON to 1.11.0, to make adapters read IO objects prior to
+load.
+
 ## 0.16.0 - 2014-10-31
 
 ### Other
