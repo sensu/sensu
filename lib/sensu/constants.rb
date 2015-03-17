@@ -1,7 +1,7 @@
 module Sensu
   unless defined?(Sensu::VERSION)
     # Sensu release version.
-    VERSION = "0.17.0.beta.3"
+    VERSION = "0.17.0.beta.4"
 
     # Sensu check severities.
     SEVERITIES = %w[ok warning critical unknown]
