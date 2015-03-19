@@ -411,6 +411,7 @@ module Sensu
           :issued => Time.now.to_i
         }
         payload[:command] = check[:command] if check.has_key?(:command)
+        payload[:extension] = check[:extension] if check.has_key?(:extension)
         @logger.info("publishing check request", {
           :payload => payload,
           :subscribers => check[:subscribers]
