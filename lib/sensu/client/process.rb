@@ -223,6 +223,9 @@ module Sensu
             execute_check_command(check)
           end
         else
+          if @settings.check_exists?(check[:name])
+            check.merge!(@settings[:checks][check[:name]])
+          end
           extension_name = check[:extension] || check[:name]
           if @extensions.check_exists?(extension_name)
             run_check_extension(check)
