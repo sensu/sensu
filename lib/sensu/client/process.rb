@@ -213,7 +213,7 @@ module Sensu
           check.merge!(@settings[:checks][check[:name]])
         end
         if check.has_key?(:command)
-          if @safe_mode
+          if !@settings.check_exists?(check[:name]) && @safe_mode
             check[:output] = "Check is not locally defined (safe mode)"
             check[:status] = 3
             check[:handle] = false
