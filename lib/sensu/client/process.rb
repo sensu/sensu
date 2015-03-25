@@ -209,11 +209,11 @@ module Sensu
       # @param check [Hash]
       def process_check_request(check)
         @logger.debug("processing check", :check => check)
+        if @settings.check_exists?(check[:name])
+          check.merge!(@settings[:checks][check[:name]])
+        end
         if check.has_key?(:command)
-          if @settings.check_exists?(check[:name])
-            check.merge!(@settings[:checks][check[:name]])
-            execute_check_command(check)
-          elsif @safe_mode
+          if @safe_mode && !@settings.check_exists?(check[:name])
             check[:output] = "Check is not locally defined (safe mode)"
             check[:status] = 3
             check[:handle] = false
