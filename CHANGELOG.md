@@ -1,3 +1,14 @@
+## 0.17.1 - 2015-03-30
+
+### Features
+
+Check requests can now include a check "extension" to run, instead of a
+command.
+
+### Other
+
+Always merge check requests with local check definitions if they exist.
+
 ## 0.17.0 - 2015-03-17
 
 ### Features
