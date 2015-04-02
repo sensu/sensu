@@ -406,14 +406,9 @@ module Sensu
                   settings.redis.del("events:#{client_name}")
                   settings.redis.smembers("result:#{client_name}") do |checks|
                     checks.each do |check_name|
-<<<<<<< HEAD
                       result_key = "#{client_name}:#{check_name}"
                       settings.redis.del("result:#{result_key}")
                       settings.redis.del("history:#{result_key}")
-=======
-                      settings.redis.del("history:#{client_name}:#{check_name}")
-                      settings.redis.del("result:#{client_name}:#{check_name}")
->>>>>>> initial implementation
                     end
                     settings.redis.del("result:#{client_name}")
                   end
