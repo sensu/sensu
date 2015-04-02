@@ -362,10 +362,13 @@ module Sensu
                 end
               end
             end
-            @logger.debug("updating result data", :check=> check)
-            result_truncated_output = result.dup
-            result_truncated_output[:output] = result[:output][0..256]
-            @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_without_output))
+            unless check[:name] == 'keepalive'
+              @logger.debug("updating result data", :check=> check)
+              result_truncated_output = result.dup
+              result_truncated_output[:check][:output] = check[:output][0..256]
+              @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_truncated_output))
+              @redis.sadd('results', "#{client[:name]}:#{check[:name]}")
+            end
           else
             @logger.warn("client not in registry", :client => result[:client])
           end
@@ -534,6 +537,22 @@ module Sensu
         check.merge(:name => "keepalive", :issued => timestamp, :executed => timestamp)
       end
 
+      # Create a keepalive check definition for a check. Check 
+      # definitions may contain `:thresholds` configuration, containing
+      # specific thresholds. The check definition creation begins with 
+      # the result json, and default thresholds. If the check config 
+      # provides its own `:thresholds` configuration, it's deep merged 
+      # with the defaults.
+      def create_check_keepalive_check(result_json)
+        check_defaults = {
+          :thresholds => {
+            :warning => 0,
+            :critical => 0
+          }
+        }
+        deep_merge(check_defaults, MultiJson.load(result_json)[:check])
+      end
+
       # Determine stale clients, those that have not sent a keepalive
       # in a specified amount of time (thresholds). This method
       # iterates through the client registry, creating a keepalive
@@ -585,42 +604,31 @@ module Sensu
       # no alert is published.
       def determine_stale_checks
         @logger.info("determining stale checks")
-        @redis.smembers("clients") do |clients|
-          clients.each do |client_name|
-            @redis.keys("result:" + client_name + ":*") do |results|
-              results.each do |result_name|
-                next if result_name.split(':')[2] == 'keepalive'
-                @redis.get(result_name) do |result_json|
-                  next if result_json.nil?
-                  result = MultiJson.load(result_json)
-                  check_defaults = {
-                    :thresholds => {
-                      :warning => 120,
-                      :critical => 180
-                    }
-                  }
-                  check = deep_merge(check_defaults, result[:check])
-                  time_since_last_result = Time.now.to_i - check[:issued]
-                  check[:output] = "No result sent from check for "
-                  check[:output] << "#{time_since_last_result} seconds"
-                  if time_since_last_result >= check[:thresholds][:critical] \
-                    and check[:thresholds][:critical] != 0
-                    check[:output] << " (>=#{check[:thresholds][:critical]})"
-                    check[:status] = 2
-                    publish_check = true
-                  elsif time_since_last_result >= check[:thresholds][:warning] \
-                    and check[:thresholds][:warning] != 0
-                    check[:output] << " (>=#{check[:thresholds][:warning]})"
-                    check[:status] = 1
-                    publish_check = true
-                  end
-                  next unless publish_check
-                  @redis.get("client:#{client_name}") do |client_json|
-                    next if client_json.nil?
-                    client = MultiJson.load(client_json)
-                    publish_check_result(client, check)
-                  end
-                end
+        @redis.smembers("results") do |results|
+          results.each do |result_name|
+	    client_name = result_name.split(':')[1]
+            @redis.get(result_name) do |result_json|
+              next if result_json.nil?
+              check = create_check_keepalive_check(result_json)
+              time_since_last_result = Time.now.to_i - check[:issued]
+              check[:output] = "No result sent from check for "
+              check[:output] << "#{time_since_last_result} seconds"
+              if time_since_last_result >= check[:thresholds][:critical] \
+                and check[:thresholds][:critical] != 0
+                check[:output] << " (>=#{check[:thresholds][:critical]})"
+                check[:status] = 2
+                publish_check = true
+              elsif time_since_last_result >= check[:thresholds][:warning] \
+                and check[:thresholds][:warning] != 0
+                check[:output] << " (>=#{check[:thresholds][:warning]})"
+                check[:status] = 1
+                publish_check = true
+              end
+              next unless publish_check
+              @redis.get("client:#{client_name}") do |client_json|
+                next if client_json.nil?
+                client = MultiJson.load(client_json)
+                publish_check_result(client, check)
               end
             end
           end

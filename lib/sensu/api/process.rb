@@ -384,6 +384,7 @@ module Sensu
                     checks.each do |check_name|
                       settings.redis.del("history:#{client_name}:#{check_name}")
                       settings.redis.del("result:#{client_name}:#{check_name}")
+                      settings.redis.srem('results', "#{client_name}:#{check_name}")
                     end
                     settings.redis.del("history:#{client_name}")
                   end
