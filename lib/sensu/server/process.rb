@@ -606,7 +606,7 @@ module Sensu
         @logger.info("determining stale checks")
         @redis.smembers("results") do |results|
           results.each do |result_name|
-	    client_name = result_name.split(':')[1]
+            client_name = result_name.split(':')[1]
             @redis.get(result_name) do |result_json|
               next if result_json.nil?
               check = create_check_keepalive_check(result_json)
