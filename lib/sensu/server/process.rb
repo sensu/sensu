@@ -251,7 +251,7 @@ module Sensu
           @in_progress[:events] += 1
           filter_event(handler, event) do |event|
             mutate_event(handler, event) do |event_data|
-              handle_event(handler, event_data)
+              handle_event(handler, event_data, event[:id])
             end
           end
         end
