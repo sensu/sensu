@@ -362,13 +362,11 @@ module Sensu
                 end
               end
             end
-            unless check[:name] == 'keepalive'
-              @logger.debug("updating result data", :check=> check)
-              result_truncated_output = result.dup
-              result_truncated_output[:check][:output] = check[:output][0..256]
-              @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_truncated_output))
-              @redis.sadd('results', "#{client[:name]}:#{check[:name]}")
-            end
+            @logger.debug("updating result data", :check=> check)
+            result_truncated_output = result.dup
+            result_truncated_output[:check][:output] = check[:output][0..256]
+            @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_truncated_output))
+            @redis.sadd('results', "#{client[:name]}:#{check[:name]}")
           else
             @logger.warn("client not in registry", :client => result[:client])
           end
@@ -606,6 +604,7 @@ module Sensu
         @logger.info("determining stale checks")
         @redis.smembers("results") do |results|
           results.each do |result_name|
+            next if result_name.split(':')[2] == 'keepalive'
             client_name = result_name.split(':')[1]
             @redis.get(result_name) do |result_json|
               next if result_json.nil?
