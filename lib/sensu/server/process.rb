@@ -188,7 +188,7 @@ module Sensu
         aggregate_groups = check[:aggregate].is_a?(Array) ? \
           check[:aggregate].map { |aggregate_group_name| aggregate_group_name } : [ check[:name] ]
         aggregate_groups.each do |check_name|
-	        result_set = "#{check_name}:#{check[:issued]}"
+          result_set = "#{check_name}:#{check[:issued]}"
           result_data = MultiJson.dump(:output => check[:output], :status => check[:status])
           @redis.hset("aggregation:#{result_set}", result[:client], result_data) do
             SEVERITIES.each do |severity|
