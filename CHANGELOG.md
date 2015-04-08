@@ -1,3 +1,10 @@
+## 0.17.2 - 2015-04-08
+
+### Other
+
+Fixed a bug where the Sensu server was unable to stop due to the handling
+event count not being decremented when events were filtered.
+
 ## 0.17.1 - 2015-03-30
 
 ### Features
