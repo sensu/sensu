@@ -1,3 +1,21 @@
+## 0.17.2 - 2015-04-08
+
+### Other
+
+Fixed a bug where the Sensu server was unable to stop due to the handling
+event count not being decremented when events were filtered.
+
+## 0.17.1 - 2015-03-30
+
+### Features
+
+Check requests can now include a check "extension" to run, instead of a
+command.
+
+### Other
+
+Always merge check requests with local check definitions if they exist.
+
 ## 0.17.0 - 2015-03-17
 
 ### Features

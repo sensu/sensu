@@ -285,14 +285,19 @@ module Sensu
       # @param callback [Proc]
       def filter_event(handler, event, &callback)
         details = {:handler => handler, :event => event}
-        if handling_disabled?(event)
-          @logger.info("event handling disabled for event", details)
-        elsif !handle_action?(handler, event)
-          @logger.info("handler does not handle action", details)
-        elsif !handle_severity?(handler, event)
-          @logger.info("handler does not handle event severity", details)
-        elsif handler_subdued?(handler, event)
-          @logger.info("handler is subdued", details)
+        filter_message = case
+        when handling_disabled?(event)
+          "event handling disabled for event"
+        when !handle_action?(handler, event)
+          "handler does not handle action"
+        when !handle_severity?(handler, event)
+          "handler does not handle event severity"
+        when handler_subdued?(handler, event)
+          "handler is subdued"
+        end
+        if filter_message
+          @logger.info(filter_message, details)
+          @handling_event_count -= 1 if @handling_event_count
         else
           event_filtered?(handler, event) do |filtered|
             unless filtered
