@@ -212,7 +212,11 @@ module Sensu
       @redis = Redis.connect(@settings[:redis])
       @redis.on_error do |error|
         @logger.fatal("redis connection error", :error => error.to_s)
-        stop
+        if @settings[:redis][:reconnect_on_error]
+          @redis.close
+        else
+          stop
+        end
       end
       @redis.before_reconnect do
         unless testing?
