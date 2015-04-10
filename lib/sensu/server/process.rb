@@ -185,21 +185,18 @@ module Sensu
       def aggregate_check_result(result)
         @logger.debug("adding check result to aggregate", :result => result)
         check = result[:check]
-        aggregate_groups = check[:aggregate].is_a?(Array) ? \
-          check[:aggregate].map { |aggregate_group_name| aggregate_group_name } : [ check[:name] ]
-        aggregate_groups.each do |check_name|
-          result_set = "#{check_name}:#{check[:issued]}"
-          result_data = MultiJson.dump(:output => check[:output], :status => check[:status])
-          @redis.hset("aggregation:#{result_set}", result[:client], result_data) do
-            SEVERITIES.each do |severity|
-              @redis.hsetnx("aggregate:#{result_set}", severity, 0)
-            end
-            severity = (SEVERITIES[check[:status]] || "unknown")
-            @redis.hincrby("aggregate:#{result_set}", severity, 1) do
-              @redis.hincrby("aggregate:#{result_set}", "total", 1) do
-                @redis.sadd("aggregates:#{check_name}", check[:issued]) do
-                  @redis.sadd("aggregates", check_name)
-                end
+        check_name = check[:aggregate].is_a?(String) ? check[:aggregate] : check[:name]
+	result_set = "#{check_name}:#{check[:issued]}"
+        result_data = MultiJson.dump(:output => check[:output], :status => check[:status])
+        @redis.hset("aggregation:#{result_set}", result[:client], result_data) do
+          SEVERITIES.each do |severity|
+            @redis.hsetnx("aggregate:#{result_set}", severity, 0)
+          end
+          severity = (SEVERITIES[check[:status]] || "unknown")
+          @redis.hincrby("aggregate:#{result_set}", severity, 1) do
+            @redis.hincrby("aggregate:#{result_set}", "total", 1) do
+              @redis.sadd("aggregates:#{check_name}", check[:issued]) do
+                @redis.sadd("aggregates", check_name)
               end
             end
           end
@@ -221,7 +218,6 @@ module Sensu
         result_key = "#{client[:name]}:#{check[:name]}"
         history_key = "history:#{result_key}"
         @redis.rpush(history_key, check[:status]) do
-          @redis.set("execution:#{result_key}", check[:executed])
           @redis.ltrim(history_key, -21, -1)
           callback.call
         end
@@ -370,6 +366,11 @@ module Sensu
                 end
               end
             end
+            @logger.debug("updating result data", :check=> check)
+            result_truncated_output = result.dup
+            result_truncated_output[:check][:output] = check[:output][0..256]
+            @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_truncated_output))
+            @redis.sadd('results', "#{client[:name]}:#{check[:name]}")
           else
             @logger.warn("client not in registry", :client => result[:client])
           end
@@ -412,10 +413,17 @@ module Sensu
       # pipes. Transport errors are logged.
       #
       # @param check [Hash] definition.
-      def publish_check_request(check)
+      def publish_check_request(check, issued = nil)
+        issued = Time.now.to_i unless issued
+
+        if check_request_subdued?(check)
+          @logger.info("check request was subdued", :check => check)
+          return 
+        end
+
         payload = {
           :name => check[:name],
-          :issued => Time.now.to_i
+          :issued => issued 
         }
         payload[:command] = check[:command] if check.has_key?(:command)
         @logger.info("publishing check request", {
@@ -435,15 +443,32 @@ module Sensu
         end
       end
 
+      def publish_check_requests(checks)
+        issued = Time.now.to_i
+
+        checks.each do |check|
+          publish_check_request(check, issued)
+        end
+      end
+
       # Calculate a check execution splay, taking into account the
       # current time and the execution interval to ensure it's
       # consistent between process restarts.
       #
       # @param check [Hash] definition.
-      def calculate_check_execution_splay(check)
-        splay_hash = Digest::MD5.digest(check[:name]).unpack('Q<').first
+      def calculate_check_execution_splay(interval_name, interval)
+        splay_hash = Digest::MD5.digest(interval_name.to_s).unpack('Q<').first
         current_time = (Time.now.to_f * 1000).to_i
-        (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
+        (splay_hash - current_time) % (interval * 1000) / 1000.0
+      end
+
+      def add_check_request_to_scheduler(check_name, interval, check_request)
+        interval = testing? ? 0.5 : interval
+        execution_splay = testing? ? 0 : calculate_check_execution_splay(check_name, interval)
+        @timers[:master] << EM::Timer.new(execution_splay) do
+          check_request.call
+          @timers[:master] << EM::PeriodicTimer.new(interval, &check_request)
+        end
       end
 
       # Schedule check executions, using EventMachine periodic timers,
@@ -454,19 +479,22 @@ module Sensu
       #
       # @param checks [Array] of definitions.
       def schedule_check_executions(checks)
+        check_requests = {}
         checks.each do |check|
-          create_check_request = Proc.new do
-            unless check_request_subdued?(check)
-              publish_check_request(check)
-            else
-              @logger.info("check request was subdued", :check => check)
-            end
+          if check[:aggregate].is_a?(String)
+            aggregate_group = check[:aggregate].to_sym
+            check_requests[aggregate_group] ||= {}
+            check_requests[aggregate_group][check[:interval]] ||= []
+            check_requests[aggregate_group][check[:interval]].push(check)
+          else
+            add_check_request_to_scheduler(check_name, interval,
+              Proc.new { publish_check_request(check) })
           end
-          execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
-          interval = testing? ? 0.5 : check[:interval]
-          @timers[:master] << EM::Timer.new(execution_splay) do
-            create_check_request.call
-            @timers[:master] << EM::PeriodicTimer.new(interval, &create_check_request)
+        end
+        check_requests.each do |group, intervals|
+          intervals.each do |interval, checks|
+            add_check_request_to_scheduler(group, interval, 
+              Proc.new { publish_check_requests(checks) })
           end
         end
       end
