@@ -186,7 +186,7 @@ module Sensu
         @logger.debug("adding check result to aggregate", :result => result)
         check = result[:check]
         check_name = check[:aggregate].is_a?(String) ? check[:aggregate] : check[:name]
-	result_set = "#{check_name}:#{check[:issued]}"
+        result_set = "#{check_name}:#{check[:issued]}"
         result_data = MultiJson.dump(:output => check[:output], :status => check[:status])
         @redis.hset("aggregation:#{result_set}", result[:client], result_data) do
           SEVERITIES.each do |severity|
@@ -415,15 +415,13 @@ module Sensu
       # @param check [Hash] definition.
       def publish_check_request(check, issued = nil)
         issued = Time.now.to_i unless issued
-
         if check_request_subdued?(check)
           @logger.info("check request was subdued", :check => check)
-          return 
+          return
         end
-
         payload = {
           :name => check[:name],
-          :issued => issued 
+          :issued => issued
         }
         payload[:command] = check[:command] if check.has_key?(:command)
         @logger.info("publishing check request", {
@@ -445,7 +443,6 @@ module Sensu
 
       def publish_check_requests(checks)
         issued = Time.now.to_i
-
         checks.each do |check|
           publish_check_request(check, issued)
         end
@@ -493,7 +490,7 @@ module Sensu
         end
         check_requests.each do |group, intervals|
           intervals.each do |interval, checks|
-            add_check_request_to_scheduler(group, interval, 
+            add_check_request_to_scheduler(group, interval,
               Proc.new { publish_check_requests(checks) })
           end
         end
