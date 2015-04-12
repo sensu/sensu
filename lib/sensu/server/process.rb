@@ -214,7 +214,6 @@ module Sensu
         result_key = "#{client[:name]}:#{check[:name]}"
         history_key = "history:#{result_key}"
         @redis.rpush(history_key, check[:status]) do
-          @redis.set("execution:#{result_key}", check[:executed])
           @redis.ltrim(history_key, -21, -1)
           callback.call
         end
@@ -363,6 +362,11 @@ module Sensu
                 end
               end
             end
+            @logger.debug("updating result data", :check=> check)
+            result_truncated_output = result.dup
+            result_truncated_output[:check][:output] = check[:output][0..256]
+            @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_truncated_output))
+            @redis.sadd('results', "#{client[:name]}:#{check[:name]}")
           else
             @logger.warn("client not in registry", :client => result[:client])
           end

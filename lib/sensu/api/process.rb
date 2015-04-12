@@ -341,8 +341,9 @@ module Sensu
                 history.map! do |status|
                   status.to_i
                 end
-                execution_key = "execution:#{client_name}:#{check_name}"
-                settings.redis.get(execution_key) do |last_execution|
+                settings.redis.get("result:#{client_name}:#{check_name}") do |result_json|
+                  result = MultiJson.load(result_json)
+                  last_execution = result[:check][:executed]
                   unless history.empty? || last_execution.nil?
                     item = {
                       :check => check_name,
@@ -382,7 +383,8 @@ module Sensu
                   settings.redis.smembers("history:#{client_name}") do |checks|
                     checks.each do |check_name|
                       settings.redis.del("history:#{client_name}:#{check_name}")
-                      settings.redis.del("execution:#{client_name}:#{check_name}")
+                      settings.redis.del("result:#{client_name}:#{check_name}")
+                      settings.redis.srem('results', "#{client_name}:#{check_name}")
                     end
                     settings.redis.del("history:#{client_name}")
                   end
