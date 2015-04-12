@@ -344,6 +344,23 @@ module Sensu
       # @param result [Hash] data.
       def process_check_result(result)
         @logger.debug("processing result", :result => result)
+
+        # Create a dummy 'floating' client hash if the result is
+        # from a floating check. This must be added to redis to
+        # ensure sensu-api/uchiwa/other API consumers do not break
+        if result[:check][:transport] == 'direct'
+          result[:check][:floating_host] = result[:client]
+          result[:client] = 'floating'
+          client = {
+            :name => 'floating',
+            :address => '127.0.0.2',
+            :subscriptions => [],
+            :timestamp => Time.now.to_i,
+            :version => '0.16.0'
+          }
+          @redis.sadd('clients', client[:name])
+          @redis.set('client:' + client[:name], MultiJson.dump(client))
+        end
         @redis.get("client:#{result[:client]}") do |client_json|
           unless client_json.nil?
             client = MultiJson.load(client_json)
@@ -406,20 +423,27 @@ module Sensu
       #
       # @param check [Hash] definition.
       def publish_check_request(check)
+        transport = (check[:transport] || 'fanout').to_sym
         payload = {
           :name => check[:name],
+          :transport => transport,
           :issued => Time.now.to_i
         }
         payload[:command] = check[:command] if check.has_key?(:command)
         @logger.info("publishing check request", {
           :payload => payload,
+          :transport => transport,
           :subscribers => check[:subscribers]
         })
         check[:subscribers].each do |subscription|
-          @transport.publish(:fanout, subscription, MultiJson.dump(payload)) do |info|
+          # Temporary fix - if transport is direct then prefix direct on the front of the subscription
+          # to avoid collisions but allow backward compat with earlier sensu clients
+          subscription = "direct_#{subscription}" if transport == :direct
+          @transport.publish(transport, subscription, MultiJson.dump(payload)) do |info|
             if info[:error]
               @logger.error("failed to publish check request", {
                 :subscription => subscription,
+                :transport => transport,
                 :payload => payload,
                 :error => info[:error].to_s
               })
