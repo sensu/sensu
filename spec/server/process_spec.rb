@@ -138,23 +138,36 @@ describe "Sensu::Server::Process" do
       @server.setup_transport
       @server.setup_redis
       @server.setup_results
+      first_id = ''
       redis.flushdb do
         timer(1) do
           client = client_template
           redis.set("client:i-424242", MultiJson.dump(client)) do
             result = result_template
             transport.publish(:direct, "results", MultiJson.dump(result))
-            transport.publish(:direct, "results", MultiJson.dump(result))
             timer(3) do
               redis.hget("events:i-424242", "test") do |event_json|
                 event = MultiJson.load(event_json)
                 expect(event[:id]).to be_kind_of(String)
-                expect(event[:check][:status]).to eq(1)
-                expect(event[:occurrences]).to eq(2)
-                timer(2) do
-                  latest_event_file = IO.read("/tmp/sensu-event.json")
-                  expect(MultiJson.load(latest_event_file)).to eq(event)
-                  async_done
+                expect(event[:occurrences]).to eq(1)
+                expect(event[:first_id]).to be_kind_of(String)
+                expect(event[:first_id]).to eq(event[:id])
+                first_id = event[:first_id]
+              end
+              transport.publish(:direct, "results", MultiJson.dump(result))
+              timer(3) do
+                redis.hget("events:i-424242", "test") do |event_json|
+                  event = MultiJson.load(event_json)
+                  expect(event[:id]).to be_kind_of(String)
+                  expect(event[:first_id]).to be_kind_of(String)
+                  expect(event[:first_id]).to eq(first_id)
+                  expect(event[:check][:status]).to eq(1)
+                  expect(event[:occurrences]).to eq(2)
+                  timer(2) do
+                    latest_event_file = IO.read("/tmp/sensu-event.json")
+                    expect(MultiJson.load(latest_event_file)).to eq(event)
+                    async_done
+                  end
                 end
               end
             end
