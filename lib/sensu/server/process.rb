@@ -499,7 +499,7 @@ module Sensu
             check_requests[aggregate_group][check[:interval]] ||= []
             check_requests[aggregate_group][check[:interval]].push(check)
           else
-            schedule_check_execution(check_name, interval, Proc.new { publish_check_request(check) })
+            schedule_check_execution(check[:name], interval, Proc.new { publish_check_request(check) })
           end
         end
         check_requests.each do |group, intervals|
