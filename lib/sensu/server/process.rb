@@ -170,8 +170,11 @@ module Sensu
       end
 
       # Add a check result to an aggregate. A check aggregate uses the
-      # check `:name` and the `:issued` timestamp as its unique
-      # identifier. An aggregate uses several counters: the total
+      # check name and the `:issued` timestamp as its unique
+      # identifier. It's possible to supply an Array of names to
+      # override `check[:name]` to store check results in multiple
+      # aggregate buckets or to group checks with different check-names.
+      # An aggregate uses several counters: the total
       # number of results in the aggregate, and a counter for each
       # check severity (ok, warning, etc). Check output is also
       # stored, to be summarized to aid in identifying outliers for a
@@ -182,17 +185,21 @@ module Sensu
       def aggregate_check_result(result)
         @logger.debug("adding check result to aggregate", :result => result)
         check = result[:check]
-        result_set = "#{check[:name]}:#{check[:issued]}"
-        result_data = MultiJson.dump(:output => check[:output], :status => check[:status])
-        @redis.hset("aggregation:#{result_set}", result[:client], result_data) do
-          SEVERITIES.each do |severity|
-            @redis.hsetnx("aggregate:#{result_set}", severity, 0)
-          end
-          severity = (SEVERITIES[check[:status]] || "unknown")
-          @redis.hincrby("aggregate:#{result_set}", severity, 1) do
-            @redis.hincrby("aggregate:#{result_set}", "total", 1) do
-              @redis.sadd("aggregates:#{check[:name]}", check[:issued]) do
-                @redis.sadd("aggregates", check[:name])
+        aggregate_groups = check[:aggregate].is_a?(Array) ? \
+          check[:aggregate].map { |aggregate_group_name| aggregate_group_name } : [ check[:name] ]
+        aggregate_groups.each do |check_name|
+	        result_set = "#{check_name}:#{check[:issued]}"
+          result_data = MultiJson.dump(:output => check[:output], :status => check[:status])
+          @redis.hset("aggregation:#{result_set}", result[:client], result_data) do
+            SEVERITIES.each do |severity|
+              @redis.hsetnx("aggregate:#{result_set}", severity, 0)
+            end
+            severity = (SEVERITIES[check[:status]] || "unknown")
+            @redis.hincrby("aggregate:#{result_set}", severity, 1) do
+              @redis.hincrby("aggregate:#{result_set}", "total", 1) do
+                @redis.sadd("aggregates:#{check_name}", check[:issued]) do
+                  @redis.sadd("aggregates", check_name)
+                end
               end
             end
           end
@@ -214,7 +221,6 @@ module Sensu
         result_key = "#{client[:name]}:#{check[:name]}"
         history_key = "history:#{result_key}"
         @redis.rpush(history_key, check[:status]) do
-          @redis.set("execution:#{result_key}", check[:executed])
           @redis.ltrim(history_key, -21, -1)
           callback.call
         end
@@ -363,6 +369,11 @@ module Sensu
                 end
               end
             end
+            @logger.debug("updating result data", :check=> check)
+            result_truncated_output = result.dup
+            result_truncated_output[:check][:output] = check[:output][0..256]
+            @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_truncated_output))
+            @redis.sadd('results', "#{client[:name]}:#{check[:name]}")
           else
             @logger.warn("client not in registry", :client => result[:client])
           end
