@@ -404,11 +404,14 @@ module Sensu
       # composted of a check `:name`, an `:issued` timestamp, and a
       # check `:command` if available. The check request is published
       # to a transport pipe, for each of the check `:subscribers` in
-      # its definition, eg. "webserver". JSON serialization is used
-      # when publishing the check request payload to the transport
-      # pipes. Transport errors are logged.
+      # its definition, eg. "webserver". Check requests are not 
+      # published if subdued. JSON serialization is used when 
+      # publishing the check request payload to the transport pipes.
+      # Transport errors are logged.
+      #
       #
       # @param check [Hash] definition.
+      # @param issued [Integer] issued timestamp.
       def publish_check_request(check, issued = nil)
         issued = Time.now.to_i unless issued
         if check_request_subdued?(check)
@@ -437,7 +440,10 @@ module Sensu
         end
       end
 
-      def publish_check_requests(checks)
+      # Publish multiple check requests with the same issued value.
+      #
+      # @param checks [Array] of checks.
+      def publish_check_request_group(checks)
         issued = Time.now.to_i
         checks.each do |check|
           publish_check_request(check, issued)
@@ -448,14 +454,24 @@ module Sensu
       # current time and the execution interval to ensure it's
       # consistent between process restarts.
       #
-      # @param check [Hash] definition.
+      # @param interval_name [Shring] name of check or aggregate group
+      # @param interval [Integer] time between check executions
       def calculate_check_execution_splay(interval_name, interval)
         splay_hash = Digest::MD5.digest(interval_name.to_s).unpack('Q<').first
         current_time = (Time.now.to_f * 1000).to_i
         (splay_hash - current_time) % (interval * 1000) / 1000.0
       end
 
-      def add_check_request_to_scheduler(check_name, interval, check_request)
+      # Schedule check execution, using EventMachine periodic timers,
+      # using a calculated execution splay. The timers are stored in
+      # the timers hash under `:master`, as check request publishing
+      # is a task for only the Sensu server master, so they can be
+      # cancelled etc. 
+      # 
+      # @param check_name [String]
+      # @param interval [Integer] 
+      # @param check_request [Proc]
+      def schedule_check_execution(check_name, interval, check_request)
         interval = testing? ? 0.5 : interval
         execution_splay = testing? ? 0 : calculate_check_execution_splay(check_name, interval)
         @timers[:master] << EM::Timer.new(execution_splay) do
@@ -464,14 +480,17 @@ module Sensu
         end
       end
 
-      # Schedule check executions, using EventMachine periodic timers,
-      # using a calculated execution splay. The timers are stored in
-      # the timers hash under `:master`, as check request publishing
-      # is a task for only the Sensu server master, so they can be
-      # cancelled etc. Check requests are not published if subdued.
+      # Create check request Procs to encapsulate check request data with
+      # appropriate publish request method.  Default behavior is for 
+      # a proc to be created for individual checks. When aggregate is a
+      # String then checks are grouped and sent to be scheduled for
+      # execution in a batch so the `:issued` timestamp can be the same
+      # for each check in the group, this way the resulting event data 
+      # will be correctly bucketed in the same buckets, even when checks
+      # in the aggregate group have different `:name`s.
       #
-      # @param checks [Array] of definitions.
-      def schedule_check_executions(checks)
+      # @param checks [Array] of checks.
+      def create_check_requests(checks)
         check_requests = {}
         checks.each do |check|
           if check[:aggregate].is_a?(String)
@@ -480,14 +499,12 @@ module Sensu
             check_requests[aggregate_group][check[:interval]] ||= []
             check_requests[aggregate_group][check[:interval]].push(check)
           else
-            add_check_request_to_scheduler(check_name, interval,
-              Proc.new { publish_check_request(check) })
+            schedule_check_execution(check_name, interval, Proc.new { publish_check_request(check) })
           end
         end
         check_requests.each do |group, intervals|
-          intervals.each do |interval, checks|
-            add_check_request_to_scheduler(group, interval,
-              Proc.new { publish_check_requests(checks) })
+          intervals.each do |interval, requests|
+            schedule_check_execution(group, interval, Proc.new { publish_check_request_group(requests) })
           end
         end
       end
@@ -497,7 +514,7 @@ module Sensu
       # and do not have `:publish` set to `false`. The array of check
       # definitions includes those from standard checks and extensions
       # (with a defined execution `:interval`). The array is provided
-      # to the `schedule_check_executions()` method.
+      # to the `create_check_requests()` method.
       def setup_check_request_publisher
         @logger.debug("scheduling check requests")
         standard_checks = @settings.checks.reject do |check|
@@ -506,7 +523,7 @@ module Sensu
         extension_checks = @extensions.checks.reject do |check|
           check[:standalone] || check[:publish] == false || !check[:interval].is_a?(Integer)
         end
-        schedule_check_executions(standard_checks + extension_checks)
+        create_check_requests(standard_checks + extension_checks)
       end
 
       # Publish a check result to the transport for processing. A
