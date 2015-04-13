@@ -20,12 +20,10 @@ describe 'Sensu::API::Process' do
                   redis.set('stash:test/test', '{"key": "value"}') do
                     redis.expire('stash:test/test', 3600) do
                       redis.sadd('stashes', 'test/test') do
-                        redis.sadd('history:i-424242', 'success') do
-                          redis.sadd('history:i-424242', 'fail') do
-                            redis.rpush('history:i-424242:success', 0) do
-                              @redis = nil
-                              async_done
-                            end
+                        redis.sadd('history:i-424242', 'test') do
+                          redis.rpush('history:i-424242:test', 0) do
+                            @redis = nil
+                            async_done
                           end
                         end
                       end
@@ -288,7 +286,7 @@ describe 'Sensu::API::Process' do
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         expect(body.size).to eq(1)
-        expect(body[0][:check]).to eq('success')
+        expect(body[0][:check]).to eq('test')
         expect(body[0][:history]).to be_kind_of(Array)
         expect(body[0][:last_execution]).to eq(1363224805)
         expect(body[0][:last_status]).to eq(0)
