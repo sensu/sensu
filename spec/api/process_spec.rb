@@ -15,20 +15,16 @@ describe 'Sensu::API::Process' do
         redis.set('client:i-424242', MultiJson.dump(client)) do
           redis.sadd('clients', 'i-424242') do
             redis.hset('events:i-424242', 'test', MultiJson.dump(event)) do
-              redis.sadd('results', "i-424242:test")
-                redis.set('result:i-424242:test', MultiJson.load(result_template)) do
+              redis.sadd('results', "i-424242:test") do
+                redis.set('result:i-424242:test', MultiJson.dump(result_template)) do
                   redis.set('stash:test/test', '{"key": "value"}') do
                     redis.expire('stash:test/test', 3600) do
                       redis.sadd('stashes', 'test/test') do
                         redis.sadd('history:i-424242', 'success') do
                           redis.sadd('history:i-424242', 'fail') do
-                            redis.set('execution:i-424242:success', 1363224805) do
-                              redis.set('execution:i-424242:fail', 1363224806) do
-                                redis.rpush('history:i-424242:success', 0) do
-                                  @redis = nil
-                                  async_done
-                                end
-                              end
+                            redis.rpush('history:i-424242:success', 0) do
+                              @redis = nil
+                              async_done
                             end
                           end
                         end
