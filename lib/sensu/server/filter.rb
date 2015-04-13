@@ -257,8 +257,8 @@ module Sensu
       # @param event [Hash]
       # @param callback [Proc]
       def event_filtered?(handler, event, &callback)
-        if handler.has_key?(:filters) || handler.has_key?(:filter)
-          filter_list = Array(handler[:filters] || handler[:filter])
+        if handler.key?(:filters) || handler.key?(:filter) || event[:client].key?(:filter) || event[:client].key?(:filters)
+          filter_list = Array(handler[:filters] || handler[:filter] || event[:client][:filter] || event[:client][:filters])
           filter_results = EM::Iterator.new(filter_list)
           run_filters = Proc.new do |filter_name, iterator|
             event_filter(filter_name, event) do |filtered|
