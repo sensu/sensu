@@ -586,6 +586,7 @@ module Sensu
             @redis.get("client:#{client_name}") do |client_json|
               unless client_json.nil?
                 client = MultiJson.load(client_json)
+                next if client[:keepalives] == false
                 check = create_keepalive_check(client)
                 time_since_last_keepalive = Time.now.to_i - client[:timestamp]
                 check[:output] = "No keepalive sent from client for "
