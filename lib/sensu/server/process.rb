@@ -814,3 +814,4 @@ module Sensu
     end
   end
 end
+
