@@ -199,17 +199,23 @@ module Sensu
         end
       end
 
-      # Store check result data. This method stores the 21 most recent
-      # check result statuses for a client/check pair, this history
-      # is used for event context and flap detection. The check
-      # execution timestamp is also stored, to provide an indication
-      # of how recent the data is.
+      # Store check result data. This method stores check result data
+      # and the 21 most recent check result statuses for a client/check
+      # pair, this history is used for event context and flap detection.
+      # The check execution timestamp is also stored, to provide an
+      # indication of how recent the data is.
       #
       # @param client [Hash]
       # @param check [Hash]
+      # @param result [Hash]
       # @param callback [Proc] to call when the check result data has
       #   been stored (history, etc).
-      def store_check_result(client, check, &callback)
+      def store_check_result(client, check, result, &callback)
+        @logger.debug("updating result data", :check=> check)
+        result_truncated_output = result.dup
+        result_truncated_output[:check][:output] = check[:output][0..256]
+        @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_truncated_output))
+        @redis.sadd('results', "#{client[:name]}:#{check[:name]}")
         @redis.sadd("history:#{client[:name]}", check[:name])
         result_key = "#{client[:name]}:#{check[:name]}"
         history_key = "history:#{result_key}"
@@ -222,7 +228,7 @@ module Sensu
       # Fetch the execution history for a client/check pair, the 21
       # most recent check result statuses. This method also calculates
       # the total state change percentage for the history, this value
-      # is use for check state flat detection, using a similar
+      # is use for check state flap detection, using a similar
       # algorithm to Nagios:
       # http://nagios.sourceforge.net/docs/3_0/flapping.html
       #
@@ -353,7 +359,7 @@ module Sensu
               result[:check]
             end
             aggregate_check_result(result) if check[:aggregate]
-            store_check_result(client, check) do
+            store_check_result(client, check, result) do
               check_history(client, check) do |history, total_state_change|
                 check[:history] = history
                 check[:total_state_change] = total_state_change
@@ -362,11 +368,6 @@ module Sensu
                 end
               end
             end
-            @logger.debug("updating result data", :check=> check)
-            result_truncated_output = result.dup
-            result_truncated_output[:check][:output] = check[:output][0..256]
-            @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_truncated_output))
-            @redis.sadd('results', "#{client[:name]}:#{check[:name]}")
           else
             @logger.warn("client not in registry", :client => result[:client])
           end
