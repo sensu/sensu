@@ -344,7 +344,7 @@ module Sensu
       #
       # @param name [Hash] to use for the client.
       # @param callback [Proc] to be called with the dynamically
-      # created client data.
+      #   created client data.
       def create_client(name, &callback)
         client = {
           :name => name,
