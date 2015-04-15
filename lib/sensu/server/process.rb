@@ -178,13 +178,16 @@ module Sensu
       # check execution across a number of Sensu clients. JSON
       # serialization is used for storing check result data.
       #
-      # @param result [Hash]
-      def aggregate_check_result(result)
-        @logger.debug("adding check result to aggregate", :result => result)
-        check = result[:check]
+      # @param client [Hash]
+      # @param check [Hash]
+      def aggregate_check_result(client, check)
+        @logger.debug("adding check result to aggregate", {
+          :client => client,
+          :check => check
+        })
         result_set = "#{check[:name]}:#{check[:issued]}"
         result_data = MultiJson.dump(:output => check[:output], :status => check[:status])
-        @redis.hset("aggregation:#{result_set}", result[:client], result_data) do
+        @redis.hset("aggregation:#{result_set}", client[:name], result_data) do
           SEVERITIES.each do |severity|
             @redis.hsetnx("aggregate:#{result_set}", severity, 0)
           end
@@ -393,7 +396,7 @@ module Sensu
           else
             result[:check]
           end
-          aggregate_check_result(result) if check[:aggregate]
+          aggregate_check_result(client, check) if check[:aggregate]
           store_check_result(client, check) do
             check_history(client, check) do |history, total_state_change|
               check[:history] = history
