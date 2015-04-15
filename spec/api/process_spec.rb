@@ -15,16 +15,14 @@ describe 'Sensu::API::Process' do
         redis.set('client:i-424242', MultiJson.dump(client)) do
           redis.sadd('clients', 'i-424242') do
             redis.hset('events:i-424242', 'test', MultiJson.dump(event)) do
-              redis.sadd('results', "i-424242:test") do
-                redis.set('result:i-424242:test', MultiJson.dump(result_template)) do
-                  redis.set('stash:test/test', '{"key": "value"}') do
-                    redis.expire('stash:test/test', 3600) do
-                      redis.sadd('stashes', 'test/test') do
-                        redis.sadd('history:i-424242', 'test') do
-                          redis.rpush('history:i-424242:test', 0) do
-                            @redis = nil
-                            async_done
-                          end
+              redis.set('result:i-424242:test', MultiJson.dump(check_template)) do
+                redis.set('stash:test/test', '{"key": "value"}') do
+                  redis.expire('stash:test/test', 3600) do
+                    redis.sadd('stashes', 'test/test') do
+                      redis.sadd('history:i-424242', 'test') do
+                        redis.rpush('history:i-424242:test', 0) do
+                          @redis = nil
+                          async_done
                         end
                       end
                     end
@@ -290,6 +288,8 @@ describe 'Sensu::API::Process' do
         expect(body[0][:history]).to be_kind_of(Array)
         expect(body[0][:last_execution]).to eq(1363224805)
         expect(body[0][:last_status]).to eq(0)
+        expect(body[0][:last_result]).to be_kind_of(Hash)
+        expect(body[0][:last_result][:output]).to eq("WARNING")
         async_done
       end
     end

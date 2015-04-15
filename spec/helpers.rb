@@ -104,19 +104,18 @@ module Helpers
   def check_template
     {
       :name => "test",
-      :command => "echo WARNING && exit 1",
       :issued => epoch,
+      :command => "echo WARNING && exit 1",
+      :output => "WARNING",
+      :status => 1,
       :executed => 1363224805
     }
   end
 
   def result_template
-    check = check_template
-    check[:output] = "WARNING"
-    check[:status] = 1
     {
       :client => "i-424242",
-      :check => check
+      :check => check_template
     }
   end
 
@@ -124,8 +123,6 @@ module Helpers
     client = client_template
     client[:timestamp] = epoch
     check = check_template
-    check[:output] = "WARNING"
-    check[:status] = 1
     check[:history] = [1]
     {
       :id => UUIDTools::UUID.random_create.to_s,

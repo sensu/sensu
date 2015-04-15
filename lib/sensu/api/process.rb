@@ -336,20 +336,22 @@ module Sensu
         settings.redis.smembers("history:#{client_name}") do |checks|
           unless checks.empty?
             checks.each_with_index do |check_name, index|
-              history_key = "history:#{client_name}:#{check_name}"
+              result_key = "#{client_name}:#{check_name}"
+              history_key = "history:#{result_key}"
               settings.redis.lrange(history_key, -21, -1) do |history|
                 history.map! do |status|
                   status.to_i
                 end
-                settings.redis.get("result:#{client_name}:#{check_name}") do |result_json|
+                settings.redis.get("result:#{result_key}") do |result_json|
                   result = MultiJson.load(result_json)
-                  last_execution = result[:check][:executed]
+                  last_execution = result[:executed]
                   unless history.empty? || last_execution.nil?
                     item = {
                       :check => check_name,
                       :history => history,
                       :last_execution => last_execution.to_i,
-                      :last_status => history.last
+                      :last_status => history.last,
+                      :last_result => result
                     }
                     response << item
                   end
@@ -374,19 +376,17 @@ module Sensu
               end
               EM::Timer.new(5) do
                 client = MultiJson.load(client_json)
-                settings.logger.info("deleting client", {
-                  :client => client
-                })
+                settings.logger.info("deleting client", :client => client)
                 settings.redis.srem("clients", client_name) do
                   settings.redis.del("client:#{client_name}")
                   settings.redis.del("events:#{client_name}")
-                  settings.redis.smembers("history:#{client_name}") do |checks|
+                  settings.redis.smembers("result:#{client_name}") do |checks|
                     checks.each do |check_name|
-                      settings.redis.del("history:#{client_name}:#{check_name}")
-                      settings.redis.del("result:#{client_name}:#{check_name}")
-                      settings.redis.srem('results', "#{client_name}:#{check_name}")
+                      result_key = "#{client_name}:#{check_name}"
+                      settings.redis.del("result:#{result_key}")
+                      settings.redis.del("history:#{result_key}")
                     end
-                    settings.redis.del("history:#{client_name}")
+                    settings.redis.del("result:#{client_name}")
                   end
                 end
               end
