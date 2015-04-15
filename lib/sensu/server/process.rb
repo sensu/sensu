@@ -49,7 +49,7 @@ module Sensu
         @logger.debug("updating client registry", :client => client)
         @redis.set("client:#{client[:name]}", MultiJson.dump(client)) do
           @redis.sadd("clients", client[:name]) do
-            callback.call
+            callback.call(client)
           end
         end
       end
@@ -335,39 +335,73 @@ module Sensu
         end
       end
 
+      # Create a blank client (data) and add it to the client
+      # registry. Only the client name is known, the other client
+      # attributes must be updated via the API (POST /clients:client).
+      # Dynamically created clients and those updated via the API will
+      # have client keepalives disabled, `:keepalives` is set to
+      # `false`.
+      #
+      # @param name [Hash] to use for the client.
+      # @param callback [Proc] to be called with the dynamically
+      #   created client data.
+      def create_client(name, &callback)
+        client = {
+          :name => name,
+          :address => "unknown",
+          :subscriptions => [],
+          :keepalives => false
+        }
+        update_client_registry(client, &callback)
+      end
+
+      # Retrieve a client (data) from Redis if it exists. If a client
+      # does not already exist, create one (a blank) using the
+      # `client_key` as the client name. Dynamically create client
+      # data can be updated using the API (POST /clients/:client).
+      #
+      # @param result [Hash] data.
+      # @param callback [Proc] to be called with client data, either
+      #   retrieved from Redis, or dynamically created.
+      def retrieve_client(result, &callback)
+        client_key = result[:check][:source] || result[:client]
+        @redis.get("client:#{client_key}") do |client_json|
+          unless client_json.nil?
+            client = MultiJson.load(client_json)
+            callback.call(client)
+          else
+            create_client(client_key, &callback)
+          end
+        end
+      end
+
       # Process a check result, storing its data, inspecting its
       # contents, and taking the appropriate actions (eg. update the
       # event registry). A check result must have a valid client name,
-      # associated with a client in the registry. Results without a
-      # valid client are discarded, to keep the system "correct". If a
-      # local check definition exists for the check name, and the
-      # check result is not from a standalone check execution, it's
-      # merged with the check result for more context.
+      # associated with a client in the registry or one will be
+      # created. If a local check definition exists for the check
+      # name, and the check result is not from a standalone check
+      # execution, it's merged with the check result for more context.
       #
       # @param result [Hash] data.
       def process_check_result(result)
         @logger.debug("processing result", :result => result)
-        @redis.get("client:#{result[:client]}") do |client_json|
-          unless client_json.nil?
-            client = MultiJson.load(client_json)
-            check = case
-            when @settings.check_exists?(result[:check][:name]) && !result[:check][:standalone]
-              @settings[:checks][result[:check][:name]].merge(result[:check])
-            else
-              result[:check]
-            end
-            aggregate_check_result(result) if check[:aggregate]
-            store_check_result(client, check) do
-              check_history(client, check) do |history, total_state_change|
-                check[:history] = history
-                check[:total_state_change] = total_state_change
-                update_event_registry(client, check) do |event|
-                  process_event(event)
-                end
+        retrieve_client(result) do |client|
+          check = case
+          when @settings.check_exists?(result[:check][:name]) && !result[:check][:standalone]
+            @settings[:checks][result[:check][:name]].merge(result[:check])
+          else
+            result[:check]
+          end
+          aggregate_check_result(result) if check[:aggregate]
+          store_check_result(client, check) do
+            check_history(client, check) do |history, total_state_change|
+              check[:history] = history
+              check[:total_state_change] = total_state_change
+              update_event_registry(client, check) do |event|
+                process_event(event)
               end
             end
-          else
-            @logger.warn("client not in registry", :client => result[:client])
           end
         end
       end
@@ -552,6 +586,7 @@ module Sensu
             @redis.get("client:#{client_name}") do |client_json|
               unless client_json.nil?
                 client = MultiJson.load(client_json)
+                next if client[:keepalives] == false
                 check = create_keepalive_check(client)
                 time_since_last_keepalive = Time.now.to_i - client[:timestamp]
                 check[:output] = "No keepalive sent from client for "

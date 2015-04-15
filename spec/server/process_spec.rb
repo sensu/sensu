@@ -145,15 +145,52 @@ describe "Sensu::Server::Process" do
             result = result_template
             transport.publish(:direct, "results", MultiJson.dump(result))
             transport.publish(:direct, "results", MultiJson.dump(result))
-            timer(3) do
-              redis.hget("events:i-424242", "test") do |event_json|
-                event = MultiJson.load(event_json)
-                expect(event[:id]).to be_kind_of(String)
-                expect(event[:check][:status]).to eq(1)
-                expect(event[:occurrences]).to eq(2)
-                timer(2) do
-                  latest_event_file = IO.read("/tmp/sensu-event.json")
-                  expect(MultiJson.load(latest_event_file)).to eq(event)
+            timer(4) do
+              redis.sismember("result:i-424242", "test") do |is_member|
+                expect(is_member).to be(true)
+                redis.get("result:i-424242:test") do |result_json|
+                  result = MultiJson.load(result_json)
+                  expect(result[:output]).to eq("WARNING")
+                  redis.hget("events:i-424242", "test") do |event_json|
+                    event = MultiJson.load(event_json)
+                    expect(event[:id]).to be_kind_of(String)
+                    expect(event[:check][:status]).to eq(1)
+                    expect(event[:occurrences]).to eq(2)
+                    timer(2) do
+                      latest_event_file = IO.read("/tmp/sensu-event.json")
+                      expect(MultiJson.load(latest_event_file)).to eq(event)
+                      async_done
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can dynamically create a client for a check source" do
+    async_wrapper do
+      @server.setup_transport
+      @server.setup_redis
+      @server.setup_results
+      redis.flushdb do
+        timer(1) do
+          result = result_template
+          result[:check][:source] = "i-888888"
+          result[:check][:handler] = "debug"
+          transport.publish(:direct, "results", MultiJson.dump(result))
+          timer(3) do
+            redis.sismember("clients", "i-888888") do |exists|
+              expect(exists).to be(true)
+              redis.get("client:i-888888") do |client_json|
+                client = MultiJson.load(client_json)
+                expect(client[:keepalives]).to be(false)
+                redis.hget("events:i-888888", "test") do |event_json|
+                  event = MultiJson.load(event_json)
+                  expect(event[:client][:address]).to eq("unknown")
                   async_done
                 end
               end
@@ -193,7 +230,7 @@ describe "Sensu::Server::Process" do
 
   it "can schedule check request publishing" do
     async_wrapper do
-      expected = ["tokens", "merger", "sensu_cpu_time"]
+      expected = ["tokens", "merger", "sensu_cpu_time", "source"]
       transport.subscribe(:fanout, "test") do |_, payload|
         check_request = MultiJson.load(payload)
         expect(check_request[:issued]).to be_within(10).of(epoch)
@@ -236,21 +273,32 @@ describe "Sensu::Server::Process" do
       client2 = client_template
       client2[:name] = "bar"
       client2[:timestamp] = epoch - 120
+      client3 = client_template
+      client3[:name] = "qux"
+      client3[:keepalives] = false
+      client3[:timestamp] = epoch - 1800
       redis.set("client:foo", MultiJson.dump(client1)) do
         redis.sadd("clients", "foo") do
           redis.set("client:bar", MultiJson.dump(client2)) do
             redis.sadd("clients", "bar") do
-              @server.determine_stale_clients
-              timer(1) do
-                redis.hget("events:foo", "keepalive") do |event_json|
-                  event = MultiJson.load(event_json)
-                  expect(event[:check][:status]).to eq(1)
-                  expect(event[:check][:handler]).to eq("debug")
-                  redis.hget("events:bar", "keepalive") do |event_json|
-                    event = MultiJson.load(event_json)
-                    expect(event[:check][:status]).to eq(2)
-                    expect(event[:check][:handler]).to eq("keepalive")
-                    async_done
+              redis.set("client:qux", MultiJson.dump(client3)) do
+                redis.sadd("clients", "qux") do
+                  @server.determine_stale_clients
+                  timer(1) do
+                    redis.hget("events:foo", "keepalive") do |event_json|
+                      event = MultiJson.load(event_json)
+                      expect(event[:check][:status]).to eq(1)
+                      expect(event[:check][:handler]).to eq("debug")
+                      redis.hget("events:bar", "keepalive") do |event_json|
+                        event = MultiJson.load(event_json)
+                        expect(event[:check][:status]).to eq(2)
+                        expect(event[:check][:handler]).to eq("keepalive")
+                        redis.hget("events:qux", "keepalive") do |event_json|
+                          expect(event_json).to be(nil)
+                          async_done
+                        end
+                      end
+                    end
                   end
                 end
               end

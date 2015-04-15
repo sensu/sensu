@@ -170,7 +170,9 @@ module Sensu
           begin
             data = MultiJson.load(env["rack.input"].read)
             valid = rules.all? do |key, rule|
-              data[key].is_a?(rule[:type]) || (rule[:nil_ok] && data[key].nil?)
+              value = data[key]
+              (value.is_a?(rule[:type]) || (rule[:nil_ok] && value.nil?)) &&
+                rule[:regex].nil? || (rule[:regex] && (value =~ rule[:regex]) == 0)
             end
             if valid
               callback.call(data)
@@ -302,6 +304,23 @@ module Sensu
         end
       end
 
+      apost "/clients/?" do
+        rules = {
+          :name => {:type => String, :nil_ok => false, :regex => /^[\w\.-]+$/},
+          :address => {:type => String, :nil_ok => false},
+          :subscriptions => {:type => Array, :nil_ok => false}
+        }
+        read_data(rules) do |data|
+          data[:keepalives] = false
+          data[:timestamp] = Time.now.to_i
+          settings.redis.set("client:#{data[:name]}", MultiJson.dump(data)) do
+            settings.redis.sadd("clients", data[:name]) do
+              created!(MultiJson.dump(:name => data[:name]))
+            end
+          end
+        end
+      end
+
       aget "/clients/?" do
         response = Array.new
         settings.redis.smembers("clients") do |clients|
@@ -333,7 +352,7 @@ module Sensu
 
       aget %r{/clients/([\w\.-]+)/history/?$} do |client_name|
         response = Array.new
-        settings.redis.smembers("history:#{client_name}") do |checks|
+        settings.redis.smembers("result:#{client_name}") do |checks|
           unless checks.empty?
             checks.each_with_index do |check_name, index|
               result_key = "#{client_name}:#{check_name}"
@@ -430,7 +449,7 @@ module Sensu
               :subscribers => subscribers
             })
             subscribers.uniq.each do |exchange_name|
-              settings.transport.publish(:fanout, exchange_name, MultiJson.dump(payload)) do |info|
+              settings.transport.publish(:fanout, exchange_name.to_s, MultiJson.dump(payload)) do |info|
                 if info[:error]
                   settings.logger.error("failed to publish check request", {
                     :exchange_name => exchange_name,

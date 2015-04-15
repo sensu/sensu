@@ -19,7 +19,7 @@ describe 'Sensu::API::Process' do
                 redis.set('stash:test/test', '{"key": "value"}') do
                   redis.expire('stash:test/test', 3600) do
                     redis.sadd('stashes', 'test/test') do
-                      redis.sadd('history:i-424242', 'test') do
+                      redis.sadd('result:i-424242', 'test') do
                         redis.rpush('history:i-424242:test', 0) do
                           @redis = nil
                           async_done
@@ -93,6 +93,59 @@ describe 'Sensu::API::Process' do
         end
         expect(body).to contain(test_event)
         async_done
+      end
+    end
+  end
+
+  it 'can create a client' do
+    api_test do
+      options = {
+        :body => {
+          :name => 'i-888888',
+          :address => '8.8.8.8',
+          :subscriptions => [
+            'test'
+          ]
+        }
+      }
+      api_request('/clients', :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        expect(body).to be_kind_of(Hash)
+        expect(body[:name]).to eq('i-888888')
+        async_done
+      end
+    end
+  end
+
+  it 'can not create a client with an invalid post body' do
+    api_test do
+      options = {
+        :body => {
+          :name => 'i-424242',
+          :address => '8.8.8.8',
+          :subscriptions => [
+            'test'
+          ]
+        }
+      }
+      invalid_name = options.dup
+      invalid_name[:body][:name] = 'i-$$$$$$'
+      missing_address = options.dup
+      missing_address[:body].delete(:address)
+      invalid_subscriptions = options.dup
+      invalid_subscriptions[:body][:subscriptions] = "invalid"
+      api_request('/clients', :post, invalid_name) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        api_request('/clients', :post, missing_address) do |http, body|
+          expect(http.response_header.status).to eq(400)
+          api_request('/clients', :post, invalid_subscriptions) do |http, body|
+            expect(http.response_header.status).to eq(400)
+            api_request('/clients', :post) do |http, body|
+              expect(http.response_header.status).to eq(400)
+              async_done
+            end
+          end
+        end
       end
     end
   end
@@ -268,6 +321,35 @@ describe 'Sensu::API::Process' do
     end
   end
 
+  it 'can create and provide a client' do
+    api_test do
+      options = {
+        :body => {
+          :name => 'i-888888',
+          :address => '8.8.8.8',
+          :subscriptions => [
+            'test'
+          ]
+        }
+      }
+      api_request('/clients', :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        expect(body).to be_kind_of(Hash)
+        expect(body[:name]).to eq('i-888888')
+        api_request('/client/i-888888') do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Hash)
+          expect(body[:name]).to eq('i-888888')
+          expect(body[:address]).to eq('8.8.8.8')
+          expect(body[:subscriptions]).to eq(['test'])
+          expect(body[:keepalives]).to be(false)
+          expect(body[:timestamp]).to be_within(10).of(epoch)
+          async_done
+        end
+      end
+    end
+  end
+
   it 'can not provide a nonexistent client' do
     api_test do
       api_request('/client/nonexistent') do |http, body|
@@ -343,7 +425,8 @@ describe 'Sensu::API::Process' do
         :body => {
           :check => 'tokens',
           :subscribers => [
-            'test'
+            'test',
+            1
           ]
         }
       }
