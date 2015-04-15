@@ -236,21 +236,32 @@ describe "Sensu::Server::Process" do
       client2 = client_template
       client2[:name] = "bar"
       client2[:timestamp] = epoch - 120
+      client3 = client_template
+      client3[:name] = "qux"
+      client3[:keepalives] = false
+      client3[:timestamp] = epoch - 1800
       redis.set("client:foo", MultiJson.dump(client1)) do
         redis.sadd("clients", "foo") do
           redis.set("client:bar", MultiJson.dump(client2)) do
             redis.sadd("clients", "bar") do
-              @server.determine_stale_clients
-              timer(1) do
-                redis.hget("events:foo", "keepalive") do |event_json|
-                  event = MultiJson.load(event_json)
-                  expect(event[:check][:status]).to eq(1)
-                  expect(event[:check][:handler]).to eq("debug")
-                  redis.hget("events:bar", "keepalive") do |event_json|
-                    event = MultiJson.load(event_json)
-                    expect(event[:check][:status]).to eq(2)
-                    expect(event[:check][:handler]).to eq("keepalive")
-                    async_done
+              redis.set("client:qux", MultiJson.dump(client3)) do
+                redis.sadd("clients", "qux") do
+                  @server.determine_stale_clients
+                  timer(1) do
+                    redis.hget("events:foo", "keepalive") do |event_json|
+                      event = MultiJson.load(event_json)
+                      expect(event[:check][:status]).to eq(1)
+                      expect(event[:check][:handler]).to eq("debug")
+                      redis.hget("events:bar", "keepalive") do |event_json|
+                        event = MultiJson.load(event_json)
+                        expect(event[:check][:status]).to eq(2)
+                        expect(event[:check][:handler]).to eq("keepalive")
+                        redis.hget("events:qux", "keepalive") do |event_json|
+                          expect(event_json).to be(nil)
+                          async_done
+                        end
+                      end
+                    end
                   end
                 end
               end
