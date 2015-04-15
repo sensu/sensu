@@ -19,7 +19,7 @@ describe 'Sensu::API::Process' do
                 redis.set('stash:test/test', '{"key": "value"}') do
                   redis.expire('stash:test/test', 3600) do
                     redis.sadd('stashes', 'test/test') do
-                      redis.sadd('history:i-424242', 'test') do
+                      redis.sadd('result:i-424242', 'test') do
                         redis.rpush('history:i-424242:test', 0) do
                           @redis = nil
                           async_done

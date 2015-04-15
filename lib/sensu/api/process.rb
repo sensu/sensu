@@ -352,7 +352,7 @@ module Sensu
 
       aget %r{/clients/([\w\.-]+)/history/?$} do |client_name|
         response = Array.new
-        settings.redis.smembers("history:#{client_name}") do |checks|
+        settings.redis.smembers("result:#{client_name}") do |checks|
           unless checks.empty?
             checks.each_with_index do |check_name, index|
               result_key = "#{client_name}:#{check_name}"
