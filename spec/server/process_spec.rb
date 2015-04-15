@@ -230,7 +230,7 @@ describe "Sensu::Server::Process" do
 
   it "can schedule check request publishing" do
     async_wrapper do
-      expected = ["tokens", "merger", "sensu_cpu_time"]
+      expected = ["tokens", "merger", "sensu_cpu_time", "source"]
       transport.subscribe(:fanout, "test") do |_, payload|
         check_request = MultiJson.load(payload)
         expect(check_request[:issued]).to be_within(10).of(epoch)

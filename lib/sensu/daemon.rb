@@ -4,7 +4,7 @@ gem "multi_json", "1.11.0"
 
 gem "sensu-em", "2.4.1"
 gem "sensu-logger", "1.0.0"
-gem "sensu-settings", "1.3.0"
+gem "sensu-settings", "1.4.0"
 gem "sensu-extension", "1.1.2"
 gem "sensu-extensions", "1.2.0"
 gem "sensu-transport", "2.4.0"
