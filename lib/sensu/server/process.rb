@@ -352,7 +352,7 @@ module Sensu
           :subscriptions => [],
           :keepalives => false
         }
-        update_client_registry(client, callback)
+        update_client_registry(client, &callback)
       end
 
       # Retrieve a client (data) from Redis if it exists. If a client
@@ -370,7 +370,7 @@ module Sensu
             client = MultiJson.load(client_json)
             callback.call(client)
           else
-            create_client(client_key, callback)
+            create_client(client_key, &callback)
           end
         end
       end

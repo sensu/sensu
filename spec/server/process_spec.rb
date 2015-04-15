@@ -171,6 +171,36 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can dynamically create a client for a check source" do
+    async_wrapper do
+      @server.setup_transport
+      @server.setup_redis
+      @server.setup_results
+      redis.flushdb do
+        timer(1) do
+          result = result_template
+          result[:check][:source] = "i-888888"
+          result[:check][:handler] = "debug"
+          transport.publish(:direct, "results", MultiJson.dump(result))
+          timer(3) do
+            redis.sismember("clients", "i-888888") do |exists|
+              expect(exists).to be(true)
+              redis.get("client:i-888888") do |client_json|
+                client = MultiJson.load(client_json)
+                expect(client[:keepalives]).to be(false)
+                redis.hget("events:i-888888", "test") do |event_json|
+                  event = MultiJson.load(event_json)
+                  expect(event[:client][:address]).to eq("unknown")
+                  async_done
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can publish check requests" do
     async_wrapper do
       transport.subscribe(:fanout, "test") do |_, payload|
