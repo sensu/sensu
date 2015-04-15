@@ -207,21 +207,19 @@ module Sensu
       #
       # @param client [Hash]
       # @param check [Hash]
-      # @param result [Hash]
       # @param callback [Proc] to call when the check result data has
       #   been stored (history, etc).
-      def store_check_result(client, check, result, &callback)
-        @logger.debug("updating result data", :check=> check)
-        result_truncated_output = result.dup
-        result_truncated_output[:check][:output] = check[:output][0..256]
-        @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_truncated_output))
-        @redis.sadd('results', "#{client[:name]}:#{check[:name]}")
-        @redis.sadd("history:#{client[:name]}", check[:name])
+      def store_check_result(client, check, &callback)
+        @logger.debug("storing check result", :check => check)
         result_key = "#{client[:name]}:#{check[:name]}"
-        history_key = "history:#{result_key}"
-        @redis.rpush(history_key, check[:status]) do
-          @redis.ltrim(history_key, -21, -1)
-          callback.call
+        check_truncated = check.merge(:output => check[:output][0..256])
+        @redis.set("result:#{result_key}", MultiJson.dump(check_truncated)) do
+          @redis.sadd("history:#{client[:name]}", check[:name])
+          history_key = "history:#{result_key}"
+          @redis.rpush(history_key, check[:status]) do
+            @redis.ltrim(history_key, -21, -1)
+            callback.call
+          end
         end
       end
 
@@ -359,7 +357,7 @@ module Sensu
               result[:check]
             end
             aggregate_check_result(result) if check[:aggregate]
-            store_check_result(client, check, result) do
+            store_check_result(client, check) do
               check_history(client, check) do |history, total_state_change|
                 check[:history] = history
                 check[:total_state_change] = total_state_change
