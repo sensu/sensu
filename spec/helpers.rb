@@ -105,7 +105,8 @@ module Helpers
     {
       :name => "test",
       :command => "echo WARNING && exit 1",
-      :issued => epoch
+      :issued => epoch,
+      :executed => 1363224805
     }
   end
 
