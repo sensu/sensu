@@ -649,7 +649,7 @@ describe 'Sensu::API::Process' do
     api_test do
       server = Sensu::Server::Process.new(options)
       server.setup_redis
-      server.aggregate_check_result(result_template)
+      server.aggregate_check_result(client_template, check_template)
       timer(1) do
         api_request('/aggregates') do |http, body|
           expect(body).to be_kind_of(Array)
@@ -669,9 +669,9 @@ describe 'Sensu::API::Process' do
       server.setup_redis
       timestamp = epoch
       3.times do |index|
-        result = result_template
-        result[:check][:issued] = timestamp + index
-        server.aggregate_check_result(result)
+        check = check_template
+        check[:issued] = timestamp + index
+        server.aggregate_check_result(client_template, check)
       end
       timer(1) do
         api_request('/aggregates/test') do |http, body|
@@ -694,7 +694,7 @@ describe 'Sensu::API::Process' do
     api_test do
       server = Sensu::Server::Process.new(options)
       server.setup_redis
-      server.aggregate_check_result(result_template)
+      server.aggregate_check_result(client_template, check_template)
       timer(1) do
         api_request('/aggregates/test', :delete) do |http, body|
           expect(http.response_header.status).to eq(204)
@@ -722,10 +722,10 @@ describe 'Sensu::API::Process' do
     api_test do
       server = Sensu::Server::Process.new(options)
       server.setup_redis
-      result = result_template
+      check = check_template
       timestamp = epoch
-      result[:timestamp] = timestamp
-      server.aggregate_check_result(result)
+      check[:issued] = timestamp
+      server.aggregate_check_result(client_template, check)
       timer(1) do
         parameters = '?results=true&summarize=output'
         api_request('/aggregates/test/' + timestamp.to_s + parameters) do |http, body|

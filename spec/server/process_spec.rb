@@ -73,10 +73,13 @@ describe "Sensu::Server::Process" do
       clients = ["foo", "bar", "baz", "qux"]
       redis.flushdb do
         clients.each_with_index do |client_name, index|
-          result = result_template
-          result[:client] = client_name
-          result[:check][:status] = index
-          @server.aggregate_check_result(result)
+          client = client_template
+          client[:name] = client_name
+          check = check_template
+          check[:issued] = timestamp
+          check[:executed] = timestamp + index
+          check[:status] = index
+          @server.aggregate_check_result(client, check)
         end
         timer(2) do
           result_set = "test:#{timestamp}"
@@ -317,10 +320,10 @@ describe "Sensu::Server::Process" do
         redis.set("client:i-424242", MultiJson.dump(client)) do
           timestamp = epoch - 26
           26.times do |index|
-            result = result_template
-            result[:check][:issued] = timestamp + index
-            result[:check][:status] = index
-            @server.aggregate_check_result(result)
+            check = check_template
+            check[:issued] = timestamp + index
+            check[:status] = index
+            @server.aggregate_check_result(client, check)
           end
           timer(1) do
             redis.smembers("aggregates:test") do |aggregates|
