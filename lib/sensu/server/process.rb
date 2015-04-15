@@ -211,10 +211,10 @@ module Sensu
       #   been stored (history, etc).
       def store_check_result(client, check, &callback)
         @logger.debug("storing check result", :check => check)
+        @redis.sadd("result:#{client[:name]}", check[:name])
         result_key = "#{client[:name]}:#{check[:name]}"
         check_truncated = check.merge(:output => check[:output][0..256])
         @redis.set("result:#{result_key}", MultiJson.dump(check_truncated)) do
-          @redis.sadd("history:#{client[:name]}", check[:name])
           history_key = "history:#{result_key}"
           @redis.rpush(history_key, check[:status]) do
             @redis.ltrim(history_key, -21, -1)

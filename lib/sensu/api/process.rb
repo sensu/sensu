@@ -380,13 +380,13 @@ module Sensu
                 settings.redis.srem("clients", client_name) do
                   settings.redis.del("client:#{client_name}")
                   settings.redis.del("events:#{client_name}")
-                  settings.redis.smembers("history:#{client_name}") do |checks|
+                  settings.redis.smembers("result:#{client_name}") do |checks|
                     checks.each do |check_name|
                       result_key = "#{client_name}:#{check_name}"
-                      settings.redis.del("history:#{result_key}")
                       settings.redis.del("result:#{result_key}")
+                      settings.redis.del("history:#{result_key}")
                     end
-                    settings.redis.del("history:#{client_name}")
+                    settings.redis.del("result:#{client_name}")
                   end
                 end
               end
