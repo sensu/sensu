@@ -145,7 +145,7 @@ describe "Sensu::Server::Process" do
             result = result_template
             transport.publish(:direct, "results", MultiJson.dump(result))
             transport.publish(:direct, "results", MultiJson.dump(result))
-            timer(3) do
+            timer(4) do
               redis.sismember("result:i-424242", "test") do |is_member|
                 expect(is_member).to be(true)
                 redis.get("result:i-424242:test") do |result_json|
