@@ -223,9 +223,9 @@ describe "Sensu::Server::Process" do
     allow(Time).to receive(:now).and_return("1414213569.032")
     check = check_template
     check[:interval] = 60
-    expect(@server.calculate_check_execution_splay(check)).to eq(17.601)
+    expect(@server.calculate_check_execution_splay(check[:name], check[:interval])).to eq(17.601)
     check[:interval] = 3600
-    expect(@server.calculate_check_execution_splay(check)).to eq(3497.601)
+    expect(@server.calculate_check_execution_splay(check[:name], check[:interval])).to eq(3497.601)
   end
 
   it "can schedule check request publishing" do
