@@ -1,3 +1,18 @@
+## 0.18.0 - TBD
+
+### Features
+
+Dynamic (or JIT) client creation (in the registry) for check results for a
+nonexistent client or a check source. Sensu clients can now monitor an
+external resource on its behalf, using a check `source` to create a JIT
+client for the resource, used to store the execution history and provide
+context within event data. JIT client data in the registry can be
+managed/updated via the Sensu API, POST `/clients`.
+
+Storing the latest check result for every client/check pair. This data is
+currently exposed via the API at `/clients/:client/history` and will be
+used by several upcoming features.
+
 ## 0.17.2 - 2015-04-08
 
 ### Other
