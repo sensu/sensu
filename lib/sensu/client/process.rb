@@ -22,13 +22,14 @@ module Sensu
       end
 
       # Override Daemon initialize() to support Sensu client check
-      # execution safe mode and checks in progress.
+      # execution safe mode, checks in progress, and open sockets.
       #
       # @param options [Hash]
       def initialize(options={})
         super
         @safe_mode = @settings[:client][:safe_mode] || false
         @checks_in_progress = []
+        @sockets = []
       end
 
       # Create a Sensu client keepalive payload, to be sent over the
@@ -315,18 +316,21 @@ module Sensu
       # TCP & UDP port 3030. The socket can be configured via the
       # client definition, `:socket` with `:bind` and `:port`. The
       # current instance of the Sensu logger, settings, and transport
-      # are passed to the socket handler, `Sensu::Client::Socket`.
+      # are passed to the socket handler, `Sensu::Client::Socket`. The
+      # TCP socket server signature (Fixnum) and UDP connection object
+      # are stored in `@sockets`, so that they can be managed
+      # elsewhere, eg. `close_sockets()`.
       def setup_sockets
         options = @settings[:client][:socket] || Hash.new
         options[:bind] ||= "127.0.0.1"
         options[:port] ||= 3030
         @logger.debug("binding client tcp and udp sockets", :options => options)
-        EM::start_server(options[:bind], options[:port], Socket) do |socket|
+        @sockets << EM::start_server(options[:bind], options[:port], Socket) do |socket|
           socket.logger = @logger
           socket.settings = @settings
           socket.transport = @transport
         end
-        EM::open_datagram_socket(options[:bind], options[:port], Socket) do |socket|
+        @sockets << EM::open_datagram_socket(options[:bind], options[:port], Socket) do |socket|
           socket.logger = @logger
           socket.settings = @settings
           socket.transport = @transport
@@ -348,6 +352,23 @@ module Sensu
           if @checks_in_progress.empty?
             callback.call
             true
+          end
+        end
+      end
+
+      # Close the Sensu client TCP and UDP sockets. This method
+      # iterates through `@sockets`, which contains socket server
+      # signatures (Fixnum) and connection objects. A signature
+      # indicates a TCP socket server that needs to be stopped. A
+      # connection object indicates a socket connection that needs to
+      # be closed, eg. a UDP datagram socket.
+      def close_sockets
+        @logger.info("closing client tcp and udp sockets")
+        @sockets.each do |socket|
+          if socket.is_a?(Numeric)
+            EM.stop_server(socket)
+          else
+            socket.close_connection
           end
         end
       end
@@ -415,6 +436,7 @@ module Sensu
         pause
         @state = :stopping
         complete_checks_in_progress do
+          close_sockets
           @transport.close
           super
         end
