@@ -40,7 +40,7 @@ module Sensu
           setup_logger(options)
           set :logger, @logger
           load_settings(options)
-          set :api, @settings[:api]
+          set :api, @settings[:api] || {}
           set :checks, @settings[:checks]
           set :all_checks, @settings.checks
           set :cors, @settings[:cors] || {
@@ -55,8 +55,13 @@ module Sensu
 
         def start_server
           Thin::Logging.silent = true
-          bind = @settings[:api][:bind] || "0.0.0.0"
-          @thin = Thin::Server.new(bind, @settings[:api][:port], self)
+          bind = settings.api[:bind] || "0.0.0.0"
+          port = settings.api[:port] || 4567
+          @logger.info("api listening", {
+            :bind => bind,
+            :port => port
+          })
+          @thin = Thin::Server.new(bind, port, self)
           @thin.start
         end
 
