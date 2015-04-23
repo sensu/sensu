@@ -1,7 +1,5 @@
 {
   "api": {
-    "host": "localhost",
-    "port": 4567,
     "user": "foo",
     "password": "bar"
   },
