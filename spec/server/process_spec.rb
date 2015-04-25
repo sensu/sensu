@@ -377,7 +377,8 @@ describe "Sensu::Server::Process" do
       server1.setup_transport
       server2.setup_transport
       redis.flushdb do
-        redis.set("lock:leader", epoch - 60) do
+        lock_timestamp = (Time.now.to_f * 1000).to_i - 60000
+        redis.set("lock:leader", lock_timestamp) do
           server1.setup_leader_monitor
           server2.setup_leader_monitor
           timer(3) do

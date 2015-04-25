@@ -696,10 +696,11 @@ module Sensu
             @logger.info("i am the leader")
             leader_duties
           else
-            @redis.get("lock:leader") do |timestamp|
-              if Time.now.to_i - timestamp.to_i >= 30
-                @redis.getset("lock:leader", Time.now.to_i) do |previous|
-                  if previous == timestamp
+            @redis.get("lock:leader") do |current_timestamp|
+              lock_timestamp = (Time.now.to_f * 1000).to_i
+              if lock_timestamp - current_timestamp.to_i >= 30000
+                @redis.getset("lock:leader", lock_timestamp) do |previous_timestamp|
+                  if previous_timestamp == current_timestamp
                     @is_leader = true
                     @logger.info("i am now the leader")
                     leader_duties
@@ -723,7 +724,8 @@ module Sensu
         end
         @timers[:run] << EM::PeriodicTimer.new(10) do
           if @is_leader
-            @redis.set("lock:leader", Time.now.to_i) do
+            lock_timestamp = (Time.now.to_f * 1000).to_i
+            @redis.set("lock:leader", lock_timestamp) do
               @logger.debug("updated leader lock timestamp")
             end
           else
