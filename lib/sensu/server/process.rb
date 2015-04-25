@@ -11,7 +11,7 @@ module Sensu
       include Mutate
       include Handle
 
-      attr_reader :is_master, :handling_event_count
+      attr_reader :is_leader, :handling_event_count
 
       # Create an instance of the Sensu server process, start the
       # server within the EventMachine event loop, and set up server
@@ -26,14 +26,14 @@ module Sensu
         end
       end
 
-      # Override Daemon initialize() to support Sensu server master
+      # Override Daemon initialize() to support Sensu server leader
       # election and the handling event count.
       #
       # @param options [Hash]
       def initialize(options={})
         super
-        @is_master = false
-        @timers[:master] = Array.new
+        @is_leader = false
+        @timers[:leader] = Array.new
         @handling_event_count = 0
       end
 
@@ -481,8 +481,8 @@ module Sensu
 
       # Schedule check executions, using EventMachine periodic timers,
       # using a calculated execution splay. The timers are stored in
-      # the timers hash under `:master`, as check request publishing
-      # is a task for only the Sensu server master, so they can be
+      # the timers hash under `:leader`, as check request publishing
+      # is a task for only the Sensu server leader, so they can be
       # cancelled etc. Check requests are not published if subdued.
       #
       # @param checks [Array] of definitions.
@@ -497,9 +497,9 @@ module Sensu
           end
           execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
           interval = testing? ? 0.5 : check[:interval]
-          @timers[:master] << EM::Timer.new(execution_splay) do
+          @timers[:leader] << EM::Timer.new(execution_splay) do
             create_check_request.call
-            @timers[:master] << EM::PeriodicTimer.new(interval, &create_check_request)
+            @timers[:leader] << EM::PeriodicTimer.new(interval, &create_check_request)
           end
         end
       end
@@ -615,10 +615,10 @@ module Sensu
 
       # Set up the client monitor, a periodic timer to run
       # `determine_stale_clients()` every 30 seconds. The timer is
-      # stored in the timers hash under `:master`.
+      # stored in the timers hash under `:leader`.
       def setup_client_monitor
         @logger.debug("monitoring client keepalives")
-        @timers[:master] << EM::PeriodicTimer.new(30) do
+        @timers[:leader] << EM::PeriodicTimer.new(30) do
           determine_stale_clients
         end
       end
@@ -657,52 +657,53 @@ module Sensu
       # Set up the check result aggregation pruner, using periodic
       # timer to run `prune_check_result_aggregations()` every 20
       # seconds. The timer is stored in the timers hash under
-      # `:master`.
+      # `:leader`.
       def setup_check_result_aggregation_pruner
         @logger.debug("pruning check result aggregations")
-        @timers[:master] << EM::PeriodicTimer.new(20) do
+        @timers[:leader] << EM::PeriodicTimer.new(20) do
           prune_check_result_aggregations
         end
       end
 
-      # Set up the master duties, tasks only performed by a single
+      # Set up the leader duties, tasks only performed by a single
       # Sensu server at a time. The duties include publishing check
       # requests, monitoring for stale clients, and pruning check
       # result aggregations.
-      def master_duties
+      def leader_duties
         setup_check_request_publisher
         setup_client_monitor
         setup_check_result_aggregation_pruner
       end
 
-      # Request a master election, a process to determine if the
-      # current process is the master Sensu server, with its
+      # Request a leader election, a process to determine if the
+      # current process is the leader Sensu server, with its
       # own/unique duties. A Redis key/value is used as a central
       # lock, using the "SETNX" Redis command to set the key/value if
       # it does not exist, using a timestamp for the value. If the
       # current process was able to create the key/value, it is the
-      # master, and must do the duties of the master. If the current
+      # leader, and must do the duties of the leader. If the current
       # process was not able to create the key/value, but the current
       # timestamp value is equal to or over 30 seconds ago, the
       # "GETSET" Redis command is used to set a new timestamp and
       # fetch the previous value to compare them, to determine if it
       # was set by the current process. If the current process is able
-      # to set the timestamp value, it becomes the master. The master
-      # has `@is_master` set to `true`.
-      def request_master_election
-        @redis.setnx("lock:master", Time.now.to_i) do |created|
+      # to set the timestamp value, it becomes the leader. The leader
+      # has `@is_leader` set to `true`.
+      def request_leader_election
+        @redis.setnx("lock:leader", Time.now.to_i) do |created|
           if created
-            @is_master = true
-            @logger.info("i am the master")
-            master_duties
+            @is_leader = true
+            @logger.info("i am the leader")
+            leader_duties
           else
-            @redis.get("lock:master") do |timestamp|
-              if Time.now.to_i - timestamp.to_i >= 30
-                @redis.getset("lock:master", Time.now.to_i) do |previous|
-                  if previous == timestamp
-                    @is_master = true
-                    @logger.info("i am now the master")
-                    master_duties
+            @redis.get("lock:leader") do |current_timestamp|
+              lock_timestamp = (Time.now.to_f * 1000).to_i
+              if lock_timestamp - current_timestamp.to_i >= 30000
+                @redis.getset("lock:leader", lock_timestamp) do |previous_timestamp|
+                  if previous_timestamp == current_timestamp
+                    @is_leader = true
+                    @logger.info("i am now the leader")
+                    leader_duties
                   end
                 end
               end
@@ -711,41 +712,42 @@ module Sensu
         end
       end
 
-      # Set up the master monitor. A one-time timer is used to run
-      # `request_master_exection()` in 2 seconds. A periodic timer is
-      # used to update the master lock timestamp if the current
-      # process is the master, or to run `request_master_election(),
+      # Set up the leader monitor. A one-time timer is used to run
+      # `request_leader_exection()` in 2 seconds. A periodic timer is
+      # used to update the leader lock timestamp if the current
+      # process is the leader, or to run `request_leader_election(),
       # every 10 seconds. The timers are stored in the timers hash
       # under `:run`.
-      def setup_master_monitor
+      def setup_leader_monitor
         @timers[:run] << EM::Timer.new(2) do
-          request_master_election
+          request_leader_election
         end
         @timers[:run] << EM::PeriodicTimer.new(10) do
-          if @is_master
-            @redis.set("lock:master", Time.now.to_i) do
-              @logger.debug("updated master lock timestamp")
+          if @is_leader
+            lock_timestamp = (Time.now.to_f * 1000).to_i
+            @redis.set("lock:leader", lock_timestamp) do
+              @logger.debug("updated leader lock timestamp")
             end
           else
-            request_master_election
+            request_leader_election
           end
         end
       end
 
-      # Resign as master, if the current process is the Sensu server
-      # master. This method cancels and clears the master timers,
+      # Resign as leader, if the current process is the Sensu server
+      # leader. This method cancels and clears the leader timers,
       # those with references stored in the timers hash under
-      # `:master`, and `@is_master`is set to `false`.
-      def resign_as_master
-        if @is_master
-          @logger.warn("resigning as master")
-          @timers[:master].each do |timer|
+      # `:leader`, and `@is_leader`is set to `false`.
+      def resign_as_leader
+        if @is_leader
+          @logger.warn("resigning as leader")
+          @timers[:leader].each do |timer|
             timer.cancel
           end
-          @timers[:master].clear
-          @is_master = false
+          @timers[:leader].clear
+          @is_leader = false
         else
-          @logger.debug("not currently master")
+          @logger.debug("not currently leader")
         end
       end
 
@@ -777,13 +779,13 @@ module Sensu
       end
 
       # Bootstrap the Sensu server process, setting up the keepalive
-      # and check result consumers, and attemping to become the master
+      # and check result consumers, and attemping to become the leader
       # to carry out its duties. This method sets the process/daemon
       # `@state` to `:running`.
       def bootstrap
         setup_keepalives
         setup_results
-        setup_master_monitor
+        setup_leader_monitor
         @state = :running
       end
 
@@ -800,7 +802,7 @@ module Sensu
       # set to `:pausing`, to indicate that it's in progress. All run
       # timers are cancelled, and the references are cleared. The
       # Sensu server will unsubscribe from all transport
-      # subscriptions, resign as master (if currently the master),
+      # subscriptions, resign as leader (if currently the leader),
       # then set the process/daemon `@state` to `:paused`.
       def pause
         unless @state == :pausing || @state == :paused
@@ -810,7 +812,7 @@ module Sensu
           end
           @timers[:run].clear
           unsubscribe
-          resign_as_master
+          resign_as_leader
           @state = :paused
         end
       end
