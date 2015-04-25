@@ -352,23 +352,23 @@ describe "Sensu::Server::Process" do
     end
   end
 
-  it "can be the master and resign" do
+  it "can be the leader and resign" do
     async_wrapper do
       @server.setup_redis
       @server.setup_transport
       redis.flushdb do
-        @server.request_master_election
+        @server.request_leader_election
         timer(1) do
-          expect(@server.is_master).to be(true)
-          @server.resign_as_master
-          expect(@server.is_master).to be(false)
+          expect(@server.is_leader).to be(true)
+          @server.resign_as_leader
+          expect(@server.is_leader).to be(false)
           async_done
         end
       end
     end
   end
 
-  it "can be the only master" do
+  it "can be the only leader" do
     async_wrapper do
       server1 = @server.clone
       server2 = @server.clone
@@ -377,11 +377,11 @@ describe "Sensu::Server::Process" do
       server1.setup_transport
       server2.setup_transport
       redis.flushdb do
-        redis.set("lock:master", epoch - 60) do
-          server1.setup_master_monitor
-          server2.setup_master_monitor
+        redis.set("lock:leader", epoch - 60) do
+          server1.setup_leader_monitor
+          server2.setup_leader_monitor
           timer(3) do
-            expect([server1.is_master, server2.is_master].uniq.size).to eq(2)
+            expect([server1.is_leader, server2.is_leader].uniq.size).to eq(2)
             async_done
           end
         end
