@@ -405,10 +405,6 @@ module Sensu
                 process_event(event)
               end
             end
-            @logger.debug("updating result data", :check=> check)
-            result_truncated_output = result.dup
-            result_truncated_output[:output] = result[:output][0..256]
-            @redis.set("result:#{client[:name]}:#{check[:name]}", MultiJson.dump(result_without_output))
           end
         end
       end
