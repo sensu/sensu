@@ -13,6 +13,21 @@ Storing the latest check result for every client/check pair. This data is
 currently exposed via the API at `/clients/:client/history` and will be
 used by several upcoming features.
 
+The Sensu API now listens on TCP port `4567` by default.
+
+Sensu server leader election lock timestamps now include milliseconds to
+reduce the chance of a conflict when attempting to elect a new leader.
+
+### Other
+
+The Sensu client sockets (TCP/UDP) are now stopped/closed before the
+process is stopped.
+
+Sensu server "master" election is now "leader" election.
+
+Configuration file encoding is now forced to 8-bit ASCII and UTF-8 BOMs
+are removed if present.
+
 ## 0.17.2 - 2015-04-08
 
 ### Other
