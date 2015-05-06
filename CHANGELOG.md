@@ -1,4 +1,4 @@
-## 0.18.0 - TBD
+## 0.18.0 - 2015-05-05
 
 ### Features
 
@@ -17,6 +17,11 @@ The Sensu API now listens on TCP port `4567` by default.
 
 Sensu server leader election lock timestamps now include milliseconds to
 reduce the chance of a conflict when attempting to elect a new leader.
+
+Sensu transport "reconnect_on_error" now defaults to `true`. For the
+RabbitMQ transport, this means AMQP channel errors will result in a
+reconnect. The Sensu transport will always reconnect when there is a loss
+of connectivity.
 
 ### Other
 
