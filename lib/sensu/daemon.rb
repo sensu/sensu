@@ -4,7 +4,7 @@ gem "multi_json", "1.11.0"
 
 gem "sensu-em", "2.4.1"
 gem "sensu-logger", "1.0.0"
-gem "sensu-settings", "1.7.0"
+gem "sensu-settings", "1.8.0"
 gem "sensu-extension", "1.1.2"
 gem "sensu-extensions", "1.2.0"
 gem "sensu-transport", "2.4.0"
@@ -174,7 +174,7 @@ module Sensu
     #
     # https://github.com/sensu/sensu-transport
     def setup_transport
-      transport_name = @settings[:transport][:name] || "rabbitmq"
+      transport_name = @settings[:transport][:name]
       transport_settings = @settings[transport_name]
       @logger.debug("connecting to transport", {
         :name => transport_name,
