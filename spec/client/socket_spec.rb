@@ -47,6 +47,11 @@ describe Sensu::Client::Socket do
       "check name must be a string and cannot contain spaces or special characters"
 
     it_should_behave_like "a validator",
+      "must contain an acceptable check source",
+      {:source => "check source"},
+      "check source must be a string and cannot contain spaces or special characters"
+
+    it_should_behave_like "a validator",
       "must have check output that is a string",
       {:output => 1234},
       "check output must be a string"
@@ -55,6 +60,12 @@ describe Sensu::Client::Socket do
       "must have an integer status",
       {:status => "2"},
       "check status must be an integer"
+
+    it_should_behave_like "a validator",
+      "must have an integer executed timestamp",
+      {:executed => "1431361723"},
+      "check executed timestamp must be an integer"
+
   end
 
   describe "#publish_check_result" do

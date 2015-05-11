@@ -119,11 +119,17 @@ module Sensu
         unless check[:name] =~ /^[\w\.-]+$/
           raise DataError, "check name must be a string and cannot contain spaces or special characters"
         end
+        unless check[:source].nil? || check[:source] =~ /^[\w\.-]+$/
+          raise DataError, "check source must be a string and cannot contain spaces or special characters"
+        end
         unless check[:output].is_a?(String)
           raise DataError, "check output must be a string"
         end
         unless check[:status].is_a?(Integer)
           raise DataError, "check status must be an integer"
+        end
+        unless check[:executed].is_a?(Integer)
+          raise DataError, "check executed timestamp must be an integer"
         end
       end
 
@@ -149,6 +155,7 @@ module Sensu
       # @raise [DataError] if +check+ is invalid.
       def process_check_result(check)
         check[:status] ||= 0
+        check[:executed] ||= Time.now.to_i
         validate_check_result(check)
         publish_check_result(check)
         respond("ok")
