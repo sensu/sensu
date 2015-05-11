@@ -2,6 +2,11 @@ require "rubygems"
 
 gem "multi_json", "1.11.0"
 
+# Windows platform needs upstream eventmachine gem, 1.0.3 is the last build
+if RUBY_PLATFORM =~ /mingw/
+  gem "eventmachine", "1.0.3"
+end
+
 gem "sensu-em", "2.4.1"
 gem "sensu-logger", "1.0.0"
 gem "sensu-settings", "1.8.0"
