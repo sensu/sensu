@@ -1,7 +1,7 @@
 require "sensu/daemon"
 
-gem "sinatra", "1.3.5"
-gem "async_sinatra", "1.0.0"
+gem "sinatra", "1.4.6"
+gem "async_sinatra", "1.2.0"
 
 unless RUBY_PLATFORM =~ /java/
   gem "thin", "1.5.0"
