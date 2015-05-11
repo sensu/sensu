@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.platform    = RUBY_PLATFORM =~ /java/ ? Gem::Platform::JAVA : Gem::Platform::RUBY
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["portertech@gmail.com", "amdprophet@gmail.com"]
-  s.homepage    = "https://github.com/sensu/sensu"
+  s.homepage    = "http://sensuapp.org"
   s.summary     = "A monitoring framework"
   s.description = "A monitoring framework that aims to be simple, malleable, and scalable."
   s.license     = "MIT"
