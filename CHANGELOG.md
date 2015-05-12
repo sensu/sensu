@@ -1,3 +1,21 @@
+## 0.18.1 - 2015-05-11
+
+### Other
+
+Check results written to the Sensu client socket(s) now have a default
+executed timestamp, equal to the current Unix/epoch time.
+
+Check source is now validated for check results written to the Sensu
+client socket(s), using the same regular expression as the configuration
+attribute validator.
+
+The latest versions of Ruby Sinatra and Async Sinatra are now used,
+which include many improvements and bug fixes.
+
+Added a caret to the beginning of API routes/endpoints that use regular
+expressions, fixing a bug that caused the wrong route/endpoint to be
+called, e.g. `/clients/client`.
+
 ## 0.18.0 - 2015-05-05
 
 ### Features
