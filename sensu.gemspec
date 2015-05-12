@@ -25,8 +25,8 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-transport", "2.4.0"
   s.add_dependency "sensu-spawn", "1.1.0"
   s.add_dependency "em-redis-unified", "0.6.0"
-  s.add_dependency "sinatra", "1.3.5"
-  s.add_dependency "async_sinatra", "1.0.0"
+  s.add_dependency "sinatra", "1.4.6"
+  s.add_dependency "async_sinatra", "1.2.0"
   s.add_dependency "thin", "1.5.0" unless RUBY_PLATFORM =~ /java/
 
   s.add_development_dependency "rake", "~> 10.3"
