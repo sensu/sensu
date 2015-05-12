@@ -728,7 +728,7 @@ describe "Sensu::API::Process" do
       server.aggregate_check_result(client_template, check)
       timer(1) do
         parameters = "?results=true&summarize=output"
-        api_request("/aggregates/test/" + timestamp.to_s + parameters) do |http, body|
+        api_request("/aggregates/test/#{timestamp}#{parameters}") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body).to be_kind_of(Hash)
           expect(body[:ok]).to eq(0)
@@ -752,7 +752,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent aggregate" do
     api_test do
-      api_request("/aggregates/test/" + epoch.to_s) do |http, body|
+      api_request("/aggregates/test/#{epoch}") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
