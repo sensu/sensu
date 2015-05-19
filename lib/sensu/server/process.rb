@@ -436,6 +436,16 @@ module Sensu
         end
       end
 
+      def transport_publish_options(subscription, message)
+        _, raw_type = subscription.split(":", 2).reverse
+        case raw_type
+        when "direct", "roundrobin"
+          [:direct, subscription, message]
+        else
+          [:fanout, subscription, message]
+        end
+      end
+
       # Publish a check request to the transport. A check request is
       # composted of a check `:name`, an `:issued` timestamp, and a
       # check `:command` if available. The check request is published
@@ -456,7 +466,8 @@ module Sensu
           :subscribers => check[:subscribers]
         })
         check[:subscribers].each do |subscription|
-          @transport.publish(:fanout, subscription, MultiJson.dump(payload)) do |info|
+          options = transport_publish_options(subscription, MultiJson.dump(payload))
+          @transport.publish(*options) do |info|
             if info[:error]
               @logger.error("failed to publish check request", {
                 :subscription => subscription,

@@ -233,6 +233,17 @@ module Sensu
         end
       end
 
+      def transport_subscribe_options(subscription)
+        _, raw_type = subscription.split(":", 2).reverse
+        case raw_type
+        when "direct", "roundrobin"
+          [:direct, subscription, subscription]
+        else
+          funnel = [@settings[:client][:name], VERSION, Time.now.to_i].join("-")
+          [:fanout, subscription, funnel]
+        end
+      end
+
       # Set up Sensu client subscriptions. Subscriptions determine the
       # kinds of check requests the client will receive. A unique
       # transport funnel is created for the Sensu client, using a
@@ -245,8 +256,8 @@ module Sensu
         @logger.debug("subscribing to client subscriptions")
         @settings[:client][:subscriptions].each do |subscription|
           @logger.debug("subscribing to a subscription", :subscription => subscription)
-          funnel = [@settings[:client][:name], VERSION, Time.now.to_i].join("-")
-          @transport.subscribe(:fanout, subscription, funnel) do |message_info, message|
+          options = transport_subscribe_options(subscription)
+          @transport.subscribe(*options) do |message_info, message|
             begin
               check = MultiJson.load(message)
               @logger.info("received check request", :check => check)
