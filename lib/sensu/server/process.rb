@@ -436,6 +436,16 @@ module Sensu
         end
       end
 
+      # Determine the Sensu transport publish options for a
+      # subscription. If a subscription begins with a transport pipe
+      # type, either "direct:" or "roundrobin:", the subscription uses
+      # a direct transport pipe. If a subscription does not specify a
+      # transport pipe type, a fanout transport pipe is used.
+      #
+      # @param subscription [String]
+      # @return [Array] containing the transport publish options:
+      #   the transport pipe type, pipe, and the message to be
+      #   published.
       def transport_publish_options(subscription, message)
         _, raw_type = subscription.split(":", 2).reverse
         case raw_type
