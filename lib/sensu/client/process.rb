@@ -233,25 +233,36 @@ module Sensu
         end
       end
 
+      # Determine the Sensu transport subscribe options for a
+      # subscription. If a subscription begins with a transport pipe
+      # type, either "direct:" or "roundrobin:", the subscription uses
+      # a direct transport pipe, and the subscription name is uses for
+      # both the pipe and the funnel names. If a subscription does not
+      # specify a transport pipe type, a fanout transport pipe is
+      # used, the subscription name is used for the pipe, and a unique
+      # funnel is created for the Sensu client. The unique funnel name
+      # for the Sensu client is created using a combination of the
+      # client name, the Sensu version, and the process start time
+      # (epoch).
+      #
+      # @param subscription [String]
+      # @return [Array] containing the transport subscribe options:
+      #   the transport pipe type, pipe, and funnel.
       def transport_subscribe_options(subscription)
         _, raw_type = subscription.split(":", 2).reverse
         case raw_type
         when "direct", "roundrobin"
           [:direct, subscription, subscription]
         else
-          funnel = [@settings[:client][:name], VERSION, Time.now.to_i].join("-")
+          funnel = [@settings[:client][:name], VERSION, start_time].join("-")
           [:fanout, subscription, funnel]
         end
       end
 
       # Set up Sensu client subscriptions. Subscriptions determine the
-      # kinds of check requests the client will receive. A unique
-      # transport funnel is created for the Sensu client, using a
-      # combination of it's name, the Sensu version, and the current
-      # timestamp (epoch). The unique funnel is bound to each
-      # transport pipe, named after the client subscription. The Sensu
+      # kinds of check requests the client will receive. The Sensu
       # client will receive JSON serialized check requests from its
-      # funnel, that get parsed and processed.
+      # subscriptions, that get parsed and processed.
       def setup_subscriptions
         @logger.debug("subscribing to client subscriptions")
         @settings[:client][:subscriptions].each do |subscription|
