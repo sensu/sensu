@@ -771,6 +771,17 @@ module Sensu
           end
         end
       end
+
+      aget %r{^/results?/([\w\.-]+)/([\w\.-]+)/?$} do |client_name, check_name|
+        result_key = "result:#{client_name}:#{check_name}"
+        settings.redis.get(result_key) do |result_json|
+          unless result_json.nil?
+            body result_json
+          else
+            not_found!
+          end
+        end
+      end
     end
   end
 end

@@ -848,7 +848,7 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can provide current results for a client" do
+  it "can provide current results for a specific client" do
     api_test do
       api_request("/results/i-424242") do |http, body|
         expect(http.response_header.status).to eq(200)
@@ -857,6 +857,17 @@ describe "Sensu::API::Process" do
           @check
         end
         expect(body).to contain(test_result)
+        async_done
+      end
+    end
+  end
+
+  it "can provide a specific result" do
+    api_test do
+      api_request("/results/i-424242/test") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Hash)
+        expect(body).to eq(@check)
         async_done
       end
     end
