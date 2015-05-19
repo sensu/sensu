@@ -847,4 +847,18 @@ describe "Sensu::API::Process" do
       end
     end
   end
+
+  it "can provide current results for a client" do
+    api_test do
+      api_request("/results/i-424242") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        test_result = Proc.new do |result|
+          @check
+        end
+        expect(body).to contain(test_result)
+        async_done
+      end
+    end
+  end
 end
