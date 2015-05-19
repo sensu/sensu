@@ -10,12 +10,13 @@ describe "Sensu::API::Process" do
     async_wrapper do
       client = client_template
       client[:timestamp] = epoch
-      event = event_template
+      @event = event_template
+      @check = check_template
       redis.flushdb do
         redis.set("client:i-424242", MultiJson.dump(client)) do
           redis.sadd("clients", "i-424242") do
-            redis.hset("events:i-424242", "test", MultiJson.dump(event)) do
-              redis.set("result:i-424242:test", MultiJson.dump(check_template)) do
+            redis.hset("events:i-424242", "test", MultiJson.dump(@event)) do
+              redis.set("result:i-424242:test", MultiJson.dump(@check)) do
                 redis.set("stash:test/test", MultiJson.dump({:key => "value"})) do
                   redis.expire("stash:test/test", 3600) do
                     redis.sadd("stashes", "test/test") do
@@ -829,6 +830,20 @@ describe "Sensu::API::Process" do
           expect(exists).to eq(false)
           async_done
         end
+      end
+    end
+  end
+
+  it "can provide current results" do
+    api_test do
+      api_request("/results") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        test_result = Proc.new do |result|
+          @check
+        end
+        expect(body).to contain(test_result)
+        async_done
       end
     end
   end

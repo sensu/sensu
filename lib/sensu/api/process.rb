@@ -725,6 +725,29 @@ module Sensu
           end
         end
       end
+
+      aget "/results/?" do
+        response = Array.new
+        settings.redis.smembers("clients") do |clients|
+          unless clients.empty?
+            clients.each_with_index do |client_name, client_index|
+              settings.redis.smembers("result:#{client_name}") do |checks|
+                checks.each_with_index do |check_name, check_index|
+                  result_key = "result:#{client_name}:#{check_name}"
+                  settings.redis.get(result_key) do |result_json|
+                    response << MultiJson.load(result_json)
+                    if client_index == clients.size - 1 && check_index == checks.size - 1
+                      body MultiJson.dump(response)
+                    end
+                  end
+                end
+              end
+            end
+          else
+            body MultiJson.dump(response)
+          end
+        end
+      end
     end
   end
 end
