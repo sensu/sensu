@@ -644,6 +644,40 @@ module Sensu
         end
       end
 
+      def determine_stale_check_results
+        @logger.info("determining stale check results")
+        @redis.smembers("clients") do |clients|
+          clients.each do |client_name|
+            @redis.smembers("result:#{client_name}") do |checks|
+              check.each do |check_name|
+                result_key = "#{client_name}:#{check_name}"
+                @redis.get("result:#{result_key}") do |result_json|
+                  result = MultiJson.load(result_json)
+                  next unless result[:ttl]
+                  time_since_last_result = Time.now.to_i - result[:executed]
+                  if time_since_last_result >= result[:ttl]
+                    result[:output] = "Last check execution was "
+                    result[:output] = << "#{time_since_last_result} seconds ago"
+                    result[:status] = 1
+                    publish_check_result(client, check)
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+
+      # Set up the check result monitor, a periodic timer to run
+      # `determine_stale_check_results()` every 30 seconds. The timer
+      # is stored in the timers hash under `:leader`.
+      def setup_check_result_monitor
+        @logger.debug("monitoring check results")
+        @timers[:leader] << EM::PeriodicTimer.new(30) do
+          determine_stale_check_results
+        end
+      end
+
       # Prune check result aggregations (aggregates). Sensu only
       # stores the 20 latest aggregations for a check, to keep the
       # amount of data stored to a minimum.
@@ -693,6 +727,7 @@ module Sensu
       def leader_duties
         setup_check_request_publisher
         setup_client_monitor
+        setup_check_result_monitor
         setup_check_result_aggregation_pruner
       end
 
