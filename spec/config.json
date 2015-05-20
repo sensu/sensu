@@ -118,7 +118,8 @@
     "standalone": {
       "command": "echo -n foobar && exit 1",
       "standalone": true,
-      "interval": 1
+      "interval": 1,
+      "ttl": 10
     },
     "merger": {
       "command": "this will be overwritten",

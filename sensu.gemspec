@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.add_dependency "eventmachine", "1.0.3"
   s.add_dependency "sensu-em", "2.4.1"
   s.add_dependency "sensu-logger", "1.0.0"
-  s.add_dependency "sensu-settings", "1.8.0"
+  s.add_dependency "sensu-settings", "1.9.0"
   s.add_dependency "sensu-extension", "1.1.2"
   s.add_dependency "sensu-extensions", "1.2.0"
   s.add_dependency "sensu-transport", "3.0.0"
