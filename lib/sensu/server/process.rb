@@ -592,6 +592,22 @@ module Sensu
         check.merge(:name => "keepalive", :issued => timestamp, :executed => timestamp)
       end
 
+      # Create a keepalive check definition for a check. Check 
+      # definitions may contain `:thresholds` configuration, containing
+      # specific thresholds. The check definition creation begins with 
+      # the result json, and default thresholds. If the check config 
+      # provides its own `:thresholds` configuration, it's deep merged 
+      # with the defaults.
+      def create_check_keepalive_check(result_json)
+        check_defaults = {
+          :thresholds => {
+            :warning => 0,
+            :critical => 0
+          }
+        }
+        deep_merge(check_defaults, MultiJson.load(result_json)[:check])
+      end
+
       # Determine stale clients, those that have not sent a keepalive
       # in a specified amount of time (thresholds). This method
       # iterates through the client registry, creating a keepalive
@@ -634,6 +650,48 @@ module Sensu
         end
       end
 
+      # Determine stale checks, those that have not sent an event
+      # in a specified amount of time (thresholds). This method
+      # iterates through the result registry. If the time since
+      # the latest event is equal to or greater than a threshold,
+      # the check `:output` is set to a descriptive message, and
+      # `:status` is set to the appropriate non-zero value, and an
+      # alert is sent. If a check has been sending events, then
+      # no alert is published.
+      def determine_stale_checks
+        @logger.info("determining stale checks")
+        @redis.smembers("results") do |results|
+          results.each do |result_name|
+            next if result_name.split(':')[2] == 'keepalive'
+            client_name = result_name.split(':')[1]
+            @redis.get(result_name) do |result_json|
+              next if result_json.nil?
+              check = create_check_keepalive_check(result_json)
+              time_since_last_result = Time.now.to_i - check[:issued]
+              check[:output] = "No result sent from check for "
+              check[:output] << "#{time_since_last_result} seconds"
+              if time_since_last_result >= check[:thresholds][:critical] \
+                and check[:thresholds][:critical] != 0
+                check[:output] << " (>=#{check[:thresholds][:critical]})"
+                check[:status] = 2
+                publish_check = true
+              elsif time_since_last_result >= check[:thresholds][:warning] \
+                and check[:thresholds][:warning] != 0
+                check[:output] << " (>=#{check[:thresholds][:warning]})"
+                check[:status] = 1
+                publish_check = true
+              end
+              next unless publish_check
+              @redis.get("client:#{client_name}") do |client_json|
+                next if client_json.nil?
+                client = MultiJson.load(client_json)
+                publish_check_result(client, check)
+              end
+            end
+          end
+        end
+      end
+
       # Set up the client monitor, a periodic timer to run
       # `determine_stale_clients()` every 30 seconds. The timer is
       # stored in the timers hash under `:leader`.
@@ -641,6 +699,16 @@ module Sensu
         @logger.debug("monitoring client keepalives")
         @timers[:leader] << EM::PeriodicTimer.new(30) do
           determine_stale_clients
+        end
+      end
+
+      # Set up the check monitor, a periodic timer to run
+      # `determine_stale_checks()` every 30 seconds. The timer is
+      # stored in the timers hash under `:master`.
+      def setup_check_monitor
+        @logger.debug("monitoring check keepalives")
+        @timers[:master] << EM::PeriodicTimer.new(30) do
+          determine_stale_checks
         end
       end
 
@@ -693,6 +761,7 @@ module Sensu
       def leader_duties
         setup_check_request_publisher
         setup_client_monitor
+        setup_check_monitor
         setup_check_result_aggregation_pruner
       end
 
