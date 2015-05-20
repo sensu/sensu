@@ -217,7 +217,6 @@ module Sensu
         @redis.sadd("result:#{client[:name]}", check[:name])
         result_key = "#{client[:name]}:#{check[:name]}"
         check_truncated = check.merge(:output => check[:output][0..256])
-        check_truncated[:client] = client[:name]
         @redis.set("result:#{result_key}", MultiJson.dump(check_truncated)) do
           history_key = "history:#{result_key}"
           @redis.rpush(history_key, check[:status]) do

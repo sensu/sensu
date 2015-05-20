@@ -736,7 +736,8 @@ module Sensu
                   checks.each_with_index do |check_name, check_index|
                     result_key = "result:#{client_name}:#{check_name}"
                     settings.redis.get(result_key) do |result_json|
-                      response << MultiJson.load(result_json)
+                      check_result = MultiJson.load(result_json)
+                      response << {:client => client_name, :check => check_result}
                       if client_index == clients.size - 1 && check_index == checks.size - 1
                         body MultiJson.dump(response)
                       end
@@ -760,7 +761,8 @@ module Sensu
             checks.each_with_index do |check_name, check_index|
               result_key = "result:#{client_name}:#{check_name}"
               settings.redis.get(result_key) do |result_json|
-                response << MultiJson.load(result_json)
+                check_result = MultiJson.load(result_json)
+                response << {:client => client_name, :check => check_result}
                 if check_index == checks.size - 1
                   body MultiJson.dump(response)
                 end
@@ -776,7 +778,9 @@ module Sensu
         result_key = "result:#{client_name}:#{check_name}"
         settings.redis.get(result_key) do |result_json|
           unless result_json.nil?
-            body result_json
+            check_result = MultiJson.load(result_json)
+            response = {:client => client_name, :check => check_result}
+            body MultiJson.dump(response)
           else
             not_found!
           end

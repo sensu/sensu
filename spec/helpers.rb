@@ -112,10 +112,10 @@ module Helpers
     }
   end
 
-  def result_template
+  def result_template(check_result = nil)
     {
       :client => "i-424242",
-      :check => check_template
+      :check => check_result || check_template
     }
   end
 

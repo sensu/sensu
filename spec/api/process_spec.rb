@@ -840,7 +840,7 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_result = Proc.new do |result|
-          @check
+          result_template(@check)
         end
         expect(body).to contain(test_result)
         async_done
@@ -854,7 +854,7 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_result = Proc.new do |result|
-          @check
+          result_template(@check)
         end
         expect(body).to contain(test_result)
         async_done
@@ -867,7 +867,7 @@ describe "Sensu::API::Process" do
       api_request("/results/i-424242/test") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
-        expect(body).to eq(@check)
+        expect(body).to eq(result_template(@check))
         async_done
       end
     end
