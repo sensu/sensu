@@ -1,6 +1,6 @@
-gem "em-redis-unified", "0.6.0"
+gem "em-redis-unified", "1.0.0"
 
-require "em-redis"
+require "em-redis-unified"
 
 module Sensu
   class Redis
