@@ -548,11 +548,11 @@ module Sensu
       # serialization is used when publishing the check result payload
       # to the transport pipe. Transport errors are logged.
       #
-      # @param client [Hash]
+      # @param client_name [String]
       # @param check [Hash]
-      def publish_check_result(client, check)
+      def publish_check_result(client_name, check)
         payload = {
-          :client => client[:name],
+          :client => client_name,
           :check => check
         }
         @logger.debug("publishing check result", :payload => payload)
@@ -627,7 +627,7 @@ module Sensu
                   check[:output] << "#{time_since_last_keepalive} seconds ago"
                   check[:status] = 0
                 end
-                publish_check_result(client, check)
+                publish_check_result(client[:name], check)
               end
             end
           end
@@ -644,22 +644,30 @@ module Sensu
         end
       end
 
+      # Determine stale check results, those that have not executed in
+      # a specified amount of time (check TTL). This method iterates
+      # through the client registry and check results for checks with
+      # a defined TTL value (in seconds). If a check result has a
+      # defined TTL, the time since last check execution (in seconds)
+      # is calculated. If the time since last execution is equal to or
+      # greater than the check TTL, a warning check result is
+      # published with the appropriate check output.
       def determine_stale_check_results
         @logger.info("determining stale check results")
         @redis.smembers("clients") do |clients|
           clients.each do |client_name|
             @redis.smembers("result:#{client_name}") do |checks|
-              check.each do |check_name|
+              checks.each do |check_name|
                 result_key = "#{client_name}:#{check_name}"
                 @redis.get("result:#{result_key}") do |result_json|
-                  result = MultiJson.load(result_json)
-                  next unless result[:ttl]
-                  time_since_last_result = Time.now.to_i - result[:executed]
-                  if time_since_last_result >= result[:ttl]
-                    result[:output] = "Last check execution was "
-                    result[:output] = << "#{time_since_last_result} seconds ago"
-                    result[:status] = 1
-                    publish_check_result(client, check)
+                  check = MultiJson.load(result_json)
+                  next unless check[:ttl]
+                  time_since_last_execution = Time.now.to_i - check[:executed]
+                  if time_since_last_execution >= check[:ttl]
+                    check[:output] = "Last check execution was "
+                    check[:output] << "#{time_since_last_execution} seconds ago"
+                    check[:status] = 1
+                    publish_check_result(client_name, check)
                   end
                 end
               end
