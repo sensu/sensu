@@ -1,3 +1,29 @@
+## 0.19.0 - TBD
+
+### Features
+
+Redis Sensu transport, a built-in alternative to the default RabbitMQ
+transport. The Redis transport is currently considered experimental.
+Configuring the transport name to be `redis` will enable the Redis
+transport instead of RabbitMQ, e.g. `{"transport": {"name": "redis"}}`.
+
+Round-robin client subscriptions, allowing check requests to be sent to a
+single client in a subscription in a round-robin fashion. To create a
+round-robin subscription, start its name with `roundrobin:` to specify the
+type, e.g. "roundrobin:elasticsearch". Any check that targets the
+"roundrobin:elasticsearch" subscription will have its check requests sent
+to clients in a round-robin fashion.
+
+Stale check result detection, using a defined check `ttl` and stored check
+results. Sensu is now able to monitor check results, ensuring that checks
+with a defined TTL (time to live) continue to be executed by clients. For
+example, a standalone check could have an interval of 30 seconds and a ttl
+of 50 seconds, Sensu would expect a result at least once every 50 seconds.
+
+Check results API routes/endpoints: `/results`, `/results/:client`, and
+`/results/:client/:check`. These new check result API routes/endpoints
+enable new tooling, such as green light dashboards.
+
 ## 0.18.1 - 2015-05-11
 
 ### Other
