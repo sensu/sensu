@@ -1,7 +1,4 @@
 {
-  "transport": {
-    "name": "redis"
-  },
   "api": {
     "user": "foo",
     "password": "bar"

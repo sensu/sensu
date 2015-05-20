@@ -26,7 +26,7 @@ module Helpers
   end
 
   def setup_transport
-    @transport = Sensu::Transport.connect("redis", {})
+    @transport = Sensu::Transport.connect("rabbitmq", {})
   end
 
   def transport
