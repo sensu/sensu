@@ -330,6 +330,45 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can determine stale check results" do
+    async_wrapper do
+      @server.setup_redis
+      @server.setup_transport
+      @server.setup_results
+      redis.flushdb do
+        timer(1) do
+          client = client_template
+          redis.set("client:i-424242", MultiJson.dump(client)) do
+            redis.sadd("clients", "i-424242") do
+              result = result_template
+              result[:check][:status] = 0
+              result[:check][:executed] = epoch - 30
+              transport.publish(:direct, "results", MultiJson.dump(result))
+              result[:check][:name] = "foo"
+              result[:check][:ttl] = 30
+              transport.publish(:direct, "results", MultiJson.dump(result))
+              result[:check][:name] = "bar"
+              result[:check][:ttl] = 60
+              transport.publish(:direct, "results", MultiJson.dump(result))
+              timer(2) do
+                @server.determine_stale_check_results
+                timer(2) do
+                  redis.hgetall("events:i-424242") do |events|
+                    expect(events.size).to eq(1)
+                    event = MultiJson.load(events["foo"])
+                    expect(event[:check][:output]).to match(/Last check execution was 3[0-9] seconds ago/)
+                    expect(event[:check][:status]).to eq(1)
+                    async_done
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can prune aggregations" do
     async_wrapper do
       @server.setup_redis

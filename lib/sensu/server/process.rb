@@ -660,14 +660,16 @@ module Sensu
               checks.each do |check_name|
                 result_key = "#{client_name}:#{check_name}"
                 @redis.get("result:#{result_key}") do |result_json|
-                  check = MultiJson.load(result_json)
-                  next unless check[:ttl]
-                  time_since_last_execution = Time.now.to_i - check[:executed]
-                  if time_since_last_execution >= check[:ttl]
-                    check[:output] = "Last check execution was "
-                    check[:output] << "#{time_since_last_execution} seconds ago"
-                    check[:status] = 1
-                    publish_check_result(client_name, check)
+                  unless result_json.nil?
+                    check = MultiJson.load(result_json)
+                    next unless check[:ttl] && check[:executed]
+                    time_since_last_execution = Time.now.to_i - check[:executed]
+                    if time_since_last_execution >= check[:ttl]
+                      check[:output] = "Last check execution was "
+                      check[:output] << "#{time_since_last_execution} seconds ago"
+                      check[:status] = 1
+                      publish_check_result(client_name, check)
+                    end
                   end
                 end
               end
