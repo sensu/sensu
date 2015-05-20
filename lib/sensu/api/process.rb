@@ -725,6 +725,67 @@ module Sensu
           end
         end
       end
+
+      aget "/results/?" do
+        response = Array.new
+        settings.redis.smembers("clients") do |clients|
+          unless clients.empty?
+            clients.each_with_index do |client_name, client_index|
+              settings.redis.smembers("result:#{client_name}") do |checks|
+                unless checks.empty?
+                  checks.each_with_index do |check_name, check_index|
+                    result_key = "result:#{client_name}:#{check_name}"
+                    settings.redis.get(result_key) do |result_json|
+                      result = MultiJson.load(result_json)
+                      response << {:client => client_name, :check => result}
+                      if client_index == clients.size - 1 && check_index == checks.size - 1
+                        body MultiJson.dump(response)
+                      end
+                    end
+                  end
+                else
+                  body MultiJson.dump(response)
+                end
+              end
+            end
+          else
+            body MultiJson.dump(response)
+          end
+        end
+      end
+
+      aget %r{^/results?/([\w\.-]+)/?$} do |client_name|
+        response = Array.new
+        settings.redis.smembers("result:#{client_name}") do |checks|
+          unless checks.empty?
+            checks.each_with_index do |check_name, check_index|
+              result_key = "result:#{client_name}:#{check_name}"
+              settings.redis.get(result_key) do |result_json|
+                result = MultiJson.load(result_json)
+                response << {:client => client_name, :check => result}
+                if check_index == checks.size - 1
+                  body MultiJson.dump(response)
+                end
+              end
+            end
+          else
+            not_found!
+          end
+        end
+      end
+
+      aget %r{^/results?/([\w\.-]+)/([\w\.-]+)/?$} do |client_name, check_name|
+        result_key = "result:#{client_name}:#{check_name}"
+        settings.redis.get(result_key) do |result_json|
+          unless result_json.nil?
+            result = MultiJson.load(result_json)
+            response = {:client => client_name, :check => result}
+            body MultiJson.dump(response)
+          else
+            not_found!
+          end
+        end
+      end
     end
   end
 end
