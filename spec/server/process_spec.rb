@@ -159,7 +159,7 @@ describe "Sensu::Server::Process" do
                     expect(event[:id]).to be_kind_of(String)
                     expect(event[:check][:status]).to eq(1)
                     expect(event[:occurrences]).to eq(2)
-                    timer(2) do
+                    timer(3) do
                       latest_event_file = IO.read("/tmp/sensu-event.json")
                       expect(MultiJson.load(latest_event_file)).to eq(event)
                       async_done
@@ -217,6 +217,24 @@ describe "Sensu::Server::Process" do
         @server.setup_transport
         check = check_template
         check[:subscribers] = ["test"]
+        @server.publish_check_request(check)
+      end
+    end
+  end
+
+  it "can publish check requests to round-robin subscriptions" do
+    async_wrapper do
+      transport.subscribe(:direct, "roundrobin:test") do |_, payload|
+        check_request = MultiJson.load(payload)
+        expect(check_request[:name]).to eq("test")
+        expect(check_request[:command]).to eq("echo WARNING && exit 1")
+        expect(check_request[:issued]).to be_within(10).of(epoch)
+        async_done
+      end
+      timer(0.5) do
+        @server.setup_transport
+        check = check_template
+        check[:subscribers] = ["roundrobin:test"]
         @server.publish_check_request(check)
       end
     end

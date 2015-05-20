@@ -132,6 +132,13 @@
       ],
       "interval": 1
     },
+    "roundrobin": {
+      "command": "/bin/true",
+      "subscribers": [
+        "roundrobin:test"
+      ],
+      "interval": 1
+    },
     "unpublished": {
       "command": "/bin/true",
       "publish": false,
@@ -144,7 +151,9 @@
     "name": "i-424242",
     "address": "127.0.0.1",
     "subscriptions": [
-      "test"
+      "test",
+      "roundrobin:test",
+      "all"
     ],
     "keepalive": {
       "thresholds": {

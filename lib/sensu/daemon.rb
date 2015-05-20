@@ -31,13 +31,16 @@ module Sensu
   module Daemon
     include Utilities
 
-    # Initialize the Sensu process. Set the initial service state, set
-    # up the logger, load settings, load extensions, and optionally
-    # daemonize the process and/or create a PID file. A subclass may
-    # override this method.
+    attr_reader :start_time
+
+    # Initialize the Sensu process. Set the start time, initial
+    # service state, set up the logger, load settings, load
+    # extensions, and optionally daemonize the process and/or create a
+    # PID file. A subclass may override this method.
     #
     # @param options [Hash]
     def initialize(options={})
+      @start_time = Time.now.to_i
       @state = :initializing
       @timers = {:run => []}
       setup_logger(options)
