@@ -236,7 +236,7 @@ module Sensu
       # Determine the Sensu transport subscribe options for a
       # subscription. If a subscription begins with a transport pipe
       # type, either "direct:" or "roundrobin:", the subscription uses
-      # a direct transport pipe, and the subscription name is uses for
+      # a direct transport pipe, and the subscription name is used for
       # both the pipe and the funnel names. If a subscription does not
       # specify a transport pipe type, a fanout transport pipe is
       # used, the subscription name is used for the pipe, and a unique
