@@ -2,15 +2,15 @@
 
 ### Features
 
-Redis Sensu transport, providing a built-in alternative to the default
-RabbitMQ transport. The Redis transport is currently considered
-experimental. Configuring the transport name to be `redis` will enable the
-Redis transport instead of RabbitMQ, eg. `{"transport":{"name":"redis"}}`.
+Redis Sensu transport, a built-in alternative to the default RabbitMQ
+transport. The Redis transport is currently considered experimental.
+Configuring the transport name to be `redis` will enable the Redis
+transport instead of RabbitMQ, e.g. `{"transport": {"name": "redis"}}`.
 
 Round-robin client subscriptions, allowing check requests to be sent to a
 single client in a subscription in a round-robin fashion. To create a
 round-robin subscription, start its name with `roundrobin:` to specify the
-type, eg. "roundrobin:elasticsearch". Any check that targets the
+type, e.g. "roundrobin:elasticsearch". Any check that targets the
 "roundrobin:elasticsearch" subscription will have its check requests sent
 to clients in a round-robin fashion.
 
