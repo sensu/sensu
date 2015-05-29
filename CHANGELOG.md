@@ -24,6 +24,15 @@ Check results API routes/endpoints: `/results`, `/results/:client`, and
 `/results/:client/:check`. These new check result API routes/endpoints
 enable new tooling, such as green light dashboards.
 
+### Other
+
+POSIX spawn libraries are now loaded upfront/immediately, not at child
+process creation. This removes the possibility of load race conditions
+when real threads are used.
+
+Many Ruby EventMachine fixes and improvements, including FD_CLOEXEC for
+the Sensu client UDP socket.
+
 ## 0.18.1 - 2015-05-11
 
 ### Other
