@@ -2,7 +2,7 @@ require "rubygems"
 
 gem "multi_json", "1.11.0"
 
-gem "sensu-em", "2.4.1"
+gem "sensu-em", "2.5.0.beta"
 gem "sensu-logger", "1.0.0"
 gem "sensu-settings", "1.9.0"
 gem "sensu-extension", "1.1.2"
