@@ -210,6 +210,7 @@ describe "Sensu::Server::Process" do
         check_request = MultiJson.load(payload)
         expect(check_request[:name]).to eq("test")
         expect(check_request[:command]).to eq("echo WARNING && exit 1")
+        expect(check_request[:source]).to eq("switch-x")
         expect(check_request[:issued]).to be_within(10).of(epoch)
         async_done
       end
@@ -217,6 +218,7 @@ describe "Sensu::Server::Process" do
         @server.setup_transport
         check = check_template
         check[:subscribers] = ["test"]
+        check[:source] = "switch-x"
         @server.publish_check_request(check)
       end
     end
