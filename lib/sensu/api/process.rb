@@ -317,6 +317,7 @@ module Sensu
         }
         read_data(rules) do |data|
           data[:keepalives] = false
+          data[:version] = VERSION
           data[:timestamp] = Time.now.to_i
           settings.redis.set("client:#{data[:name]}", MultiJson.dump(data)) do
             settings.redis.sadd("clients", data[:name]) do
