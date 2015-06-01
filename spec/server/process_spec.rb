@@ -135,8 +135,8 @@ describe "Sensu::Server::Process" do
                   @server.process_check_result(result)
                 end
                 timer(1) do
-                  redis.hget("events:i-424242", "test") do |event_json|
-                    expect(event_json).to be(nil)
+                  redis.hexists("events:i-424242", "test") do |exists|
+                    expect(exists).to be(false)
                     async_done
                   end
                 end
