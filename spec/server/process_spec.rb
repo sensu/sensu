@@ -191,6 +191,7 @@ describe "Sensu::Server::Process" do
               redis.get("client:i-888888") do |client_json|
                 client = MultiJson.load(client_json)
                 expect(client[:keepalives]).to be(false)
+                expect(client[:version]).to eq(Sensu::VERSION)
                 redis.hget("events:i-888888", "test") do |event_json|
                   event = MultiJson.load(event_json)
                   expect(event[:client][:address]).to eq("unknown")

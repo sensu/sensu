@@ -353,7 +353,8 @@ module Sensu
           :name => name,
           :address => "unknown",
           :subscriptions => [],
-          :keepalives => false
+          :keepalives => false,
+          :version => VERSION
         }
         update_client_registry(client, &callback)
       end
