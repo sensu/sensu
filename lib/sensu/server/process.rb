@@ -279,9 +279,11 @@ module Sensu
       def check_flapping?(stored_event, check)
         if check.has_key?(:low_flap_threshold) && check.has_key?(:high_flap_threshold)
           was_flapping = stored_event && stored_event[:action] == "flapping"
-          check[:total_state_change] >= check[:high_flap_threshold] ||
-            (was_flapping && check[:total_state_change] <= check[:low_flap_threshold]) ||
-            was_flapping
+          if was_flapping
+            check[:total_state_change] > check[:low_flap_threshold]
+          else
+            check[:total_state_change] >= check[:high_flap_threshold]
+          end
         else
           false
         end

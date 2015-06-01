@@ -127,7 +127,19 @@ describe "Sensu::Server::Process" do
                 event = MultiJson.load(event_json)
                 expect(event[:action]).to eq("flapping")
                 expect(event[:occurrences]).to be_within(2).of(1)
-                async_done
+                26.times do |index|
+                  result = result_template
+                  result[:check][:low_flap_threshold] = 5
+                  result[:check][:high_flap_threshold] = 20
+                  result[:check][:status] = 0
+                  @server.process_check_result(result)
+                end
+                timer(1) do
+                  redis.hexists("events:i-424242", "test") do |exists|
+                    expect(exists).to be(false)
+                    async_done
+                  end
+                end
               end
             end
           end
