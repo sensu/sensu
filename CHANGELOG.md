@@ -33,6 +33,14 @@ when real threads are used.
 Many Ruby EventMachine fixes and improvements, including FD_CLOEXEC for
 the Sensu client UDP socket.
 
+Fixed event resolution for flapping events.
+
+Check source is now published in check requests if configured. Including
+the check source in check requests fixes JIT clients for standard (pubsub)
+check executions and adds context to client check execution log events.
+
+JIT clients now have a Sensu version, set to the Sensu server version.
+
 ## 0.18.1 - 2015-05-11
 
 ### Other
