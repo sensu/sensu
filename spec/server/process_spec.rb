@@ -223,7 +223,7 @@ describe "Sensu::Server::Process" do
       end
     end
   end
-  
+
   it "can publish check requests to round-robin subscriptions" do
     async_wrapper do
       transport.subscribe(:direct, "roundrobin:test") do |_, payload|
