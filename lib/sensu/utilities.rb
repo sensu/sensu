@@ -1,4 +1,4 @@
-gem "uuidtools", "2.1.4"
+gem "uuidtools", "2.1.5"
 
 require "uuidtools"
 
