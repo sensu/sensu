@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency "json" if RUBY_VERSION < "1.9"
   s.add_dependency "multi_json", "1.11.0"
-  s.add_dependency "uuidtools", "2.1.4"
+  s.add_dependency "uuidtools", "2.1.5"
   s.add_dependency "eventmachine", "1.0.3"
   s.add_dependency "sensu-em", "2.5.0"
   s.add_dependency "sensu-logger", "1.0.0"
@@ -27,7 +27,7 @@ Gem::Specification.new do |s|
   s.add_dependency "em-redis-unified", "1.0.0"
   s.add_dependency "sinatra", "1.4.6"
   s.add_dependency "async_sinatra", "1.2.0"
-  s.add_dependency "thin", "1.5.0" unless RUBY_PLATFORM =~ /java/
+  s.add_dependency "thin", "1.6.3" unless RUBY_PLATFORM =~ /java/
 
   s.add_development_dependency "rake", "~> 10.3"
   s.add_development_dependency "rspec", "~> 3.0.0"
