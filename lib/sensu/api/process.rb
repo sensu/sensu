@@ -4,7 +4,7 @@ gem "sinatra", "1.4.6"
 gem "async_sinatra", "1.2.0"
 
 unless RUBY_PLATFORM =~ /java/
-  gem "thin", "1.5.0"
+  gem "thin", "1.6.3"
   require "thin"
 end
 
