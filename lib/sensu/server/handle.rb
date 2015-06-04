@@ -61,8 +61,7 @@ module Sensu
             end
             socket.on_error = on_error
             timeout = handler[:timeout] || 10
-            socket.pending_connect_timeout = timeout
-            socket.comm_inactivity_timeout = timeout
+            socket.set_timeout(timeout)
             socket.send_data(event_data.to_s)
             socket.close_connection_after_writing
           end
