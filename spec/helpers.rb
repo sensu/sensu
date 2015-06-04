@@ -2,6 +2,7 @@ require "rspec"
 require "eventmachine"
 require "em-http-request"
 require "uuidtools"
+require "multi_json"
 
 module Helpers
   def setup_options
@@ -164,8 +165,10 @@ module Helpers
     attr_accessor :expected
 
     def receive_data(data)
-      expect(MultiJson.load(data)).to eq(MultiJson.load(expected))
-      EM::stop_event_loop
+      if @expected
+        expect(MultiJson.load(data)).to eq(MultiJson.load(@expected))
+        EM::stop_event_loop
+      end
     end
   end
 end
