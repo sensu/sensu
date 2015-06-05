@@ -172,16 +172,21 @@ describe "Sensu::Server::Process" do
                       expect(event[:id]).to be_kind_of(String)
                       expect(event[:check][:status]).to eq(1)
                       expect(event[:occurrences]).to eq(2)
-                      timer(3) do
-                        begin
-                          event_file = IO.read("/tmp/sensu-event.json")
-                          parsed_event_file = MultiJson.load(event_file)
-                          raise unless parsed_event_file[:occurrences] == 2
-                        rescue
-                          retry
+                      timer(2) do
+                        read_event_file = Proc.new do
+                          begin
+                            event_file = IO.read("/tmp/sensu-event.json")
+                            MultiJson.load(event_file)
+                          rescue
+                            retry
+                          end
                         end
-                        expect(parsed_event_file).to eq(event)
-                        async_done
+                        compare_event_file = Proc.new do |event_file|
+                          expect(event_file[:check]).to eq(event[:check])
+                          expect(event_file[:client]).to eq(event[:client])
+                          async_done
+                        end
+                        EM.defer(read_event_file, compare_event_file)
                       end
                     end
                   end
