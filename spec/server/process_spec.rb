@@ -160,21 +160,29 @@ describe "Sensu::Server::Process" do
             result = result_template
             transport.publish(:direct, "results", MultiJson.dump(result))
             transport.publish(:direct, "results", MultiJson.dump(result))
-            timer(4) do
+            timer(3) do
               redis.sismember("result:i-424242", "test") do |is_member|
                 expect(is_member).to be(true)
                 redis.get("result:i-424242:test") do |result_json|
                   result = MultiJson.load(result_json)
                   expect(result[:output]).to eq("WARNING")
-                  redis.hget("events:i-424242", "test") do |event_json|
-                    event = MultiJson.load(event_json)
-                    expect(event[:id]).to be_kind_of(String)
-                    expect(event[:check][:status]).to eq(1)
-                    expect(event[:occurrences]).to eq(2)
-                    timer(3) do
-                      latest_event_file = IO.read("/tmp/sensu-event.json")
-                      expect(MultiJson.load(latest_event_file)).to eq(event)
-                      async_done
+                  timer(2) do
+                    redis.hget("events:i-424242", "test") do |event_json|
+                      event = MultiJson.load(event_json)
+                      expect(event[:id]).to be_kind_of(String)
+                      expect(event[:check][:status]).to eq(1)
+                      expect(event[:occurrences]).to eq(2)
+                      timer(3) do
+                        begin
+                          event_file = IO.read("/tmp/sensu-event.json")
+                          parsed_event_file = MultiJson.load(event_file)
+                          raise unless parsed_event_file[:occurrences] == 2
+                        rescue
+                          retry
+                        end
+                        expect(parsed_event_file).to eq(event)
+                        async_done
+                      end
                     end
                   end
                 end
