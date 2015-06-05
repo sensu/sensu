@@ -175,6 +175,7 @@ describe "Sensu::Server::Process" do
                       begin
                         event_file = IO.read("/tmp/sensu-event.json")
                         parsed_event_file = MultiJson.load(event_file)
+                        raise unless parsed_event_file[:occurrences] == 2
                       rescue
                         retry
                       end
