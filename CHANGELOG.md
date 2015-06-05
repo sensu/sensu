@@ -1,3 +1,14 @@
+## 0.19.1 - 2015-06-04
+
+### Other
+
+Now using an EventMachine timer for the TCP handler connection timeout, as
+`pending_connect_timeout()` and `comm_inactivity_timeout()` are not
+currently supported on all platforms.
+
+Updated Thin and UUID tools to the latest versions, which include
+improvements and bug fixes.
+
 ## 0.19.0 - 2015-06-01
 
 ### Features
