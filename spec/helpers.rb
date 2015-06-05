@@ -55,7 +55,7 @@ module Helpers
 
   def async_wrapper(&callback)
     EM::run do
-      timer(10) do
+      timer(12) do
         raise "test timed out"
       end
       callback.call
