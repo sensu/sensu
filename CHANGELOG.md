@@ -1,3 +1,10 @@
+## 0.19.2 - 2015-06-08
+
+### Other
+
+Updated sensu-em to fix UDP handlers when running on JRuby, open files
+were not being closed/released properly.
+
 ## 0.19.1 - 2015-06-04
 
 ### Other
