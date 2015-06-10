@@ -670,8 +670,8 @@ module Sensu
                     time_since_last_execution = Time.now.to_i - check[:executed]
                     if time_since_last_execution >= check[:ttl]
                       check[:output] = "Last check execution was "
-                      check[:output] << "#{time_since_last_execution} seconds ago"
-                      check[:status] = 1
+                      check[:output] << "#{time_since_last_execution} seconds ago. (Threshold: #{check[:ttl]} seconds)"
+                      check[:status] = 2
                       publish_check_result(client_name, check)
                     end
                   end
