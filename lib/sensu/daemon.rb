@@ -1,6 +1,6 @@
 require "rubygems"
 
-gem "multi_json", "1.11.0"
+gem "multi_json", "1.11.1"
 
 gem "sensu-em", "2.5.2"
 gem "sensu-logger", "1.0.0"
