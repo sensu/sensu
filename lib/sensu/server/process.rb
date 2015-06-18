@@ -316,13 +316,13 @@ module Sensu
             :id => random_uuid,
             :client => client,
             :check => check,
-            :occurrences => 1
+            :occurrences => 1,
+            :action => (flapping ? :flapping : :create)
           }
           if check[:status] != 0 || flapping
             if stored_event && check[:status] == stored_event[:check][:status]
               event[:occurrences] = stored_event[:occurrences] + 1
             end
-            event[:action] = flapping ? :flapping : :create
             @redis.hset("events:#{client[:name]}", check[:name], MultiJson.dump(event)) do
               callback.call(event)
             end
