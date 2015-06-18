@@ -172,6 +172,7 @@ describe "Sensu::Server::Process" do
                       expect(event[:id]).to be_kind_of(String)
                       expect(event[:check][:status]).to eq(1)
                       expect(event[:occurrences]).to eq(2)
+                      expect(event[:action]).to eq("create")
                       read_event_file = Proc.new do
                         begin
                           event_file = IO.read("/tmp/sensu-event.json")
