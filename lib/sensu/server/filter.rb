@@ -296,14 +296,14 @@ module Sensu
           "handler is subdued"
         end
         if filter_message
-          @logger.info(filter_message, details)
+          @logger.debug(filter_message, details)
           @handling_event_count -= 1 if @handling_event_count
         else
           event_filtered?(handler, event) do |filtered|
             unless filtered
               callback.call(event)
             else
-              @logger.info("event was filtered", details)
+              @logger.debug("event was filtered", details)
               @handling_event_count -= 1 if @handling_event_count
             end
           end
