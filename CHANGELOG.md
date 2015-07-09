@@ -1,3 +1,22 @@
+## 0.20.0 - 2015-07-09
+
+### Features
+
+Sensu services now optionally load connection and client configuration
+from environment variables. This feature makes it easier to operate Sensu
+in containerized environments, e.g. Docker. Sensu services read
+configuration from the following variables: SENSU_TRANSPORT_NAME,
+RABBITMQ_URL, REDIS_URL, SENSU_CLIENT_NAME, SENSU_CLIENT_ADDRESS,
+SENSU_CLIENT_SUBSCRIPTIONS, SENSU_API_PORT
+
+### Other
+
+The Sensu event action is now correctly set to "create" for metric check
+events.
+
+Updated MultiJson and Childprocess to the latest versions, which include
+improvements and bug fixes.
+
 ## 0.19.2 - 2015-06-08
 
 ### Other
