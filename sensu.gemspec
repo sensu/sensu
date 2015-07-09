@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.has_rdoc    = false
 
   s.add_dependency "json" if RUBY_VERSION < "1.9"
-  s.add_dependency "multi_json", "1.11.1"
+  s.add_dependency "multi_json", "1.11.2"
   s.add_dependency "uuidtools", "2.1.5"
   s.add_dependency "eventmachine", "1.0.3"
   s.add_dependency "sensu-em", "2.5.2"
