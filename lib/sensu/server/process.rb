@@ -666,7 +666,7 @@ module Sensu
                 @redis.get("result:#{result_key}") do |result_json|
                   unless result_json.nil?
                     check = MultiJson.load(result_json)
-                    next unless check[:ttl] && check[:executed]
+                    next unless check[:ttl] && check[:executed] && !check[:force_resolve]
                     time_since_last_execution = Time.now.to_i - check[:executed]
                     if time_since_last_execution >= check[:ttl]
                       check[:output] = "Last check execution was "
