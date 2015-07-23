@@ -17,6 +17,15 @@ events.
 Updated MultiJson and Childprocess to the latest versions, which include
 improvements and bug fixes.
 
+Sensu now sets the `SENSU_LOADED_TEMPFILE` environment variable to a
+temporary file path, a file containing the colon delimited list of loaded
+configuration files for the Sensu service
+(e.g.`/tmp/sensu_client_loaded_files`). This new temporary file and
+environment variable (`SENSU_LOADED_TEMPFILE`) replaced
+`SENSU_CONFIG_FILES`, which has been removed, due to the exec ARG_MAX
+(E2BIG) error when spawning processes after loading many configuration
+files (e.g. > 2000).
+
 ## 0.19.2 - 2015-06-08
 
 ### Other
