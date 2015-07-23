@@ -317,7 +317,8 @@ module Sensu
             :client => client,
             :check => check,
             :occurrences => 1,
-            :action => (flapping ? :flapping : :create)
+            :action => (flapping ? :flapping : :create),
+            :timestamp => Time.now.to_i
           }
           if check[:status] != 0 || flapping
             if stored_event && check[:status] == stored_event[:check][:status]

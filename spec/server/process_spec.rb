@@ -173,6 +173,7 @@ describe "Sensu::Server::Process" do
                       expect(event[:check][:status]).to eq(1)
                       expect(event[:occurrences]).to eq(2)
                       expect(event[:action]).to eq("create")
+                      expect(event[:timestamp]).to be_within(10).of(epoch)
                       read_event_file = Proc.new do
                         begin
                           event_file = IO.read("/tmp/sensu-event.json")
