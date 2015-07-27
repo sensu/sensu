@@ -22,7 +22,7 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-settings", "3.0.0"
   s.add_dependency "sensu-extension", "1.1.2"
   s.add_dependency "sensu-extensions", "1.2.0"
-  s.add_dependency "sensu-transport", "3.0.0"
+  s.add_dependency "sensu-transport", "3.1.0"
   s.add_dependency "sensu-spawn", "1.3.0"
   s.add_dependency "em-redis-unified", "1.0.0"
   s.add_dependency "sinatra", "1.4.6"
