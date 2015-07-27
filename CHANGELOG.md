@@ -1,3 +1,21 @@
+## 0.20.1 - 2015-07-27
+
+### Other
+
+Resolving an event, that includes a check TTL, with the Sensu API will
+remove the check from TTL monitoring, until another check result with a
+TTL is received.
+
+Added a timestamp to Sensu event data, recording the time of event
+creation.
+
+Fixed RabbitMQ transport connection AMQP heartbeat monitoring, the AMQP
+library was sending heartbeat frames on closed connections.
+
+The RabbitMQ transport now resets (close connection, etc.) when making
+periodic reconnect attempts. The periodic reconnect timer delay will now
+be incremented by 2 on every attempt, to a maximum of 20 seconds.
+
 ## 0.20.0 - 2015-07-09
 
 ### Features
