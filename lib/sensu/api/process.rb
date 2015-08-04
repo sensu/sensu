@@ -337,14 +337,18 @@ module Sensu
                 if client_json.nil?
                   settings.logger.error("redis returned nil for #{client_name}")
                   settings.redis.srem("clients", client_name)
-                  next
+                else
+                  response << MultiJson.load(client_json)
                 end
-                response << MultiJson.load(client_json)
+                if index == clients.size - 1
+                  body MultiJson.dump(response)
+                end
               end
             end
+          else
+            body MultiJson.dump(response)
           end
         end
-        body MultiJson.dump(response)
       end
 
       aget %r{^/clients?/([\w\.-]+)/?$} do |client_name|
