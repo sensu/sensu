@@ -35,6 +35,7 @@ module Sensu
         @is_leader = false
         @timers[:leader] = Array.new
         @handling_event_count = 0
+        @leader_timestamp = 0
       end
 
       # Update the Sensu client registry, stored in Redis. Sensu
@@ -774,6 +775,7 @@ module Sensu
                   if previous_timestamp == current_timestamp
                     @is_leader = true
                     @logger.info("i am now the leader")
+                    @leader_timestamp = lock_timestamp
                     leader_duties
                   end
                 end
@@ -795,9 +797,17 @@ module Sensu
         end
         @timers[:run] << EM::PeriodicTimer.new(10) do
           if @is_leader
-            lock_timestamp = (Time.now.to_f * 1000).to_i
-            @redis.set("lock:leader", lock_timestamp) do
-              @logger.debug("updated leader lock timestamp")
+            @redis.get("lock:leader") do |current_timestamp|
+              if @leader_timestamp == current_timestamp
+                lock_timestamp = (Time.now.to_f * 1000).to_i
+                @redis.set("lock:leader", lock_timestamp) do
+                  @leader_timestamp = lock_timestamp
+                  @logger.debug("updated leader lock timestamp")
+                end
+              else
+                @logger.warn("Leader timestamp did not match")
+                resign_as_leader
+              end
             end
           else
             request_leader_election
