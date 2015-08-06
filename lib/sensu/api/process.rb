@@ -334,11 +334,13 @@ module Sensu
           unless clients.empty?
             clients.each_with_index do |client_name, index|
               settings.redis.get("client:#{client_name}") do |client_json|
-                if client_json.nil?
-                  settings.logger.error("redis returned nil for #{client_name}")
-                  settings.redis.srem("clients", client_name)
-                else
+                unless client_json.nil?
                   response << MultiJson.load(client_json)
+                else
+                  settings.logger.error("client registry missing data for client", {
+                    :client_name => client_name
+                  })
+                  settings.redis.srem("clients", client_name)
                 end
                 if index == clients.size - 1
                   body MultiJson.dump(response)
