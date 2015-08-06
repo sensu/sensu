@@ -166,7 +166,7 @@ describe "Sensu::Server::Process" do
                 redis.get("result:i-424242:test") do |result_json|
                   result = MultiJson.load(result_json)
                   expect(result[:output]).to eq("WARNING")
-                  timer(5) do
+                  timer(7) do
                     redis.hget("events:i-424242", "test") do |event_json|
                       event = MultiJson.load(event_json)
                       expect(event[:id]).to be_kind_of(String)
