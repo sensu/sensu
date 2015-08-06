@@ -1,3 +1,12 @@
+## 0.20.2 - 2015-08-06
+
+### Other
+
+The Sensu API `/clients` route/endpoint is now capable of handling missing
+client data for a client in the registry.
+
+Sensu configuration file loading will now properly follow a link once.
+
 ## 0.20.1 - 2015-07-27
 
 ### Other
