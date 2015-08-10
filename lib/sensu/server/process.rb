@@ -753,8 +753,8 @@ module Sensu
       def become_the_leader(timestamp)
         unless @is_leader
           @logger.info("i am now the leader")
+          @leader_lock_timestamp = timestamp
           @is_leader = true
-          @last_leader_lock_timestamp = timestamp
           leader_duties
         else
           @logger.debug("i am already the leader")
@@ -773,19 +773,20 @@ module Sensu
           end
           @timers[:leader].clear
           @is_leader = false
+          @leader_lock_timestamp = nil
         else
-          @logger.debug("not currently leader")
+          @logger.debug("not currently the leader")
         end
       end
 
       def update_leader_lock
         new_lock_timestamp = create_lock_timestamp
         @redis.getset("lock:leader", new_lock_timestamp) do |previous_lock_timestamp|
-          if previous_lock_timestamp.to_i == @last_leader_lock_timestamp
-            @logger.debug("updated leader lock timestamp", :timestamp => new_lock_timestamp)
-            @last_leader_lock_timestamp = new_lock_timestamp
+          if previous_lock_timestamp.to_i == @leader_lock_timestamp
+            @leader_lock_timestamp = new_lock_timestamp
+            @logger.debug("updated leader lock timestamp", :timestamp => @leader_lock_timestamp)
           else
-            @logger.info("another sensu server has been elected as leader")
+            @logger.warn("another sensu server has been elected as leader")
             resign_as_leader
           end
         end
