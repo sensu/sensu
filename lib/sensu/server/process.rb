@@ -128,12 +128,10 @@ module Sensu
 
       # Process an event: filter -> mutate -> handle.
       #
-      # This method runs event bridges, relaying the event data to
-      # other services. This method also determines the appropriate
-      # handlers for the event, filtering and mutating the event data
-      # for each of them. The `@handling_event_count` is incremented
-      # by `1`, for each event handler chain (filter -> mutate ->
-      # handle).
+      # This method determines the appropriate handlers for an event,
+      # filtering and mutating the event data for each of them. The
+      # `@handling_event_count` is incremented by `1`, for each event
+      # handler chain (filter -> mutate -> handle).
       #
       # @param event [Hash]
       def process_event(event)
@@ -299,8 +297,10 @@ module Sensu
       # registry. If the previous conditions are not met, and check
       # `:type` is `metric` and the `:status` is `0`, the event
       # registry is not updated, but the provided callback is called
-      # with the event data. JSON serialization is used when storing
-      # data in the registry.
+      # with the event data. All event data is sent to event bridge
+      # extensions, including events that do not normally produce an
+      # action. JSON serialization is used when storing data in the
+      # registry.
       #
       # @param client [Hash]
       # @param check [Hash]
