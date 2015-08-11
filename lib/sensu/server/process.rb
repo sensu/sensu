@@ -126,23 +126,6 @@ module Sensu
         }.flatten.compact.uniq
       end
 
-      # Run event bridge extensions, within the Sensu EventMachine
-      # reactor (event loop). The extension API `safe_run()` method is
-      # used to guard against most errors. Bridges are for relaying
-      # Sensu event data to other services.
-      #
-      # @param event [Hash]
-      def event_bridges(event)
-        @extensions[:bridges].each do |name, bridge|
-          bridge.safe_run(event) do |output, status|
-            @logger.debug("bridge extension output", {
-              :extension => bridge.definition,
-              :output => output
-            })
-          end
-        end
-      end
-
       # Process an event: filter -> mutate -> handle.
       #
       # This method runs event bridges, relaying the event data to
@@ -156,7 +139,6 @@ module Sensu
       def process_event(event)
         log_level = event[:check][:type] == "metric" ? :debug : :info
         @logger.send(log_level, "processing event", :event => event)
-        event_bridges(event)
         handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || "default")
         handlers = derive_handlers(handler_list)
         handlers.each do |handler|
@@ -165,6 +147,23 @@ module Sensu
             mutate_event(handler, event) do |event_data|
               handle_event(handler, event_data)
             end
+          end
+        end
+      end
+
+      # Run event bridge extensions, within the Sensu EventMachine
+      # reactor (event loop). The extension API `safe_run()` method is
+      # used to guard against most errors. Bridges are for relaying
+      # Sensu event data to other services.
+      #
+      # @param event [Hash]
+      def event_bridges(event)
+        @extensions[:bridges].each do |name, bridge|
+          bridge.safe_run(event) do |output, status|
+            @logger.debug("bridge extension output", {
+              :extension => bridge.definition,
+              :output => output
+            })
           end
         end
       end
@@ -338,6 +337,7 @@ module Sensu
           elsif check[:type] == "metric"
             callback.call(event)
           end
+          event_bridges(event)
         end
       end
 

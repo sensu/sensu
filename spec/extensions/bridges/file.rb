@@ -6,16 +6,16 @@ module Sensu
       end
 
       def description
-        'writes the latest event data to /tmp/sensu-event.json'
+        'writes the latest event data to /tmp/sensu_event_bridge.json'
       end
 
       def run(event, &block)
         update_file = Proc.new do
           event_json = MultiJson.dump(event)
-          File.open('/tmp/sensu-event.json', 'w') do |file|
+          File.open('/tmp/sensu_event_bridge.json', 'w') do |file|
             file.write(event_json)
           end
-          ['wrote event data to /tmp/sensu-event.json', 0]
+          ['wrote event data to /tmp/sensu_event_bridge.json', 0]
         end
         EM::defer(update_file, block)
       end

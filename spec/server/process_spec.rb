@@ -176,7 +176,7 @@ describe "Sensu::Server::Process" do
                       expect(event[:timestamp]).to be_within(10).of(epoch)
                       read_event_file = Proc.new do
                         begin
-                          event_file = IO.read("/tmp/sensu-event.json")
+                          event_file = IO.read("/tmp/sensu_event_bridge.json")
                           MultiJson.load(event_file)
                         rescue
                           retry
