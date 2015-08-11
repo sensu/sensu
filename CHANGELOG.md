@@ -1,3 +1,14 @@
+## 0.20.3 - 2015-08-11
+
+### Other
+
+Improved Sensu server leader election and resignation. Changes include the
+use of a unique leader ID to help guard against cases where there could be
+multiple leaders.
+
+Fixed bridge extensions; they now receive all event data, including events
+that normally do not result in an action (e.g. OK check results).
+
 ## 0.20.2 - 2015-08-06
 
 ### Other
