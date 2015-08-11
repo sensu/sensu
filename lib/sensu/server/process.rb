@@ -746,8 +746,85 @@ module Sensu
         setup_check_result_aggregation_pruner
       end
 
+      # Create a lock timestamp (integer), current time including
+      # milliseconds. This method is used by Sensu server leader
+      # election.
+      #
+      # @return [Integer]
+      def create_lock_timestamp
+        (Time.now.to_f * 1000).to_i
+      end
+
+      # Create/return the unique Sensu server leader ID for the
+      # current process.
+      #
+      # @return [String]
+      def leader_id
+        @leader_id ||= random_uuid
+      end
+
+      # Become the Sensu server leader, responsible for specific
+      # duties (`leader_duties()`). Unless the current process is
+      # already the leader, this method sets the leader ID stored in
+      # Redis to the unique random leader ID for the process. If the
+      # leader ID in Redis is successfully updated, `@is_leader` is
+      # set to true and `leader_duties()` is called to begin the
+      # tasks/duties of the Sensu server leader.
+      def become_the_leader
+        unless @is_leader
+          @redis.set("leader", leader_id) do
+            @logger.info("i am now the leader")
+            @is_leader = true
+            leader_duties
+          end
+        else
+          @logger.debug("i am already the leader")
+        end
+      end
+
+      # Resign as leader, if the current process is the Sensu server
+      # leader. This method cancels and clears the leader timers,
+      # those with references stored in the timers hash under
+      # `:leader`, and `@is_leader` is set to `false`. The leader ID
+      # and leader lock are not removed from Redis, as they will be
+      # updated when another server is elected to be the leader, this
+      # method does not need to handle Redis connectivity issues.
+      def resign_as_leader
+        if @is_leader
+          @logger.warn("resigning as leader")
+          @timers[:leader].each do |timer|
+            timer.cancel
+          end
+          @timers[:leader].clear
+          @is_leader = false
+        else
+          @logger.debug("not currently the leader")
+        end
+      end
+
+      # Updates the Sensu server leader lock timestamp. The current
+      # leader ID is retrieved from Redis and compared with the leader
+      # ID of the current process to determine if it is still the
+      # Sensu server leader. If the current process is still the
+      # leader, the leader lock timestamp is updated. If the current
+      # process is no longer the leader (regicide),
+      # `resign_as_leader()` is called for cleanup, so there is not
+      # more than one leader.
+      def update_leader_lock
+        @redis.get("leader") do |current_leader_id|
+          if current_leader_id == leader_id
+            @redis.set("lock:leader", create_lock_timestamp) do
+              @logger.debug("updated leader lock timestamp")
+            end
+          else
+            @logger.warn("another sensu server has been elected as leader")
+            resign_as_leader
+          end
+        end
+      end
+
       # Request a leader election, a process to determine if the
-      # current process is the leader Sensu server, with its
+      # current process is the Sensu server leader, with its
       # own/unique duties. A Redis key/value is used as a central
       # lock, using the "SETNX" Redis command to set the key/value if
       # it does not exist, using a timestamp for the value. If the
@@ -758,23 +835,18 @@ module Sensu
       # "GETSET" Redis command is used to set a new timestamp and
       # fetch the previous value to compare them, to determine if it
       # was set by the current process. If the current process is able
-      # to set the timestamp value, it becomes the leader. The leader
-      # has `@is_leader` set to `true`.
+      # to set the timestamp value, it becomes the leader.
       def request_leader_election
-        @redis.setnx("lock:leader", Time.now.to_i) do |created|
+        @redis.setnx("lock:leader", create_lock_timestamp) do |created|
           if created
-            @is_leader = true
-            @logger.info("i am the leader")
-            leader_duties
+            become_the_leader
           else
-            @redis.get("lock:leader") do |current_timestamp|
-              lock_timestamp = (Time.now.to_f * 1000).to_i
-              if lock_timestamp - current_timestamp.to_i >= 30000
-                @redis.getset("lock:leader", lock_timestamp) do |previous_timestamp|
-                  if previous_timestamp == current_timestamp
-                    @is_leader = true
-                    @logger.info("i am now the leader")
-                    leader_duties
+            @redis.get("lock:leader") do |current_lock_timestamp|
+              new_lock_timestamp = create_lock_timestamp
+              if new_lock_timestamp - current_lock_timestamp.to_i >= 30000
+                @redis.getset("lock:leader", new_lock_timestamp) do |previous_lock_timestamp|
+                  if previous_lock_timestamp == current_lock_timestamp
+                    become_the_leader
                   end
                 end
               end
@@ -795,30 +867,10 @@ module Sensu
         end
         @timers[:run] << EM::PeriodicTimer.new(10) do
           if @is_leader
-            lock_timestamp = (Time.now.to_f * 1000).to_i
-            @redis.set("lock:leader", lock_timestamp) do
-              @logger.debug("updated leader lock timestamp")
-            end
+            update_leader_lock
           else
             request_leader_election
           end
-        end
-      end
-
-      # Resign as leader, if the current process is the Sensu server
-      # leader. This method cancels and clears the leader timers,
-      # those with references stored in the timers hash under
-      # `:leader`, and `@is_leader`is set to `false`.
-      def resign_as_leader
-        if @is_leader
-          @logger.warn("resigning as leader")
-          @timers[:leader].each do |timer|
-            timer.cancel
-          end
-          @timers[:leader].clear
-          @is_leader = false
-        else
-          @logger.debug("not currently leader")
         end
       end
 
