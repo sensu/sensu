@@ -126,6 +126,29 @@ module Sensu
         }.flatten.compact.uniq
       end
 
+      # Process an event: filter -> mutate -> handle.
+      #
+      # This method determines the appropriate handlers for an event,
+      # filtering and mutating the event data for each of them. The
+      # `@handling_event_count` is incremented by `1`, for each event
+      # handler chain (filter -> mutate -> handle).
+      #
+      # @param event [Hash]
+      def process_event(event)
+        log_level = event[:check][:type] == "metric" ? :debug : :info
+        @logger.send(log_level, "processing event", :event => event)
+        handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || "default")
+        handlers = derive_handlers(handler_list)
+        handlers.each do |handler|
+          @handling_event_count += 1
+          filter_event(handler, event) do |event|
+            mutate_event(handler, event) do |event_data|
+              handle_event(handler, event_data)
+            end
+          end
+        end
+      end
+
       # Run event bridge extensions, within the Sensu EventMachine
       # reactor (event loop). The extension API `safe_run()` method is
       # used to guard against most errors. Bridges are for relaying
@@ -139,32 +162,6 @@ module Sensu
               :extension => bridge.definition,
               :output => output
             })
-          end
-        end
-      end
-
-      # Process an event: filter -> mutate -> handle.
-      #
-      # This method runs event bridges, relaying the event data to
-      # other services. This method also determines the appropriate
-      # handlers for the event, filtering and mutating the event data
-      # for each of them. The `@handling_event_count` is incremented
-      # by `1`, for each event handler chain (filter -> mutate ->
-      # handle).
-      #
-      # @param event [Hash]
-      def process_event(event)
-        log_level = event[:check][:type] == "metric" ? :debug : :info
-        @logger.send(log_level, "processing event", :event => event)
-        event_bridges(event)
-        handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || "default")
-        handlers = derive_handlers(handler_list)
-        handlers.each do |handler|
-          @handling_event_count += 1
-          filter_event(handler, event) do |event|
-            mutate_event(handler, event) do |event_data|
-              handle_event(handler, event_data)
-            end
           end
         end
       end
@@ -300,8 +297,10 @@ module Sensu
       # registry. If the previous conditions are not met, and check
       # `:type` is `metric` and the `:status` is `0`, the event
       # registry is not updated, but the provided callback is called
-      # with the event data. JSON serialization is used when storing
-      # data in the registry.
+      # with the event data. All event data is sent to event bridge
+      # extensions, including events that do not normally produce an
+      # action. JSON serialization is used when storing data in the
+      # registry.
       #
       # @param client [Hash]
       # @param check [Hash]
@@ -338,6 +337,7 @@ module Sensu
           elsif check[:type] == "metric"
             callback.call(event)
           end
+          event_bridges(event)
         end
       end
 
