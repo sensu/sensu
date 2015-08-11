@@ -746,16 +746,37 @@ module Sensu
         setup_check_result_aggregation_pruner
       end
 
+      # Create a lock timestamp (integer), current time including
+      # milliseconds. This method is used by Sensu server leader
+      # election.
+      #
+      # @return [Integer]
       def create_lock_timestamp
         (Time.now.to_f * 1000).to_i
       end
 
-      def become_the_leader(timestamp)
+      # Create/return the unique Sensu server leader ID for the
+      # current process.
+      #
+      # @return [String]
+      def leader_id
+        @leader_id ||= random_uuid
+      end
+
+      # Become the Sensu server leader, responsible for specific
+      # duties (`leader_duties()`). Unless the current process is
+      # already the leader, this method sets the leader ID stored in
+      # Redis to the unique random leader ID for the process. If the
+      # leader ID in Redis is successfully updated, `@is_leader` is
+      # set to true and `leader_duties()` is called to begin the
+      # tasks/duties of the Sensu server leader.
+      def become_the_leader
         unless @is_leader
-          @logger.info("i am now the leader")
-          @leader_lock_timestamp = timestamp
-          @is_leader = true
-          leader_duties
+          @redis.set("leader", leader_id) do
+            @logger.info("i am now the leader")
+            @is_leader = true
+            leader_duties
+          end
         else
           @logger.debug("i am already the leader")
         end
@@ -773,18 +794,25 @@ module Sensu
           end
           @timers[:leader].clear
           @is_leader = false
-          @leader_lock_timestamp = nil
         else
           @logger.debug("not currently the leader")
         end
       end
 
+      # Updates the Sensu server leader lock timestamp. The current
+      # leader ID is retrieved from Redis and compared with the leader
+      # ID of the current process to determine if it is still the
+      # Sensu server leader. If the current process is still the
+      # leader, the leader lock timestamp is updated. If the current
+      # process is no longer the leader (regicide),
+      # `resign_as_leader()` is called for cleanup, so there is not
+      # more than one leader.
       def update_leader_lock
-        new_lock_timestamp = create_lock_timestamp
-        @redis.getset("lock:leader", new_lock_timestamp) do |previous_lock_timestamp|
-          if previous_lock_timestamp.to_i == @leader_lock_timestamp
-            @leader_lock_timestamp = new_lock_timestamp
-            @logger.debug("updated leader lock timestamp", :timestamp => @leader_lock_timestamp)
+        @redis.get("leader") do |current_leader_id|
+          if current_leader_id == leader_id
+            @redis.set("lock:leader", create_lock_timestamp) do
+              @logger.debug("updated leader lock timestamp")
+            end
           else
             @logger.warn("another sensu server has been elected as leader")
             resign_as_leader
@@ -793,7 +821,7 @@ module Sensu
       end
 
       # Request a leader election, a process to determine if the
-      # current process is the leader Sensu server, with its
+      # current process is the Sensu server leader, with its
       # own/unique duties. A Redis key/value is used as a central
       # lock, using the "SETNX" Redis command to set the key/value if
       # it does not exist, using a timestamp for the value. If the
@@ -804,20 +832,18 @@ module Sensu
       # "GETSET" Redis command is used to set a new timestamp and
       # fetch the previous value to compare them, to determine if it
       # was set by the current process. If the current process is able
-      # to set the timestamp value, it becomes the leader. The leader
-      # has `@is_leader` set to `true`.
+      # to set the timestamp value, it becomes the leader.
       def request_leader_election
-        new_lock_timestamp = create_lock_timestamp
-        @redis.setnx("lock:leader", new_lock_timestamp) do |created|
+        @redis.setnx("lock:leader", create_lock_timestamp) do |created|
           if created
-            become_the_leader(new_lock_timestamp)
+            become_the_leader
           else
             @redis.get("lock:leader") do |current_lock_timestamp|
               new_lock_timestamp = create_lock_timestamp
               if new_lock_timestamp - current_lock_timestamp.to_i >= 30000
                 @redis.getset("lock:leader", new_lock_timestamp) do |previous_lock_timestamp|
                   if previous_lock_timestamp == current_lock_timestamp
-                    become_the_leader(new_lock_timestamp)
+                    become_the_leader
                   end
                 end
               end
