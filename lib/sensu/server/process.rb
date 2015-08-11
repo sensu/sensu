@@ -785,7 +785,10 @@ module Sensu
       # Resign as leader, if the current process is the Sensu server
       # leader. This method cancels and clears the leader timers,
       # those with references stored in the timers hash under
-      # `:leader`, and `@is_leader` is set to `false`.
+      # `:leader`, and `@is_leader` is set to `false`. The leader ID
+      # and leader lock are not removed from Redis, as they will be
+      # updated when another server is elected to be the leader, this
+      # method does not need to handle Redis connectivity issues.
       def resign_as_leader
         if @is_leader
           @logger.warn("resigning as leader")
