@@ -205,6 +205,10 @@ module Sensu
       # The check execution timestamp is also stored, to provide an
       # indication of how recent the data is.
       #
+      # Check output is truncated to a single line if the plugin type is
+      # set to metric. For normal checks the output is left untouched
+      # to give context to the check.
+      #
       # @param client [Hash]
       # @param check [Hash]
       # @param callback [Proc] to call when the check result data has
@@ -213,8 +217,10 @@ module Sensu
         @logger.debug("storing check result", :check => check)
         @redis.sadd("result:#{client[:name]}", check[:name])
         result_key = "#{client[:name]}:#{check[:name]}"
-        check_truncated = check.merge(:output => check[:output][0..256])
-        @redis.set("result:#{result_key}", MultiJson.dump(check_truncated)) do
+        if check[:type] == "metric" && check[:output].split("\n").length > 1
+          check = check.merge(:output => "#{check[:output].split("\n")[0]}\n...")
+        end
+        @redis.set("result:#{result_key}", MultiJson.dump(check)) do
           history_key = "history:#{result_key}"
           @redis.rpush(history_key, check[:status]) do
             @redis.ltrim(history_key, -21, -1)
@@ -307,6 +313,9 @@ module Sensu
       # @param callback [Proc] to be called with the resulting event
       #   data if the event registry is updated, or the check is of
       #   type `:metric`.
+      # Check output is truncated to a single line if the plugin type is
+      # set to metric. For normal checks the output is left untouched
+      # to give context to the check.
       def update_event_registry(client, check, &callback)
         @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
           stored_event = event_json ? MultiJson.load(event_json) : nil
