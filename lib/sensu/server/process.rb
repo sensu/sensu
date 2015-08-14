@@ -216,10 +216,16 @@ module Sensu
       def store_check_result(client, check, &callback)
         @logger.debug("storing check result", :check => check)
         @redis.sadd("result:#{client[:name]}", check[:name])
-        result_key = "#{client[:name]}:#{check[:name]}"
-        if check[:type] == "metric" && check[:output].split("\n").length > 1
-          check = check.merge(:output => "#{check[:output].split("\n")[0]}\n...")
+        if check[:type] == 'metric'
+          output = check[:output].split("\n")
+          if output.first.length < 255 && output.length = 1
+            output = output.first
+          else
+            output = output[0..255] + '...'
+          end
+          check = check.merge(:output => output)
         end
+        result_key = "#{client[:name]}:#{check[:name]}"
         @redis.set("result:#{result_key}", MultiJson.dump(check)) do
           history_key = "history:#{result_key}"
           @redis.rpush(history_key, check[:status]) do
