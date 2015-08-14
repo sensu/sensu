@@ -222,10 +222,12 @@ module Sensu
           if output_lines.size > 1 || output.length > 255
             output = output[0..255] + "\n..."
           end
-          check = check.merge(:output => output)
+          result = check.merge(:output => output)
+        else
+          result = check
         end
         result_key = "#{client[:name]}:#{check[:name]}"
-        @redis.set("result:#{result_key}", MultiJson.dump(check)) do
+        @redis.set("result:#{result_key}", MultiJson.dump(result)) do
           history_key = "history:#{result_key}"
           @redis.rpush(history_key, check[:status]) do
             @redis.ltrim(history_key, -21, -1)
