@@ -217,11 +217,10 @@ module Sensu
         @logger.debug("storing check result", :check => check)
         @redis.sadd("result:#{client[:name]}", check[:name])
         if check[:type] == 'metric'
-          output = check[:output].split("\n")
-          if output.first.length < 255 && output.length = 1
-            output = output.first
-          else
-            output = output[0..255] + '...'
+          output_lines = check[:output].split("\n")
+          output = output_lines.first
+          if output_lines.size > 1 || output.length > 255
+            output = output[0..255] + "\n..."
           end
           check = check.merge(:output => output)
         end
