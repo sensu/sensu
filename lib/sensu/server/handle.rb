@@ -29,11 +29,12 @@ module Sensu
       # @param handler [Hash] definition.
       # @param event_data [Object] provided to the spawned handler
       #   process via STDIN.
-      def pipe_handler(handler, event_data)
+      def pipe_handler(handler, event_data, event_id)
         options = {:data => event_data, :timeout => handler[:timeout]}
         Spawn.process(handler[:command], options) do |output, status|
           @logger.info("handler output", {
             :handler => handler,
+            :event => { :id => event_id },
             :output => output.lines
           })
           @handling_event_count -= 1 if @handling_event_count
@@ -116,10 +117,11 @@ module Sensu
       #
       # @param handler [Hash] definition.
       # @param event_data [Object] to pass to the handler extension.
-      def handler_extension(handler, event_data)
+      def handler_extension(handler, event_data, event_id)
         handler.safe_run(event_data) do |output, status|
           @logger.info("handler extension output", {
             :extension => handler.definition,
+            :event => { :id => event_id },
             :output => output,
             :status => status
           })
@@ -132,10 +134,10 @@ module Sensu
       #
       # @param handler [Hash] definition.
       # @param event_data [Object] to pass to the handler type method.
-      def handler_type_router(handler, event_data)
+      def handler_type_router(handler, event_data, event_id)
         case handler[:type]
         when "pipe"
-          pipe_handler(handler, event_data)
+          pipe_handler(handler, event_data, event_id)
         when "tcp"
           tcp_handler(handler, event_data)
         when "udp"
@@ -143,7 +145,7 @@ module Sensu
         when "transport"
           transport_handler(handler, event_data)
         when "extension"
-          handler_extension(handler, event_data)
+          handler_extension(handler, event_data, event_id)
         end
       end
 
@@ -154,13 +156,14 @@ module Sensu
       #
       # @param handler [Hash] definition.
       # @param event_data [Object] to pass to an event handler.
-      def handle_event(handler, event_data)
+      def handle_event(handler, event_data, event_id)
         definition = handler.is_a?(Hash) ? handler : handler.definition
         @logger.debug("handling event", {
           :event_data => event_data,
+          :event => { :id => event_id },
           :handler => definition
         })
-        handler_type_router(handler, event_data)
+        handler_type_router(handler, event_data, event_id)
       end
     end
   end
