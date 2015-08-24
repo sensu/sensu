@@ -794,6 +794,44 @@ module Sensu
           end
         end
       end
+
+      aget %r{^/results?/\*/([\w\.-]+)/?$} do |check_name|
+        keys = "result:*:#{check_name}"
+        settings.redis.keys(keys) do |keys|
+          if keys && keys.size > 0
+            EM::Iterator.new(keys).map(
+              proc {|key, iter| settings.redis.get(key) {|data| iter.return(data) } },
+              proc {|responses| body MultiJson.dump(responses) }
+            )
+          else
+            not_found!
+          end
+        end
+      end
+
+      aget %r{^/lock/([\w\.-]+)/([\w\.-]+)/(\d+)/?$} do |lock, new_holder, pttl|
+        settings.redis.setnx(lock, new_holder) do |ack|
+          if ack == 1
+            settings.redis.pttl(lock, pttl) do
+              created! now
+            end
+          else
+            settings.redis.get(lock) do |holder|
+              if holder
+                settings.redis.pttl(lock) do |pttl_left|
+                  # possibly expired between .get and .pttl
+                  body MultiJson.dump(:holder => holder, :pttl => pttl_left)
+                  not_found!
+                end
+              else
+                # expired between .setnx and .get
+                body MultiJson.dump(:holder => nil)
+                not_found!
+              end
+            end
+          end
+        end
+      end
     end
   end
 end

@@ -872,4 +872,31 @@ describe "Sensu::API::Process" do
       end
     end
   end
+
+  context "/lock" do
+    it "can be acquired" do
+      api_test do
+        api_request("/lock/test_name/test_holder/1000") do |http, body|
+          redis.get("lock:test_name") {|data| expect(data).to eq("test_holder") }
+          redis.pttl("lock:test_name") {|pttl| expect(pttl).to(be_ge(0)) && expect(pttl).to(be_lt(1000))}
+          expect(http.response_header.status).to eq(200)
+          expect(body).to eq(:holder => "test_holder")
+          redis.del("lock:test_name")
+          async_done
+        end
+      end
+    end
+
+    it "cannot be acquired" do
+      api_test do
+        redis.set("lock:test_name", "some_holder") do
+          api_request("/lock/test_name/test_holder/1000") do |http, body|
+            expect(http.response_header.status).to eq(404)
+            expect(body[:holder]).to eq("some_holder")
+            async_done
+          end
+        end
+      end
+    end
+  end
 end
