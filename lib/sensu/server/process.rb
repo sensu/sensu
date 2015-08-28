@@ -199,22 +199,15 @@ module Sensu
         end
       end
 
-      # Store check result data. This method stores check result data
-      # and the 21 most recent check result statuses for a client/check
-      # pair, this history is used for event context and flap detection.
-      # The check execution timestamp is also stored, to provide an
-      # indication of how recent the data is. Check output is
-      # truncated to a single line if the check type is `metric`,
-      # standard check output is left unmodified.
+      # Truncate check output. For metric checks, (`"type":
+      # "metric"`), check output is truncated to a single line and a
+      # maximum of 255 characters. Check output is currently left
+      # unmodified for standard checks.
       #
-      # @param client [Hash]
       # @param check [Hash]
-      # @param callback [Proc] to call when the check result data has
-      #   been stored (history, etc).
-      def store_check_result(client, check, &callback)
-        @logger.debug("storing check result", :check => check)
-        @redis.sadd("result:#{client[:name]}", check[:name])
-        check_truncated = case check[:type]
+      # @return [Hash] check with truncated output.
+      def truncate_check_output(check)
+        case check[:type]
         when "metric"
           output_lines = check[:output].split("\n")
           output = output_lines.first
@@ -225,7 +218,24 @@ module Sensu
         else
           check
         end
+      end
+
+      # Store check result data. This method stores check result data
+      # and the 21 most recent check result statuses for a client/check
+      # pair, this history is used for event context and flap detection.
+      # The check execution timestamp is also stored, to provide an
+      # indication of how recent the data is. Check output is
+      # truncated by `truncate_check_output()` before it is stored.
+      #
+      # @param client [Hash]
+      # @param check [Hash]
+      # @param callback [Proc] to call when the check result data has
+      #   been stored (history, etc).
+      def store_check_result(client, check, &callback)
+        @logger.debug("storing check result", :check => check)
+        @redis.sadd("result:#{client[:name]}", check[:name])
         result_key = "#{client[:name]}:#{check[:name]}"
+        check_truncated = truncate_check_output(check)
         @redis.set("result:#{result_key}", MultiJson.dump(check_truncated)) do
           history_key = "history:#{result_key}"
           @redis.rpush(history_key, check[:status]) do

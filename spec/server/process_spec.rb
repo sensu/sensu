@@ -206,6 +206,16 @@ describe "Sensu::Server::Process" do
       @server.setup_results
       redis.flushdb do
         timer(1) do
+          check = check_template
+          check[:output] = "foo\nbar\nbaz"
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq("foo\nbar\nbaz")
+          check[:type] = "metric"
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq("foo\n...")
+          check[:output] = rand(36**256).to_s(36)
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq(check[:output][0..255] + "\n...")
           client = client_template
           redis.set("client:i-424242", MultiJson.dump(client)) do
             result = result_template
