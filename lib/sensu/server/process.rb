@@ -329,9 +329,6 @@ module Sensu
       # @param callback [Proc] to be called with the resulting event
       #   data if the event registry is updated, or the check is of
       #   type `:metric`.
-      # Check output is truncated to a single line if the plugin type is
-      # set to metric. For normal checks the output is left untouched
-      # to give context to the check.
       def update_event_registry(client, check, &callback)
         @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
           stored_event = event_json ? MultiJson.load(event_json) : nil

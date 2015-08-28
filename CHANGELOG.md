@@ -1,3 +1,17 @@
+## 0.20.4 - 2015-08-28
+
+### Other
+
+Improved check output truncation. Metric check output is truncated to a
+single line and 256 characters. Standard check output is not modified.
+
+Fixed API /results endpoint, now including all results in a single
+response (unless pagination is used).
+
+Locked amq-protocol to 1.9.2, as 2.x.x does not work on older Rubies.
+
+Fixed pipe handler output logging on JRuby.
+
 ## 0.20.3 - 2015-08-11
 
 ### Other
