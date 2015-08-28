@@ -740,7 +740,7 @@ module Sensu
           unless clients.empty?
             clients.each_with_index do |client_name, client_index|
               settings.redis.smembers("result:#{client_name}") do |checks|
-                unless checks.empty?
+                if !checks.empty?
                   checks.each_with_index do |check_name, check_index|
                     result_key = "result:#{client_name}:#{check_name}"
                     settings.redis.get(result_key) do |result_json|
@@ -751,7 +751,7 @@ module Sensu
                       end
                     end
                   end
-                else
+                elsif client_index == clients.size - 1
                   body MultiJson.dump(response)
                 end
               end
