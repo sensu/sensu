@@ -199,6 +199,45 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can truncate check result output for storage" do
+    async_wrapper do
+      @server.setup_transport
+      @server.setup_redis
+      @server.setup_results
+      redis.flushdb do
+        timer(1) do
+          check = check_template
+          check[:output] = "foo\nbar\nbaz"
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq("foo\nbar\nbaz")
+          check[:type] = "metric"
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq("foo\n...")
+          check[:output] = rand(36**256).to_s(36)
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq(check[:output][0..255] + "\n...")
+          client = client_template
+          redis.set("client:i-424242", MultiJson.dump(client)) do
+            result = result_template
+            result[:check][:type] = "metric"
+            result[:check][:output] = "foo\nbar\nbaz"
+            transport.publish(:direct, "results", MultiJson.dump(result))
+            timer(2) do
+              redis.sismember("result:i-424242", "test") do |is_member|
+                expect(is_member).to be(true)
+                redis.get("result:i-424242:test") do |result_json|
+                  result = MultiJson.load(result_json)
+                  expect(result[:output]).to eq("foo\n...")
+                  async_done
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can dynamically create a client for a check source" do
     async_wrapper do
       @server.setup_transport
