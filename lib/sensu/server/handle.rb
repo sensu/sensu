@@ -34,7 +34,7 @@ module Sensu
         Spawn.process(handler[:command], options) do |output, status|
           @logger.info("handler output", {
             :handler => handler,
-            :output => output.lines
+            :output => output.split("\n+")
           })
           @handling_event_count -= 1 if @handling_event_count
         end
