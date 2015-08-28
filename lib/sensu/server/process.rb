@@ -203,11 +203,9 @@ module Sensu
       # and the 21 most recent check result statuses for a client/check
       # pair, this history is used for event context and flap detection.
       # The check execution timestamp is also stored, to provide an
-      # indication of how recent the data is.
-      #
-      # Check output is truncated to a single line if the plugin type is
-      # set to metric. For normal checks the output is left untouched
-      # to give context to the check.
+      # indication of how recent the data is. Check output is
+      # truncated to a single line if the check type is `metric`,
+      # standard check output is left unmodified.
       #
       # @param client [Hash]
       # @param check [Hash]
@@ -216,18 +214,19 @@ module Sensu
       def store_check_result(client, check, &callback)
         @logger.debug("storing check result", :check => check)
         @redis.sadd("result:#{client[:name]}", check[:name])
-        if check[:type] == 'metric'
+        check_truncated = case check[:type]
+        when "metric"
           output_lines = check[:output].split("\n")
           output = output_lines.first
           if output_lines.size > 1 || output.length > 255
             output = output[0..255] + "\n..."
           end
-          result = check.merge(:output => output)
+          check.merge(:output => output)
         else
-          result = check
+          check
         end
         result_key = "#{client[:name]}:#{check[:name]}"
-        @redis.set("result:#{result_key}", MultiJson.dump(result)) do
+        @redis.set("result:#{result_key}", MultiJson.dump(check_truncated)) do
           history_key = "history:#{result_key}"
           @redis.rpush(history_key, check[:status]) do
             @redis.ltrim(history_key, -21, -1)
