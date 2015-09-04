@@ -800,8 +800,12 @@ module Sensu
         settings.redis.keys(keys) do |keys|
           if keys && keys.size > 0
             EM::Iterator.new(keys).map(
-              proc {|key, iter| settings.redis.get(key) {|data| iter.return(data) } },
-              proc {|responses| body MultiJson.dump(responses) }
+              lambda do |key, iter|
+                settings.redis.get(key) do |data|
+                  iter.return(key.split(':')[1] => data)
+                end
+              end,
+              lambda { |res| body MultiJson.dump(res.inject({}, &:merge)) }
             )
           else
             not_found!
@@ -810,22 +814,26 @@ module Sensu
       end
 
       aget %r{^/lock/([\w\.-]+)/([\w\.-]+)/(\d+)/?$} do |lock, new_holder, pttl|
-        settings.redis.setnx(lock, new_holder) do |ack|
-          if ack == 1
-            settings.redis.pttl(lock, pttl) do
-              created! now
+        lock_key = "lock:#{lock}"
+        settings.redis.setnx(lock_key, new_holder) do |ack|
+          if ack
+            settings.redis.pexpire(lock_key, pttl.to_i) do
+              created! MultiJson.dump(:lock      => lock,
+                                      :holder    => new_holder,
+                                      :pttl      => pttl,
+                                      :timestamp => Time.now.to_f)
             end
           else
-            settings.redis.get(lock) do |holder|
+            settings.redis.get(lock_key) do |holder|
               if holder
-                settings.redis.pttl(lock) do |pttl_left|
+                settings.redis.pttl(lock_key) do |pttl_left|
                   # possibly expired between .get and .pttl
-                  body MultiJson.dump(:holder => holder, :pttl => pttl_left)
+                  # body MultiJson.dump(:holder => holder, :pttl => pttl_left)
                   not_found!
                 end
               else
                 # expired between .setnx and .get
-                body MultiJson.dump(:holder => nil)
+                # body MultiJson.dump(:holder => nil)
                 not_found!
               end
             end

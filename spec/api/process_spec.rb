@@ -873,16 +873,42 @@ describe "Sensu::API::Process" do
     end
   end
 
+  context "/results/*" do
+    it "renders list of checks" do
+      api_test do
+        redis.mset("result:a:multi1", "1", "result:b:multi1", "2") do
+          api_request("/results/*/multi1") do |http,body|
+            expect(body).to eq(:a => "1", :b => "2")
+            async_done
+          end
+        end
+      end
+    end
+
+    it "renders empty list when no keys" do
+      api_test do
+        api_request("/results/*/multi2") do |http,body|
+          expect(body).to eq([])
+          async_done
+        end
+      end
+    end
+  end
+
   context "/lock" do
     it "can be acquired" do
       api_test do
-        api_request("/lock/test_name/test_holder/1000") do |http, body|
-          redis.get("lock:test_name") {|data| expect(data).to eq("test_holder") }
-          redis.pttl("lock:test_name") {|pttl| expect(pttl).to(be_ge(0)) && expect(pttl).to(be_lt(1000))}
-          expect(http.response_header.status).to eq(200)
-          expect(body).to eq(:holder => "test_holder")
-          redis.del("lock:test_name")
-          async_done
+        redis.del("lock:test_name") do
+          now = Time.now
+          Time.stub(:now => now)
+          api_request("/lock/test_name/test_holder/1000") do |http, body|
+            expect(http.response_header.status).to eq(201)
+            expect(body).to eq(:holder => "test_holder",
+                               :pttl => "1000",
+                               :lock => "test_name",
+                               :timestamp => now.to_f)
+            async_done
+          end
         end
       end
     end
@@ -892,7 +918,6 @@ describe "Sensu::API::Process" do
         redis.set("lock:test_name", "some_holder") do
           api_request("/lock/test_name/test_holder/1000") do |http, body|
             expect(http.response_header.status).to eq(404)
-            expect(body[:holder]).to eq("some_holder")
             async_done
           end
         end
