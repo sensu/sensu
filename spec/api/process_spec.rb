@@ -885,10 +885,10 @@ describe "Sensu::API::Process" do
       end
     end
 
-    it "renders empty list when no keys" do
+    it "renders empty hash when no keys" do
       api_test do
         api_request("/results/*/multi2") do |http,body|
-          expect(body).to eq([])
+          expect(body).to eq({})
           async_done
         end
       end

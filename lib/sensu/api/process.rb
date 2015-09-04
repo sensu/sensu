@@ -798,18 +798,14 @@ module Sensu
       aget %r{^/results?/\*/([\w\.-]+)/?$} do |check_name|
         keys = "result:*:#{check_name}"
         settings.redis.keys(keys) do |keys|
-          if keys && keys.size > 0
-            EM::Iterator.new(keys).map(
-              lambda do |key, iter|
-                settings.redis.get(key) do |data|
-                  iter.return(key.split(':')[1] => data)
-                end
-              end,
-              lambda { |res| body MultiJson.dump(res.inject({}, &:merge)) }
-            )
-          else
-            not_found!
-          end
+          EM::Iterator.new(keys).map(
+            lambda do |key, iter|
+              settings.redis.get(key) do |data|
+                iter.return(key.split(':')[1] => data)
+              end
+            end,
+            lambda { |res| body MultiJson.dump(res.inject({}, &:merge)) }
+          )
         end
       end
 
