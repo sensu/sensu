@@ -335,7 +335,14 @@ module Sensu
             clients.each_with_index do |client_name, index|
               settings.redis.get("client:#{client_name}") do |client_json|
                 unless client_json.nil?
-                  response << MultiJson.load(client_json)
+                  begin
+                    response << MultiJson.load(client_json)
+                  rescue MultiJson::ParseError => error
+                    settings.logger.error("failed to parse client registry payload", {
+                      :client_name => client_name,
+                      :error => error.to_s
+                    })
+                  end
                 else
                   settings.logger.error("client registry missing data for client", {
                     :client_name => client_name
