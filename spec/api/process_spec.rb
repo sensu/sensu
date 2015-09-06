@@ -118,35 +118,53 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can not create a client with an invalid post body" do
+  it "can not create a client with an invalid post body (invalid name)" do
     api_test do
       options = {
         :body => {
-          :name => "i-424242",
+          :name => "i-$$$$$$",
           :address => "8.8.8.8",
           :subscriptions => [
             "test"
           ]
         }
       }
-      invalid_name = options.dup
-      invalid_name[:body][:name] = "i-$$$$$$"
-      missing_address = options.dup
-      missing_address[:body].delete(:address)
-      invalid_subscriptions = options.dup
-      invalid_subscriptions[:body][:subscriptions] = "invalid"
-      api_request("/clients", :post, invalid_name) do |http, body|
+      api_request("/clients", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
-        api_request("/clients", :post, missing_address) do |http, body|
-          expect(http.response_header.status).to eq(400)
-          api_request("/clients", :post, invalid_subscriptions) do |http, body|
-            expect(http.response_header.status).to eq(400)
-            api_request("/clients", :post) do |http, body|
-              expect(http.response_header.status).to eq(400)
-              async_done
-            end
-          end
-        end
+        async_done
+      end
+    end
+  end
+
+  it "can not create a client with an invalid post body (missing address)" do
+    api_test do
+      options = {
+        :body => {
+          :name => "i-424242",
+          :subscriptions => [
+            "test"
+          ]
+        }
+      }
+      api_request("/clients", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
+  it "can not create a client with an invalid post body (invalid subscriptions)" do
+    api_test do
+      options = {
+        :body => {
+          :name => "i-424242",
+          :address => "8.8.8.8",
+          :subscriptions => "invalid"
+        }
+      }
+      api_request("/clients", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
       end
     end
   end
