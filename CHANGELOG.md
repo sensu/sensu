@@ -1,3 +1,12 @@
+## 0.20.5 - 2015-09-09
+
+### Other
+
+Updated sensu-spawn to 1.4.0, adding a mutex to ChildProcess Unix POSIX
+spawn, allowing safe execution on Ruby runtimes with real threads (JRuby).
+
+Fixed metric check output truncation when output is empty.
+
 ## 0.20.4 - 2015-08-28
 
 ### Other
