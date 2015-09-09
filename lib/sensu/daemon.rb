@@ -8,7 +8,7 @@ gem "sensu-settings", "3.1.0"
 gem "sensu-extension", "1.1.2"
 gem "sensu-extensions", "1.2.0"
 gem "sensu-transport", "3.2.1"
-gem "sensu-spawn", "1.3.0"
+gem "sensu-spawn", "1.4.0"
 
 require "time"
 require "uri"
