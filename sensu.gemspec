@@ -34,6 +34,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency "em-http-request", "~> 1.1"
 
   s.files         = Dir.glob("{bin,lib}/**/*") + %w[sensu.gemspec README.md CHANGELOG.md MIT-LICENSE.txt]
-  s.executables   = Dir.glob("bin/**/*").map { |file| File.basename(file) }
+  s.executables   = Dir.glob("exe/**/*").map { |file| File.basename(file) }
   s.require_paths = ["lib"]
 end
