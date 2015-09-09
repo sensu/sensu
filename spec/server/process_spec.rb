@@ -207,12 +207,24 @@ describe "Sensu::Server::Process" do
       redis.flushdb do
         timer(1) do
           check = check_template
+          check[:output] = "foo"
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq("foo")
+          check[:output] = ""
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq("")
           check[:output] = "foo\nbar\nbaz"
           truncated = @server.truncate_check_output(check)
           expect(truncated[:output]).to eq("foo\nbar\nbaz")
           check[:type] = "metric"
           truncated = @server.truncate_check_output(check)
           expect(truncated[:output]).to eq("foo\n...")
+          check[:output] = "foo"
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq("foo")
+          check[:output] = ""
+          truncated = @server.truncate_check_output(check)
+          expect(truncated[:output]).to eq("")
           check[:output] = rand(36**256).to_s(36)
           truncated = @server.truncate_check_output(check)
           expect(truncated[:output]).to eq(check[:output][0..255] + "\n...")

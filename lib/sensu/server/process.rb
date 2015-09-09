@@ -210,7 +210,7 @@ module Sensu
         case check[:type]
         when "metric"
           output_lines = check[:output].split("\n")
-          output = output_lines.first
+          output = output_lines.first || check[:output]
           if output_lines.size > 1 || output.length > 255
             output = output[0..255] + "\n..."
           end
