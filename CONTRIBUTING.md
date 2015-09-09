@@ -6,3 +6,15 @@
 4. Commit your changes (`git commit -am 'Added some feature with tests'`)
 5. Push your feature branch (`git push origin my-new-feature`)
 6. Create a Pull Request
+
+### Testing
+
+Prequisite services
+
+- rabbitmq
+- redis
+
+```bash
+bundle
+RACK_ENV=development rake
+```
