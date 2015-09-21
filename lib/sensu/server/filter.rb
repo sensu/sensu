@@ -259,16 +259,17 @@ module Sensu
       def event_filtered?(handler, event, &callback)
         if handler.has_key?(:filters) || handler.has_key?(:filter)
           filter_list = Array(handler[:filters] || handler[:filter])
-          filter_results = EM::Iterator.new(filter_list)
-          run_filters = Proc.new do |filter_name, iterator|
-            event_filter(filter_name, event) do |filtered|
-              iterator.return(filtered)
+          filter = Proc.new do |filter_list|
+            filter_name = filter_list.shift
+            if filter_name.nil?
+              callback.call(false)
+            else
+              event_filter(filter_name, event) do |filtered|
+                filtered ? callback.call(true) : EM.next_tick { filter.call(filter_list) }
+              end
             end
           end
-          filtered = Proc.new do |results|
-            callback.call(results.any?)
-          end
-          filter_results.map(run_filters, filtered)
+          EM.next_tick { filter.call(filter_list) }
         else
           callback.call(false)
         end
