@@ -1,3 +1,21 @@
+## 0.20.6 - 2015-09-22
+
+### Other
+
+Removed the use of `EM::Iterator` from event filtering, replacing it with
+`Proc` and `EM::next_tick`. `EM::Iterator` creates anonymous classes that
+cannot be garbage collected on JRuby.
+
+Removed sensu-em as a dependency, now using upstream EventMachine 1.0.8.
+
+The Sensu API will remove a client immediately if there are no current
+events for it. The API will continue to monitor the current event count
+for the client to be deleted, deleting the client when there are no longer
+current events or after a timeout of 5 seconds.
+
+The Sensu API will no longer crash while fetching check result data for a
+client that is being deleted.
+
 ## 0.20.5 - 2015-09-09
 
 ### Other
