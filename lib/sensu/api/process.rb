@@ -335,18 +335,9 @@ module Sensu
             clients.each_with_index do |client_name, index|
               settings.redis.get("client:#{client_name}") do |client_json|
                 unless client_json.nil?
-                  begin
-                    response << MultiJson.load(client_json)
-                  rescue MultiJson::ParseError => error
-                    settings.logger.error("failed to parse client registry payload", {
-                      :client_name => client_name,
-                      :error => error.to_s
-                    })
-                  end
+                  response << MultiJson.load(client_json)
                 else
-                  settings.logger.error("client registry missing data for client", {
-                    :client_name => client_name
-                  })
+                  settings.logger.error("client data missing from registry", :client_name => client_name)
                   settings.redis.srem("clients", client_name)
                 end
                 if index == clients.size - 1
@@ -382,17 +373,19 @@ module Sensu
                   status.to_i
                 end
                 settings.redis.get("result:#{result_key}") do |result_json|
-                  result = MultiJson.load(result_json)
-                  last_execution = result[:executed]
-                  unless history.empty? || last_execution.nil?
-                    item = {
-                      :check => check_name,
-                      :history => history,
-                      :last_execution => last_execution.to_i,
-                      :last_status => history.last,
-                      :last_result => result
-                    }
-                    response << item
+                  unless result_json.nil?
+                    result = MultiJson.load(result_json)
+                    last_execution = result[:executed]
+                    unless history.empty? || last_execution.nil?
+                      item = {
+                        :check => check_name,
+                        :history => history,
+                        :last_execution => last_execution.to_i,
+                        :last_status => history.last,
+                        :last_result => result
+                      }
+                      response << item
+                    end
                   end
                   if index == checks.size - 1
                     body MultiJson.dump(response)
@@ -760,8 +753,10 @@ module Sensu
                   checks.each_with_index do |check_name, check_index|
                     result_key = "result:#{client_name}:#{check_name}"
                     settings.redis.get(result_key) do |result_json|
-                      check = MultiJson.load(result_json)
-                      response << {:client => client_name, :check => check}
+                      unless result_json.nil?
+                        check = MultiJson.load(result_json)
+                        response << {:client => client_name, :check => check}
+                      end
                       if client_index == clients.size - 1 && check_index == checks.size - 1
                         body MultiJson.dump(response)
                       end
@@ -785,8 +780,10 @@ module Sensu
             checks.each_with_index do |check_name, check_index|
               result_key = "result:#{client_name}:#{check_name}"
               settings.redis.get(result_key) do |result_json|
-                check = MultiJson.load(result_json)
-                response << {:client => client_name, :check => check}
+                unless result_json.nil?
+                  check = MultiJson.load(result_json)
+                  response << {:client => client_name, :check => check}
+                end
                 if check_index == checks.size - 1
                   body MultiJson.dump(response)
                 end
