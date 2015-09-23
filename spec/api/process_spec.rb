@@ -136,6 +136,24 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can not create a client with an invalid post body (multiline name)" do
+    api_test do
+      options = {
+        :body => {
+          :name => "i-424242\ni-424242",
+          :address => "8.8.8.8",
+          :subscriptions => [
+            "test"
+          ]
+        }
+      }
+      api_request("/clients", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
   it "can not create a client with an invalid post body (missing address)" do
     api_test do
       options = {

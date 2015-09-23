@@ -311,7 +311,7 @@ module Sensu
 
       apost "/clients/?" do
         rules = {
-          :name => {:type => String, :nil_ok => false, :regex => /^[\w\.-]+$/},
+          :name => {:type => String, :nil_ok => false, :regex => /\A[\w\.-]+\z/},
           :address => {:type => String, :nil_ok => false},
           :subscriptions => {:type => Array, :nil_ok => false}
         }
