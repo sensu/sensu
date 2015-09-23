@@ -116,10 +116,10 @@ module Sensu
       #
       # @param [Hash] check result to validate.
       def validate_check_result(check)
-        unless check[:name] =~ /^[\w\.-]+$/
+        unless check[:name] =~ /\A[\w\.-]+\z/
           raise DataError, "check name must be a string and cannot contain spaces or special characters"
         end
-        unless check[:source].nil? || check[:source] =~ /^[\w\.-]+$/
+        unless check[:source].nil? || check[:source] =~ /\A[\w\.-]+\z/
           raise DataError, "check source must be a string and cannot contain spaces or special characters"
         end
         unless check[:output].is_a?(String)

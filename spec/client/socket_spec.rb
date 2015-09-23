@@ -47,8 +47,18 @@ describe Sensu::Client::Socket do
       "check name must be a string and cannot contain spaces or special characters"
 
     it_should_behave_like "a validator",
+      "must contain a single-line check name",
+      {:name => "check\nname"},
+      "check name must be a string and cannot contain spaces or special characters"
+
+    it_should_behave_like "a validator",
       "must contain an acceptable check source",
       {:source => "check source"},
+      "check source must be a string and cannot contain spaces or special characters"
+
+    it_should_behave_like "a validator",
+      "must contain a single-line check source",
+      {:source => "check\nsource"},
       "check source must be a string and cannot contain spaces or special characters"
 
     it_should_behave_like "a validator",
