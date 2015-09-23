@@ -37,6 +37,13 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can handle integer parameters" do
+    api = Sensu::API::Process.new!
+    expect(api.integer_parameter("42")).to eq(42)
+    expect(api.integer_parameter("abc")).to eq(nil)
+    expect(api.integer_parameter("42\nabc")).to eq(nil)
+  end
+
   it "can provide basic version and health information" do
     api_test do
       api_request("/info") do |http, body|

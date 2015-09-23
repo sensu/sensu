@@ -190,7 +190,7 @@ module Sensu
         end
 
         def integer_parameter(parameter)
-          parameter =~ /^[0-9]+$/ ? parameter.to_i : nil
+          parameter =~ /\A[0-9]+\z/ ? parameter.to_i : nil
         end
 
         def pagination(items)
