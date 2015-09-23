@@ -179,7 +179,7 @@ module Sensu
       # @return [TrueClass, FalseClass]
       def eval_attribute_value(raw_eval_string, value)
         begin
-          eval_string = raw_eval_string.gsub(/^eval:(\s+)?/, "")
+          eval_string = raw_eval_string.gsub(/\Aeval:(\s+)?/, "")
           !!Sandbox.eval(eval_string, value)
         rescue => error
           @logger.error("filter attribute eval error", {
