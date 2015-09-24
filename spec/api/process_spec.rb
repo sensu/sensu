@@ -37,6 +37,13 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can handle integer parameters" do
+    api = Sensu::API::Process.new!
+    expect(api.integer_parameter("42")).to eq(42)
+    expect(api.integer_parameter("abc")).to eq(nil)
+    expect(api.integer_parameter("42\nabc")).to eq(nil)
+  end
+
   it "can provide basic version and health information" do
     api_test do
       api_request("/info") do |http, body|
@@ -123,6 +130,24 @@ describe "Sensu::API::Process" do
       options = {
         :body => {
           :name => "i-$$$$$$",
+          :address => "8.8.8.8",
+          :subscriptions => [
+            "test"
+          ]
+        }
+      }
+      api_request("/clients", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
+  it "can not create a client with an invalid post body (multiline name)" do
+    api_test do
+      options = {
+        :body => {
+          :name => "i-424242\ni-424242",
           :address => "8.8.8.8",
           :subscriptions => [
             "test"

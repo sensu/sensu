@@ -190,7 +190,7 @@ module Sensu
         end
 
         def integer_parameter(parameter)
-          parameter =~ /^[0-9]+$/ ? parameter.to_i : nil
+          parameter =~ /\A[0-9]+\z/ ? parameter.to_i : nil
         end
 
         def pagination(items)
@@ -311,7 +311,7 @@ module Sensu
 
       apost "/clients/?" do
         rules = {
-          :name => {:type => String, :nil_ok => false, :regex => /^[\w\.-]+$/},
+          :name => {:type => String, :nil_ok => false, :regex => /\A[\w\.-]+\z/},
           :address => {:type => String, :nil_ok => false},
           :subscriptions => {:type => Array, :nil_ok => false}
         }
