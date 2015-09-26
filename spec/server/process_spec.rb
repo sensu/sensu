@@ -225,7 +225,7 @@ describe "Sensu::Server::Process" do
           check[:output] = ""
           truncated = @server.truncate_check_output(check)
           expect(truncated[:output]).to eq("")
-          check[:output] = rand(36**256).to_s(36)
+          check[:output] = rand(36**256).to_s(36).rjust(256, '0')
           truncated = @server.truncate_check_output(check)
           expect(truncated[:output]).to eq(check[:output][0..255] + "\n...")
           client = client_template
