@@ -149,7 +149,7 @@ describe "Sensu::Server::Process" do
   end
 
   it "can consume results" do
-    async_wrapper do
+    async_wrapper(30) do
       @server.setup_transport
       @server.setup_redis
       @server.setup_results
