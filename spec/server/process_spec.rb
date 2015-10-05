@@ -149,7 +149,7 @@ describe "Sensu::Server::Process" do
   end
 
   it "can consume results" do
-    async_wrapper do
+    async_wrapper(30) do
       @server.setup_transport
       @server.setup_redis
       @server.setup_results
@@ -159,35 +159,37 @@ describe "Sensu::Server::Process" do
           redis.set("client:i-424242", MultiJson.dump(client)) do
             result = result_template
             transport.publish(:direct, "results", MultiJson.dump(result))
-            transport.publish(:direct, "results", MultiJson.dump(result))
-            timer(2) do
-              redis.sismember("result:i-424242", "test") do |is_member|
-                expect(is_member).to be(true)
-                redis.get("result:i-424242:test") do |result_json|
-                  result = MultiJson.load(result_json)
-                  expect(result[:output]).to eq("WARNING")
-                  timer(7) do
-                    redis.hget("events:i-424242", "test") do |event_json|
-                      event = MultiJson.load(event_json)
-                      expect(event[:id]).to be_kind_of(String)
-                      expect(event[:check][:status]).to eq(1)
-                      expect(event[:occurrences]).to eq(2)
-                      expect(event[:action]).to eq("create")
-                      expect(event[:timestamp]).to be_within(10).of(epoch)
-                      read_event_file = Proc.new do
-                        begin
-                          event_file = IO.read("/tmp/sensu_event_bridge.json")
-                          MultiJson.load(event_file)
-                        rescue
-                          retry
+            timer(1) do
+              transport.publish(:direct, "results", MultiJson.dump(result))
+              timer(2) do
+                redis.sismember("result:i-424242", "test") do |is_member|
+                  expect(is_member).to be(true)
+                  redis.get("result:i-424242:test") do |result_json|
+                    result = MultiJson.load(result_json)
+                    expect(result[:output]).to eq("WARNING")
+                    timer(7) do
+                      redis.hget("events:i-424242", "test") do |event_json|
+                        event = MultiJson.load(event_json)
+                        expect(event[:id]).to be_kind_of(String)
+                        expect(event[:check][:status]).to eq(1)
+                        expect(event[:occurrences]).to eq(2)
+                        expect(event[:action]).to eq("create")
+                        expect(event[:timestamp]).to be_within(10).of(epoch)
+                        read_event_file = Proc.new do
+                          begin
+                            event_file = IO.read("/tmp/sensu_event_bridge.json")
+                            MultiJson.load(event_file)
+                          rescue
+                            retry
+                          end
                         end
+                        compare_event_file = Proc.new do |event_file|
+                          expect(event_file[:check]).to eq(event[:check])
+                          expect(event_file[:client]).to eq(event[:client])
+                          async_done
+                        end
+                        EM.defer(read_event_file, compare_event_file)
                       end
-                      compare_event_file = Proc.new do |event_file|
-                        expect(event_file[:check]).to eq(event[:check])
-                        expect(event_file[:client]).to eq(event[:client])
-                        async_done
-                      end
-                      EM.defer(read_event_file, compare_event_file)
                     end
                   end
                 end
