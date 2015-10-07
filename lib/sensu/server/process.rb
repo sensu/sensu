@@ -338,9 +338,13 @@ module Sensu
             :client => client,
             :check => check,
             :occurrences => 1,
+            :nonzero_occurrences => 1,
             :action => (flapping ? :flapping : :create),
             :timestamp => Time.now.to_i
           }
+          if check[:status] != 0 and stored_event
+            event[:nonzero_occurrences] = stored_event[:occurrences] + 1
+          end
           if check[:status] != 0 || flapping
             if stored_event && check[:status] == stored_event[:check][:status]
               event[:occurrences] = stored_event[:occurrences] + 1
@@ -350,6 +354,7 @@ module Sensu
             end
           elsif stored_event
             event[:occurrences] = stored_event[:occurrences]
+            event[:nonzero_occurrences] = stored_event[:nonzero_occurrences]
             event[:action] = :resolve
             unless check[:auto_resolve] == false && !check[:force_resolve]
               @redis.hdel("events:#{client[:name]}", check[:name]) do
