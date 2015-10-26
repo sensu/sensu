@@ -278,7 +278,7 @@ module Sensu
       # Attempt to filter an event for a handler. This method will
       # check to see if handling is disabled, if the event action is
       # handled, if the event check severity is handled, if the
-      # handler is sbuded, and if the event is filtered by any of the
+      # handler is subdued, and if the event is filtered by any of the
       # filters specified in the handler definition.
       #
       # @param handler [Hash] definition.
