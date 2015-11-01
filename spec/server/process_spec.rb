@@ -321,6 +321,44 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can publish extension check requests" do
+    async_wrapper do
+      transport.subscribe(:fanout, "test") do |_, payload|
+        check_request = MultiJson.load(payload)
+        expect(check_request[:name]).to eq("test")
+        expect(check_request[:source]).to eq("switch-x")
+        expect(check_request[:extension]).to eq("test-extension")
+        expect(check_request[:issued]).to be_within(10).of(epoch)
+        async_done
+      end
+      timer(0.5) do
+        @server.setup_transport
+        check = extension_check_template
+        check[:subscribers] = ["test"]
+        check[:source] = "switch-x"
+        @server.publish_check_request(check)
+      end
+    end
+  end
+
+  it "can publish extension check requests to round-robin subscriptions" do
+    async_wrapper do
+      transport.subscribe(:direct, "roundrobin:test") do |_, payload|
+        check_request = MultiJson.load(payload)
+        expect(check_request[:name]).to eq("test")
+        expect(check_request[:extension]).to eq("test-extension")
+        expect(check_request[:issued]).to be_within(10).of(epoch)
+        async_done
+      end
+      timer(0.5) do
+        @server.setup_transport
+        check = extension_check_template
+        check[:subscribers] = ["roundrobin:test"]
+        @server.publish_check_request(check)
+      end
+    end
+  end
+
   it "can calculate a check execution splay interval" do
     allow(Time).to receive(:now).and_return("1414213569.032")
     check = check_template
