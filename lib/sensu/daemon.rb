@@ -5,8 +5,8 @@ gem "eventmachine", "1.0.8"
 
 gem "sensu-logger", "1.1.0"
 gem "sensu-settings", "3.1.0"
-gem "sensu-extension", "1.2.0"
-gem "sensu-extensions", "1.3.0"
+gem "sensu-extension", "1.3.0"
+gem "sensu-extensions", "1.4.0"
 gem "sensu-transport", "3.3.0"
 gem "sensu-spawn", "1.5.0"
 
