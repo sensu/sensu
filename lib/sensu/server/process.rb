@@ -373,7 +373,7 @@ module Sensu
       # @param name [Hash] to use for the client.
       # @param callback [Proc] to be called with the dynamically
       #   created client data.
-      def create_client(name, &callback)
+      def create_client(name, jit_origin, &callback)
         client = {
           :name => name,
           :address => "unknown",
@@ -381,6 +381,9 @@ module Sensu
           :keepalives => false,
           :version => VERSION
         }
+
+        client[:jit_origin] = jit_origin if jit_origin
+
         update_client_registry(client, &callback)
       end
 
@@ -393,13 +396,20 @@ module Sensu
       # @param callback [Proc] to be called with client data, either
       #   retrieved from Redis, or dynamically created.
       def retrieve_client(result, &callback)
-        client_key = result[:check][:source] || result[:client]
+        if result[:check][:source]
+          client_key = result[:check][:source]
+          jit_origin = result[:client]
+        else
+          client_key = result[:client]
+          jit_origin = nil
+        end
+
         @redis.get("client:#{client_key}") do |client_json|
           unless client_json.nil?
             client = MultiJson.load(client_json)
             callback.call(client)
           else
-            create_client(client_key, &callback)
+            create_client(client_key, jit_origin, &callback)
           end
         end
       end
