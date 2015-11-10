@@ -51,11 +51,11 @@ module Sensu
         gem_options << " --verbose" if options[:verbose]
         gem_options << " --source #{options[:source]}" if options[:source]
         gems.each do |gem|
-          log "installing Sensu plugin gem #{gem}"
+          log "installing Sensu plugin gem: #{gem}"
           gem_command = "gem install #{gem} #{gem_options}"
           log gem_command if options[:verbose]
           unless system(gem_command)
-            log "failed to install Sensu plugin gem #{gem}"
+            log "failed to install Sensu plugin gem: #{gem}"
             log "you can run the sensu-install command again with --verbose for more info" unless options[:verbose]
             log "please take note of any failure messages above"
             log "make sure you have build tools installed (e.g. gcc)"
@@ -65,6 +65,7 @@ module Sensu
             exit 2
           end
         end
+        log "successfully install Sensu plugins: #{plugins}"
       end
 
       def run
