@@ -24,7 +24,7 @@ module Sensu
           opts.on("-P", "--plugins PLUGIN[,PLUGIN]", "PLUGIN or comma-delimited list of Sensu plugins to install") do |plugins|
             options[:plugins].concat(plugins.split(","))
           end
-          opts.on("-s", "--source SOURCE", "Install Sensu plugins and/or extensions from a custom SOURCE") do |source|
+          opts.on("-s", "--source SOURCE", "Install Sensu plugins from a custom SOURCE") do |source|
             options[:source] = source
           end
         end
@@ -71,6 +71,8 @@ module Sensu
         options = cli_options
         unless options[:plugins].empty?
           install_plugins(options[:plugins], options)
+        else
+          log "nothing to do"
         end
       end
     end
