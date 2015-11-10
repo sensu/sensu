@@ -915,4 +915,14 @@ describe "Sensu::API::Process" do
       end
     end
   end
+
+  it "can delete a result" do
+    api_test do
+      api_request("/results/i-424242/test", :delete) do |http, body|
+        expect(http.response_header.status).to eq(204)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
 end

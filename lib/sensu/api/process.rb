@@ -807,6 +807,21 @@ module Sensu
           end
         end
       end
+
+      adelete %r{^/results?/([\w\.-]+)/([\w\.-]+)/?$} do |client_name, check_name|
+        result_key = "result:#{client_name}:#{check_name}"
+        settings.redis.exists(result_key) do |result_exists|
+          if result_exists
+            settings.redis.srem("result:#{client_name}", check_name) do
+              settings.redis.del(result_key) do |result_json|
+                no_content!
+              end
+            end
+          else
+            not_found!
+          end
+        end
+      end
     end
   end
 end
