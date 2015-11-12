@@ -113,17 +113,6 @@ module Helpers
     }
   end
 
-  def extension_check_template
-    {
-      :name => "test",
-      :issued => epoch,
-      :extension => "test-extension",
-      :output => "WARNING",
-      :status => 1,
-      :executed => 1363224805
-    }
-  end
-
   def result_template(check_result = nil)
     {
       :client => "i-424242",
