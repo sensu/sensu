@@ -877,6 +877,56 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can publish a check result" do
+    api_test do
+      options = {
+        :body => {
+          :name => "rspec",
+          :output => "WARNING",
+          :status => 1
+        }
+      }
+      api_request("/results", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        async_done
+      end
+    end
+  end
+
+  it "can not publish a check result with an invalid post body" do
+    api_test do
+      options = {
+        :body => {
+          :name => "rspec",
+          :output => "WARNING",
+          :status => 1,
+          :source => "$invalid$"
+        }
+      }
+      api_request("/results", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can not publish a check result when missing data" do
+    api_test do
+      options = {
+        :body => {
+          :name => "missing_output"
+        }
+      }
+      api_request("/results", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
   it "can provide current results" do
     api_test do
       api_request("/results") do |http, body|
