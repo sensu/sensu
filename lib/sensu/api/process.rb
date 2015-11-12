@@ -177,7 +177,8 @@ module Sensu
             valid = rules.all? do |key, rule|
               value = data[key]
               (value.is_a?(rule[:type]) || (rule[:nil_ok] && value.nil?)) &&
-                rule[:regex].nil? || (rule[:regex] && (value =~ rule[:regex]) == 0)
+                (value.nil? || rule[:regex].nil?) ||
+                (rule[:regex] && (value =~ rule[:regex]) == 0)
             end
             if valid
               callback.call(data)
@@ -234,18 +235,12 @@ module Sensu
           end
         end
 
-        def resolve_event(event_json)
-          event = MultiJson.load(event_json)
-          check = event[:check].merge(
-            :output => "Resolving on request of the API",
-            :status => 0,
-            :issued => Time.now.to_i,
-            :executed => Time.now.to_i,
-            :force_resolve => true
-          )
-          check.delete(:history)
+        def publish_check_result(client_name, check)
+          check[:issued] = Time.now.to_i
+          check[:executed] = Time.now.to_i
+          check[:status] ||= 0
           payload = {
-            :client => event[:client][:name],
+            :client => client_name,
             :check => check
           }
           settings.logger.info("publishing check result", :payload => payload)
@@ -257,6 +252,17 @@ module Sensu
               })
             end
           end
+        end
+
+        def resolve_event(event_json)
+          event = MultiJson.load(event_json)
+          check = event[:check].merge(
+            :output => "Resolving on request of the API",
+            :status => 0,
+            :force_resolve => true
+          )
+          check.delete(:history)
+          publish_check_result(event[:client][:name], check)
         end
       end
 
@@ -740,6 +746,19 @@ module Sensu
               end
             end
           end
+        end
+      end
+
+      apost "/results/?" do
+        rules = {
+          :name => {:type => String, :nil_ok => false, :regex => /\A[\w\.-]+\z/},
+          :output => {:type => String, :nil_ok => false},
+          :status => {:type => Integer, :nil_ok => true},
+          :source => {:type => String, :nil_ok => true, :regex => /\A[\w\.-]+\z/}
+        }
+        read_data(rules) do |data|
+          publish_check_result("sensu-api", data)
+          issued!
         end
       end
 
