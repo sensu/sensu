@@ -49,6 +49,7 @@ module Sensu
             "Credentials" => "true",
             "Headers" => "Origin, X-Requested-With, Content-Type, Accept, Authorization"
           }
+          load_api_extensions
           on_reactor_run
           self
         end
@@ -92,6 +93,15 @@ module Sensu
         def test(options={})
           bootstrap(options)
           start
+        end
+
+        def load_api_extensions
+          if @settings[:api_extensions]
+            @settings[:api_extensions].each_pair do |name, filename|
+              settings.logger.info("loading api extension #{name} from #{filename}")
+              require filename
+            end
+          end
         end
       end
 
