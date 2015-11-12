@@ -470,6 +470,7 @@ describe "Sensu::API::Process" do
           :check => "tokens",
           :subscribers => [
             "test",
+            "roundrobin:rspec",
             1
           ]
         }
