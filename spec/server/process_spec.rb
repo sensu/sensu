@@ -327,33 +327,18 @@ describe "Sensu::Server::Process" do
         check_request = MultiJson.load(payload)
         expect(check_request[:name]).to eq("test")
         expect(check_request[:source]).to eq("switch-x")
-        expect(check_request[:extension]).to eq("test-extension")
+        expect(check_request[:extension]).to eq("rspec")
         expect(check_request[:issued]).to be_within(10).of(epoch)
+        expect(check_request).not_to include(:command)
         async_done
       end
       timer(0.5) do
         @server.setup_transport
-        check = extension_check_template
+        check = check_template
+        check.delete(:command)
+        check[:extension] = "rspec"
         check[:subscribers] = ["test"]
         check[:source] = "switch-x"
-        @server.publish_check_request(check)
-      end
-    end
-  end
-
-  it "can publish extension check requests to round-robin subscriptions" do
-    async_wrapper do
-      transport.subscribe(:direct, "roundrobin:test") do |_, payload|
-        check_request = MultiJson.load(payload)
-        expect(check_request[:name]).to eq("test")
-        expect(check_request[:extension]).to eq("test-extension")
-        expect(check_request[:issued]).to be_within(10).of(epoch)
-        async_done
-      end
-      timer(0.5) do
-        @server.setup_transport
-        check = extension_check_template
-        check[:subscribers] = ["roundrobin:test"]
         @server.publish_check_request(check)
       end
     end
