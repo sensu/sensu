@@ -258,7 +258,7 @@ module Sensu
       # @param callback [Proc]
       def event_filtered?(handler, event, &callback)
         if handler.has_key?(:filters) || handler.has_key?(:filter)
-          filter_list = handler.has_key(:filters)? handler[:filters].clone : [handler[:filter]]
+          filter_list = handler.has_key?(:filters)? handler[:filters].clone : [handler[:filter]]
           filter = Proc.new do |filter_list|
             filter_name = filter_list.shift
             if filter_name.nil?
