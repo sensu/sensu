@@ -40,6 +40,9 @@ round-robin client subscriptions.
 
 Fixed the Windows job handle leak when spawning processes for checks.
 
+Updated the Redis client library (em-redis-unified) to remove duplicate
+Ruby hash key warnings.
+
 ## 0.20.6 - 2015-09-22
 
 ### Other
