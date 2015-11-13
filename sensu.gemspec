@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-extensions", "1.4.0"
   s.add_dependency "sensu-transport", "3.3.0"
   s.add_dependency "sensu-spawn", "1.6.0"
-  s.add_dependency "em-redis-unified", "1.0.0"
+  s.add_dependency "em-redis-unified", "1.0.1"
   s.add_dependency "sinatra", "1.4.6"
   s.add_dependency "async_sinatra", "1.2.0"
   s.add_dependency "thin", "1.6.3" unless RUBY_PLATFORM =~ /java/
@@ -33,7 +33,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency "em-http-request", "~> 1.1"
 
   s.files         = Dir.glob("{exe,lib}/**/*") + %w[sensu.gemspec README.md CHANGELOG.md MIT-LICENSE.txt]
-  s.executables   = s.files.grep(%r{^exe/}) { |f| File.basename(f) }
+  s.executables   = s.files.grep(%r{^exe/}) { |file| File.basename(file) }
   s.bindir        = "exe"
   s.require_paths = ["lib"]
 end
