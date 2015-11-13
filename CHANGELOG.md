@@ -1,3 +1,45 @@
+## 0.21.0 - 2015-11-13
+
+### Features
+
+Added a Sensu plugin installation tool, `sensu-install`, making it easier
+to install Sensu community plugins. The `sensu-install` tool will use the
+appropriate Ruby when installing plugins. The tool aims to produce verbose
+and useful output to help when debugging plugin installation issues.
+
+Added the Sensu API DELETE /results/:client/:check endpoint, supporting
+check result deletion via the Sensu API. This feature allows users to
+clean up "stale" check result data for checks that have been removed.
+
+Added the Sensu API POST /results endpoint, supporting check result input
+via the Sensu API. The JIT client feature added in 0.20 enabled this
+functionality. Services that do not have access to a local Sensu client
+socket can make use of this feature.
+
+### Other
+
+Improved the Sensu test suite to reduce the number of timeout triggered
+failures. These changes make Sensu development much more pleasant.
+
+Fixed a few inline documentation typos, e.g. sbuded -> subdued.
+
+Moved the Sensu bins (e.g. `sensu-client`) from `bin` to `exe` to avoid
+the conflict with Ruby bundler bin stubs.
+
+Fixed Sensu API and client socket input validation, no longer accepting
+multi-line values.
+
+Fixed check request publishing for checks that make use of check
+extensions, e.g. `"extension": "check_http_endpoints`.
+
+Fixed the handler `"filters"` bug that caused Sensu to mutate handler
+definitions, removing filters for successive executions.
+
+Fixed Sensu API POST /request endpoint check request publishing to
+round-robin client subscriptions.
+
+Fixed the Windows job handle leak when spawning processes for checks.
+
 ## 0.20.6 - 2015-09-22
 
 ### Other
