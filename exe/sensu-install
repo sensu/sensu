@@ -65,7 +65,7 @@ module Sensu
             exit 2
           end
         end
-        log "successfully install Sensu plugins: #{plugins}"
+        log "successfully installed Sensu plugins: #{plugins}"
       end
 
       def run
