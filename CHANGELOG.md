@@ -1,5 +1,13 @@
 ## 0.21.0 - 2015-11-13
 
+### Important
+
+The Sensu 0.21 build packages changed the default value of `EMBEDDED_RUBY`
+from `false` to `true`, allowing Sensu plugins to use the embedded Ruby by
+default. This change makes it easier to get started with Sensu. Using the
+Sensu embedded Ruby for Sensu checks, mutators, and handlers has become a
+common practice.
+
 ### Features
 
 Added a Sensu plugin installation tool, `sensu-install`, making it easier
