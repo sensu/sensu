@@ -40,7 +40,7 @@ module Sensu
         log "determining if Sensu plugin gem '#{raw_gem}' is already installed ..."
         gem_name, gem_version = raw_gem.split(":")
         gem_command = "gem list -i #{gem_name}"
-        gem_command << " --version #{gem_version}" if gem_version
+        gem_command << " --version '#{gem_version}'" if gem_version
         log gem_command if options[:verbose]
         if system(gem_command)
           log "Sensu plugin gem '#{gem_name}' has already been installed"
@@ -55,7 +55,7 @@ module Sensu
         log "installing Sensu plugin gem '#{raw_gem}'"
         gem_name, gem_version = raw_gem.split(":")
         gem_command = "gem install #{gem_name}"
-        gem_command << " --version #{gem_version}" if gem_version
+        gem_command << " --version '#{gem_version}'" if gem_version
         gem_command << " --no-ri --no-rdoc"
         gem_command << " --verbose" if options[:verbose]
         gem_command << " --source #{options[:source]}" if options[:source]
@@ -74,19 +74,19 @@ module Sensu
       def install_plugins(plugins, options={})
         log "installing Sensu plugins ..."
         log "provided Sensu plugins: #{plugins}" if options[:verbose]
-        gems = plugins.map do |plugin|
+        plugin_gems = plugins.map do |plugin|
           if plugin.start_with?("sensu-plugins-")
             plugin
           else
             "sensu-plugins-#{plugin}"
           end
         end
-        log "compiled Sensu plugin gems: #{gems}" if options[:verbose]
-        gems.reject! do |raw_gem|
+        log "compiled Sensu plugin gems: #{plugin_gems}" if options[:verbose]
+        plugin_gems.reject! do |raw_gem|
           plugin_gem_installed?(raw_gem, options)
         end
-        log "Sensu plugin gems to be installed: #{gems}"
-        gems.each do |raw_gem|
+        log "Sensu plugin gems to be installed: #{plugin_gems}"
+        plugin_gems.each do |raw_gem|
           install_plugin_gem(raw_gem, options)
         end
         log "successfully installed Sensu plugins: #{plugins}"
