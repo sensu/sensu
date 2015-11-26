@@ -449,7 +449,26 @@ module Sensu
           begin
             result = MultiJson.load(message)
             @logger.debug("received result", :result => result)
-            process_check_result(result)
+            if message_info.attributes.has_key?(:user_id)
+              if message_info.attributes[:user_id] == @settings[@settings[:transport][:name]][:user] &&
+                   result.has_key?(:check) &&
+                   result[:check][:name] == "keepalive"
+
+                @logger.debug("keepalive from server")
+                process_check_result(result)
+              elsif message_info.attributes[:user_id] == result[:client]
+                @logger.debug("client validation passed", result[:client])
+                process_check_result(result)
+              else
+                @logger.error("client validation error - user_id mismatches client name",
+                  :payload => message
+                )
+              end
+            else
+              @logger.error("client validation error - user_id missing from message",
+                :payload => message
+              )
+            end
           rescue MultiJson::ParseError => error
             @logger.error("failed to parse result payload", {
               :message => message,
