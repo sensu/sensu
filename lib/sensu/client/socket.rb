@@ -186,10 +186,7 @@ module Sensu
       #
       # @param [String] data to be processed.
       def process_data(data)
-        if data.bytes.find { |char| char > 0x80 }
-          @logger.warn("socket received non-ascii characters")
-          respond("invalid")
-        elsif data.strip == "ping"
+        if data.strip == "ping"
           @logger.debug("socket received ping")
           respond("pong")
         else

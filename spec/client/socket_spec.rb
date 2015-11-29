@@ -121,15 +121,17 @@ describe Sensu::Client::Socket do
       expect(subject).to receive(:process_check_result).with(check)
       subject.parse_check_result(json_check_data)
     end
+
+    it "accepts also non-ASCII characters" do
+      json_check_data = "{\"name\":\"test\", \"output\":\"\u3042\u4e9c\u5a40\"}"
+      check = {:name => "test", :output => "\u3042\u4e9c\u5a40"}
+      expect(subject).to receive(:cancel_watchdog)
+      expect(subject).to receive(:process_check_result).with(check)
+      subject.parse_check_result(json_check_data)
+    end
   end
 
   describe "#process_data" do
-    it "detects non-ASCII characters" do
-      expect(logger).to receive_messages(:warn => "socket received non-ascii characters")
-      expect(subject).to receive(:respond).with("invalid")
-      subject.process_data("\x80\x88\x99\xAA\xBB")
-    end
-
     it "responds to a `ping`" do
       expect(logger).to receive_messages(:debug => "socket received ping")
       expect(subject).to receive(:respond).with("pong")
@@ -144,6 +146,14 @@ describe Sensu::Client::Socket do
 
     it "debug-logs data chunks passing through it" do
       data = "a relentless stream"
+      expect(logger).to receive(:debug).
+        with("socket received data", :data => data)
+      expect(subject).to receive(:parse_check_result).with(data)
+      subject.process_data(data)
+    end
+
+    it "accepts also non-ASCII characters" do
+      data = "{\"data\":\"\u3042\u4e9c\u5a40\"}"
       expect(logger).to receive(:debug).
         with("socket received data", :data => data)
       expect(subject).to receive(:parse_check_result).with(data)
