@@ -58,14 +58,15 @@ module Sensu
                 @logger.debug("client is valid", :client => client)
                 callback.call(true)
               else
-                @logger.error("invalid client, client keys do not match or missing", :client => client)
+                @logger.error("invalid client - client keys do not match or missing", :client => client)
                 callback.call(false)
               end
             else
               @logger.debug("registered client has no client_key set - validating", :client => client)
+              callback.call(true)
             end
           else
-            @logger.debug("no previous entry for client to validate", :client => client)
+            @logger.debug("client not in registry - validating", :client => client)
             callback.call(true)
           end
         end
