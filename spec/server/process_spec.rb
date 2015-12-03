@@ -381,7 +381,7 @@ describe "Sensu::Server::Process" do
         @server.setup_transport
         client = client_template
         check = result_template[:check]
-        @server.publish_check_result(client[:name], check)
+        @server.publish_check_result(client[:name], client[:client_key], check)
       end
     end
   end
