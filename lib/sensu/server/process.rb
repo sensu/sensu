@@ -635,7 +635,7 @@ module Sensu
           :check => check
         }
         unless client_key.nil?
-          payload.merge(:client_key => client_key)
+          payload.merge!(:client_key => client_key)
         end
         @logger.debug("publishing check result", :payload => payload)
         @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|

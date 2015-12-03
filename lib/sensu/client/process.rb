@@ -87,7 +87,7 @@ module Sensu
           :check => check
         }
         if @settings[:client].has_key?(:client_key)
-          payload.merge(:client_key => @settings[:client][:client_key])
+          payload.merge!(:client_key => @settings[:client][:client_key])
         end
         @logger.info("publishing check result", :payload => payload)
         @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
