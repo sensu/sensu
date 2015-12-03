@@ -74,10 +74,11 @@ module Sensu
       end
 
       # Publish a check result to the transport for processing. A
-      # check result is composed of a client (name) and a check
-      # definition, containing check `:output` and `:status`. JSON
-      # serialization is used when publishing the check result payload
-      # to the transport pipe. Transport errors are logged.
+      # check result is composed of a client (name), the unique
+      # client_key, and a check definition, containing check
+      # `:output` and `:status`. JSON serialization is used when
+      # publishing the check result payload to the transport pipe.
+      # Transport errors are logged.
       #
       # @param check [Hash]
       def publish_check_result(check)
@@ -85,6 +86,9 @@ module Sensu
           :client => @settings[:client][:name],
           :check => check
         }
+        if @settings[:client].has_key?(:client_key)
+          payload.merge(:client_key => @settings[:client][:client_key])
+        end
         @logger.info("publishing check result", :payload => payload)
         @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
           if info[:error]

@@ -37,6 +37,40 @@ module Sensu
         @handling_event_count = 0
       end
 
+      # Validates a client against the registry. Compares the
+      # `client_key` that the client sent with what is stored in
+      # Redis. Clients without an entry in the registry silently
+      # pass. Previously registered clients with no `client_key`
+      # set will silently pass. Otherwise, it will send back
+      # `true` if the client keys match and `false` if they do not.
+      #
+      # @param client [Hash]
+      # @param callback [Proc] to call after the the client data has
+      #   been validated.
+      def validate_client(client, &callback)
+        @logger.debug("validating client", :client => client)
+        client_name = client[:name] || client[:client]
+        @redis.get("client:#{client_name}") do |registered_client_json|
+          unless registered_client_json.nil?
+            registered_client = MultiJson.load(registered_client_json)
+            if registered_client.has_key?(:client_key)
+              if client.has_key(:client_key) && registered_client[:client_key] == client[:client_key]
+                @logger.debug("valid client", :client => client)
+                callback.call(true)
+              else
+                @logger.error("invalid client, client keys do not match", :client => client)
+                callback.call(false)
+              end
+            else
+              @logger.debug("registered client has no client_key set - validating", :client => client)
+            end
+          else
+            @logger.debug("no previous entry for client to validate", :client => client)
+            callback.call(true)
+          end
+        end
+      end
+
       # Update the Sensu client registry, stored in Redis. Sensu
       # client data is used to provide additional event context and
       # enable agent health monitoring. JSON serialization is used for
@@ -55,20 +89,29 @@ module Sensu
       end
 
       # Set up the client keepalive consumer, keeping the Sensu client
-      # registry updated. The consumer receives JSON serialized client
-      # keepalives from the transport, parses them, and calls
+      # registry updated for validated clients. The consumer receives
+      # JSON serialized client keepalives from the transport, parses them,
+      # validates the client sending the messages, and then calls
       # `update_client_registry()` with the client data to update the
-      # registry. Transport message acknowledgements are used to
-      # ensure the client registry is updated successfully. Keepalive
-      # JSON parsing errors are logged.
+      # registry. Messages that do not pass client validation are ignored.
+      # Transport message acknowledgements are used to ensure the client
+      # registry is updated successfully. Keepalive JSON parsing errors are
+      # logged.
       def setup_keepalives
         @logger.debug("subscribing to keepalives")
         @transport.subscribe(:direct, "keepalives", "keepalives", :ack => true) do |message_info, message|
           @logger.debug("received keepalive", :message => message)
           begin
             client = MultiJson.load(message)
-            update_client_registry(client) do
-              @transport.ack(message_info)
+            validate_client(client) do |valid_client|
+              if valid_client
+                update_client_registry(client) do
+                  @transport.ack(message_info)
+                end
+              else
+                @logger.error("client submitted keepalive that failed validation", :client => client)
+                @transport.ack(message_info)
+              end
             end
           rescue MultiJson::ParseError => error
             @logger.error("failed to parse keepalive payload", {
@@ -436,20 +479,28 @@ module Sensu
       end
 
       # Set up the check result consumer. The consumer receives JSON
-      # serialized check results from the transport, parses them, and
-      # calls `process_check_result()` with the result data to be
-      # processed. Transport message acknowledgements are used to
-      # ensure that results make it to processing. The transport
-      # message acknowledgements are currently done in the next tick
-      # of the EventMachine reactor (event loop), as a flow control
-      # mechanism. Result JSON parsing errors are logged.
+      # serialized check results from the transport, parses them,
+      # validates the client, and then calls `process_check_result()`
+      # with the result data to be processed. Messages that do not
+      # pass client validation are ignored. Transport message
+      # acknowledgements are used to ensure that results make it to
+      # processing. The transport message acknowledgements are
+      # currently done in the next tick of the EventMachine reactor
+      # (event loop), as a flow control mechanism. Result JSON
+      # parsing errors are logged.
       def setup_results
         @logger.debug("subscribing to results")
         @transport.subscribe(:direct, "results", "results", :ack => true) do |message_info, message|
           begin
             result = MultiJson.load(message)
             @logger.debug("received result", :result => result)
-            process_check_result(result)
+            validate_client(result) do |valid_client|
+              if valid_client
+                process_check_result(result)
+              else
+                @logger.error("client submitted result that failed validation", :result => result)
+              end
+            end
           rescue MultiJson::ParseError => error
             @logger.error("failed to parse result payload", {
               :message => message,
