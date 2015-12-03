@@ -55,7 +55,7 @@ module Sensu
             registered_client = MultiJson.load(registered_client_json)
             if registered_client.has_key?(:client_key)
               if client.has_key?(:client_key) && registered_client[:client_key] == client[:client_key]
-                @logger.debug("valid client", :client => client)
+                @logger.debug("client is valid", :client => client)
                 callback.call(true)
               else
                 @logger.error("invalid client, client keys do not match or missing", :client => client)
@@ -109,7 +109,7 @@ module Sensu
                   @transport.ack(message_info)
                 end
               else
-                @logger.error("client submitted keepalive that failed validation", :client => client)
+                @logger.error("client submitted keepalive that failed validation - rejecting", :client => client)
                 @transport.ack(message_info)
               end
             end
@@ -498,7 +498,7 @@ module Sensu
               if valid_client
                 process_check_result(result)
               else
-                @logger.error("client submitted result that failed validation", :result => result)
+                @logger.error("client submitted result that failed validation - rejecting", :result => result)
               end
             end
           rescue MultiJson::ParseError => error
