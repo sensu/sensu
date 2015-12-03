@@ -54,11 +54,11 @@ module Sensu
           unless registered_client_json.nil?
             registered_client = MultiJson.load(registered_client_json)
             if registered_client.has_key?(:client_key)
-              if client.has_key(:client_key) && registered_client[:client_key] == client[:client_key]
+              if client.has_key?(:client_key) && registered_client[:client_key] == client[:client_key]
                 @logger.debug("valid client", :client => client)
                 callback.call(true)
               else
-                @logger.error("invalid client, client keys do not match", :client => client)
+                @logger.error("invalid client, client keys do not match or missing", :client => client)
                 callback.call(false)
               end
             else
@@ -629,11 +629,14 @@ module Sensu
       #
       # @param client_name [String]
       # @param check [Hash]
-      def publish_check_result(client_name, check)
+      def publish_check_result(client_name, client_key, check)
         payload = {
           :client => client_name,
           :check => check
         }
+        unless client_key.nil?
+          payload.merge(:client_key => client_key)
+        end
         @logger.debug("publishing check result", :payload => payload)
         @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
           if info[:error]
@@ -706,7 +709,7 @@ module Sensu
                   check[:output] << "#{time_since_last_keepalive} seconds ago"
                   check[:status] = 0
                 end
-                publish_check_result(client[:name], check)
+                publish_check_result(client[:name], client[:client_key], check)
               end
             end
           end
@@ -735,19 +738,22 @@ module Sensu
         @logger.info("determining stale check results")
         @redis.smembers("clients") do |clients|
           clients.each do |client_name|
-            @redis.smembers("result:#{client_name}") do |checks|
-              checks.each do |check_name|
-                result_key = "#{client_name}:#{check_name}"
-                @redis.get("result:#{result_key}") do |result_json|
-                  unless result_json.nil?
-                    check = MultiJson.load(result_json)
-                    next unless check[:ttl] && check[:executed] && !check[:force_resolve]
-                    time_since_last_execution = Time.now.to_i - check[:executed]
-                    if time_since_last_execution >= check[:ttl]
-                      check[:output] = "Last check execution was "
-                      check[:output] << "#{time_since_last_execution} seconds ago"
-                      check[:status] = 1
-                      publish_check_result(client_name, check)
+            @redis.get("client:#{client_name}") do |client_json|
+              client = MultiJson.load(client_json)
+              @redis.smembers("result:#{client_name}") do |checks|
+                checks.each do |check_name|
+                  result_key = "#{client_name}:#{check_name}"
+                  @redis.get("result:#{result_key}") do |result_json|
+                    unless result_json.nil?
+                      check = MultiJson.load(result_json)
+                      next unless check[:ttl] && check[:executed] && !check[:force_resolve]
+                      time_since_last_execution = Time.now.to_i - check[:executed]
+                      if time_since_last_execution >= check[:ttl]
+                        check[:output] = "Last check execution was "
+                        check[:output] << "#{time_since_last_execution} seconds ago"
+                        check[:status] = 1
+                        publish_check_result(client_name, client[:client_key], check)
+                      end
                     end
                   end
                 end
