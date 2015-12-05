@@ -195,7 +195,7 @@ module Sensu
           })
           if not valid_utf8?(data)
             @logger.warn("data from socket is not valid UTF-8 sequence, but processes it anyway",
-                         :data => data.inspect)
+                         :data => data)
           end
           begin
             parse_check_result(data)

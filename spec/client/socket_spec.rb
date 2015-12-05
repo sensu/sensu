@@ -167,7 +167,7 @@ describe Sensu::Client::Socket do
         with("socket received data", :data => data)
       expect(logger).to receive(:warn).
         with("data from socket is not valid UTF-8 sequence, but processes it anyway",
-             :data => data.force_encoding('BINARY').inspect)
+             :data => data)
       expect(subject).to receive(:parse_check_result).with(data)
       subject.process_data(data)
     end
