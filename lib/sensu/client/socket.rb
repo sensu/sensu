@@ -186,7 +186,6 @@ module Sensu
       #
       # @param [String] data to be processed.
       def process_data(data)
-        data = data.force_encoding('utf-8')
         if data.strip == "ping"
           @logger.debug("socket received ping")
           respond("pong")
@@ -194,7 +193,7 @@ module Sensu
           @logger.debug("socket received data", {
             :data => data
           })
-          if not data.valid_encoding?
+          if not valid_utf8?(data)
             @logger.warn("data from socket is not valid UTF-8 sequence, but processes it anyway",
                          :data => data.inspect)
           end
@@ -208,6 +207,20 @@ module Sensu
             respond("invalid")
           end
         end
+      end
+
+      # Tests if the argument is valid UTF-8 sequence.
+      #
+      # @param [String] data to be tested.
+      def valid_utf8?(data)
+        utf8_string_pattern = /\A([\x00-\x7f]|
+                                  [\xc2-\xdf][\x80-\xbf]|
+                                  \xe0[\xa0-\xbf][\x80-\xbf]|
+                                  [\xe1-\xef][\x80-\xbf]{2}|
+                                  \xf0[\x90-\xbf][\x80-\xbf]{2}|
+                                  [\xf1-\xf7][\x80-\xbf]{3})*\z/nx
+        data = data.force_encoding('BINARY') if data.respond_to?(:force_encoding)
+        return data =~ utf8_string_pattern
       end
 
       # This method is called whenever data is received. For UDP, it
