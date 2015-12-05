@@ -159,6 +159,18 @@ describe Sensu::Client::Socket do
       expect(subject).to receive(:parse_check_result).with(data)
       subject.process_data(data)
     end
+
+    it "warn-logs encoding error" do
+      # contains invalid sequence as UTF-8
+      data = "{\"data\":\"\xc2\x7f\"}"
+      expect(logger).to receive(:debug).
+        with("socket received data", :data => data)
+      expect(logger).to receive(:warn).
+        with("data from socket is not valid UTF-8 sequence, but processes it anyway",
+             :data => data.force_encoding('utf-8').inspect)
+      expect(subject).to receive(:parse_check_result).with(data)
+      subject.process_data(data)
+    end
   end
 
   describe "#receive_data" do

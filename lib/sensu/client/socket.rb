@@ -186,6 +186,7 @@ module Sensu
       #
       # @param [String] data to be processed.
       def process_data(data)
+        data = data.force_encoding('utf-8')
         if data.strip == "ping"
           @logger.debug("socket received ping")
           respond("pong")
@@ -193,6 +194,10 @@ module Sensu
           @logger.debug("socket received data", {
             :data => data
           })
+          if not data.valid_encoding?
+            @logger.warn("data from socket is not valid UTF-8 sequence, but processes it anyway",
+                         :data => data.inspect)
+          end
           begin
             parse_check_result(data)
           rescue => error
