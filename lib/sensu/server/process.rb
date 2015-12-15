@@ -37,19 +37,61 @@ module Sensu
         @handling_event_count = 0
       end
 
-      # Update the Sensu client registry, stored in Redis. Sensu
-      # client data is used to provide additional event context and
+      # Validates a client against the registry. Compares the
+      # `client_key` that the client sent with what is stored in
+      # Redis. Clients without an entry in the registry silently
+      # pass. Previously registered clients with no `client_key`
+      # set will silently pass. Otherwise, it will send back
+      # `true` if the client keys match and `false` if they do not.
+      #
+      # @param client [Hash]
+      # @param callback [Proc] to call after the the client data has
+      #   been validated.
+      def validate_client(client, &callback)
+        @logger.debug("validating client", :client => client)
+        client_name = client[:name] || client[:client]
+        @redis.get("client:#{client_name}") do |registered_client_json|
+          unless registered_client_json.nil?
+            registered_client = MultiJson.load(registered_client_json)
+            if registered_client.has_key?(:client_key)
+              if client.has_key?(:client_key) && registered_client[:client_key] == client[:client_key]
+                @logger.debug("client is valid", :client => client)
+                callback.call(true)
+              else
+                @logger.error("invalid client - client keys do not match or missing", :client => client)
+                callback.call(false)
+              end
+            else
+              @logger.debug("registered client has no client_key set - validating", :client => client)
+              callback.call(true)
+            end
+          else
+            @logger.debug("client not in registry - validating", :client => client)
+            callback.call(true)
+          end
+        end
+      end
+
+      # Update the Sensu client registry for valid clients, stored in Redis.
+      # Sensu client data is used to provide additional event context and
       # enable agent health monitoring. JSON serialization is used for
-      # the client data.
+      # the client data. Messages that do not pass client validation are
+      # ignored.
       #
       # @param client [Hash]
       # @param callback [Proc] to call after the the client data has
       #   been added to (or updated) the registry.
       def update_client_registry(client, &callback)
         @logger.debug("updating client registry", :client => client)
-        @redis.set("client:#{client[:name]}", MultiJson.dump(client)) do
-          @redis.sadd("clients", client[:name]) do
-            callback.call(client)
+        validate_client(client) do |valid_client|
+          if valid_client
+            @redis.set("client:#{client[:name]}", MultiJson.dump(client)) do
+              @redis.sadd("clients", client[:name]) do
+                callback.call(client)
+              end
+            end
+          else
+            @logger.error("client submitted keepalive that failed validation - rejecting", :client => client)
           end
         end
       end
@@ -436,20 +478,28 @@ module Sensu
       end
 
       # Set up the check result consumer. The consumer receives JSON
-      # serialized check results from the transport, parses them, and
-      # calls `process_check_result()` with the result data to be
-      # processed. Transport message acknowledgements are used to
-      # ensure that results make it to processing. The transport
-      # message acknowledgements are currently done in the next tick
-      # of the EventMachine reactor (event loop), as a flow control
-      # mechanism. Result JSON parsing errors are logged.
+      # serialized check results from the transport, parses them,
+      # validates the client, and then calls `process_check_result()`
+      # with the result data to be processed. Messages that do not
+      # pass client validation are ignored. Transport message
+      # acknowledgements are used to ensure that results make it to
+      # processing. The transport message acknowledgements are
+      # currently done in the next tick of the EventMachine reactor
+      # (event loop), as a flow control mechanism. Result JSON
+      # parsing errors are logged.
       def setup_results
         @logger.debug("subscribing to results")
         @transport.subscribe(:direct, "results", "results", :ack => true) do |message_info, message|
           begin
             result = MultiJson.load(message)
             @logger.debug("received result", :result => result)
-            process_check_result(result)
+            validate_client(result) do |valid_client|
+              if valid_client
+                process_check_result(result)
+              else
+                @logger.error("client submitted result that failed validation - rejecting", :result => result)
+              end
+            end
           rescue MultiJson::ParseError => error
             @logger.error("failed to parse result payload", {
               :message => message,
@@ -578,9 +628,10 @@ module Sensu
       #
       # @param client_name [String]
       # @param check [Hash]
-      def publish_check_result(client_name, check)
+      def publish_check_result(client_name, client_key, check)
         payload = {
           :client => client_name,
+          :client_key => client_key,
           :check => check
         }
         @logger.debug("publishing check result", :payload => payload)
@@ -655,7 +706,7 @@ module Sensu
                   check[:output] << "#{time_since_last_keepalive} seconds ago"
                   check[:status] = 0
                 end
-                publish_check_result(client[:name], check)
+                publish_check_result(client[:name], client[:client_key], check)
               end
             end
           end
@@ -684,19 +735,22 @@ module Sensu
         @logger.info("determining stale check results")
         @redis.smembers("clients") do |clients|
           clients.each do |client_name|
-            @redis.smembers("result:#{client_name}") do |checks|
-              checks.each do |check_name|
-                result_key = "#{client_name}:#{check_name}"
-                @redis.get("result:#{result_key}") do |result_json|
-                  unless result_json.nil?
-                    check = MultiJson.load(result_json)
-                    next unless check[:ttl] && check[:executed] && !check[:force_resolve]
-                    time_since_last_execution = Time.now.to_i - check[:executed]
-                    if time_since_last_execution >= check[:ttl]
-                      check[:output] = "Last check execution was "
-                      check[:output] << "#{time_since_last_execution} seconds ago"
-                      check[:status] = 1
-                      publish_check_result(client_name, check)
+            @redis.get("client:#{client_name}") do |client_json|
+              client = MultiJson.load(client_json)
+              @redis.smembers("result:#{client_name}") do |checks|
+                checks.each do |check_name|
+                  result_key = "#{client_name}:#{check_name}"
+                  @redis.get("result:#{result_key}") do |result_json|
+                    unless result_json.nil?
+                      check = MultiJson.load(result_json)
+                      next unless check[:ttl] && check[:executed] && !check[:force_resolve]
+                      time_since_last_execution = Time.now.to_i - check[:executed]
+                      if time_since_last_execution >= check[:ttl]
+                        check[:output] = "Last check execution was "
+                        check[:output] << "#{time_since_last_execution} seconds ago"
+                        check[:status] = 1
+                        publish_check_result(client_name, client[:client_key], check)
+                      end
                     end
                   end
                 end
