@@ -84,11 +84,9 @@ module Sensu
       def publish_check_result(check)
         payload = {
           :client => @settings[:client][:name],
+          :client_key => @settings[:client][:client_key],
           :check => check
         }
-        if @settings[:client].has_key?(:client_key)
-          payload.merge!(:client_key => @settings[:client][:client_key])
-        end
         @logger.info("publishing check result", :payload => payload)
         @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
           if info[:error]
