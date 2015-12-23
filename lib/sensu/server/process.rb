@@ -37,6 +37,34 @@ module Sensu
         @handling_event_count = 0
       end
 
+      def create_registration_check(client)
+        check = {:handler => "registration"}
+        if client.has_key?(:registration)
+          check = deep_merge(check, client[:registration])
+        end
+        timestamp = Time.now.to_i
+        overrides = {
+          :output => "new client registration",
+          :status => 1,
+          :issued => timestamp,
+          :executed => timestamp,
+          :handler => "registration"
+        }
+        check.merge(overrides)
+      end
+
+      def create_client_registration_event(client)
+        event = {
+          :id => random_uuid,
+          :client => client,
+          :check => create_registration_check(client),
+          :occurrences => 1,
+          :action => :create,
+          :timestamp => Time.now.to_i
+        }
+        process_event(event)
+      end
+
       # Update the Sensu client registry, stored in Redis. Sensu
       # client data is used to provide additional event context and
       # enable agent health monitoring. JSON serialization is used for
@@ -47,7 +75,13 @@ module Sensu
       #   been added to (or updated) the registry.
       def update_client_registry(client, &callback)
         @logger.debug("updating client registry", :client => client)
-        @redis.set("client:#{client[:name]}", MultiJson.dump(client)) do
+        client_key = "client:#{client[:name]}"
+        @redis.exists(client_key) do |client_exists|
+          unless client_exists
+            create_client_registration_event(client)
+          end
+        end
+        @redis.set(client_key, MultiJson.dump(client)) do
           @redis.sadd("clients", client[:name]) do
             callback.call(client)
           end
