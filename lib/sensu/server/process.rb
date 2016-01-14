@@ -499,6 +499,7 @@ module Sensu
         payload[:command] = check[:command] if check.has_key?(:command)
         payload[:source] = check[:source] if check.has_key?(:source)
         payload[:extension] = check[:extension] if check.has_key?(:extension)
+        payload[:handlers] = check[:handlers] if check.has_key?(:handlers)
         @logger.info("publishing check request", {
           :payload => payload,
           :subscribers => check[:subscribers]
