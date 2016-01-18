@@ -44,7 +44,20 @@ describe "Sensu::Server::Process" do
               redis.get("client:i-424242") do |client_json|
                 client = MultiJson.load(client_json)
                 expect(client).to eq(keepalive)
-                async_done
+                read_event_file = Proc.new do
+                  begin
+                    event_file = IO.read("/tmp/sensu_client_registration.json")
+                    MultiJson.load(event_file)
+                  rescue
+                    retry
+                  end
+                end
+                compare_event_file = Proc.new do |event_file|
+                  expect(event_file[:check][:name]).to eq("registration")
+                  expect(event_file[:client]).to eq(keepalive)
+                  async_done
+                end
+                EM.defer(read_event_file, compare_event_file)
               end
             end
           end

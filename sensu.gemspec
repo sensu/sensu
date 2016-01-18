@@ -31,6 +31,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency "rake", "~> 10.3"
   s.add_development_dependency "rspec", "~> 3.0.0"
   s.add_development_dependency "em-http-request", "~> 1.1"
+  s.add_development_dependency "addressable", "2.3.8"
 
   s.files         = Dir.glob("{exe,lib}/**/*") + %w[sensu.gemspec README.md CHANGELOG.md MIT-LICENSE.txt]
   s.executables   = s.files.grep(%r{^exe/}) { |file| File.basename(file) }
