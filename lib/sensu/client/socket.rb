@@ -141,9 +141,7 @@ module Sensu
           :client => @settings[:client][:name],
           :check => check.merge(:issued => Time.now.to_i)
         }
-        @logger.info("publishing check result", {
-          :payload => payload
-        })
+        @logger.info("publishing check result", :payload => payload)
         @transport.publish(:direct, "results", MultiJson.dump(payload))
       end
 
@@ -190,12 +188,9 @@ module Sensu
           @logger.debug("socket received ping")
           respond("pong")
         else
-          @logger.debug("socket received data", {
-            :data => data
-          })
-          if not valid_utf8?(data)
-            @logger.warn("data from socket is not valid UTF-8 sequence, but processes it anyway",
-                         :data => data)
+          @logger.debug("socket received data", :data => data)
+          unless valid_utf8?(data)
+            @logger.warn("data from socket is not a valid UTF-8 sequence, processing it anyways", :data => data)
           end
           begin
             parse_check_result(data)
@@ -209,7 +204,7 @@ module Sensu
         end
       end
 
-      # Tests if the argument is valid UTF-8 sequence.
+      # Tests if the argument (data) is a valid UTF-8 sequence.
       #
       # @param [String] data to be tested.
       def valid_utf8?(data)
