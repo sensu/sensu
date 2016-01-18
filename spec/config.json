@@ -41,6 +41,10 @@
         "debug"
       ]
     },
+    "registration": {
+      "type": "pipe",
+      "command": "cat > /tmp/sensu_client_registration.json"
+    },
     "file": {
       "type": "pipe",
       "command": "cat > /tmp/sensu_event"
