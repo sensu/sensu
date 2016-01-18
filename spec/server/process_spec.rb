@@ -54,6 +54,7 @@ describe "Sensu::Server::Process" do
                 end
                 compare_event_file = Proc.new do |event_file|
                   expect(event_file[:check][:name]).to eq("registration")
+                  expect(event_file[:client]).to eq(keepalive)
                   async_done
                 end
                 EM.defer(read_event_file, compare_event_file)
