@@ -392,6 +392,7 @@ describe "Sensu::Server::Process" do
       end
       timer(0.5) do
         @server.setup_transport
+        @server.setup_redis
         client = client_template
         check = result_template[:check]
         @server.publish_check_result(client[:name], check)

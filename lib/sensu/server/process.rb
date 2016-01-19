@@ -85,14 +85,24 @@ module Sensu
       def update_client_registry(client, &callback)
         @logger.debug("updating client registry", :client => client)
         client_key = "client:#{client[:name]}"
-        @redis.exists(client_key) do |client_exists|
-          unless client_exists
-            create_client_registration_event(client)
-          end
-        end
-        @redis.set(client_key, MultiJson.dump(client)) do
-          @redis.sadd("clients", client[:name]) do
-            callback.call(client)
+        signature_key = "#{client_key}:signature"
+        @redis.setnx(signature_key, client[:signature]) do |created|
+          create_client_registration_event(client) if created
+          @redis.get(signature_key) do |signature|
+            if signature.empty? || (client[:signature] == signature)
+              @redis.set(client_key, MultiJson.dump(client)) do
+                @redis.sadd("clients", client[:name]) do
+                  callback.call(true)
+                end
+              end
+            else
+              @logger.warn("invalid client signature", {
+                :client => client,
+                :signature => signature
+              })
+              @logger.warn("not updating client in the registry", :client => client)
+              callback.call(false)
+            end
           end
         end
       end
@@ -424,7 +434,9 @@ module Sensu
           :keepalives => false,
           :version => VERSION
         }
-        update_client_registry(client, &callback)
+        update_client_registry(client) do
+          callback.call(client)
+        end
       end
 
       # Retrieve a client (data) from Redis if it exists. If a client
@@ -440,7 +452,19 @@ module Sensu
         @redis.get("client:#{client_key}") do |client_json|
           unless client_json.nil?
             client = MultiJson.load(client_json)
-            callback.call(client)
+            if client[:signature]
+              if client[:signature] == result[:signature]
+                callback.call(client)
+              else
+                @logger.warn("invalid check result signature", {
+                  :result => result,
+                  :client => client
+                })
+                @logger.warn("not retrieving client from the registry", :result => result)
+              end
+            else
+              callback.call(client)
+            end
           else
             create_client(client_key, &callback)
           end
@@ -626,13 +650,16 @@ module Sensu
           :client => client_name,
           :check => check
         }
-        @logger.debug("publishing check result", :payload => payload)
-        @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
-          if info[:error]
-            @logger.error("failed to publish check result", {
-              :payload => payload,
-              :error => info[:error].to_s
-            })
+        @redis.get("client:#{client_name}:signature") do |signature|
+          payload[:signature] = signature if signature
+          @logger.debug("publishing check result", :payload => payload)
+          @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
+            if info[:error]
+              @logger.error("failed to publish check result", {
+                :payload => payload,
+                :error => info[:error].to_s
+              })
+            end
           end
         end
       end
