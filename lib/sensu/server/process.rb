@@ -76,8 +76,13 @@ module Sensu
 
       # Update the Sensu client registry, stored in Redis. Sensu
       # client data is used to provide additional event context and
-      # enable agent health monitoring. JSON serialization is used for
-      # the client data.
+      # enable agent health monitoring. The client registry supports
+      # client signatures, unique string identifiers used for
+      # keepalive and result source verification. If a client has a
+      # signature, all further registry updates for the client must
+      # have the same signature. A client can begin to use a signature
+      # if one was not previously configured. JSON serialization is
+      # used for the stored client data.
       #
       # @param client [Hash]
       # @param callback [Proc] to call after the the client data has
@@ -89,6 +94,9 @@ module Sensu
         @redis.setnx(signature_key, client[:signature]) do |created|
           create_client_registration_event(client) if created
           @redis.get(signature_key) do |signature|
+            if signature.empty? && client[:signature]
+              @redis.set(signature_key, client[:signature])
+            end
             if signature.empty? || (client[:signature] == signature)
               @redis.set(client_key, MultiJson.dump(client)) do
                 @redis.sadd("clients", client[:name]) do
