@@ -62,6 +62,13 @@ module Sensu
         check.merge(overrides)
       end
 
+      # Create and process a client registration event. A registration
+      # event is created each time a Sensu client is first added to
+      # the client registry. The `create_registration_check()` method
+      # is called to create a registration check definition for the
+      # client.
+      #
+      # @param client [Hash] definition.
       def create_client_registration_event(client)
         event = {
           :id => random_uuid,
