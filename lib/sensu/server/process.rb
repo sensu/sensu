@@ -63,9 +63,9 @@ module Sensu
       end
 
       # Create and process a client registration event. A registration
-      # event is created each time a Sensu client is first added to
-      # the client registry. The `create_registration_check()` method
-      # is called to create a registration check definition for the
+      # event is created when a Sensu client is first added to the
+      # client registry. The `create_registration_check()` method is
+      # called to create a registration check definition for the
       # client.
       #
       # @param client [Hash] definition.
@@ -79,6 +79,19 @@ module Sensu
           :timestamp => Time.now.to_i
         }
         process_event(event)
+      end
+
+      # Process an initial client registration, when it is first added
+      # to the client registry. If a registration handler is defined
+      # or the client specifies one, a client registration event is
+      # created and processed (handled, etc.) for the client
+      # (`create_client_registration_event()`).
+      #
+      # @param client [Hash] definition.
+      def process_client_registration(client)
+        if @settings.handler_exists?("registration") || client[:registration]
+          create_client_registration_event(client)
+        end
       end
 
       # Update the Sensu client registry, stored in Redis. Sensu
@@ -101,7 +114,7 @@ module Sensu
         client_key = "client:#{client[:name]}"
         signature_key = "#{client_key}:signature"
         @redis.setnx(signature_key, client[:signature]) do |created|
-          create_client_registration_event(client) if created
+          process_client_registration(client) if created
           @redis.get(signature_key) do |signature|
             if signature.empty? && client[:signature]
               @redis.set(signature_key, client[:signature])
