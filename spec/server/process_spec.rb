@@ -66,6 +66,45 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can consume client keepalives with client signatures" do
+    async_wrapper do
+      @server.setup_redis
+      @server.setup_transport
+      @server.setup_keepalives
+      keepalive = client_template
+      keepalive[:timestamp] = epoch
+      keepalive[:signature] = "foo"
+      redis.flushdb do
+        timer(1) do
+          transport.publish(:direct, "keepalives", MultiJson.dump(keepalive))
+          timer(1) do
+            redis.get("client:i-424242") do |client_json|
+              client = MultiJson.load(client_json)
+              expect(client).to eq(keepalive)
+              redis.get("client:i-424242:signature") do |signature|
+                expect(signature).to eq("foo")
+                malicious = keepalive.dup
+                malicious[:timestamp] = epoch
+                malicious[:signature] = "bar"
+                transport.publish(:direct, "keepalives", MultiJson.dump(malicious))
+                timer(1) do
+                  redis.get("client:i-424242") do |client_json|
+                    client = MultiJson.load(client_json)
+                    expect(client).to eq(keepalive)
+                    redis.get("client:i-424242:signature") do |signature|
+                      expect(signature).to eq("foo")
+                      async_done
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can derive handlers from a handler list containing a nested set" do
     handler_list = ["nested_set_one"]
     handlers = @server.derive_handlers(handler_list)
