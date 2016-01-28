@@ -253,6 +253,37 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can consume results with signatures" do
+    async_wrapper(30) do
+      @server.setup_transport
+      @server.setup_redis
+      @server.setup_results
+      redis.flushdb do
+        timer(1) do
+          client = client_template
+          client[:signature] = "foo"
+          redis.set("client:i-424242", MultiJson.dump(client)) do
+            result = result_template
+            transport.publish(:direct, "results", MultiJson.dump(result))
+            timer(1) do
+              redis.sismember("result:i-424242", "test") do |is_member|
+                expect(is_member).to be(false)
+                result[:signature] = "foo"
+                transport.publish(:direct, "results", MultiJson.dump(result))
+                timer(1) do
+                  redis.sismember("result:i-424242", "test") do |is_member|
+                    expect(is_member).to be(true)
+                    async_done
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can truncate check result output for storage" do
     async_wrapper do
       @server.setup_transport
