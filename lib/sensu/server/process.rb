@@ -87,6 +87,10 @@ module Sensu
       # @param client [Hash]
       # @param callback [Proc] to call after the the client data has
       #   been added to (or updated) the registry.
+      # @yield [success] passes success status to an optional
+      #   callback/block.
+      # @yieldparam success [TrueClass,FalseClass] if registry update
+      #   was a success.
       def update_client_registry(client, &callback)
         @logger.debug("updating client registry", :client => client)
         client_key = "client:#{client[:name]}"
@@ -100,7 +104,7 @@ module Sensu
             if signature.empty? || (client[:signature] == signature)
               @redis.set(client_key, MultiJson.dump(client)) do
                 @redis.sadd("clients", client[:name]) do
-                  callback.call(true)
+                  callback.call(true) if callback
                 end
               end
             else
@@ -109,7 +113,7 @@ module Sensu
                 :signature => signature
               })
               @logger.warn("not updating client in the registry", :client => client)
-              callback.call(false)
+              callback.call(false) if callback
             end
           end
         end
