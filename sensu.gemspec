@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   s.add_dependency "uuidtools", "2.1.5"
   s.add_dependency "eventmachine", "1.0.8"
   s.add_dependency "sensu-logger", "1.1.0"
-  s.add_dependency "sensu-settings", "3.1.0"
+  s.add_dependency "sensu-settings", "3.2.0"
   s.add_dependency "sensu-extension", "1.3.0"
   s.add_dependency "sensu-extensions", "1.4.0"
   s.add_dependency "sensu-transport", "3.3.0"
