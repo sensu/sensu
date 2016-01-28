@@ -85,12 +85,10 @@ module Sensu
       # used for the stored client data.
       #
       # @param client [Hash]
-      # @param callback [Proc] to call after the the client data has
-      #   been added to (or updated) the registry.
-      # @yield [success] passes success status to an optional
-      #   callback/block.
-      # @yieldparam success [TrueClass,FalseClass] if registry update
-      #   was a success.
+      # @param callback [Proc] to call with the success status
+      # (true/false) indicating if the client data has been added to
+      # (or updated) the registry or discarded due to client signature
+      # mismatch.
       def update_client_registry(client, &callback)
         @logger.debug("updating client registry", :client => client)
         client_key = "client:#{client[:name]}"
@@ -454,7 +452,9 @@ module Sensu
       # Retrieve a client (data) from Redis if it exists. If a client
       # does not already exist, create one (a blank) using the
       # `client_key` as the client name. Dynamically create client
-      # data can be updated using the API (POST /clients/:client).
+      # data can be updated using the API (POST /clients/:client). If
+      # a client does exist and it has a client signature, the check
+      # result must have a matching signature or it is discarded.
       #
       # @param result [Hash] data.
       # @param callback [Proc] to be called with client data, either
@@ -651,9 +651,11 @@ module Sensu
 
       # Publish a check result to the transport for processing. A
       # check result is composed of a client name and a check
-      # definition, containing check `:output` and `:status`. JSON
-      # serialization is used when publishing the check result payload
-      # to the transport pipe. Transport errors are logged.
+      # definition, containing check `:output` and `:status`. A client
+      # signature is added to the check result payload if one is
+      # registered for the client. JSON serialization is used when
+      # publishing the check result payload to the transport pipe.
+      # Transport errors are logged.
       #
       # @param client_name [String]
       # @param check [Hash]
