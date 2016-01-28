@@ -449,6 +449,7 @@ module Sensu
                     settings.logger.info("deleting client from registry", :client_name => client_name)
                     settings.redis.srem("clients", client_name) do
                       settings.redis.del("client:#{client_name}")
+                      settings.redis.del("client:#{client_name}:signature")
                       settings.redis.del("events:#{client_name}")
                       settings.redis.smembers("result:#{client_name}") do |checks|
                         checks.each do |check_name|

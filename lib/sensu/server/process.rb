@@ -62,6 +62,13 @@ module Sensu
         check.merge(overrides)
       end
 
+      # Create and process a client registration event. A registration
+      # event is created each time a Sensu client is first added to
+      # the client registry. The `create_registration_check()` method
+      # is called to create a registration check definition for the
+      # client.
+      #
+      # @param client [Hash] definition.
       def create_client_registration_event(client)
         event = {
           :id => random_uuid,
@@ -76,23 +83,43 @@ module Sensu
 
       # Update the Sensu client registry, stored in Redis. Sensu
       # client data is used to provide additional event context and
-      # enable agent health monitoring. JSON serialization is used for
-      # the client data.
+      # enable agent health monitoring. The client registry supports
+      # client signatures, unique string identifiers used for
+      # keepalive and result source verification. If a client has a
+      # signature, all further registry updates for the client must
+      # have the same signature. A client can begin to use a signature
+      # if one was not previously configured. JSON serialization is
+      # used for the stored client data.
       #
       # @param client [Hash]
-      # @param callback [Proc] to call after the the client data has
-      #   been added to (or updated) the registry.
+      # @param callback [Proc] to call with the success status
+      # (true/false) indicating if the client data has been added to
+      # (or updated) the registry or discarded due to client signature
+      # mismatch.
       def update_client_registry(client, &callback)
         @logger.debug("updating client registry", :client => client)
         client_key = "client:#{client[:name]}"
-        @redis.exists(client_key) do |client_exists|
-          unless client_exists
-            create_client_registration_event(client)
-          end
-        end
-        @redis.set(client_key, MultiJson.dump(client)) do
-          @redis.sadd("clients", client[:name]) do
-            callback.call(client)
+        signature_key = "#{client_key}:signature"
+        @redis.setnx(signature_key, client[:signature]) do |created|
+          create_client_registration_event(client) if created
+          @redis.get(signature_key) do |signature|
+            if signature.empty? && client[:signature]
+              @redis.set(signature_key, client[:signature])
+            end
+            if signature.empty? || (client[:signature] == signature)
+              @redis.set(client_key, MultiJson.dump(client)) do
+                @redis.sadd("clients", client[:name]) do
+                  callback.call(true) if callback
+                end
+              end
+            else
+              @logger.warn("invalid client signature", {
+                :client => client,
+                :signature => signature
+              })
+              @logger.warn("not updating client in the registry", :client => client)
+              callback.call(false) if callback
+            end
           end
         end
       end
@@ -424,13 +451,17 @@ module Sensu
           :keepalives => false,
           :version => VERSION
         }
-        update_client_registry(client, &callback)
+        update_client_registry(client) do
+          callback.call(client)
+        end
       end
 
       # Retrieve a client (data) from Redis if it exists. If a client
       # does not already exist, create one (a blank) using the
       # `client_key` as the client name. Dynamically create client
-      # data can be updated using the API (POST /clients/:client).
+      # data can be updated using the API (POST /clients/:client). If
+      # a client does exist and it has a client signature, the check
+      # result must have a matching signature or it is discarded.
       #
       # @param result [Hash] data.
       # @param callback [Proc] to be called with client data, either
@@ -440,7 +471,19 @@ module Sensu
         @redis.get("client:#{client_key}") do |client_json|
           unless client_json.nil?
             client = MultiJson.load(client_json)
-            callback.call(client)
+            if client[:signature]
+              if client[:signature] == result[:signature]
+                callback.call(client)
+              else
+                @logger.warn("invalid check result signature", {
+                  :result => result,
+                  :client => client
+                })
+                @logger.warn("not retrieving client from the registry", :result => result)
+              end
+            else
+              callback.call(client)
+            end
           else
             create_client(client_key, &callback)
           end
@@ -615,9 +658,11 @@ module Sensu
 
       # Publish a check result to the transport for processing. A
       # check result is composed of a client name and a check
-      # definition, containing check `:output` and `:status`. JSON
-      # serialization is used when publishing the check result payload
-      # to the transport pipe. Transport errors are logged.
+      # definition, containing check `:output` and `:status`. A client
+      # signature is added to the check result payload if one is
+      # registered for the client. JSON serialization is used when
+      # publishing the check result payload to the transport pipe.
+      # Transport errors are logged.
       #
       # @param client_name [String]
       # @param check [Hash]
@@ -626,13 +671,16 @@ module Sensu
           :client => client_name,
           :check => check
         }
-        @logger.debug("publishing check result", :payload => payload)
-        @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
-          if info[:error]
-            @logger.error("failed to publish check result", {
-              :payload => payload,
-              :error => info[:error].to_s
-            })
+        @redis.get("client:#{client_name}:signature") do |signature|
+          payload[:signature] = signature if signature
+          @logger.debug("publishing check result", :payload => payload)
+          @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
+            if info[:error]
+              @logger.error("failed to publish check result", {
+                :payload => payload,
+                :error => info[:error].to_s
+              })
+            end
           end
         end
       end

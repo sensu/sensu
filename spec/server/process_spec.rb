@@ -66,6 +66,45 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can consume client keepalives with client signatures" do
+    async_wrapper do
+      @server.setup_redis
+      @server.setup_transport
+      @server.setup_keepalives
+      keepalive = client_template
+      keepalive[:timestamp] = epoch
+      keepalive[:signature] = "foo"
+      redis.flushdb do
+        timer(1) do
+          transport.publish(:direct, "keepalives", MultiJson.dump(keepalive))
+          timer(1) do
+            redis.get("client:i-424242") do |client_json|
+              client = MultiJson.load(client_json)
+              expect(client).to eq(keepalive)
+              redis.get("client:i-424242:signature") do |signature|
+                expect(signature).to eq("foo")
+                malicious = keepalive.dup
+                malicious[:timestamp] = epoch
+                malicious[:signature] = "bar"
+                transport.publish(:direct, "keepalives", MultiJson.dump(malicious))
+                timer(1) do
+                  redis.get("client:i-424242") do |client_json|
+                    client = MultiJson.load(client_json)
+                    expect(client).to eq(keepalive)
+                    redis.get("client:i-424242:signature") do |signature|
+                      expect(signature).to eq("foo")
+                      async_done
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can derive handlers from a handler list containing a nested set" do
     handler_list = ["nested_set_one"]
     handlers = @server.derive_handlers(handler_list)
@@ -204,6 +243,37 @@ describe "Sensu::Server::Process" do
                         EM.defer(read_event_file, compare_event_file)
                       end
                     end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can consume results with signatures" do
+    async_wrapper(30) do
+      @server.setup_transport
+      @server.setup_redis
+      @server.setup_results
+      redis.flushdb do
+        timer(1) do
+          client = client_template
+          client[:signature] = "foo"
+          redis.set("client:i-424242", MultiJson.dump(client)) do
+            result = result_template
+            transport.publish(:direct, "results", MultiJson.dump(result))
+            timer(1) do
+              redis.sismember("result:i-424242", "test") do |is_member|
+                expect(is_member).to be(false)
+                result[:signature] = "foo"
+                transport.publish(:direct, "results", MultiJson.dump(result))
+                timer(1) do
+                  redis.sismember("result:i-424242", "test") do |is_member|
+                    expect(is_member).to be(true)
+                    async_done
                   end
                 end
               end
@@ -392,6 +462,7 @@ describe "Sensu::Server::Process" do
       end
       timer(0.5) do
         @server.setup_transport
+        @server.setup_redis
         client = client_template
         check = result_template[:check]
         @server.publish_check_result(client[:name], check)
