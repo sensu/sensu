@@ -1,3 +1,34 @@
+## 0.22.0 - 2016-01-29
+
+### Features
+
+Client registration events are optionally created and processed (handled,
+etc.) when a client is first added to the client registry. To enable this
+functionality, configure a "registration" handler definition on Sensu
+server(s), or define a client specific registration handler in the client
+definition, e.g. `{"client": "registration": {"handler": "debug"}}`.
+
+Client auto de-registration on sensu-client process stop is now supported
+by the Sensu package init script. Setting `CLIENT_DEREGISTER_ON_STOP=true`
+and `CLIENT_DEREGISTER_HANDLER=example` in `/etc/default/sensu` will cause
+the Sensu client to publish a check result to trigger the event handler
+named "example", before its process stops.
+
+Added support for Sensu client signatures, used to sign client keepalive
+and check result transport messages, for the purposes of source
+(publisher) verification. The client definition attribute "signature" is
+used to set the client signature, e.g. `"signature": "6zvyb8lm7fxcs7yw"`.
+A client signature can only be set once, the client must be deleted from
+the registry before its signature can be changed or removed. Client
+keepalives and check results that are not signed with the correct
+signature are logged (warn) and discarded. This feature is NOT a
+replacement for existing and proven security measures.
+
+The Sensu plugin installation tool, `sensu-install`, will no longer
+install a plugin if a or specified version has already been installed.
+
+The Sensu client socket now supports UTF-8 encoding.
+
 ## 0.21.0 - 2015-11-13
 
 ### Important
