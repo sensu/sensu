@@ -13,6 +13,12 @@ module Sensu
 
       attr_reader :is_leader, :handling_event_count
 
+      METRIC_CHECK_TYPE = "metric".freeze
+
+      EVENT_FLAPPING_ACTION = "flapping".freeze
+
+      DEFAULT_HANDLER_NAME = "default".freeze
+
       # Create an instance of the Sensu server process, start the
       # server within the EventMachine event loop, and set up server
       # process signal traps (for stopping).
@@ -218,9 +224,9 @@ module Sensu
       #
       # @param event [Hash]
       def process_event(event)
-        log_level = event[:check][:type] == "metric" ? :debug : :info
+        log_level = event[:check][:type] == METRIC_CHECK_TYPE ? :debug : :info
         @logger.send(log_level, "processing event", :event => event)
-        handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || "default")
+        handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || DEFAULT_HANDLER_NAME)
         handlers = derive_handlers(handler_list)
         handlers.each do |handler|
           @handling_event_count += 1
@@ -291,7 +297,7 @@ module Sensu
       # @return [Hash] check with truncated output.
       def truncate_check_output(check)
         case check[:type]
-        when "metric"
+        when METRIC_CHECK_TYPE
           output_lines = check[:output].split("\n")
           output = output_lines.first || check[:output]
           if output_lines.size > 1 || output.length > 255
@@ -380,7 +386,7 @@ module Sensu
       # @return [TrueClass, FalseClass]
       def check_flapping?(stored_event, check)
         if check.has_key?(:low_flap_threshold) && check.has_key?(:high_flap_threshold)
-          was_flapping = stored_event && stored_event[:action] == "flapping"
+          was_flapping = stored_event && stored_event[:action] == EVENT_FLAPPING_ACTION
           if was_flapping
             check[:total_state_change] > check[:low_flap_threshold]
           else
@@ -439,7 +445,7 @@ module Sensu
                 callback.call(event)
               end
             end
-          elsif check[:type] == "metric"
+          elsif check[:type] == METRIC_CHECK_TYPE
             callback.call(event)
           end
           event_bridges(event)

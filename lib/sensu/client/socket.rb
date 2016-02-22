@@ -68,6 +68,9 @@ module Sensu
       # chunks of data in this mode, the connection is being closed.
       MODE_REJECT = :REJECT
 
+      # PING request string, identifying a connection ping request.
+      PING_REQUEST = "ping".freeze
+
       # Initialize instance variables that will be used throughout the
       # lifetime of the connection. This method is called when the
       # network connection has been established, and immediately after
@@ -184,7 +187,7 @@ module Sensu
       #
       # @param [String] data to be processed.
       def process_data(data)
-        if data.strip == "ping"
+        if data.strip == PING_REQUEST
           @logger.debug("socket received ping")
           respond("pong")
         else
