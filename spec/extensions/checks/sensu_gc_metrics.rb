@@ -18,7 +18,7 @@ module Sensu
         }
       end
 
-      def run(&block)
+      def run
         metrics = Hash.new
         if RUBY_VERSION >= '1.9.3'
           unless GC::Profiler.enabled?
@@ -39,7 +39,7 @@ module Sensu
           end
           metrics.merge!(:count => Hash[object_counts])
         end
-        block.call(MultiJson.dump(metrics), 0)
+        yield(MultiJson.dump(metrics), 0)
       end
     end
   end

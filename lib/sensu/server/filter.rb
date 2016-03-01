@@ -228,21 +228,24 @@ module Sensu
       #
       # @param filter_name [String]
       # @param event [Hash]
-      # @param callback [Proc]
-      def event_filter(filter_name, event, &callback)
+      # @yield [filtered] callback/block called with a single
+      #   parameter to indicate if the event was filtered.
+      # @yieldparam filtered [TrueClass,FalseClass] indicating if the
+      #   event was filtered.
+      def event_filter(filter_name, event)
         case
         when @settings.filter_exists?(filter_name)
           filter = @settings[:filters][filter_name]
           matched = filter_attributes_match?(filter[:attributes], event)
-          callback.call(filter[:negate] ? matched : !matched)
+          yield(filter[:negate] ? matched : !matched)
         when @extensions.filter_exists?(filter_name)
           extension = @extensions[:filters][filter_name]
           extension.safe_run(event) do |output, status|
-            callback.call(status == 0)
+            yield(status == 0)
           end
         else
           @logger.error("unknown filter", :filter_name => filter_name)
-          callback.call(false)
+          yield(false)
         end
       end
 
@@ -255,23 +258,26 @@ module Sensu
       #
       # @param handler [Hash] definition.
       # @param event [Hash]
-      # @param callback [Proc]
-      def event_filtered?(handler, event, &callback)
+      # @yield [filtered] callback/block called with a single
+      #   parameter to indicate if the event was filtered.
+      # @yieldparam filtered [TrueClass,FalseClass] indicating if the
+      #   event was filtered.
+      def event_filtered?(handler, event)
         if handler.has_key?(:filters) || handler.has_key?(:filter)
           filter_list = Array(handler[:filters] || handler[:filter]).dup
           filter = Proc.new do |filter_list|
             filter_name = filter_list.shift
             if filter_name.nil?
-              callback.call(false)
+              yield(false)
             else
               event_filter(filter_name, event) do |filtered|
-                filtered ? callback.call(true) : EM.next_tick { filter.call(filter_list) }
+                filtered ? yield(true) : EM.next_tick { filter.call(filter_list) }
               end
             end
           end
-          EM.next_tick { filter.call(filter_list) }
+          filter.call(filter_list)
         else
-          callback.call(false)
+          yield(false)
         end
       end
 
@@ -283,8 +289,10 @@ module Sensu
       #
       # @param handler [Hash] definition.
       # @param event [Hash]
-      # @param callback [Proc]
-      def filter_event(handler, event, &callback)
+      # @yield [event] callback/block called if the event has not been
+      #   filtered.
+      # @yieldparam event [Hash]
+      def filter_event(handler, event)
         details = {:handler => handler, :event => event}
         filter_message = case
         when handling_disabled?(event)
@@ -302,7 +310,7 @@ module Sensu
         else
           event_filtered?(handler, event) do |filtered|
             unless filtered
-              callback.call(event)
+              yield(event)
             else
               @logger.info("event was filtered", details)
               @handling_event_count -= 1 if @handling_event_count

@@ -369,13 +369,13 @@ module Sensu
       # check the condition every 0.5 seconds until `true` is
       # returned.
       #
-      # @param callback [Proc] called when there are no check
+      # @yield [] callback/block called when there are no check
       #   executions in progress.
-      def complete_checks_in_progress(&callback)
+      def complete_checks_in_progress
         @logger.info("completing checks in progress", :checks_in_progress => @checks_in_progress)
         retry_until_true do
           if @checks_in_progress.empty?
-            callback.call
+            yield
             true
           end
         end
