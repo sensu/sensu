@@ -1,14 +1,14 @@
 require "rubygems"
 
 gem "multi_json", "1.11.2"
-gem "eventmachine", "1.0.8"
+gem "eventmachine", "1.0.9.1"
 
 gem "sensu-logger", "1.1.0"
 gem "sensu-settings", "3.3.0"
 gem "sensu-extension", "1.3.0"
 gem "sensu-extensions", "1.4.0"
-gem "sensu-transport", "3.3.0"
-gem "sensu-spawn", "1.6.0"
+gem "sensu-transport", "4.0.0"
+gem "sensu-spawn", "1.7.0"
 
 require "time"
 require "uri"

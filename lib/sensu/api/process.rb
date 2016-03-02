@@ -65,11 +65,11 @@ module Sensu
           @thin.start
         end
 
-        def stop_server(&callback)
+        def stop_server
           @thin.stop
           retry_until_true do
             unless @thin.running?
-              callback.call
+              yield
               true
             end
           end
@@ -171,7 +171,7 @@ module Sensu
           body ""
         end
 
-        def read_data(rules={}, &callback)
+        def read_data(rules={})
           begin
             data = MultiJson.load(env["rack.input"].read)
             valid = rules.all? do |key, rule|
@@ -181,7 +181,7 @@ module Sensu
                 (rule[:regex] && (value =~ rule[:regex]) == 0)
             end
             if valid
-              callback.call(data)
+              yield(data)
             else
               bad_request!
             end
@@ -210,7 +210,7 @@ module Sensu
           end
         end
 
-        def transport_info(&callback)
+        def transport_info
           info = {
             :keepalives => {
               :messages => nil,
@@ -227,11 +227,11 @@ module Sensu
               info[:keepalives] = stats
               settings.transport.stats("results") do |stats|
                 info[:results] = stats
-                callback.call(info)
+                yield(info)
               end
             end
           else
-            callback.call(info)
+            yield(info)
           end
         end
 

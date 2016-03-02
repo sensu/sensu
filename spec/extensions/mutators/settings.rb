@@ -9,8 +9,8 @@ module Sensu
         'tests the loaded settings hash'
       end
 
-      def run(event, &block)
-        block.call(settings.has_key?(:handlers).to_s, 0)
+      def run(event)
+        yield(settings.has_key?(:handlers).to_s, 0)
       end
     end
   end

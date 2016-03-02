@@ -18,7 +18,7 @@ module Sensu
         }
       end
 
-      def run(&block)
+      def run
         cpu_times = Process.times
         metrics = {
           :cpu => {
@@ -26,7 +26,7 @@ module Sensu
             :system => cpu_times.stime
           }
         }
-        block.call(MultiJson.dump(metrics), 0)
+        yield(MultiJson.dump(metrics), 0)
       end
     end
   end

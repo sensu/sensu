@@ -13,6 +13,12 @@ module Sensu
 
       attr_reader :is_leader, :handling_event_count
 
+      METRIC_CHECK_TYPE = "metric".freeze
+
+      EVENT_FLAPPING_ACTION = "flapping".freeze
+
+      DEFAULT_HANDLER_NAME = "default".freeze
+
       # Create an instance of the Sensu server process, start the
       # server within the EventMachine event loop, and set up server
       # process signal traps (for stopping).
@@ -105,11 +111,12 @@ module Sensu
       # used for the stored client data.
       #
       # @param client [Hash]
-      # @param callback [Proc] to call with the success status
-      # (true/false) indicating if the client data has been added to
-      # (or updated) the registry or discarded due to client signature
-      # mismatch.
-      def update_client_registry(client, &callback)
+      # @yield [success] passes success status to optional
+      #   callback/block.
+      # @yieldparam success [TrueClass,FalseClass] indicating if the
+      #   client registry update was a success or the client data was
+      #   discarded due to client signature mismatch.
+      def update_client_registry(client)
         @logger.debug("updating client registry", :client => client)
         client_key = "client:#{client[:name]}"
         signature_key = "#{client_key}:signature"
@@ -122,7 +129,7 @@ module Sensu
             if signature.empty? || (client[:signature] == signature)
               @redis.set(client_key, MultiJson.dump(client)) do
                 @redis.sadd("clients", client[:name]) do
-                  callback.call(true) if callback
+                  yield(true) if block_given?
                 end
               end
             else
@@ -131,7 +138,7 @@ module Sensu
                 :signature => signature
               })
               @logger.warn("not updating client in the registry", :client => client)
-              callback.call(false) if callback
+              yield(false) if block_given?
             end
           end
         end
@@ -218,9 +225,9 @@ module Sensu
       #
       # @param event [Hash]
       def process_event(event)
-        log_level = event[:check][:type] == "metric" ? :debug : :info
+        log_level = event[:check][:type] == METRIC_CHECK_TYPE ? :debug : :info
         @logger.send(log_level, "processing event", :event => event)
-        handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || "default")
+        handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || DEFAULT_HANDLER_NAME)
         handlers = derive_handlers(handler_list)
         handlers.each do |handler|
           @handling_event_count += 1
@@ -291,7 +298,7 @@ module Sensu
       # @return [Hash] check with truncated output.
       def truncate_check_output(check)
         case check[:type]
-        when "metric"
+        when METRIC_CHECK_TYPE
           output_lines = check[:output].split("\n")
           output = output_lines.first || check[:output]
           if output_lines.size > 1 || output.length > 255
@@ -312,9 +319,9 @@ module Sensu
       #
       # @param client [Hash]
       # @param check [Hash]
-      # @param callback [Proc] to call when the check result data has
-      #   been stored (history, etc).
-      def store_check_result(client, check, &callback)
+      # @yield [] callback/block called after the check data has been
+      # stored (history, etc).
+      def store_check_result(client, check)
         @logger.debug("storing check result", :check => check)
         @redis.sadd("result:#{client[:name]}", check[:name])
         result_key = "#{client[:name]}:#{check[:name]}"
@@ -323,7 +330,7 @@ module Sensu
           history_key = "history:#{result_key}"
           @redis.rpush(history_key, check[:status]) do
             @redis.ltrim(history_key, -21, -1)
-            callback.call
+            yield
           end
         end
       end
@@ -337,9 +344,14 @@ module Sensu
       #
       # @param client [Hash]
       # @param check [Hash]
-      # @param callback [Proc] to be called with the check history and
-      #   total state change value.
-      def check_history(client, check, &callback)
+      # @yield [history, total_state_change] callback/block to call
+      #   with the check history and calculated total state change
+      #   value.
+      # @yieldparam history [Array] containing the last 21 check
+      #   result exit status codes.
+      # @yieldparam total_state_change [Float] percentage for the
+      #   check history (exit status codes).
+      def check_history(client, check)
         history_key = "history:#{client[:name]}:#{check[:name]}"
         @redis.lrange(history_key, -21, -1) do |history|
           total_state_change = 0
@@ -356,7 +368,7 @@ module Sensu
             end
             total_state_change = (state_changes.fdiv(20) * 100).to_i
           end
-          callback.call(history, total_state_change)
+          yield(history, total_state_change)
         end
       end
 
@@ -380,7 +392,7 @@ module Sensu
       # @return [TrueClass, FalseClass]
       def check_flapping?(stored_event, check)
         if check.has_key?(:low_flap_threshold) && check.has_key?(:high_flap_threshold)
-          was_flapping = stored_event && stored_event[:action] == "flapping"
+          was_flapping = stored_event && stored_event[:action] == EVENT_FLAPPING_ACTION
           if was_flapping
             check[:total_state_change] > check[:low_flap_threshold]
           else
@@ -409,10 +421,11 @@ module Sensu
       #
       # @param client [Hash]
       # @param check [Hash]
-      # @param callback [Proc] to be called with the resulting event
-      #   data if the event registry is updated, or the check is of
-      #   type `:metric`.
-      def update_event_registry(client, check, &callback)
+      # @yield callback [event] callback/block called with the
+      #   resulting event data if the event registry is updated, or
+      #   the check is of type `:metric`.
+      # @yieldparam event [Hash]
+      def update_event_registry(client, check)
         @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
           stored_event = event_json ? MultiJson.load(event_json) : nil
           flapping = check_flapping?(stored_event, check)
@@ -429,18 +442,18 @@ module Sensu
               event[:occurrences] = stored_event[:occurrences] + 1
             end
             @redis.hset("events:#{client[:name]}", check[:name], MultiJson.dump(event)) do
-              callback.call(event)
+              yield(event)
             end
           elsif stored_event
             event[:occurrences] = stored_event[:occurrences]
             event[:action] = :resolve
             unless check[:auto_resolve] == false && !check[:force_resolve]
               @redis.hdel("events:#{client[:name]}", check[:name]) do
-                callback.call(event)
+                yield(event)
               end
             end
-          elsif check[:type] == "metric"
-            callback.call(event)
+          elsif check[:type] == METRIC_CHECK_TYPE
+            yield(event)
           end
           event_bridges(event)
         end
@@ -454,9 +467,10 @@ module Sensu
       # `false`.
       #
       # @param name [Hash] to use for the client.
-      # @param callback [Proc] to be called with the dynamically
-      #   created client data.
-      def create_client(name, &callback)
+      # @yield [client] callback/block to be called with the
+      #   dynamically created client data.
+      # @yieldparam client [Hash]
+      def create_client(name)
         client = {
           :name => name,
           :address => "unknown",
@@ -465,7 +479,7 @@ module Sensu
           :version => VERSION
         }
         update_client_registry(client) do
-          callback.call(client)
+          yield(client)
         end
       end
 
@@ -477,16 +491,17 @@ module Sensu
       # result must have a matching signature or it is discarded.
       #
       # @param result [Hash] data.
-      # @param callback [Proc] to be called with client data, either
-      #   retrieved from Redis, or dynamically created.
-      def retrieve_client(result, &callback)
+      # @yield [client] callback/block to be called with client data,
+      #   either retrieved from Redis, or dynamically created.
+      # @yieldparam client [Hash]
+      def retrieve_client(result)
         client_key = result[:check][:source] || result[:client]
         @redis.get("client:#{client_key}") do |client_json|
           unless client_json.nil?
             client = MultiJson.load(client_json)
             if client[:signature]
               if client[:signature] == result[:signature]
-                callback.call(client)
+                yield(client)
               else
                 @logger.warn("invalid check result signature", {
                   :result => result,
@@ -495,10 +510,12 @@ module Sensu
                 @logger.warn("not retrieving client from the registry", :result => result)
               end
             else
-              callback.call(client)
+              yield(client)
             end
           else
-            create_client(client_key, &callback)
+            create_client(client_key) do |client|
+              yield(client)
+            end
           end
         end
       end
@@ -1014,15 +1031,15 @@ module Sensu
       # is complete, when it is equal to `0`. The provided callback is
       # called when handling is complete.
       #
-      # @param callback [Proc] to call when event handling is
+      # @yield [] callback/block to call when event handling is
       #   complete.
-      def complete_event_handling(&callback)
+      def complete_event_handling
         @logger.info("completing event handling in progress", {
           :handling_event_count => @handling_event_count
         })
         retry_until_true do
           if @handling_event_count == 0
-            callback.call
+            yield
             true
           end
         end
