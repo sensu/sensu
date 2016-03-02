@@ -1,3 +1,15 @@
+## 0.22.1 - 2016-03-01
+
+### Other
+
+Performance improvements. Using frozen constants for common values and
+comparisons. Reduced the use of block arguments for callbacks.
+
+Improved RabbitMQ transport channel error handling.
+
+Fixed client signatures inspection/comparison when upgrading from a
+previous release.
+
 ## 0.22.0 - 2016-01-29
 
 ### Features
