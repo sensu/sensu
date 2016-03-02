@@ -123,10 +123,10 @@ module Sensu
         @redis.setnx(signature_key, client[:signature]) do |created|
           process_client_registration(client) if created
           @redis.get(signature_key) do |signature|
-            if signature.empty? && client[:signature]
+            if (signature.nil? || signature.empty?) && client[:signature]
               @redis.set(signature_key, client[:signature])
             end
-            if signature.empty? || (client[:signature] == signature)
+            if signature.nil? || signature.empty? || (client[:signature] == signature)
               @redis.set(client_key, MultiJson.dump(client)) do
                 @redis.sadd("clients", client[:name]) do
                   yield(true) if block_given?
