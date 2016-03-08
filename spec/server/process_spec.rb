@@ -200,6 +200,37 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can not resolve events when provided the option" do
+    async_wrapper do
+      @server.setup_redis
+      redis.flushdb do
+        client = client_template
+        redis.set("client:i-424242", MultiJson.dump(client)) do
+          result = result_template
+          result[:check][:auto_resolve] = false
+          @server.process_check_result(result)
+          timer(1) do
+            redis.hget("events:i-424242", "test") do |event_json|
+              event = MultiJson.load(event_json)
+              expect(event[:action]).to eq("create")
+              expect(event[:occurrences]).to eq(1)
+              result[:check][:status] = 0
+              timer(1) do
+                redis.hget("events:i-424242", "test") do |event_json|
+                  event = MultiJson.load(event_json)
+                  expect(event[:action]).to eq("create")
+                  expect(event[:occurrences]).to eq(1)
+                  expect(event[:check][:status]).to eq(1)
+                  async_done
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can consume results" do
     async_wrapper(30) do
       @server.setup_transport
