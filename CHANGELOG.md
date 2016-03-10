@@ -1,3 +1,16 @@
+## 0.22.2 - 2016-03-16
+
+### Fixes
+
+FFI library loading no longer causes a load error on AIX & Solaris.
+
+### Other
+
+Removed unused cruft from extension API `run()` and `safe_run()`. Optional
+`options={}` was never implemented in Sensu Core and event data `dup()`
+never provided the necessary protection that it claimed (only top level
+hash object).
+
 ## 0.22.1 - 2016-03-01
 
 ### Other
