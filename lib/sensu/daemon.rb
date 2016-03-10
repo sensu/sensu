@@ -5,10 +5,10 @@ gem "eventmachine", "1.0.9.1"
 
 gem "sensu-logger", "1.1.0"
 gem "sensu-settings", "3.3.0"
-gem "sensu-extension", "1.3.0"
+gem "sensu-extension", "1.5.0"
 gem "sensu-extensions", "1.4.0"
 gem "sensu-transport", "4.0.0"
-gem "sensu-spawn", "1.7.0"
+gem "sensu-spawn", "1.8.0"
 
 require "time"
 require "uri"
