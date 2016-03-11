@@ -19,7 +19,7 @@ module Helpers
   end
 
   def setup_redis
-    @redis = EM::Protocols::Redis.connect
+    @redis = Sensu::Redis.connect
   end
 
   def redis

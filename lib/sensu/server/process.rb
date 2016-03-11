@@ -127,10 +127,11 @@ module Sensu
               @redis.set(signature_key, client[:signature])
             end
             if signature.nil? || signature.empty? || (client[:signature] == signature)
-              @redis.set(client_key, MultiJson.dump(client)) do
-                @redis.sadd("clients", client[:name]) do
-                  yield(true) if block_given?
-                end
+              @redis.multi
+              @redis.set(client_key, MultiJson.dump(client))
+              @redis.sadd("clients", client[:name])
+              @redis.exec do
+                yield(true) if block_given?
               end
             else
               @logger.warn("invalid client signature", {
@@ -274,19 +275,17 @@ module Sensu
         })
         result_set = "#{check[:name]}:#{check[:issued]}"
         result_data = MultiJson.dump(:output => check[:output], :status => check[:status])
-        @redis.hset("aggregation:#{result_set}", client[:name], result_data) do
-          SEVERITIES.each do |severity|
-            @redis.hsetnx("aggregate:#{result_set}", severity, 0)
-          end
-          severity = (SEVERITIES[check[:status]] || "unknown")
-          @redis.hincrby("aggregate:#{result_set}", severity, 1) do
-            @redis.hincrby("aggregate:#{result_set}", "total", 1) do
-              @redis.sadd("aggregates:#{check[:name]}", check[:issued]) do
-                @redis.sadd("aggregates", check[:name])
-              end
-            end
-          end
+        @redis.multi
+        @redis.hset("aggregation:#{result_set}", client[:name], result_data)
+        SEVERITIES.each do |severity|
+          @redis.hsetnx("aggregate:#{result_set}", severity, 0)
         end
+        severity = (SEVERITIES[check[:status]] || "unknown")
+        @redis.hincrby("aggregate:#{result_set}", severity, 1)
+        @redis.hincrby("aggregate:#{result_set}", "total", 1)
+        @redis.sadd("aggregates:#{check[:name]}", check[:issued])
+        @redis.sadd("aggregates", check[:name])
+        @redis.exec
       end
 
       # Truncate check output. For metric checks, (`"type":
@@ -323,15 +322,16 @@ module Sensu
       # stored (history, etc).
       def store_check_result(client, check)
         @logger.debug("storing check result", :check => check)
-        @redis.sadd("result:#{client[:name]}", check[:name])
         result_key = "#{client[:name]}:#{check[:name]}"
+        history_key = "history:#{result_key}"
         check_truncated = truncate_check_output(check)
-        @redis.set("result:#{result_key}", MultiJson.dump(check_truncated)) do
-          history_key = "history:#{result_key}"
-          @redis.rpush(history_key, check[:status]) do
-            @redis.ltrim(history_key, -21, -1)
-            yield
-          end
+        @redis.multi
+        @redis.sadd("result:#{client[:name]}", check[:name])
+        @redis.set("result:#{result_key}", MultiJson.dump(check_truncated))
+        @redis.rpush(history_key, check[:status])
+        @redis.ltrim(history_key, -21, -1)
+        @redis.exec do
+          yield
         end
       end
 
@@ -848,18 +848,18 @@ module Sensu
               if aggregates.size > 20
                 aggregates.sort!
                 aggregates.take(aggregates.size - 20).each do |check_issued|
-                  @redis.srem("aggregates:#{check_name}", check_issued) do
-                    result_set = "#{check_name}:#{check_issued}"
-                    @redis.del("aggregate:#{result_set}") do
-                      @redis.del("aggregation:#{result_set}") do
-                        @logger.debug("pruned aggregation", {
-                          :check => {
-                            :name => check_name,
-                            :issued => check_issued
-                          }
-                        })
-                      end
-                    end
+                  result_set = "#{check_name}:#{check_issued}"
+                  @redis.multi
+                  @redis.srem("aggregates:#{check_name}", check_issued)
+                  @redis.del("aggregate:#{result_set}")
+                  @redis.del("aggregation:#{result_set}")
+                  @redis.exec do
+                    @logger.debug("pruned aggregation", {
+                      :check => {
+                        :name => check_name,
+                        :issued => check_issued
+                      }
+                    })
                   end
                 end
               end
