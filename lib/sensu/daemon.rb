@@ -9,7 +9,7 @@ gem "sensu-extension", "1.5.0"
 gem "sensu-extensions", "1.4.0"
 gem "sensu-transport", "4.0.0"
 gem "sensu-spawn", "1.8.0"
-gem "sensu-redis", "0.1.8"
+gem "sensu-redis", "0.1.16"
 
 require "time"
 require "uri"
@@ -213,20 +213,23 @@ module Sensu
     # creates the Redis instance variable: `@redis`.
     def setup_redis
       @logger.debug("connecting to redis", :settings => @settings[:redis])
-      @redis = Redis.connect(@settings[:redis])
-      @redis.on_error do |error|
-        @logger.fatal("redis connection error", :error => error.to_s)
-        stop
-      end
-      @redis.before_reconnect do
-        unless testing?
-          @logger.warn("reconnecting to redis")
-          pause
+      Redis.connect(@settings[:redis]) do |connection|
+        @redis = connection
+        @redis.on_error do |error|
+          @logger.fatal("redis connection error", :error => error.to_s)
+          @redis.reconnect!
         end
-      end
-      @redis.after_reconnect do
-        @logger.info("reconnected to redis")
-        resume
+        @redis.before_reconnect do
+          unless testing?
+            @logger.warn("reconnecting to redis")
+            pause
+          end
+        end
+        @redis.after_reconnect do
+          @logger.info("reconnected to redis")
+          resume
+        end
+        yield if block_given?
       end
     end
 
