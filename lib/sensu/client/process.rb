@@ -373,6 +373,23 @@ module Sensu
         end
       end
 
+      # Sends a deregister event to be processed by sensu server
+      def send_deregister_event
+        if @settings[:client][:deregister_handler].nil?
+          @logger.warn("deregister enabled but no handler passed, not sending event")
+        else
+          @logger.info("sending deregister event to #{@settings[:client][:deregister_handler]}")
+          check = {
+            :name => 'deregister',
+            :output => 'delete client as a result of clean shutdown',
+            :process => 'init',
+            :status => 1,
+            :handler => @settings[:client][:deregister_handler]
+          }
+          publish_check_result(check)
+        end
+      end
+
       # Close the Sensu client TCP and UDP sockets. This method
       # iterates through `@sockets`, which contains socket server
       # signatures (Fixnum) and connection objects. A signature
@@ -448,9 +465,11 @@ module Sensu
       # Stop the Sensu client process, pausing it, completing check
       # executions in progress, closing the transport connection, and
       # exiting the process (exit 0). After pausing the process, the
-      # process/daemon `@state` is set to `:stopping`.
+      # process/daemon `@state` is set to `:stopping`.  Also sends
+      # deregister event if configured to do so.
       def stop
         @logger.warn("stopping")
+        send_deregister_event if @settings[:client][:deregister] == true
         pause
         @state = :stopping
         complete_checks_in_progress do
