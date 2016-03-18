@@ -43,6 +43,12 @@ module Sensu
         @handling_event_count = 0
       end
 
+      # Set up the Redis and Transport connection objects, `@redis`
+      # and `@transport`. This method "drys" up many instances of
+      # `setup_redis()` and `setup_transport()`.
+      #
+      # @yield callback/block called after connecting to Redis and the
+      #   Sensu Transport.
       def setup_connections
         setup_redis do
           setup_transport do
