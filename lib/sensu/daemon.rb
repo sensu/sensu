@@ -177,6 +177,9 @@ module Sensu
     # method creates the transport instance variable: `@transport`.
     #
     # https://github.com/sensu/sensu-transport
+    #
+    # @yield [Object] passes initialized and connected Transport
+    #   connection object to the callback/block.
     def setup_transport
       transport_name = @settings[:transport][:name]
       transport_settings = @settings[transport_name]
@@ -214,6 +217,11 @@ module Sensu
     # service will stop gracefully in the event of a Redis error, and
     # pause/resume in the event of connectivity issues. This method
     # creates the Redis instance variable: `@redis`.
+    #
+    # https://github.com/sensu/sensu-redis
+    #
+    # @yield [Object] passes initialized and connected Redis
+    #   connection object to the callback/block.
     def setup_redis
       @logger.debug("connecting to redis", :settings => @settings[:redis])
       Redis.connect(@settings[:redis]) do |connection|
