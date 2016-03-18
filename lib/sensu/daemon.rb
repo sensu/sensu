@@ -7,9 +7,9 @@ gem "sensu-logger", "1.1.0"
 gem "sensu-settings", "3.3.0"
 gem "sensu-extension", "1.5.0"
 gem "sensu-extensions", "1.4.0"
-gem "sensu-transport", "4.0.0"
+gem "sensu-transport", "5.0.0"
 gem "sensu-spawn", "1.8.0"
-gem "sensu-redis", "0.1.16"
+gem "sensu-redis", "1.0.0"
 
 require "time"
 require "uri"
@@ -185,24 +185,27 @@ module Sensu
         :settings => transport_settings
       })
       Transport.logger = @logger
-      @transport = Transport.connect(transport_name, transport_settings)
-      @transport.on_error do |error|
-        @logger.fatal("transport connection error", :error => error.to_s)
-        if @settings[:transport][:reconnect_on_error]
-          @transport.reconnect
-        else
-          stop
+      Transport.connect(transport_name, transport_settings) do |connection|
+        @transport = connection
+        @transport.on_error do |error|
+          @logger.fatal("transport connection error", :error => error.to_s)
+          if @settings[:transport][:reconnect_on_error]
+            @transport.reconnect
+          else
+            stop
+          end
         end
-      end
-      @transport.before_reconnect do
-        unless testing?
-          @logger.warn("reconnecting to transport")
-          pause
+        @transport.before_reconnect do
+          unless testing?
+            @logger.warn("reconnecting to transport")
+            pause
+          end
         end
-      end
-      @transport.after_reconnect do
-        @logger.info("reconnected to transport")
-        resume
+        @transport.after_reconnect do
+          @logger.info("reconnected to transport")
+          resume
+        end
+        yield(@transport)
       end
     end
 
@@ -229,7 +232,7 @@ module Sensu
           @logger.info("reconnected to redis")
           resume
         end
-        yield if block_given?
+        yield(@redis) if block_given?
       end
     end
 

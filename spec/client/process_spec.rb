@@ -11,8 +11,8 @@ describe "Sensu::Client::Process" do
 
   it "can connect to the transport" do
     async_wrapper do
-      @client.setup_transport
-      timer(0.5) do
+      @client.setup_transport do |transport|
+        expect(transport.connected?).to eq(true)
         async_done
       end
     end
@@ -29,8 +29,9 @@ describe "Sensu::Client::Process" do
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        @client.publish_keepalive
+        @client.setup_transport do
+          @client.publish_keepalive
+        end
       end
     end
   end
@@ -43,8 +44,9 @@ describe "Sensu::Client::Process" do
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        @client.publish_keepalive
+        @client.setup_transport do
+          @client.publish_keepalive
+        end
       end
     end
   end
@@ -58,9 +60,10 @@ describe "Sensu::Client::Process" do
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        check = result_template[:check]
-        @client.publish_check_result(check)
+        @client.setup_transport do
+          check = result_template[:check]
+          @client.publish_check_result(check)
+        end
       end
     end
   end
@@ -75,8 +78,9 @@ describe "Sensu::Client::Process" do
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        @client.execute_check_command(check_template)
+        @client.setup_transport do
+          @client.execute_check_command(check_template)
+        end
       end
     end
   end
@@ -90,13 +94,14 @@ describe "Sensu::Client::Process" do
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        check = check_template
-        command = "echo :::nested.attribute|default::: :::missing|default:::"
-        command << " :::missing|::: :::nested.attribute:::::::nested.attribute:::"
-        command << " :::empty|localhost::: :::empty.hash|localhost:8080:::"
-        check[:command] = command
-        @client.execute_check_command(check)
+        @client.setup_transport do
+          check = check_template
+          command = "echo :::nested.attribute|default::: :::missing|default:::"
+          command << " :::missing|::: :::nested.attribute:::::::nested.attribute:::"
+          command << " :::empty|localhost::: :::empty.hash|localhost:8080:::"
+          check[:command] = command
+          @client.execute_check_command(check)
+        end
       end
     end
   end
@@ -110,10 +115,11 @@ describe "Sensu::Client::Process" do
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        check = check_template
-        check[:command] = "echo :::nonexistent::: :::noexistent.hash::: :::empty.hash:::"
-        @client.execute_check_command(check)
+        @client.setup_transport do
+          check = check_template
+          check[:command] = "echo :::nonexistent::: :::noexistent.hash::: :::empty.hash:::"
+          @client.execute_check_command(check)
+        end
       end
     end
   end
@@ -128,9 +134,10 @@ describe "Sensu::Client::Process" do
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        check = {:name => "sensu_gc_metrics"}
-        @client.run_check_extension(check)
+        @client.setup_transport do
+          check = {:name => "sensu_gc_metrics"}
+          @client.run_check_extension(check)
+        end
       end
     end
   end
@@ -145,10 +152,11 @@ describe "Sensu::Client::Process" do
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        @client.setup_subscriptions
-        timer(1) do
-          transport.publish(:fanout, "test", MultiJson.dump(check_template))
+        @client.setup_transport do
+          @client.setup_subscriptions
+          timer(1) do
+            transport.publish(:fanout, "test", MultiJson.dump(check_template))
+          end
         end
       end
     end
@@ -164,10 +172,11 @@ describe "Sensu::Client::Process" do
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        @client.setup_subscriptions
-        timer(1) do
-          transport.publish(:direct, "roundrobin:test", MultiJson.dump(check_template))
+        @client.setup_transport do
+          @client.setup_subscriptions
+          timer(1) do
+            transport.publish(:direct, "roundrobin:test", MultiJson.dump(check_template))
+          end
         end
       end
     end
@@ -184,10 +193,11 @@ describe "Sensu::Client::Process" do
       end
       timer(0.5) do
         @client.safe_mode = true
-        @client.setup_transport
-        @client.setup_subscriptions
-        timer(1) do
-          transport.publish(:fanout, "test", MultiJson.dump(check_template))
+        @client.setup_transport do
+          @client.setup_subscriptions
+          timer(1) do
+            transport.publish(:fanout, "test", MultiJson.dump(check_template))
+          end
         end
       end
     end
@@ -208,8 +218,9 @@ describe "Sensu::Client::Process" do
         end
       end
       timer(0.5) do
-        @client.setup_transport
-        @client.setup_standalone
+        @client.setup_transport do
+          @client.setup_standalone
+        end
       end
     end
   end
@@ -225,26 +236,27 @@ describe "Sensu::Client::Process" do
 
   it "can accept external result input via sockets" do
     async_wrapper do
-      @client.setup_transport
-      @client.setup_sockets
-      expected = ["tcp", "udp"]
-      result_queue do |payload|
-        result = MultiJson.load(payload)
-        expect(result[:client]).to eq("i-424242")
-        expect(expected.delete(result[:check][:name])).not_to be_nil
-        if expected.empty?
-          async_done
+      @client.setup_transport do
+        @client.setup_sockets
+        expected = ["tcp", "udp"]
+        result_queue do |payload|
+          result = MultiJson.load(payload)
+          expect(result[:client]).to eq("i-424242")
+          expect(expected.delete(result[:check][:name])).not_to be_nil
+          if expected.empty?
+            async_done
+          end
         end
-      end
-      timer(1) do
-        EM::connect("127.0.0.1", 3030, nil) do |socket|
-          socket.send_data('{"name": "tcp", "output": "tcp", "status": 1}')
-          socket.close_connection_after_writing
-        end
-        EM::open_datagram_socket("127.0.0.1", 0, nil) do |socket|
-          data = '{"name": "udp", "output": "udp", "status": 1}'
-          socket.send_datagram(data, "127.0.0.1", 3030)
-          socket.close_connection_after_writing
+        timer(1) do
+          EM::connect("127.0.0.1", 3030, nil) do |socket|
+            socket.send_data('{"name": "tcp", "output": "tcp", "status": 1}')
+            socket.close_connection_after_writing
+          end
+          EM::open_datagram_socket("127.0.0.1", 0, nil) do |socket|
+            data = '{"name": "udp", "output": "udp", "status": 1}'
+            socket.send_datagram(data, "127.0.0.1", 3030)
+            socket.close_connection_after_writing
+          end
         end
       end
     end

@@ -693,16 +693,17 @@ describe "Sensu::API::Process" do
   it "can provide a list of aggregates" do
     api_test do
       server = Sensu::Server::Process.new(options)
-      server.setup_redis
-      server.aggregate_check_result(client_template, check_template)
-      timer(1) do
-        api_request("/aggregates") do |http, body|
-          expect(body).to be_kind_of(Array)
-          test_aggregate = Proc.new do |aggregate|
-            aggregate[:check] == "test"
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          api_request("/aggregates") do |http, body|
+            expect(body).to be_kind_of(Array)
+            test_aggregate = Proc.new do |aggregate|
+              aggregate[:check] == "test"
+            end
+            expect(body).to contain(test_aggregate)
+            async_done
           end
-          expect(body).to contain(test_aggregate)
-          async_done
         end
       end
     end
@@ -711,23 +712,24 @@ describe "Sensu::API::Process" do
   it "can provide an aggregate list" do
     api_test do
       server = Sensu::Server::Process.new(options)
-      server.setup_redis
-      timestamp = epoch
-      3.times do |index|
-        check = check_template
-        check[:issued] = timestamp + index
-        server.aggregate_check_result(client_template, check)
-      end
-      timer(1) do
-        api_request("/aggregates/test") do |http, body|
-          expect(body).to be_kind_of(Array)
-          expect(body.size).to eq(3)
-          expect(body).to include(timestamp)
-          api_request("/aggregates/test?limit=1") do |http, body|
-            expect(body.size).to eq(1)
-            api_request("/aggregates/test?limit=1&age=30") do |http, body|
-              expect(body).to be_empty
-              async_done
+      server.setup_redis do
+        timestamp = epoch
+        3.times do |index|
+          check = check_template
+          check[:issued] = timestamp + index
+          server.aggregate_check_result(client_template, check)
+        end
+        timer(1) do
+          api_request("/aggregates/test") do |http, body|
+            expect(body).to be_kind_of(Array)
+            expect(body.size).to eq(3)
+            expect(body).to include(timestamp)
+            api_request("/aggregates/test?limit=1") do |http, body|
+              expect(body.size).to eq(1)
+              api_request("/aggregates/test?limit=1&age=30") do |http, body|
+                expect(body).to be_empty
+                async_done
+              end
             end
           end
         end
@@ -738,15 +740,16 @@ describe "Sensu::API::Process" do
   it "can delete aggregates" do
     api_test do
       server = Sensu::Server::Process.new(options)
-      server.setup_redis
-      server.aggregate_check_result(client_template, check_template)
-      timer(1) do
-        api_request("/aggregates/test", :delete) do |http, body|
-          expect(http.response_header.status).to eq(204)
-          expect(body).to be_empty
-          redis.sismember("aggregates", "test") do |exists|
-            expect(exists).to be(false)
-            async_done
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          api_request("/aggregates/test", :delete) do |http, body|
+            expect(http.response_header.status).to eq(204)
+            expect(body).to be_empty
+            redis.sismember("aggregates", "test") do |exists|
+              expect(exists).to be(false)
+              async_done
+            end
           end
         end
       end
@@ -766,30 +769,31 @@ describe "Sensu::API::Process" do
   it "can provide a specific aggregate with parameters" do
     api_test do
       server = Sensu::Server::Process.new(options)
-      server.setup_redis
-      check = check_template
-      timestamp = epoch
-      check[:issued] = timestamp
-      server.aggregate_check_result(client_template, check)
-      timer(1) do
-        parameters = "?results=true&summarize=output"
-        api_request("/aggregates/test/#{timestamp}#{parameters}") do |http, body|
-          expect(http.response_header.status).to eq(200)
-          expect(body).to be_kind_of(Hash)
-          expect(body[:ok]).to eq(0)
-          expect(body[:warning]).to eq(1)
-          expect(body[:critical]).to eq(0)
-          expect(body[:unknown]).to eq(0)
-          expect(body[:total]).to eq(1)
-          expect(body[:results]).to be_kind_of(Array)
-          expect(body[:results].size).to eq(1)
-          expect(body[:results][0][:client]).to eq("i-424242")
-          expect(body[:results][0][:output]).to eq("WARNING")
-          expect(body[:results][0][:status]).to eq(1)
-          expect(body[:outputs]).to be_kind_of(Hash)
-          expect(body[:outputs].size).to eq(1)
-          expect(body[:outputs][:"WARNING"]).to eq(1)
-          async_done
+      server.setup_redis do
+        check = check_template
+        timestamp = epoch
+        check[:issued] = timestamp
+        server.aggregate_check_result(client_template, check)
+        timer(1) do
+          parameters = "?results=true&summarize=output"
+          api_request("/aggregates/test/#{timestamp}#{parameters}") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Hash)
+            expect(body[:ok]).to eq(0)
+            expect(body[:warning]).to eq(1)
+            expect(body[:critical]).to eq(0)
+            expect(body[:unknown]).to eq(0)
+            expect(body[:total]).to eq(1)
+            expect(body[:results]).to be_kind_of(Array)
+            expect(body[:results].size).to eq(1)
+            expect(body[:results][0][:client]).to eq("i-424242")
+            expect(body[:results][0][:output]).to eq("WARNING")
+            expect(body[:results][0][:status]).to eq(1)
+            expect(body[:outputs]).to be_kind_of(Hash)
+            expect(body[:outputs].size).to eq(1)
+            expect(body[:outputs][:"WARNING"]).to eq(1)
+            async_done
+          end
         end
       end
     end

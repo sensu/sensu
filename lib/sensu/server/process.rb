@@ -43,6 +43,14 @@ module Sensu
         @handling_event_count = 0
       end
 
+      def setup_connections
+        setup_redis do
+          setup_transport do
+            yield
+          end
+        end
+      end
+
       # Create a registration check definition for a client. Client
       # definitions may contain `:registration` configuration,
       # containing custom attributes and handler information. By
@@ -1059,8 +1067,7 @@ module Sensu
       # Start the Sensu server process, connecting to Redis, the
       # transport, and calling the `bootstrap()` method.
       def start
-        setup_redis do
-          setup_transport
+        setup_connections do
           bootstrap
         end
       end
