@@ -54,8 +54,9 @@ describe "Sensu::Server::Handle" do
         async_done
       end
       timer(0.5) do
-        @server.setup_transport
-        @server.handle_event(@handlers[:transport], @event_data)
+        @server.setup_transport do
+          @server.handle_event(@handlers[:transport], @event_data)
+        end
       end
     end
   end

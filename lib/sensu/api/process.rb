@@ -22,17 +22,20 @@ module Sensu
           bootstrap(options)
           setup_process(options)
           EM::run do
-            start
-            setup_signal_traps
+            setup_connections do
+              start
+              setup_signal_traps
+            end
           end
         end
 
-        def on_reactor_run
-          EM::next_tick do
-            setup_redis
-            set :redis, @redis
-            setup_transport
-            set :transport, @transport
+        def setup_connections
+          setup_redis do |redis|
+            set :redis, redis
+            setup_transport do |transport|
+              set :transport, transport
+              yield if block_given?
+            end
           end
         end
 
@@ -49,8 +52,6 @@ module Sensu
             "Credentials" => "true",
             "Headers" => "Origin, X-Requested-With, Content-Type, Accept, Authorization"
           }
-          on_reactor_run
-          self
         end
 
         def start_server
@@ -83,15 +84,18 @@ module Sensu
         def stop
           @logger.warn("stopping")
           stop_server do
-            @redis.close
-            @transport.close
+            settings.redis.close
+            settings.transport.close
             super
           end
         end
 
         def test(options={})
           bootstrap(options)
-          start
+          setup_connections do
+            start
+            yield
+          end
         end
       end
 

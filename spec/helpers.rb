@@ -19,7 +19,7 @@ module Helpers
   end
 
   def setup_redis
-    @redis = EM::Protocols::Redis.connect
+    @redis = EM.connect("127.0.0.1", 6379, Sensu::Redis::Client)
   end
 
   def redis
@@ -27,7 +27,9 @@ module Helpers
   end
 
   def setup_transport
-    @transport = Sensu::Transport.connect("rabbitmq", {})
+    @transport = Sensu::Transport::RabbitMQ.new
+    @transport.connect
+    @transport
   end
 
   def transport
@@ -68,8 +70,7 @@ module Helpers
 
   def api_test(&callback)
     async_wrapper do
-      Sensu::API::Process.test(options)
-      timer(0.5) do
+      Sensu::API::Process.test(options) do
         callback.call
       end
     end

@@ -7,8 +7,9 @@ gem "sensu-logger", "1.1.0"
 gem "sensu-settings", "3.3.0"
 gem "sensu-extension", "1.5.0"
 gem "sensu-extensions", "1.4.0"
-gem "sensu-transport", "4.0.0"
+gem "sensu-transport", "5.0.0"
 gem "sensu-spawn", "1.8.0"
+gem "sensu-redis", "1.2.0"
 
 require "time"
 require "uri"
@@ -176,6 +177,9 @@ module Sensu
     # method creates the transport instance variable: `@transport`.
     #
     # https://github.com/sensu/sensu-transport
+    #
+    # @yield [Object] passes initialized and connected Transport
+    #   connection object to the callback/block.
     def setup_transport
       transport_name = @settings[:transport][:name]
       transport_settings = @settings[transport_name]
@@ -184,24 +188,27 @@ module Sensu
         :settings => transport_settings
       })
       Transport.logger = @logger
-      @transport = Transport.connect(transport_name, transport_settings)
-      @transport.on_error do |error|
-        @logger.fatal("transport connection error", :error => error.to_s)
-        if @settings[:transport][:reconnect_on_error]
-          @transport.reconnect
-        else
-          stop
+      Transport.connect(transport_name, transport_settings) do |connection|
+        @transport = connection
+        @transport.on_error do |error|
+          @logger.error("transport connection error", :error => error.to_s)
+          if @settings[:transport][:reconnect_on_error]
+            @transport.reconnect
+          else
+            stop
+          end
         end
-      end
-      @transport.before_reconnect do
-        unless testing?
-          @logger.warn("reconnecting to transport")
-          pause
+        @transport.before_reconnect do
+          unless testing?
+            @logger.warn("reconnecting to transport")
+            pause
+          end
         end
-      end
-      @transport.after_reconnect do
-        @logger.info("reconnected to transport")
-        resume
+        @transport.after_reconnect do
+          @logger.info("reconnected to transport")
+          resume
+        end
+        yield(@transport)
       end
     end
 
@@ -210,22 +217,29 @@ module Sensu
     # service will stop gracefully in the event of a Redis error, and
     # pause/resume in the event of connectivity issues. This method
     # creates the Redis instance variable: `@redis`.
+    #
+    # https://github.com/sensu/sensu-redis
+    #
+    # @yield [Object] passes initialized and connected Redis
+    #   connection object to the callback/block.
     def setup_redis
       @logger.debug("connecting to redis", :settings => @settings[:redis])
-      @redis = Redis.connect(@settings[:redis])
-      @redis.on_error do |error|
-        @logger.fatal("redis connection error", :error => error.to_s)
-        stop
-      end
-      @redis.before_reconnect do
-        unless testing?
-          @logger.warn("reconnecting to redis")
-          pause
+      Redis.connect(@settings[:redis]) do |connection|
+        @redis = connection
+        @redis.on_error do |error|
+          @logger.error("redis connection error", :error => error.to_s)
         end
-      end
-      @redis.after_reconnect do
-        @logger.info("reconnected to redis")
-        resume
+        @redis.before_reconnect do
+          unless testing?
+            @logger.warn("reconnecting to redis")
+            pause
+          end
+        end
+        @redis.after_reconnect do
+          @logger.info("reconnected to redis")
+          resume
+        end
+        yield(@redis)
       end
     end
 

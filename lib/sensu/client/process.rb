@@ -412,9 +412,10 @@ module Sensu
       # transport connection, the sockets, and calling the
       # `bootstrap()` method.
       def start
-        setup_transport
-        setup_sockets
-        bootstrap
+        setup_transport do
+          setup_sockets
+          bootstrap
+        end
       end
 
       # Pause the Sensu client process, unless it is being paused or
