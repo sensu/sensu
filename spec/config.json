@@ -1,9 +1,4 @@
 {
-  "redis": {
-    "sentinels": [
-        {"port": 26379}
-    ]
-  },
   "api": {
     "user": "foo",
     "password": "bar"
