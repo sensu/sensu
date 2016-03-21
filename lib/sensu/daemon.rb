@@ -240,7 +240,7 @@ module Sensu
           @logger.info("reconnected to redis")
           resume
         end
-        yield(@redis) if block_given?
+        yield(@redis)
       end
     end
 
