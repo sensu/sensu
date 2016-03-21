@@ -9,7 +9,7 @@ gem "sensu-extension", "1.5.0"
 gem "sensu-extensions", "1.4.0"
 gem "sensu-transport", "5.0.0"
 gem "sensu-spawn", "1.8.0"
-gem "sensu-redis", "1.0.0"
+gem "sensu-redis", "1.2.0"
 
 require "time"
 require "uri"
@@ -191,7 +191,7 @@ module Sensu
       Transport.connect(transport_name, transport_settings) do |connection|
         @transport = connection
         @transport.on_error do |error|
-          @logger.fatal("transport connection error", :error => error.to_s)
+          @logger.error("transport connection error", :error => error.to_s)
           if @settings[:transport][:reconnect_on_error]
             @transport.reconnect
           else
@@ -227,8 +227,7 @@ module Sensu
       Redis.connect(@settings[:redis]) do |connection|
         @redis = connection
         @redis.on_error do |error|
-          @logger.fatal("redis connection error", :error => error.to_s)
-          @redis.reconnect!
+          @logger.error("redis connection error", :error => error.to_s)
         end
         @redis.before_reconnect do
           unless testing?
