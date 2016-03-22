@@ -167,7 +167,7 @@ module Sensu
         end
 
         def issued!
-          accepted!(MultiJson.dump(:issued => Time.now.to_i))
+          accepted!(Sensu::JSON.dump(:issued => Time.now.to_i))
         end
 
         def no_content!
@@ -177,7 +177,7 @@ module Sensu
 
         def read_data(rules={})
           begin
-            data = MultiJson.load(env["rack.input"].read)
+            data = Sensu::JSON.load(env["rack.input"].read)
             valid = rules.all? do |key, rule|
               value = data[key]
               (value.is_a?(rule[:type]) || (rule[:nil_ok] && value.nil?)) &&
@@ -189,7 +189,7 @@ module Sensu
             else
               bad_request!
             end
-          rescue MultiJson::ParseError
+          rescue Sensu::JSON::ParseError
             bad_request!
           end
         end
@@ -202,7 +202,7 @@ module Sensu
           limit = integer_parameter(params[:limit])
           offset = integer_parameter(params[:offset]) || 0
           unless limit.nil?
-            headers["X-Pagination"] = MultiJson.dump(
+            headers["X-Pagination"] = Sensu::JSON.dump(
               :limit => limit,
               :offset => offset,
               :total => items.length
@@ -248,7 +248,7 @@ module Sensu
             :check => check
           }
           settings.logger.info("publishing check result", :payload => payload)
-          settings.transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
+          settings.transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
             if info[:error]
               settings.logger.error("failed to publish check result", {
                 :payload => payload,
@@ -259,7 +259,7 @@ module Sensu
         end
 
         def resolve_event(event_json)
-          event = MultiJson.load(event_json)
+          event = Sensu::JSON.load(event_json)
           check = event[:check].merge(
             :output => "Resolving on request of the API",
             :status => 0,
@@ -286,7 +286,7 @@ module Sensu
             :subscribers => check[:subscribers]
           })
           check[:subscribers].each do |subscription|
-            options = transport_publish_options(subscription.to_s, MultiJson.dump(payload))
+            options = transport_publish_options(subscription.to_s, Sensu::JSON.dump(payload))
             settings.transport.publish(*options) do |info|
               if info[:error]
                 settings.logger.error("failed to publish check request", {
@@ -324,7 +324,7 @@ module Sensu
               :connected => settings.redis.connected?
             }
           }
-          body MultiJson.dump(response)
+          body Sensu::JSON.dump(response)
         end
       end
 
@@ -359,9 +359,9 @@ module Sensu
           data[:keepalives] = false
           data[:version] = VERSION
           data[:timestamp] = Time.now.to_i
-          settings.redis.set("client:#{data[:name]}", MultiJson.dump(data)) do
+          settings.redis.set("client:#{data[:name]}", Sensu::JSON.dump(data)) do
             settings.redis.sadd("clients", data[:name]) do
-              created!(MultiJson.dump(:name => data[:name]))
+              created!(Sensu::JSON.dump(:name => data[:name]))
             end
           end
         end
@@ -375,18 +375,18 @@ module Sensu
             clients.each_with_index do |client_name, index|
               settings.redis.get("client:#{client_name}") do |client_json|
                 unless client_json.nil?
-                  response << MultiJson.load(client_json)
+                  response << Sensu::JSON.load(client_json)
                 else
                   settings.logger.error("client data missing from registry", :client_name => client_name)
                   settings.redis.srem("clients", client_name)
                 end
                 if index == clients.length - 1
-                  body MultiJson.dump(response)
+                  body Sensu::JSON.dump(response)
                 end
               end
             end
           else
-            body MultiJson.dump(response)
+            body Sensu::JSON.dump(response)
           end
         end
       end
@@ -414,7 +414,7 @@ module Sensu
                 end
                 settings.redis.get("result:#{result_key}") do |result_json|
                   unless result_json.nil?
-                    result = MultiJson.load(result_json)
+                    result = Sensu::JSON.load(result_json)
                     last_execution = result[:executed]
                     unless history.empty? || last_execution.nil?
                       item = {
@@ -428,13 +428,13 @@ module Sensu
                     end
                   end
                   if index == checks.length - 1
-                    body MultiJson.dump(response)
+                    body Sensu::JSON.dump(response)
                   end
                 end
               end
             end
           else
-            body MultiJson.dump(response)
+            body Sensu::JSON.dump(response)
           end
         end
       end
@@ -481,13 +481,13 @@ module Sensu
       end
 
       aget "/checks/?" do
-        body MultiJson.dump(settings.all_checks)
+        body Sensu::JSON.dump(settings.all_checks)
       end
 
       aget %r{^/checks?/([\w\.-]+)/?$} do |check_name|
         if settings.checks[check_name]
           response = settings.checks[check_name].merge(:name => check_name)
-          body MultiJson.dump(response)
+          body Sensu::JSON.dump(response)
         else
           not_found!
         end
@@ -519,15 +519,15 @@ module Sensu
             clients.each_with_index do |client_name, index|
               settings.redis.hgetall("events:#{client_name}") do |events|
                 events.each do |check_name, event_json|
-                  response << MultiJson.load(event_json)
+                  response << Sensu::JSON.load(event_json)
                 end
                 if index == clients.length - 1
-                  body MultiJson.dump(response)
+                  body Sensu::JSON.dump(response)
                 end
               end
             end
           else
-            body MultiJson.dump(response)
+            body Sensu::JSON.dump(response)
           end
         end
       end
@@ -536,9 +536,9 @@ module Sensu
         response = Array.new
         settings.redis.hgetall("events:#{client_name}") do |events|
           events.each do |check_name, event_json|
-            response << MultiJson.load(event_json)
+            response << Sensu::JSON.load(event_json)
           end
-          body MultiJson.dump(response)
+          body Sensu::JSON.dump(response)
         end
       end
 
@@ -597,12 +597,12 @@ module Sensu
                 }
                 response << item
                 if index == checks.length - 1
-                  body MultiJson.dump(response)
+                  body Sensu::JSON.dump(response)
                 end
               end
             end
           else
-            body MultiJson.dump(response)
+            body Sensu::JSON.dump(response)
           end
         end
       end
@@ -621,7 +621,7 @@ module Sensu
                 issued > timestamp
               end
             end
-            body MultiJson.dump(pagination(aggregates))
+            body Sensu::JSON.dump(pagination(aggregates))
           else
             not_found!
           end
@@ -657,7 +657,7 @@ module Sensu
             end
             settings.redis.hgetall("aggregation:#{result_set}") do |results|
               parsed_results = results.inject(Array.new) do |parsed, (client_name, check_json)|
-                check = MultiJson.load(check_json)
+                check = Sensu::JSON.load(check_json)
                 parsed << check.merge(:client => client_name)
               end
               if params[:summarize]
@@ -673,7 +673,7 @@ module Sensu
               if params[:results]
                 response[:results] = parsed_results
               end
-              body MultiJson.dump(response)
+              body Sensu::JSON.dump(response)
             end
           else
             not_found!
@@ -683,9 +683,9 @@ module Sensu
 
       apost %r{^/stash(?:es)?/(.*)/?} do |path|
         read_data do |data|
-          settings.redis.set("stash:#{path}", MultiJson.dump(data)) do
+          settings.redis.set("stash:#{path}", Sensu::JSON.dump(data)) do
             settings.redis.sadd("stashes", path) do
-              created!(MultiJson.dump(:path => path))
+              created!(Sensu::JSON.dump(:path => path))
             end
           end
         end
@@ -725,7 +725,7 @@ module Sensu
                   unless stash_json.nil?
                     item = {
                       :path => path,
-                      :content => MultiJson.load(stash_json),
+                      :content => Sensu::JSON.load(stash_json),
                       :expire => ttl
                     }
                     response << item
@@ -733,13 +733,13 @@ module Sensu
                     settings.redis.srem("stashes", path)
                   end
                   if index == stashes.length - 1
-                    body MultiJson.dump(pagination(response))
+                    body Sensu::JSON.dump(pagination(response))
                   end
                 end
               end
             end
           else
-            body MultiJson.dump(response)
+            body Sensu::JSON.dump(response)
           end
         end
       end
@@ -752,9 +752,9 @@ module Sensu
         }
         read_data(rules) do |data|
           stash_key = "stash:#{data[:path]}"
-          settings.redis.set(stash_key, MultiJson.dump(data[:content])) do
+          settings.redis.set(stash_key, Sensu::JSON.dump(data[:content])) do
             settings.redis.sadd("stashes", data[:path]) do
-              response = MultiJson.dump(:path => data[:path])
+              response = Sensu::JSON.dump(:path => data[:path])
               if data[:expire]
                 settings.redis.expire(stash_key, data[:expire]) do
                   created!(response)
@@ -791,21 +791,21 @@ module Sensu
                     result_key = "result:#{client_name}:#{check_name}"
                     settings.redis.get(result_key) do |result_json|
                       unless result_json.nil?
-                        check = MultiJson.load(result_json)
+                        check = Sensu::JSON.load(result_json)
                         response << {:client => client_name, :check => check}
                       end
                       if client_index == clients.length - 1 && check_index == checks.length - 1
-                        body MultiJson.dump(response)
+                        body Sensu::JSON.dump(response)
                       end
                     end
                   end
                 elsif client_index == clients.length - 1
-                  body MultiJson.dump(response)
+                  body Sensu::JSON.dump(response)
                 end
               end
             end
           else
-            body MultiJson.dump(response)
+            body Sensu::JSON.dump(response)
           end
         end
       end
@@ -818,11 +818,11 @@ module Sensu
               result_key = "result:#{client_name}:#{check_name}"
               settings.redis.get(result_key) do |result_json|
                 unless result_json.nil?
-                  check = MultiJson.load(result_json)
+                  check = Sensu::JSON.load(result_json)
                   response << {:client => client_name, :check => check}
                 end
                 if check_index == checks.length - 1
-                  body MultiJson.dump(response)
+                  body Sensu::JSON.dump(response)
                 end
               end
             end
@@ -836,9 +836,9 @@ module Sensu
         result_key = "result:#{client_name}:#{check_name}"
         settings.redis.get(result_key) do |result_json|
           unless result_json.nil?
-            check = MultiJson.load(result_json)
+            check = Sensu::JSON.load(result_json)
             response = {:client => client_name, :check => check}
-            body MultiJson.dump(response)
+            body Sensu::JSON.dump(response)
           else
             not_found!
           end

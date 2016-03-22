@@ -13,11 +13,11 @@ describe "Sensu::API::Process" do
       @event = event_template
       @check = check_template
       redis.flushdb do
-        redis.set("client:i-424242", MultiJson.dump(client)) do
+        redis.set("client:i-424242", Sensu::JSON.dump(client)) do
           redis.sadd("clients", "i-424242") do
-            redis.hset("events:i-424242", "test", MultiJson.dump(@event)) do
-              redis.set("result:i-424242:test", MultiJson.dump(@check)) do
-                redis.set("stash:test/test", MultiJson.dump({:key => "value"})) do
+            redis.hset("events:i-424242", "test", Sensu::JSON.dump(@event)) do
+              redis.set("result:i-424242:test", Sensu::JSON.dump(@check)) do
+                redis.set("stash:test/test", Sensu::JSON.dump({:key => "value"})) do
                   redis.expire("stash:test/test", 3600) do
                     redis.sadd("stashes", "test/test") do
                       redis.sadd("result:i-424242", "test") do
@@ -254,7 +254,7 @@ describe "Sensu::API::Process" do
   it "can delete an event" do
     api_test do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:name]).to eq("test")
         expect(result[:check][:status]).to eq(0)
@@ -284,7 +284,7 @@ describe "Sensu::API::Process" do
   it "can resolve an event" do
     api_test do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:name]).to eq("test")
         expect(result[:check][:status]).to eq(0)
@@ -549,7 +549,7 @@ describe "Sensu::API::Process" do
         expect(body).to include(:path)
         expect(body[:path]).to eq("tester")
         redis.get("stash:tester") do |stash_json|
-          stash = MultiJson.load(stash_json)
+          stash = Sensu::JSON.load(stash_json)
           expect(stash).to eq({:key => "value"})
           redis.ttl("stash:tester") do |ttl|
             expect(ttl).to eq(-1)
@@ -608,7 +608,7 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(201)
         expect(body).to include(:path)
         redis.get("stash:tester") do |stash_json|
-          stash = MultiJson.load(stash_json)
+          stash = Sensu::JSON.load(stash_json)
           expect(stash).to eq({:key => "value"})
           async_done
         end

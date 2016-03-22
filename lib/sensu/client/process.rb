@@ -51,7 +51,7 @@ module Sensu
       def publish_keepalive
         payload = keepalive_payload
         @logger.debug("publishing keepalive", :payload => payload)
-        @transport.publish(:direct, "keepalives", MultiJson.dump(payload)) do |info|
+        @transport.publish(:direct, "keepalives", Sensu::JSON.dump(payload)) do |info|
           if info[:error]
             @logger.error("failed to publish keepalive", {
               :payload => payload,
@@ -89,7 +89,7 @@ module Sensu
         }
         payload[:signature] = @settings[:client][:signature] if @settings[:client][:signature]
         @logger.info("publishing check result", :payload => payload)
-        @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
+        @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
           if info[:error]
             @logger.error("failed to publish check result", {
               :payload => payload,
@@ -273,10 +273,10 @@ module Sensu
           options = transport_subscribe_options(subscription)
           @transport.subscribe(*options) do |message_info, message|
             begin
-              check = MultiJson.load(message)
+              check = Sensu::JSON.load(message)
               @logger.info("received check request", :check => check)
               process_check_request(check)
-            rescue MultiJson::ParseError => error
+            rescue Sensu::JSON::ParseError => error
               @logger.error("failed to parse the check request payload", {
                 :message => message,
                 :error => error.to_s

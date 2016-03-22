@@ -26,7 +26,7 @@ module Sensu
             :system => cpu_times.stime
           }
         }
-        yield(MultiJson.dump(metrics), 0)
+        yield(Sensu::JSON.dump(metrics), 0)
       end
     end
   end

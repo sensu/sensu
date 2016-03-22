@@ -13,14 +13,12 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
   s.has_rdoc    = false
 
-  s.add_dependency "json" if RUBY_VERSION < "1.9"
-  s.add_dependency "multi_json", "1.11.2"
-  s.add_dependency "uuidtools", "2.1.5"
   s.add_dependency "eventmachine", "1.2.0.1"
-  s.add_dependency "sensu-logger", "1.1.0"
-  s.add_dependency "sensu-settings", "3.3.0"
+  s.add_dependency "sensu-json", "1.1.0"
+  s.add_dependency "sensu-logger", "1.2.0"
+  s.add_dependency "sensu-settings", "3.4.0"
   s.add_dependency "sensu-extension", "1.5.0"
-  s.add_dependency "sensu-extensions", "1.4.0"
+  s.add_dependency "sensu-extensions", "1.5.0"
   s.add_dependency "sensu-transport", "5.0.0"
   s.add_dependency "sensu-spawn", "1.8.0"
   s.add_dependency "sensu-redis", "1.2.0"

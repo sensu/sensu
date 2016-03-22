@@ -1,12 +1,12 @@
 require "rubygems"
 
-gem "multi_json", "1.11.2"
 gem "eventmachine", "1.2.0.1"
 
-gem "sensu-logger", "1.1.0"
-gem "sensu-settings", "3.3.0"
+gem "sensu-json", "1.1.0"
+gem "sensu-logger", "1.2.0"
+gem "sensu-settings", "3.4.0"
 gem "sensu-extension", "1.5.0"
-gem "sensu-extensions", "1.4.0"
+gem "sensu-extensions", "1.5.0"
 gem "sensu-transport", "5.0.0"
 gem "sensu-spawn", "1.8.0"
 gem "sensu-redis", "1.2.0"
@@ -14,19 +14,17 @@ gem "sensu-redis", "1.2.0"
 require "time"
 require "uri"
 
+require "sensu/json"
 require "sensu/logger"
 require "sensu/settings"
 require "sensu/extensions"
 require "sensu/transport"
 require "sensu/spawn"
+require "sensu/redis"
 
 require "sensu/constants"
 require "sensu/utilities"
 require "sensu/cli"
-require "sensu/redis"
-
-# Symbolize hash keys when parsing JSON.
-MultiJson.load_options = {:symbolize_keys => true}
 
 module Sensu
   module Daemon

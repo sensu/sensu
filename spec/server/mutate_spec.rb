@@ -28,14 +28,14 @@ describe "Sensu::Server::Mutate" do
       end
       handler.delete(:mutator)
       @server.mutate_event(handler, @event) do |event_data|
-        expected = MultiJson.dump(@event)
-        expect(MultiJson.load(event_data)).to eq(MultiJson.load(expected))
+        expected = Sensu::JSON.dump(@event)
+        expect(Sensu::JSON.load(event_data)).to eq(Sensu::JSON.load(expected))
         handler[:mutator] = "only_check_output"
         @server.mutate_event(handler, @event) do |event_data|
           expect(event_data).to eq("WARNING")
           handler[:mutator] = "tag"
           @server.mutate_event(handler, @event) do |event_data|
-            expect(MultiJson.load(event_data)).to include(:mutated)
+            expect(Sensu::JSON.load(event_data)).to include(:mutated)
             async_done
           end
         end

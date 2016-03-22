@@ -21,7 +21,7 @@ describe "Sensu::Client::Process" do
   it "can send a keepalive" do
     async_wrapper do
       keepalive_queue do |payload|
-        keepalive = MultiJson.load(payload)
+        keepalive = Sensu::JSON.load(payload)
         expect(keepalive[:name]).to eq("i-424242")
         expect(keepalive[:service][:password]).to eq("REDACTED")
         expect(keepalive[:version]).to eq(Sensu::VERSION)
@@ -39,7 +39,7 @@ describe "Sensu::Client::Process" do
   it "can schedule keepalive publishing" do
     async_wrapper do
       keepalive_queue do |payload|
-        keepalive = MultiJson.load(payload)
+        keepalive = Sensu::JSON.load(payload)
         expect(keepalive[:name]).to eq("i-424242")
         async_done
       end
@@ -54,7 +54,7 @@ describe "Sensu::Client::Process" do
   it "can send a check result" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:name]).to eq("test")
         async_done
@@ -71,7 +71,7 @@ describe "Sensu::Client::Process" do
   it "can execute a check command" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:output]).to eq("WARNING\n")
         expect(result[:check]).to have_key(:executed)
@@ -88,7 +88,7 @@ describe "Sensu::Client::Process" do
   it "can substitute check command tokens with attributes, default values, and execute it" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:output]).to eq("true default true:true localhost localhost:8080\n")
         async_done
@@ -109,7 +109,7 @@ describe "Sensu::Client::Process" do
   it "can substitute check command tokens with attributes and handle unmatched tokens" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:output]).to eq("Unmatched command tokens: nonexistent, noexistent.hash, empty.hash")
         async_done
@@ -127,7 +127,7 @@ describe "Sensu::Client::Process" do
   it "can run a check extension" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:output]).to start_with("{")
         expect(result[:check]).to have_key(:executed)
@@ -145,7 +145,7 @@ describe "Sensu::Client::Process" do
   it "can receive a check request and execute the check" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:output]).to eq("WARNING\n")
         expect(result[:check][:status]).to eq(1)
@@ -155,7 +155,7 @@ describe "Sensu::Client::Process" do
         @client.setup_transport do
           @client.setup_subscriptions
           timer(1) do
-            transport.publish(:fanout, "test", MultiJson.dump(check_template))
+            transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
           end
         end
       end
@@ -165,7 +165,7 @@ describe "Sensu::Client::Process" do
   it "can receive a check request on a round-robin subscription" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:output]).to eq("WARNING\n")
         expect(result[:check][:status]).to eq(1)
@@ -175,7 +175,7 @@ describe "Sensu::Client::Process" do
         @client.setup_transport do
           @client.setup_subscriptions
           timer(1) do
-            transport.publish(:direct, "roundrobin:test", MultiJson.dump(check_template))
+            transport.publish(:direct, "roundrobin:test", Sensu::JSON.dump(check_template))
           end
         end
       end
@@ -185,7 +185,7 @@ describe "Sensu::Client::Process" do
   it "can receive a check request and not execute the check due to safe mode" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:output]).to include("safe mode")
         expect(result[:check][:status]).to eq(3)
@@ -196,7 +196,7 @@ describe "Sensu::Client::Process" do
         @client.setup_transport do
           @client.setup_subscriptions
           timer(1) do
-            transport.publish(:fanout, "test", MultiJson.dump(check_template))
+            transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
           end
         end
       end
@@ -207,7 +207,7 @@ describe "Sensu::Client::Process" do
     async_wrapper do
       expected = ["standalone", "sensu_gc_metrics"]
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check]).to have_key(:issued)
         expect(result[:check]).to have_key(:output)
@@ -240,7 +240,7 @@ describe "Sensu::Client::Process" do
         @client.setup_sockets
         expected = ["tcp", "udp"]
         result_queue do |payload|
-          result = MultiJson.load(payload)
+          result = Sensu::JSON.load(payload)
           expect(result[:client]).to eq("i-424242")
           expect(expected.delete(result[:check][:name])).not_to be_nil
           if expected.empty?
