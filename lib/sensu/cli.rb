@@ -26,6 +26,9 @@ module Sensu
         opts.on("-d", "--config_dir DIR[,DIR]", "DIR or comma-delimited DIR list for Sensu JSON config files") do |dir|
           options[:config_dirs] = dir.split(",")
         end
+        opts.on("-P", "--print_config", "Print the compiled configuration and exit") do
+          options[:print_config] = true
+        end
         opts.on("-e", "--extension_dir DIR", "DIR for Sensu extensions") do |dir|
           options[:extension_dir] = dir
         end

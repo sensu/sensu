@@ -72,6 +72,20 @@ module Sensu
       end
     end
 
+    # Print the Sensu settings and immediately exit the process. This
+    # method is used while troubleshooting configuration issues,
+    # triggered by a CLI argument, e.g. `--print_config`. Sensu
+    # settings with sensitive values (e.g. passwords) are first
+    # redacted.
+    #
+    # @param settings [Object]
+    def print_settings(settings)
+      redacted_settings = redact_sensitive(settings.to_hash)
+      @logger.warn("outputting compiled configuration and exiting")
+      puts Sensu::JSON.dump(redacted_settings, :pretty => true)
+      exit
+    end
+
     # Load Sensu settings and validate them. If there are validation
     # failures, log them (concerns), then cause the Sensu process to
     # exit (2). This method creates the settings instance variable:
@@ -90,6 +104,7 @@ module Sensu
         @logger.fatal("SENSU NOT RUNNING!")
         exit 2
       end
+      print_settings(@settings) if options[:print_config]
     end
 
     # Load Sensu extensions and log any concerns. Set the logger and
