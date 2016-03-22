@@ -48,7 +48,7 @@ module Sensu
     #
     # @return [String] random UUID.
     def random_uuid
-      SecureRandom.uuid
+      ::SecureRandom.uuid
     end
 
     # Remove sensitive information from a hash (eg. passwords). By
