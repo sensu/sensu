@@ -205,7 +205,7 @@ module Sensu
             headers["X-Pagination"] = MultiJson.dump(
               :limit => limit,
               :offset => offset,
-              :total => items.size
+              :total => items.length
             )
             paginated = items.slice(offset, limit)
             Array(paginated)
@@ -380,7 +380,7 @@ module Sensu
                   settings.logger.error("client data missing from registry", :client_name => client_name)
                   settings.redis.srem("clients", client_name)
                 end
-                if index == clients.size - 1
+                if index == clients.length - 1
                   body MultiJson.dump(response)
                 end
               end
@@ -427,7 +427,7 @@ module Sensu
                       response << item
                     end
                   end
-                  if index == checks.size - 1
+                  if index == checks.length - 1
                     body MultiJson.dump(response)
                   end
                 end
@@ -521,7 +521,7 @@ module Sensu
                 events.each do |check_name, event_json|
                   response << MultiJson.load(event_json)
                 end
-                if index == clients.size - 1
+                if index == clients.length - 1
                   body MultiJson.dump(response)
                 end
               end
@@ -596,7 +596,7 @@ module Sensu
                   :issued => aggregates
                 }
                 response << item
-                if index == checks.size - 1
+                if index == checks.length - 1
                   body MultiJson.dump(response)
                 end
               end
@@ -732,7 +732,7 @@ module Sensu
                   else
                     settings.redis.srem("stashes", path)
                   end
-                  if index == stashes.size - 1
+                  if index == stashes.length - 1
                     body MultiJson.dump(pagination(response))
                   end
                 end
@@ -794,12 +794,12 @@ module Sensu
                         check = MultiJson.load(result_json)
                         response << {:client => client_name, :check => check}
                       end
-                      if client_index == clients.size - 1 && check_index == checks.size - 1
+                      if client_index == clients.length - 1 && check_index == checks.length - 1
                         body MultiJson.dump(response)
                       end
                     end
                   end
-                elsif client_index == clients.size - 1
+                elsif client_index == clients.length - 1
                   body MultiJson.dump(response)
                 end
               end
@@ -821,7 +821,7 @@ module Sensu
                   check = MultiJson.load(result_json)
                   response << {:client => client_name, :check => check}
                 end
-                if check_index == checks.size - 1
+                if check_index == checks.length - 1
                   body MultiJson.dump(response)
                 end
               end

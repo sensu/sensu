@@ -314,7 +314,7 @@ module Sensu
         when METRIC_CHECK_TYPE
           output_lines = check[:output].split("\n")
           output = output_lines.first || check[:output]
-          if output_lines.size > 1 || output.length > 255
+          if output_lines.length > 1 || output.length > 255
             output = output[0..255] + "\n..."
           end
           check.merge(:output => output)
@@ -369,7 +369,7 @@ module Sensu
         history_key = "history:#{client[:name]}:#{check[:name]}"
         @redis.lrange(history_key, -21, -1) do |history|
           total_state_change = 0
-          unless history.size < 21
+          unless history.length < 21
             state_changes = 0
             change_weight = 0.8
             previous_status = history.first
@@ -859,9 +859,9 @@ module Sensu
         @redis.smembers("aggregates") do |checks|
           checks.each do |check_name|
             @redis.smembers("aggregates:#{check_name}") do |aggregates|
-              if aggregates.size > 20
+              if aggregates.length > 20
                 aggregates.sort!
-                aggregates.take(aggregates.size - 20).each do |check_issued|
+                aggregates.take(aggregates.length - 20).each do |check_issued|
                   result_set = "#{check_name}:#{check_issued}"
                   @redis.multi
                   @redis.srem("aggregates:#{check_name}", check_issued)
