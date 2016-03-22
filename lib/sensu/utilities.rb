@@ -1,6 +1,4 @@
-gem "uuidtools", "2.1.5"
-
-require "uuidtools"
+require "securerandom"
 
 module Sensu
   module Utilities
@@ -50,7 +48,7 @@ module Sensu
     #
     # @return [String] random UUID.
     def random_uuid
-      UUIDTools::UUID.random_create.to_s
+      SecureRandom.uuid
     end
 
     # Remove sensitive information from a hash (eg. passwords). By
