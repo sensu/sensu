@@ -89,7 +89,9 @@ module Sensu
     # Load Sensu settings and validate them. If there are validation
     # failures, log them (concerns), then cause the Sensu process to
     # exit (2). This method creates the settings instance variable:
-    # `@settings`.
+    # `@settings`. If the `print_config` option is true, this method
+    # calls `print_settings()` to output the compiled configuration
+    # settings and then exit the process.
     #
     # https://github.com/sensu/sensu-settings
     #
