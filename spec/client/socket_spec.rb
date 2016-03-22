@@ -5,10 +5,6 @@ require "sensu/client/socket"
 describe Sensu::Client::Socket do
   include Helpers
 
-  before(:each) do
-    MultiJson.load_options = {:symbolize_keys => true}
-  end
-
   subject { described_class.new(nil) }
 
   let(:logger) { double("Logger") }
@@ -85,7 +81,7 @@ describe Sensu::Client::Socket do
         with("publishing check result", {:payload => check_result})
       expect(transport).to receive(:publish).
         with(:direct, "results", kind_of(String)) do |_, _, json_string|
-          expect(MultiJson.load(json_string)).to eq(check_result)
+          expect(Sensu::JSON.load(json_string)).to eq(check_result)
         end
       subject.publish_check_result(check_result[:check])
     end
@@ -111,12 +107,12 @@ describe Sensu::Client::Socket do
     it "rejects invalid json" do
       subject.protocol = :udp
       expect { subject.parse_check_result('{"invalid"') }.to \
-        raise_error(MultiJson::ParseError)
+        raise_error(Sensu::JSON::ParseError)
     end
 
     it "cancels connection watchdog and processes valid json" do
       check = result_template[:check]
-      json_check_data = MultiJson.dump(check)
+      json_check_data = Sensu::JSON.dump(check)
       expect(subject).to receive(:cancel_watchdog)
       expect(subject).to receive(:process_check_result).with(check)
       subject.parse_check_result(json_check_data)
@@ -179,9 +175,9 @@ describe Sensu::Client::Socket do
       expect(subject).to receive(:respond).with("ok")
       expect(transport).to receive(:publish).
         with(:direct, "results", kind_of(String)) do |_, _, json_string|
-          expect(MultiJson.load(json_string)).to eq(check_result)
+          expect(Sensu::JSON.load(json_string)).to eq(check_result)
         end
-      json_check_data = MultiJson.dump(check_result[:check])
+      json_check_data = Sensu::JSON.dump(check_result[:check])
       json_check_data.chars.each_with_index do |char, index|
         expect(logger).to receive(:debug).with("socket received data", :data => json_check_data[0..index])
         subject.receive_data(char)
@@ -209,12 +205,12 @@ describe Sensu::Client::Socket do
           with("publishing check result", {:payload => check_result})
         expect(transport).to receive(:publish).
           with(:direct, "results", kind_of(String)) do |_, _, json_string|
-            expect(MultiJson.load(json_string)).to eq(check_result)
+            expect(Sensu::JSON.load(json_string)).to eq(check_result)
           end
         timer(0.1) do
           EM.connect("127.0.0.1", 3030) do |socket|
             # send data one byte at a time.
-            pending = MultiJson.dump(check_result[:check]).chars.to_a
+            pending = Sensu::JSON.dump(check_result[:check]).chars.to_a
             EM.tick_loop do
               if pending.empty?
                 :stop
@@ -270,12 +266,12 @@ describe Sensu::Client::Socket do
           with("publishing check result", {:payload => check_result})
         expect(transport).to receive(:publish).
           with(:direct, "results", kind_of(String)) do |_, _, json_string|
-            expect(MultiJson.load(json_string)).to eq(check_result)
+            expect(Sensu::JSON.load(json_string)).to eq(check_result)
           end
         timer(0.1) do
           EM::open_datagram_socket("0.0.0.0", 0, nil) do |socket|
             socket.send_datagram('{"partial":', "127.0.0.1", 3030)
-            socket.send_datagram(MultiJson.dump(check_result[:check]), "127.0.0.1", 3030)
+            socket.send_datagram(Sensu::JSON.dump(check_result[:check]), "127.0.0.1", 3030)
           end
         end
       end

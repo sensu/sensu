@@ -9,7 +9,7 @@ describe "Sensu::Server::Handle" do
     @server = Sensu::Server::Process.new(options)
     settings = Sensu::Settings.get(options)
     @handlers = settings[:handlers]
-    @event_data = MultiJson.dump(event_template)
+    @event_data = Sensu::JSON.dump(event_template)
     @extensions = Sensu::Extensions.get(options)
   end
 
@@ -50,7 +50,7 @@ describe "Sensu::Server::Handle" do
   it "can handle an event with a transport handler" do
     async_wrapper do
       transport.subscribe(:direct, "events") do |_, payload|
-        expect(MultiJson.load(payload)).to eq(MultiJson.load(@event_data))
+        expect(Sensu::JSON.load(payload)).to eq(Sensu::JSON.load(@event_data))
         async_done
       end
       timer(0.5) do

@@ -6,7 +6,7 @@ describe "Sensu::Server::Socket" do
   include Helpers
 
   before do
-    @event_data = MultiJson.dump(event_template)
+    @event_data = Sensu::JSON.dump(event_template)
   end
 
   it "can send data to a listening socket" do

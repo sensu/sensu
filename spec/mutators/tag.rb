@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 
-require 'rubygems'
-require 'multi_json'
+require "rubygems"
+require "sensu/json"
 
-event = MultiJson.load(STDIN.read, :symbolize_keys => true)
+event = Sensu::JSON.load(STDIN.read)
 event.merge!(:mutated => true)
 
-puts MultiJson.dump(event)
+puts Sensu::JSON.dump(event)

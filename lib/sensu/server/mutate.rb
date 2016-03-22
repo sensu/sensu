@@ -40,7 +40,7 @@ module Sensu
       # @param callback [Proc] to call when the mutator executes
       #   successfully.
       def pipe_mutator(mutator, event, &callback)
-        options = {:data => MultiJson.dump(event), :timeout => mutator[:timeout]}
+        options = {:data => Sensu::JSON.dump(event), :timeout => mutator[:timeout]}
         block = mutator_callback(mutator, event, &callback)
         Spawn.process(mutator[:command], options, &block)
       end

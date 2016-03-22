@@ -11,7 +11,7 @@ module Sensu
 
       def run(event, &block)
         update_file = Proc.new do
-          event_json = MultiJson.dump(event)
+          event_json = Sensu::JSON.dump(event)
           File.open('/tmp/sensu_event_bridge.json', 'w') do |file|
             file.write(event_json)
           end

@@ -39,7 +39,7 @@ module Sensu
           end
           metrics.merge!(:count => Hash[object_counts])
         end
-        yield(MultiJson.dump(metrics), 0)
+        yield(Sensu::JSON.dump(metrics), 0)
       end
     end
   end

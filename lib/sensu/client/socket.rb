@@ -1,4 +1,4 @@
-require "multi_json"
+require "sensu/json"
 
 module Sensu
   module Client
@@ -145,7 +145,7 @@ module Sensu
           :check => check.merge(:issued => Time.now.to_i)
         }
         @logger.info("publishing check result", :payload => payload)
-        @transport.publish(:direct, "results", MultiJson.dump(payload))
+        @transport.publish(:direct, "results", Sensu::JSON.dump(payload))
       end
 
       # Process a check result. Set check result attribute defaults,
@@ -169,10 +169,10 @@ module Sensu
       # @param [String] data to parse for a check result.
       def parse_check_result(data)
         begin
-          check = MultiJson.load(data)
+          check = Sensu::JSON.load(data)
           cancel_watchdog
           process_check_result(check)
-        rescue MultiJson::ParseError, ArgumentError => error
+        rescue Sensu::JSON::ParseError, ArgumentError => error
           if @protocol == :tcp
             @parse_error = error.to_s
           else

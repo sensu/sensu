@@ -142,7 +142,7 @@ module Sensu
             end
             if signature.nil? || signature.empty? || (client[:signature] == signature)
               @redis.multi
-              @redis.set(client_key, MultiJson.dump(client))
+              @redis.set(client_key, Sensu::JSON.dump(client))
               @redis.sadd("clients", client[:name])
               @redis.exec do
                 yield(true) if block_given?
@@ -171,11 +171,11 @@ module Sensu
         @transport.subscribe(:direct, "keepalives", "keepalives", :ack => true) do |message_info, message|
           @logger.debug("received keepalive", :message => message)
           begin
-            client = MultiJson.load(message)
+            client = Sensu::JSON.load(message)
             update_client_registry(client) do
               @transport.ack(message_info)
             end
-          rescue MultiJson::ParseError => error
+          rescue Sensu::JSON::ParseError => error
             @logger.error("failed to parse keepalive payload", {
               :message => message,
               :error => error.to_s
@@ -288,7 +288,7 @@ module Sensu
           :check => check
         })
         result_set = "#{check[:name]}:#{check[:issued]}"
-        result_data = MultiJson.dump(:output => check[:output], :status => check[:status])
+        result_data = Sensu::JSON.dump(:output => check[:output], :status => check[:status])
         @redis.multi
         @redis.hset("aggregation:#{result_set}", client[:name], result_data)
         SEVERITIES.each do |severity|
@@ -314,7 +314,7 @@ module Sensu
         when METRIC_CHECK_TYPE
           output_lines = check[:output].split("\n")
           output = output_lines.first || check[:output]
-          if output_lines.size > 1 || output.length > 255
+          if output_lines.length > 1 || output.length > 255
             output = output[0..255] + "\n..."
           end
           check.merge(:output => output)
@@ -341,7 +341,7 @@ module Sensu
         check_truncated = truncate_check_output(check)
         @redis.multi
         @redis.sadd("result:#{client[:name]}", check[:name])
-        @redis.set("result:#{result_key}", MultiJson.dump(check_truncated))
+        @redis.set("result:#{result_key}", Sensu::JSON.dump(check_truncated))
         @redis.rpush(history_key, check[:status])
         @redis.ltrim(history_key, -21, -1)
         @redis.exec do
@@ -369,7 +369,7 @@ module Sensu
         history_key = "history:#{client[:name]}:#{check[:name]}"
         @redis.lrange(history_key, -21, -1) do |history|
           total_state_change = 0
-          unless history.size < 21
+          unless history.length < 21
             state_changes = 0
             change_weight = 0.8
             previous_status = history.first
@@ -441,7 +441,7 @@ module Sensu
       # @yieldparam event [Hash]
       def update_event_registry(client, check)
         @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
-          stored_event = event_json ? MultiJson.load(event_json) : nil
+          stored_event = event_json ? Sensu::JSON.load(event_json) : nil
           flapping = check_flapping?(stored_event, check)
           event = {
             :id => random_uuid,
@@ -455,7 +455,7 @@ module Sensu
             if stored_event && check[:status] == stored_event[:check][:status]
               event[:occurrences] = stored_event[:occurrences] + 1
             end
-            @redis.hset("events:#{client[:name]}", check[:name], MultiJson.dump(event)) do
+            @redis.hset("events:#{client[:name]}", check[:name], Sensu::JSON.dump(event)) do
               yield(event)
             end
           elsif stored_event
@@ -512,7 +512,7 @@ module Sensu
         client_key = result[:check][:source] || result[:client]
         @redis.get("client:#{client_key}") do |client_json|
           unless client_json.nil?
-            client = MultiJson.load(client_json)
+            client = Sensu::JSON.load(client_json)
             if client[:signature]
               if client[:signature] == result[:signature]
                 yield(client)
@@ -577,10 +577,10 @@ module Sensu
         @logger.debug("subscribing to results")
         @transport.subscribe(:direct, "results", "results", :ack => true) do |message_info, message|
           begin
-            result = MultiJson.load(message)
+            result = Sensu::JSON.load(message)
             @logger.debug("received result", :result => result)
             process_check_result(result)
-          rescue MultiJson::ParseError => error
+          rescue Sensu::JSON::ParseError => error
             @logger.error("failed to parse result payload", {
               :message => message,
               :error => error.to_s
@@ -634,7 +634,7 @@ module Sensu
           :subscribers => check[:subscribers]
         })
         check[:subscribers].each do |subscription|
-          options = transport_publish_options(subscription, MultiJson.dump(payload))
+          options = transport_publish_options(subscription, Sensu::JSON.dump(payload))
           @transport.publish(*options) do |info|
             if info[:error]
               @logger.error("failed to publish check request", {
@@ -718,7 +718,7 @@ module Sensu
         @redis.get("client:#{client_name}:signature") do |signature|
           payload[:signature] = signature if signature
           @logger.debug("publishing check result", :payload => payload)
-          @transport.publish(:direct, "results", MultiJson.dump(payload)) do |info|
+          @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
             if info[:error]
               @logger.error("failed to publish check result", {
                 :payload => payload,
@@ -772,7 +772,7 @@ module Sensu
           clients.each do |client_name|
             @redis.get("client:#{client_name}") do |client_json|
               unless client_json.nil?
-                client = MultiJson.load(client_json)
+                client = Sensu::JSON.load(client_json)
                 next if client[:keepalives] == false
                 check = create_keepalive_check(client)
                 time_since_last_keepalive = Time.now.to_i - client[:timestamp]
@@ -824,7 +824,7 @@ module Sensu
                 result_key = "#{client_name}:#{check_name}"
                 @redis.get("result:#{result_key}") do |result_json|
                   unless result_json.nil?
-                    check = MultiJson.load(result_json)
+                    check = Sensu::JSON.load(result_json)
                     next unless check[:ttl] && check[:executed] && !check[:force_resolve]
                     time_since_last_execution = Time.now.to_i - check[:executed]
                     if time_since_last_execution >= check[:ttl]
@@ -859,9 +859,9 @@ module Sensu
         @redis.smembers("aggregates") do |checks|
           checks.each do |check_name|
             @redis.smembers("aggregates:#{check_name}") do |aggregates|
-              if aggregates.size > 20
+              if aggregates.length > 20
                 aggregates.sort!
-                aggregates.take(aggregates.size - 20).each do |check_issued|
+                aggregates.take(aggregates.length - 20).each do |check_issued|
                   result_set = "#{check_name}:#{check_issued}"
                   @redis.multi
                   @redis.srem("aggregates:#{check_name}", check_issued)

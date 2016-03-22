@@ -39,17 +39,17 @@ describe "Sensu::Server::Process" do
         keepalive[:timestamp] = epoch
         redis.flushdb do
           timer(1) do
-            transport.publish(:direct, "keepalives", MultiJson.dump(keepalive))
+            transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
             timer(1) do
               redis.sismember("clients", "i-424242") do |exists|
                 expect(exists).to be(true)
                 redis.get("client:i-424242") do |client_json|
-                  client = MultiJson.load(client_json)
+                  client = Sensu::JSON.load(client_json)
                   expect(client).to eq(keepalive)
                   read_event_file = Proc.new do
                     begin
                       event_file = IO.read("/tmp/sensu_client_registration.json")
-                      MultiJson.load(event_file)
+                      Sensu::JSON.load(event_file)
                     rescue
                       retry
                     end
@@ -78,20 +78,20 @@ describe "Sensu::Server::Process" do
         keepalive[:signature] = "foo"
         redis.flushdb do
           timer(1) do
-            transport.publish(:direct, "keepalives", MultiJson.dump(keepalive))
+            transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
             timer(1) do
               redis.get("client:i-424242") do |client_json|
-                client = MultiJson.load(client_json)
+                client = Sensu::JSON.load(client_json)
                 expect(client).to eq(keepalive)
                 redis.get("client:i-424242:signature") do |signature|
                   expect(signature).to eq("foo")
                   malicious = keepalive.dup
                   malicious[:timestamp] = epoch
                   malicious[:signature] = "bar"
-                  transport.publish(:direct, "keepalives", MultiJson.dump(malicious))
+                  transport.publish(:direct, "keepalives", Sensu::JSON.dump(malicious))
                   timer(1) do
                     redis.get("client:i-424242") do |client_json|
-                      client = MultiJson.load(client_json)
+                      client = Sensu::JSON.load(client_json)
                       expect(client).to eq(keepalive)
                       redis.get("client:i-424242:signature") do |signature|
                         expect(signature).to eq("foo")
@@ -168,7 +168,7 @@ describe "Sensu::Server::Process" do
       @server.setup_redis do
         redis.flushdb do
           client = client_template
-          redis.set("client:i-424242", MultiJson.dump(client)) do
+          redis.set("client:i-424242", Sensu::JSON.dump(client)) do
             26.times do |index|
               result = result_template
               result[:check][:low_flap_threshold] = 5
@@ -180,7 +180,7 @@ describe "Sensu::Server::Process" do
               redis.llen("history:i-424242:test") do |length|
                 expect(length).to eq(21)
                 redis.hget("events:i-424242", "test") do |event_json|
-                  event = MultiJson.load(event_json)
+                  event = Sensu::JSON.load(event_json)
                   expect(event[:action]).to eq("flapping")
                   expect(event[:occurrences]).to be_within(2).of(1)
                   26.times do |index|
@@ -210,19 +210,19 @@ describe "Sensu::Server::Process" do
       @server.setup_redis do
         redis.flushdb do
           client = client_template
-          redis.set("client:i-424242", MultiJson.dump(client)) do
+          redis.set("client:i-424242", Sensu::JSON.dump(client)) do
             result = result_template
             result[:check][:auto_resolve] = false
             @server.process_check_result(result)
             timer(1) do
               redis.hget("events:i-424242", "test") do |event_json|
-                event = MultiJson.load(event_json)
+                event = Sensu::JSON.load(event_json)
                 expect(event[:action]).to eq("create")
                 expect(event[:occurrences]).to eq(1)
                 result[:check][:status] = 0
                 timer(1) do
                   redis.hget("events:i-424242", "test") do |event_json|
-                    event = MultiJson.load(event_json)
+                    event = Sensu::JSON.load(event_json)
                     expect(event[:action]).to eq("create")
                     expect(event[:occurrences]).to eq(1)
                     expect(event[:check][:status]).to eq(1)
@@ -244,20 +244,20 @@ describe "Sensu::Server::Process" do
         redis.flushdb do
           timer(1) do
             client = client_template
-            redis.set("client:i-424242", MultiJson.dump(client)) do
+            redis.set("client:i-424242", Sensu::JSON.dump(client)) do
               result = result_template
-              transport.publish(:direct, "results", MultiJson.dump(result))
+              transport.publish(:direct, "results", Sensu::JSON.dump(result))
               timer(1) do
-                transport.publish(:direct, "results", MultiJson.dump(result))
+                transport.publish(:direct, "results", Sensu::JSON.dump(result))
                 timer(2) do
                   redis.sismember("result:i-424242", "test") do |is_member|
                     expect(is_member).to be(true)
                     redis.get("result:i-424242:test") do |result_json|
-                      result = MultiJson.load(result_json)
+                      result = Sensu::JSON.load(result_json)
                       expect(result[:output]).to eq("WARNING")
                       timer(7) do
                         redis.hget("events:i-424242", "test") do |event_json|
-                          event = MultiJson.load(event_json)
+                          event = Sensu::JSON.load(event_json)
                           expect(event[:id]).to be_kind_of(String)
                           expect(event[:check][:status]).to eq(1)
                           expect(event[:occurrences]).to eq(2)
@@ -266,7 +266,7 @@ describe "Sensu::Server::Process" do
                           read_event_file = Proc.new do
                             begin
                               event_file = IO.read("/tmp/sensu_event_bridge.json")
-                              MultiJson.load(event_file)
+                              Sensu::JSON.load(event_file)
                             rescue
                               retry
                             end
@@ -298,14 +298,14 @@ describe "Sensu::Server::Process" do
           timer(1) do
             client = client_template
             client[:signature] = "foo"
-            redis.set("client:i-424242", MultiJson.dump(client)) do
+            redis.set("client:i-424242", Sensu::JSON.dump(client)) do
               result = result_template
-              transport.publish(:direct, "results", MultiJson.dump(result))
+              transport.publish(:direct, "results", Sensu::JSON.dump(result))
               timer(1) do
                 redis.sismember("result:i-424242", "test") do |is_member|
                   expect(is_member).to be(false)
                   result[:signature] = "foo"
-                  transport.publish(:direct, "results", MultiJson.dump(result))
+                  transport.publish(:direct, "results", Sensu::JSON.dump(result))
                   timer(1) do
                     redis.sismember("result:i-424242", "test") do |is_member|
                       expect(is_member).to be(true)
@@ -350,16 +350,16 @@ describe "Sensu::Server::Process" do
             truncated = @server.truncate_check_output(check)
             expect(truncated[:output]).to eq(check[:output][0..255] + "\n...")
             client = client_template
-            redis.set("client:i-424242", MultiJson.dump(client)) do
+            redis.set("client:i-424242", Sensu::JSON.dump(client)) do
               result = result_template
               result[:check][:type] = "metric"
               result[:check][:output] = "foo\nbar\nbaz"
-              transport.publish(:direct, "results", MultiJson.dump(result))
+              transport.publish(:direct, "results", Sensu::JSON.dump(result))
               timer(2) do
                 redis.sismember("result:i-424242", "test") do |is_member|
                   expect(is_member).to be(true)
                   redis.get("result:i-424242:test") do |result_json|
-                    result = MultiJson.load(result_json)
+                    result = Sensu::JSON.load(result_json)
                     expect(result[:output]).to eq("foo\n...")
                     async_done
                   end
@@ -381,16 +381,16 @@ describe "Sensu::Server::Process" do
             result = result_template
             result[:check][:source] = "i-888888"
             result[:check][:handler] = "debug"
-            transport.publish(:direct, "results", MultiJson.dump(result))
+            transport.publish(:direct, "results", Sensu::JSON.dump(result))
             timer(3) do
               redis.sismember("clients", "i-888888") do |exists|
                 expect(exists).to be(true)
                 redis.get("client:i-888888") do |client_json|
-                  client = MultiJson.load(client_json)
+                  client = Sensu::JSON.load(client_json)
                   expect(client[:keepalives]).to be(false)
                   expect(client[:version]).to eq(Sensu::VERSION)
                   redis.hget("events:i-888888", "test") do |event_json|
-                    event = MultiJson.load(event_json)
+                    event = Sensu::JSON.load(event_json)
                     expect(event[:client][:address]).to eq("unknown")
                     async_done
                   end
@@ -406,7 +406,7 @@ describe "Sensu::Server::Process" do
   it "can publish check requests" do
     async_wrapper do
       transport.subscribe(:fanout, "test") do |_, payload|
-        check_request = MultiJson.load(payload)
+        check_request = Sensu::JSON.load(payload)
         expect(check_request[:name]).to eq("test")
         expect(check_request[:command]).to eq("echo WARNING && exit 1")
         expect(check_request[:source]).to eq("switch-x")
@@ -427,7 +427,7 @@ describe "Sensu::Server::Process" do
   it "can publish check requests to round-robin subscriptions" do
     async_wrapper do
       transport.subscribe(:direct, "roundrobin:test") do |_, payload|
-        check_request = MultiJson.load(payload)
+        check_request = Sensu::JSON.load(payload)
         expect(check_request[:name]).to eq("test")
         expect(check_request[:command]).to eq("echo WARNING && exit 1")
         expect(check_request[:issued]).to be_within(10).of(epoch)
@@ -446,7 +446,7 @@ describe "Sensu::Server::Process" do
   it "can publish extension check requests" do
     async_wrapper do
       transport.subscribe(:fanout, "test") do |_, payload|
-        check_request = MultiJson.load(payload)
+        check_request = Sensu::JSON.load(payload)
         expect(check_request[:name]).to eq("test")
         expect(check_request[:source]).to eq("switch-x")
         expect(check_request[:extension]).to eq("rspec")
@@ -480,7 +480,7 @@ describe "Sensu::Server::Process" do
     async_wrapper do
       expected = ["tokens", "merger", "sensu_cpu_time", "source"]
       transport.subscribe(:fanout, "test") do |_, payload|
-        check_request = MultiJson.load(payload)
+        check_request = Sensu::JSON.load(payload)
         expect(check_request[:issued]).to be_within(10).of(epoch)
         expect(expected.delete(check_request[:name])).not_to be_nil
         async_done if expected.empty?
@@ -496,7 +496,7 @@ describe "Sensu::Server::Process" do
   it "can send a check result" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
         expect(result[:check][:name]).to eq("test")
         async_done
@@ -526,20 +526,20 @@ describe "Sensu::Server::Process" do
         client3[:name] = "qux"
         client3[:keepalives] = false
         client3[:timestamp] = epoch - 1800
-        redis.set("client:foo", MultiJson.dump(client1)) do
+        redis.set("client:foo", Sensu::JSON.dump(client1)) do
           redis.sadd("clients", "foo") do
-            redis.set("client:bar", MultiJson.dump(client2)) do
+            redis.set("client:bar", Sensu::JSON.dump(client2)) do
               redis.sadd("clients", "bar") do
-                redis.set("client:qux", MultiJson.dump(client3)) do
+                redis.set("client:qux", Sensu::JSON.dump(client3)) do
                   redis.sadd("clients", "qux") do
                     @server.determine_stale_clients
                     timer(1) do
                       redis.hget("events:foo", "keepalive") do |event_json|
-                        event = MultiJson.load(event_json)
+                        event = Sensu::JSON.load(event_json)
                         expect(event[:check][:status]).to eq(1)
                         expect(event[:check][:handler]).to eq("debug")
                         redis.hget("events:bar", "keepalive") do |event_json|
-                          event = MultiJson.load(event_json)
+                          event = Sensu::JSON.load(event_json)
                           expect(event[:check][:status]).to eq(2)
                           expect(event[:check][:handler]).to eq("keepalive")
                           redis.hget("events:qux", "keepalive") do |event_json|
@@ -566,24 +566,24 @@ describe "Sensu::Server::Process" do
         redis.flushdb do
           timer(1) do
             client = client_template
-            redis.set("client:i-424242", MultiJson.dump(client)) do
+            redis.set("client:i-424242", Sensu::JSON.dump(client)) do
               redis.sadd("clients", "i-424242") do
                 result = result_template
                 result[:check][:status] = 0
                 result[:check][:executed] = epoch - 30
-                transport.publish(:direct, "results", MultiJson.dump(result))
+                transport.publish(:direct, "results", Sensu::JSON.dump(result))
                 result[:check][:name] = "foo"
                 result[:check][:ttl] = 30
-                transport.publish(:direct, "results", MultiJson.dump(result))
+                transport.publish(:direct, "results", Sensu::JSON.dump(result))
                 result[:check][:name] = "bar"
                 result[:check][:ttl] = 60
-                transport.publish(:direct, "results", MultiJson.dump(result))
+                transport.publish(:direct, "results", Sensu::JSON.dump(result))
                 timer(2) do
                   @server.determine_stale_check_results
                   timer(2) do
                     redis.hgetall("events:i-424242") do |events|
                       expect(events.size).to eq(1)
-                      event = MultiJson.load(events["foo"])
+                      event = Sensu::JSON.load(events["foo"])
                       expect(event[:check][:output]).to match(/Last check execution was 3[0-9] seconds ago/)
                       expect(event[:check][:status]).to eq(1)
                       async_done
@@ -603,7 +603,7 @@ describe "Sensu::Server::Process" do
       @server.setup_redis do
         redis.flushdb do
           client = client_template
-          redis.set("client:i-424242", MultiJson.dump(client)) do
+          redis.set("client:i-424242", Sensu::JSON.dump(client)) do
             timestamp = epoch - 26
             26.times do |index|
               check = check_template

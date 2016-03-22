@@ -1,8 +1,8 @@
 require "rspec"
 require "eventmachine"
 require "em-http-request"
-require "uuidtools"
-require "multi_json"
+require "securerandom"
+require "sensu/json"
 
 module Helpers
   def setup_options
@@ -127,7 +127,7 @@ module Helpers
     check = check_template
     check[:history] = [1]
     {
-      :id => UUIDTools::UUID.random_create.to_s,
+      :id => ::SecureRandom.uuid,
       :client => client,
       :check => check,
       :occurrences => 1,
@@ -146,7 +146,7 @@ module Helpers
     }
     request_options = default_options.merge(options)
     if request_options[:body].is_a?(Hash) || request_options[:body].is_a?(Array)
-      request_options[:body] = MultiJson.dump(request_options[:body])
+      request_options[:body] = Sensu::JSON.dump(request_options[:body])
     end
     http = EM::HttpRequest.new("http://localhost:4567#{uri}").send(method, request_options)
     http.callback do
@@ -154,7 +154,7 @@ module Helpers
       when http.response.empty?
         http.response
       else
-        MultiJson.load(http.response)
+        Sensu::JSON.load(http.response)
       end
       callback.call(http, body)
     end
@@ -167,7 +167,7 @@ module Helpers
 
     def receive_data(data)
       if @expected
-        expect(MultiJson.load(data)).to eq(MultiJson.load(@expected))
+        expect(Sensu::JSON.load(data)).to eq(Sensu::JSON.load(@expected))
         EM::stop_event_loop
       end
     end
