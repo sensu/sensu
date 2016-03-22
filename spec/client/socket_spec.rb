@@ -5,10 +5,6 @@ require "sensu/client/socket"
 describe Sensu::Client::Socket do
   include Helpers
 
-  before(:each) do
-    Sensu::JSON.load_options = {:symbolize_keys => true}
-  end
-
   subject { described_class.new(nil) }
 
   let(:logger) { double("Logger") }
