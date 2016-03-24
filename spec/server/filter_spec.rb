@@ -136,21 +136,21 @@ describe "Sensu::Server::Filter" do
       :occurrences => 1,
       :action => "resolve"
     }
-    expect(@server.filter_attributes_match?(attributes, @event)).to be(false)
+    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
     attributes[:action] = "create"
-    expect(@server.filter_attributes_match?(attributes, @event)).to be(true)
+    expect(@server.filter_attributes_match?(@event, attributes)).to be(true)
     @event[:occurrences] = 2
-    expect(@server.filter_attributes_match?(attributes, @event)).to be(false)
+    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
     attributes[:occurrences] = "eval: value == 1 || value % 60 == 0"
     @event[:occurrences] = 1
-    expect(@server.filter_attributes_match?(attributes, @event)).to be(true)
+    expect(@server.filter_attributes_match?(@event, attributes)).to be(true)
     attributes[:occurrences] = "eval: value == '\neval:'.size || value % 60 == 0"
     @event[:occurrences] = "\neval:".size
-    expect(@server.filter_attributes_match?(attributes, @event)).to be(true)
+    expect(@server.filter_attributes_match?(@event, attributes)).to be(true)
     @event[:occurrences] = 2
-    expect(@server.filter_attributes_match?(attributes, @event)).to be(false)
+    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
     @event[:occurrences] = 120
-    expect(@server.filter_attributes_match?(attributes, @event)).to be(true)
+    expect(@server.filter_attributes_match?(@event, attributes)).to be(true)
   end
 
   it "can filter an event using a filter" do
