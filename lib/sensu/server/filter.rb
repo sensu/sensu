@@ -166,6 +166,40 @@ module Sensu
       end
 
       # Ruby eval() a string containing an expression, within the
+      # scope/context of a sandbox. The event data is provided to the
+      # sandbox, via Sensu dot notation tokens. Dot notation tokens in
+      # the eval() string, e.g. `:::mysql.user:::`, are substituted
+      # with the associated event data values prior to evaluation.
+      # This method will return `false` in the event of unmatched
+      # tokens. The expression is expected to return a boolean value.
+      #
+      # @param raw_eval_string [String] containing the Ruby expression
+      #   to be evaluated.
+      # @param event [Hash] data.
+      # @return [TrueClass, FalseClass]
+      def filter_eval_match?(raw_eval_string, event)
+        eval_string, unmatched_tokens = substitute_tokens(raw_eval_string, event)
+        if unmatched_tokens.empty?
+          begin
+            !!Sandbox.eval(eval_string)
+          rescue => error
+            @logger.error("filter eval error", {
+              :raw_eval_string => raw_eval_string,
+              :event => event,
+              :error => error.to_s
+            })
+            false
+          end
+        else
+          @logger.error("filter eval unmatched tokens", {
+            :raw_eval_string => raw_eval_string,
+            :unmatched_tokens => unmatched_tokens
+          })
+          false
+        end
+      end
+
+      # Ruby eval() a string containing an expression, within the
       # scope/context of a sandbox. This method is for filter
       # attribute values starting with "eval:", with the Ruby
       # expression following the colon. A single variable is provided
@@ -236,7 +270,9 @@ module Sensu
         case
         when @settings.filter_exists?(filter_name)
           filter = @settings[:filters][filter_name]
-          matched = filter_attributes_match?(filter[:attributes], event)
+          matched = true
+          matched = filter_eval_match?(filter[:eval], event) if filter[:eval]
+          matched = filter_attributes_match?(filter[:attributes], event) if matched
           yield(filter[:negate] ? matched : !matched)
         when @extensions.filter_exists?(filter_name)
           extension = @extensions[:filters][filter_name]
