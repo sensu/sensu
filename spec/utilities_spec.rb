@@ -88,4 +88,19 @@ describe "Sensu::Utilities" do
     expect(redacted[:diff_two][0][:secret]).to eq("REDACTED")
     expect(redacted[:diff_two][1][:secret]).to eq("REDACTED")
   end
+
+  it "can substitute dot notation tokens" do
+    string = ":::nested.attribute|default::: :::missing|default:::"
+    string << " :::missing|::: :::missing::: :::nested.attribute:::::::nested.attribute:::"
+    string << " :::empty|localhost::: :::empty.hash|localhost:8080:::"
+    attributes = {
+      :nested => {
+        :attribute => true
+      },
+      :empty => {}
+    }
+    result, unmatched_tokens = substitute_tokens(string, attributes)
+    expect(result).to eq("true default   true:true localhost localhost:8080")
+    expect(unmatched_tokens).to eq(["missing"])
+  end
 end
