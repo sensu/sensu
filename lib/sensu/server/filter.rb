@@ -275,7 +275,7 @@ module Sensu
         case
         when @settings.filter_exists?(filter_name)
           filter = @settings[:filters][filter_name]
-          matched = filter_attributes_match?(event, filter[:attributes], event)
+          matched = filter_attributes_match?(event, filter[:attributes])
           yield(filter[:negate] ? matched : !matched)
         when @extensions.filter_exists?(filter_name)
           extension = @extensions[:filters][filter_name]
