@@ -89,7 +89,7 @@ module Sensu
     # @param default [Object] value if attribute value is nil.
     # @return [Object] attribute or fallback default value.
     def find_attribute_value(tree, path, default)
-      attribute = tree[path.shift.to_sym]
+      attribute = tree[path.shift]
       if attribute.is_a?(Hash)
         find_attribute_value(attribute, path, default)
       else
@@ -109,7 +109,8 @@ module Sensu
       unmatched_tokens = []
       substituted = tokens.gsub(/:::([^:].*?):::/) do
         token, default = $1.to_s.split("|", -1)
-        matched = find_attribute_value(attributes, token.split("."), default)
+        path = token.split(".").map(&:to_sym)
+        matched = find_attribute_value(attributes, path, default)
         if matched.nil?
           unmatched_tokens << token
         end
