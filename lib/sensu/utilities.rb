@@ -89,7 +89,7 @@ module Sensu
     # @param default [Object] value if attribute value is nil.
     # @return [Object] attribute or fallback default value.
     def find_attribute_value(tree, path, default)
-      attribute = tree[path.shift]
+      attribute = tree[path.shift.to_sym]
       if attribute.is_a?(Hash)
         find_attribute_value(attribute, path, default)
       else

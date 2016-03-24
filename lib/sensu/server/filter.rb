@@ -167,6 +167,16 @@ module Sensu
         end
       end
 
+      # Process a filter eval attribute, a Ruby `eval()` string
+      # containing an expression to be evaluated within the
+      # scope/context of a sandbox. This methods strips away the
+      # expression prefix, `eval:`, and substitues any dot notation
+      # tokens with the corresponding event data values. If there are
+      # unmatched tokens, this method will return `nil`.
+      #
+      # @event [Hash]
+      # @raw_eval_string [String]
+      # @return [String] processed eval string.
       def process_eval_string(event, raw_eval_string)
         eval_string = raw_eval_string.slice(5..-1)
         eval_string, unmatched_tokens = substitute_tokens(eval_string, event)
@@ -182,7 +192,7 @@ module Sensu
         end
       end
 
-      # Ruby eval() a string containing an expression, within the
+      # Ruby `eval()` a string containing an expression, within the
       # scope/context of a sandbox. This method is for filter
       # attribute values starting with "eval:", with the Ruby
       # expression following the colon. A single variable is provided
