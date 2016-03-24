@@ -3,6 +3,8 @@ require "sensu/server/sandbox"
 module Sensu
   module Server
     module Filter
+      EVAL_PREFIX = "eval:".freeze
+
       # Determine if a period of time (window) is subdued. The
       # provided condition must have a `:begin` and `:end` time, eg.
       # "11:30:00 PM", or `false` will be returned.
@@ -165,28 +167,63 @@ module Sensu
         end
       end
 
-      # Ruby eval() a string containing an expression, within the
+      # Process a filter eval attribute, a Ruby `eval()` string
+      # containing an expression to be evaluated within the
+      # scope/context of a sandbox. This methods strips away the
+      # expression prefix, `eval:`, and substitues any dot notation
+      # tokens with the corresponding event data values. If there are
+      # unmatched tokens, this method will return `nil`.
+      #
+      # @event [Hash]
+      # @raw_eval_string [String]
+      # @return [String] processed eval string.
+      def process_eval_string(event, raw_eval_string)
+        eval_string = raw_eval_string.slice(5..-1)
+        eval_string, unmatched_tokens = substitute_tokens(eval_string, event)
+        if unmatched_tokens.empty?
+          eval_string
+        else
+          @logger.error("filter eval unmatched tokens", {
+            :raw_eval_string => raw_eval_string,
+            :unmatched_tokens => unmatched_tokens,
+            :event => event
+          })
+          nil
+        end
+      end
+
+      # Ruby `eval()` a string containing an expression, within the
       # scope/context of a sandbox. This method is for filter
       # attribute values starting with "eval:", with the Ruby
       # expression following the colon. A single variable is provided
       # to the expression, `value`, equal to the corresponding event
-      # attribute value. The expression is expected to return a
-      # boolean value.
+      # attribute value. Dot notation tokens in the expression, e.g.
+      # `:::mysql.user:::`, are substituted with the corresponding
+      # event data values prior to evaluation. The expression is
+      # expected to return a boolean value.
       #
+      # @param event [Hash]
       # @param raw_eval_string [String] containing the Ruby
       #   expression to be evaluated.
-      # @param value [Object] of the corresponding event attribute.
+      # @param raw_value [Object] of the corresponding event
+      #   attribute value.
       # @return [TrueClass, FalseClass]
-      def eval_attribute_value(raw_eval_string, value)
-        begin
-          eval_string = raw_eval_string.gsub(/\Aeval:(\s+)?/, "")
-          !!Sandbox.eval(eval_string, value)
-        rescue => error
-          @logger.error("filter attribute eval error", {
-            :raw_eval_string => raw_eval_string,
-            :value => value,
-            :error => error.to_s
-          })
+      def eval_attribute_value(event, raw_eval_string, raw_value)
+        eval_string = process_eval_string(event, raw_eval_string)
+        unless eval_string.nil?
+          begin
+            value = Marshal.load(Marshal.dump(raw_value))
+            !!Sandbox.eval(eval_string, value)
+          rescue => error
+            @logger.error("filter attribute eval error", {
+              :event => event,
+              :raw_eval_string => raw_eval_string,
+              :raw_value => raw_value,
+              :error => error.to_s
+            })
+            false
+          end
+        else
           false
         end
       end
@@ -197,21 +234,23 @@ module Sensu
       # key/value pairs (recursive), have equal string values, or
       # evaluate to true (Ruby eval).
       #
-      # @param hash_one [Hash]
-      # @param hash_two [Hash]
+      # @param event [Hash]
+      # @param filter_attributes [Object]
+      # @param event_attributes [Object]
       # @return [TrueClass, FalseClass]
-      def filter_attributes_match?(hash_one, hash_two)
-        hash_one.all? do |key, value_one|
-          value_two = hash_two[key]
+      def filter_attributes_match?(event, filter_attributes, event_attributes=nil)
+        event_attributes ||= event
+        filter_attributes.all? do |key, value_one|
+          value_two = event_attributes[key]
           case
           when value_one == value_two
             true
           when value_one.is_a?(Hash) && value_two.is_a?(Hash)
-            filter_attributes_match?(value_one, value_two)
-          when hash_one[key].to_s == hash_two[key].to_s
+            filter_attributes_match?(event, value_one, value_two)
+          when value_one.to_s == value_two.to_s
             true
-          when value_one.is_a?(String) && value_one.start_with?("eval:")
-            eval_attribute_value(value_one, value_two)
+          when value_one.is_a?(String) && value_one.start_with?(EVAL_PREFIX)
+            eval_attribute_value(event, value_one, value_two)
           else
             false
           end
@@ -236,7 +275,7 @@ module Sensu
         case
         when @settings.filter_exists?(filter_name)
           filter = @settings[:filters][filter_name]
-          matched = filter_attributes_match?(filter[:attributes], event)
+          matched = filter_attributes_match?(event, filter[:attributes])
           yield(filter[:negate] ? matched : !matched)
         when @extensions.filter_exists?(filter_name)
           extension = @extensions[:filters][filter_name]

@@ -80,5 +80,43 @@ module Sensu
       end
       hash
     end
+
+    # Traverse a hash for an attribute value, with a fallback default
+    # value if nil.
+    #
+    # @param tree [Hash] to traverse.
+    # @param path [Array] of attribute keys.
+    # @param default [Object] value if attribute value is nil.
+    # @return [Object] attribute or fallback default value.
+    def find_attribute_value(tree, path, default)
+      attribute = tree[path.shift]
+      if attribute.is_a?(Hash)
+        find_attribute_value(attribute, path, default)
+      else
+        attribute.nil? ? default : attribute
+      end
+    end
+
+    # Substitute dot notation tokens (eg. :::db.name|production:::)
+    # with the associated definition attribute value. Tokens can
+    # provide a fallback default value, following a pipe.
+    #
+    # @param tokens [String]
+    # @param attributes [Hash]
+    # @return [Array] containing the string with tokens substituted
+    #   and an array of unmatched tokens.
+    def substitute_tokens(tokens, attributes)
+      unmatched_tokens = []
+      substituted = tokens.gsub(/:::([^:].*?):::/) do
+        token, default = $1.to_s.split("|", -1)
+        path = token.split(".").map(&:to_sym)
+        matched = find_attribute_value(attributes, path, default)
+        if matched.nil?
+          unmatched_tokens << token
+        end
+        matched
+      end
+      [substituted, unmatched_tokens]
+    end
   end
 end

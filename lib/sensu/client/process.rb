@@ -99,42 +99,6 @@ module Sensu
         end
       end
 
-      # Traverse the Sensu client definition (hash) for an attribute
-      # value, with a fallback default value if nil.
-      #
-      # @param tree [Hash] to traverse.
-      # @param path [Array] of attribute keys.
-      # @param default [Object] value if attribute value is nil.
-      # @return [Object] attribute or fallback default value.
-      def find_client_attribute(tree, path, default)
-        attribute = tree[path.shift]
-        if attribute.is_a?(Hash)
-          find_client_attribute(attribute, path, default)
-        else
-          attribute.nil? ? default : attribute
-        end
-      end
-
-      # Substitue check command tokens (eg. :::db.name|production:::)
-      # with the associated client definition attribute value. Command
-      # tokens can provide a fallback default value, following a pipe.
-      #
-      # @param check [Hash]
-      # @return [Array] containing the check command string with
-      #   tokens substituted and an array of unmatched command tokens.
-      def substitute_check_command_tokens(check)
-        unmatched_tokens = []
-        substituted = check[:command].gsub(/:::([^:].*?):::/) do
-          token, default = $1.to_s.split("|", -1)
-          matched = find_client_attribute(@settings[:client], token.split("."), default)
-          if matched.nil?
-            unmatched_tokens << token
-          end
-          matched
-        end
-        [substituted, unmatched_tokens]
-      end
-
       # Execute a check command, capturing its output (STDOUT/ERR),
       # exit status code, execution duration, timestamp, and publish
       # the result. This method guards against multiple executions for
@@ -149,7 +113,7 @@ module Sensu
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          command, unmatched_tokens = substitute_check_command_tokens(check)
+          command, unmatched_tokens = substitute_tokens(check[:command], @settings[:client])
           if unmatched_tokens.empty?
             check[:executed] = Time.now.to_i
             started = Time.now.to_f
