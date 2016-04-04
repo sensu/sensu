@@ -2,14 +2,14 @@ require "rubygems"
 
 gem "eventmachine", "1.2.0.1"
 
-gem "sensu-json", "1.1.0"
+gem "sensu-json", "1.1.1"
 gem "sensu-logger", "1.2.0"
 gem "sensu-settings", "3.4.0"
 gem "sensu-extension", "1.5.0"
 gem "sensu-extensions", "1.5.0"
 gem "sensu-transport", "5.0.0"
 gem "sensu-spawn", "1.8.0"
-gem "sensu-redis", "1.2.0"
+gem "sensu-redis", "1.3.0"
 
 require "time"
 require "uri"

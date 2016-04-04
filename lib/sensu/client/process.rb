@@ -396,7 +396,7 @@ module Sensu
             timer.cancel
           end
           @timers[:run].clear
-          @transport.unsubscribe
+          @transport.unsubscribe if @transport
           @state = :paused
         end
       end
@@ -427,7 +427,7 @@ module Sensu
         @state = :stopping
         complete_checks_in_progress do
           close_sockets
-          @transport.close
+          @transport.close if @transport
           super
         end
       end

@@ -1037,7 +1037,7 @@ module Sensu
       # the process is stopping.
       def unsubscribe
         @logger.warn("unsubscribing from keepalive and result queues")
-        @transport.unsubscribe
+        @transport.unsubscribe if @transport
       end
 
       # Complete event handling currently in progress. The
@@ -1125,8 +1125,8 @@ module Sensu
         pause
         @state = :stopping
         complete_event_handling do
-          @redis.close
-          @transport.close
+          @redis.close if @redis
+          @transport.close if @transport
           super
         end
       end

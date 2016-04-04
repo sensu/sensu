@@ -84,8 +84,8 @@ module Sensu
         def stop
           @logger.warn("stopping")
           stop_server do
-            settings.redis.close
-            settings.transport.close
+            settings.redis.close if settings.redis
+            settings.transport.close if settings.transport
             super
           end
         end

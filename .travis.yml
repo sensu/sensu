@@ -6,6 +6,10 @@ rvm:
   - 2.2.0
   - 2.2.3
   - 2.3.0
+before_install:
+  - gem update --system
+  - gem --version
+  - gem install bundler --version 1.11.2
 services:
   - rabbitmq
   - redis
