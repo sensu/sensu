@@ -14,14 +14,14 @@ Gem::Specification.new do |s|
   s.has_rdoc    = false
 
   s.add_dependency "eventmachine", "1.2.0.1"
-  s.add_dependency "sensu-json", "1.1.0"
+  s.add_dependency "sensu-json", "1.1.1"
   s.add_dependency "sensu-logger", "1.2.0"
   s.add_dependency "sensu-settings", "3.4.0"
   s.add_dependency "sensu-extension", "1.5.0"
   s.add_dependency "sensu-extensions", "1.5.0"
   s.add_dependency "sensu-transport", "5.0.0"
   s.add_dependency "sensu-spawn", "1.8.0"
-  s.add_dependency "sensu-redis", "1.2.0"
+  s.add_dependency "sensu-redis", "1.3.0"
   s.add_dependency "sinatra", "1.4.6"
   s.add_dependency "async_sinatra", "1.2.0"
   s.add_dependency "thin", "1.6.3" unless RUBY_PLATFORM =~ /java/
