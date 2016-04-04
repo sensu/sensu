@@ -1,4 +1,4 @@
-## 0.23.0 - TBD
+## 0.23.0 - 2016-04-04
 
 ### Important
 
@@ -24,6 +24,8 @@ STDOUT) its compiled configuration settings and exit. The CLI option is
 
 Added token substitution to filter eval attributes, providing access to
 event data, e.g. `"occurrences": "eval: value == :::check.occurrences:::"`.
+
+The pure Ruby EventMachine reactor is used when running on AIX.
 
 The Sensu 0.23 packages use Ruby 2.3.
 
