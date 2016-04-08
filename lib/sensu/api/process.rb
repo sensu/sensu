@@ -152,6 +152,10 @@ module Sensu
           ahalt 404
         end
 
+        def precondition_failed!
+          ahalt 412
+        end
+
         def unavailable!
           ahalt 503
         end
