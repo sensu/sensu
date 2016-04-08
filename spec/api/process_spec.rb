@@ -66,10 +66,10 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(204)
         expect(body).to be_empty
         api_request("/health?consumers=1000") do |http, body|
-          expect(http.response_header.status).to eq(503)
+          expect(http.response_header.status).to eq(412)
           expect(body).to be_empty
           api_request("/health?consumers=1000&messages=1000") do |http, body|
-            expect(http.response_header.status).to eq(503)
+            expect(http.response_header.status).to eq(412)
             async_done
           end
         end
