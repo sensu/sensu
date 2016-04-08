@@ -156,10 +156,6 @@ module Sensu
           ahalt 412
         end
 
-        def unavailable!
-          ahalt 503
-        end
-
         def created!(response)
           status 201
           body response
