@@ -120,6 +120,7 @@ module Sensu
             Spawn.process(command, :timeout => check[:timeout]) do |output, status|
               check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               check[:output] = output
+              check[:executed_command] = command
               check[:status] = status
               publish_check_result(check)
               @checks_in_progress.delete(check[:name])
