@@ -108,13 +108,18 @@ module Sensu
     def substitute_tokens(tokens, attributes)
       unmatched_tokens = []
       substituted = tokens.gsub(/:::([^:].*?):::/) do
-        token, default = $1.to_s.split("|", -1)
-        path = token.split(".").map(&:to_sym)
-        matched = find_attribute_value(attributes, path, default)
-        if matched.nil?
-          unmatched_tokens << token
+        token = $1.to_s.split("|", -1)
+        default = token.length > 1 ? token.pop : nil
+        matched = nil
+        token.each do |t|
+          path = t.split(".").map(&:to_sym)
+          matched = find_attribute_value(attributes, path, default)
+          if matched.nil?
+            unmatched_tokens << t
+          end
+          matched
         end
-        matched
+        matched || default
       end
       [substituted, unmatched_tokens]
     end
