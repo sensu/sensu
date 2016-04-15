@@ -1,3 +1,9 @@
+## 0.23.1 - 2016-04-15
+
+### Other
+
+The pure Ruby EventMachine reactor is used when running on Solaris.
+
 ## 0.23.0 - 2016-04-04
 
 ### Important
