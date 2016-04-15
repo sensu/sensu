@@ -14,7 +14,9 @@ gem "sensu-redis", "1.3.0"
 require "time"
 require "uri"
 
-require "em/pure_ruby" if RUBY_PLATFORM =~ /aix/
+if RUBY_PLATFORM =~ /aix/ || RUBY_PLATFORM =~ /solaris/
+  require "em/pure_ruby"
+end
 
 require "sensu/json"
 require "sensu/logger"
