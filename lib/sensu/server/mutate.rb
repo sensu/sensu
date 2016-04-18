@@ -44,7 +44,7 @@ module Sensu
         spawn_opts = {:data => MultiJson.dump(event), :timeout => mutator[:timeout],
                       :concurrency => concurrency}
         block = mutator_callback(mutator, event, &callback)
-        Spawn.process(mutator[:command], options, &block)
+        Spawn.process(mutator[:command], spawn_opts, &block)
       end
 
       # Run a mutator extension, within the Sensu EventMachine reactor
