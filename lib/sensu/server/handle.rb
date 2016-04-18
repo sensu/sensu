@@ -30,8 +30,10 @@ module Sensu
       # @param event_data [Object] provided to the spawned handler
       #   process via STDIN.
       def pipe_handler(handler, event_data)
-        options = {:data => event_data, :timeout => handler[:timeout]}
-        Spawn.process(handler[:command], options) do |output, status|
+        concurrency = @settings[:eventmachine].fetch(:concurrent_workers, 12)
+        spawn_opts = {:data => event_data, :timeout => handler[:timeout],
+                      :concurrency => concurrency}
+        Spawn.process(handler[:command], spawn_opts) do |output, status|
           @logger.info("handler output", {
             :handler => handler,
             :output => output.split("\n+")

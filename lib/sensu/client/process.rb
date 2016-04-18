@@ -153,7 +153,7 @@ module Sensu
           if unmatched_tokens.empty?
             check[:executed] = Time.now.to_i
             started = Time.now.to_f
-            concurrency = @settings[:client].fetch(:concurrent_workers, 12)
+            concurrency = @settings[:eventmachine].fetch(:concurrent_workers, 12)
             spawn_opts = {:timeout => check[:timeout], :concurrency => concurrency}
             Spawn.process(command, spawn_opts) do |output, status|
               check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
