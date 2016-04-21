@@ -144,6 +144,9 @@ module Sensu
           :client => @settings[:client][:name],
           :check => check.merge(:issued => Time.now.to_i)
         }
+        if @settings[:client][:signature] && check[:source].nil?
+          payload[:signature] = @settings[:client][:signature]
+        end
         @logger.info("publishing check result", :payload => payload)
         @transport.publish(:direct, "results", Sensu::JSON.dump(payload))
       end
