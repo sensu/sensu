@@ -1,3 +1,15 @@
+## 0.23.2 - 2016-04-25
+
+### Fixes
+
+Fixed client socket check result publishing when the client has a
+signature. The client signature is now added to the check result payload,
+making it valid.
+
+### Other
+
+Added client socket check result check TTL validation.
+
 ## 0.23.1 - 2016-04-15
 
 ### Other
