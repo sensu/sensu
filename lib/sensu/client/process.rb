@@ -87,7 +87,9 @@ module Sensu
           :client => @settings[:client][:name],
           :check => check
         }
-        payload[:signature] = @settings[:client][:signature] if @settings[:client][:signature]
+        if @settings[:client][:signature] && check[:source].nil?
+          payload[:signature] = @settings[:client][:signature]
+        end
         @logger.info("publishing check result", :payload => payload)
         @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
           if info[:error]
