@@ -72,6 +72,15 @@ describe Sensu::Client::Socket do
       {:executed => "1431361723"},
       "check executed timestamp must be an integer"
 
+    it_should_behave_like "a validator",
+      "check ttl must be an integer if set",
+      {:ttl => "30"},
+      "check ttl must be an integer greater than 0"
+
+    it_should_behave_like "a validator",
+      "check ttl must be an integer greater than 0 if set",
+      {:ttl => -10},
+      "check ttl must be an integer greater than 0"
   end
 
   describe "#publish_check_result" do
