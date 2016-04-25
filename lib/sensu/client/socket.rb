@@ -134,6 +134,9 @@ module Sensu
         unless check[:executed].is_a?(Integer)
           raise DataError, "check executed timestamp must be an integer"
         end
+        unless check[:ttl].nil? || (check[:ttl].is_a?(Integer) && check[:ttl] > 0)
+          raise DataError, "check ttl must be an integer greater than 0"
+        end
       end
 
       # Publish a check result to the Sensu transport.
