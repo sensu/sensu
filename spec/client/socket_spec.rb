@@ -85,6 +85,19 @@ describe Sensu::Client::Socket do
         end
       subject.publish_check_result(check_result[:check])
     end
+
+    it "publishes check result with client signature" do
+      subject.settings[:client][:signature] = "foo"
+      check_result = result_template
+      check_result[:signature] = "foo"
+      expect(logger).to receive(:info).
+        with("publishing check result", {:payload => check_result})
+      expect(transport).to receive(:publish).
+        with(:direct, "results", kind_of(String)) do |_, _, json_string|
+          expect(Sensu::JSON.load(json_string)).to eq(check_result)
+        end
+      subject.publish_check_result(check_result[:check])
+    end
   end
 
   describe "#process_check_result" do

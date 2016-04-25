@@ -144,8 +144,16 @@ module Sensu
           :client => @settings[:client][:name],
           :check => check.merge(:issued => Time.now.to_i)
         }
+        payload[:signature] = @settings[:client][:signature] if @settings[:client][:signature]
         @logger.info("publishing check result", :payload => payload)
-        @transport.publish(:direct, "results", Sensu::JSON.dump(payload))
+        @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
+          if info[:error]
+            @logger.error("failed to publish check result", {
+              :payload => payload,
+              :error => info[:error].to_s
+            })
+          end
+        end
       end
 
       # Process a check result. Set check result attribute defaults,
