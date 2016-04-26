@@ -152,8 +152,8 @@ module Sensu
           ahalt 404
         end
 
-        def unavailable!
-          ahalt 503
+        def precondition_failed!
+          ahalt 412
         end
 
         def created!(response)
@@ -342,10 +342,10 @@ module Sensu
               healthy << (info[:keepalives][:messages] <= max_messages)
               healthy << (info[:results][:messages] <= max_messages)
             end
-            healthy.all? ? no_content! : unavailable!
+            healthy.all? ? no_content! : precondition_failed!
           end
         else
-          unavailable!
+          precondition_failed!
         end
       end
 
