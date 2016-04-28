@@ -444,13 +444,13 @@ module Sensu
           stored_event = event_json ? Sensu::JSON.load(event_json) : nil
           flapping = check_flapping?(stored_event, check)
           event = {
+            :id => (stored_event ? stored_event[:id] : random_uuid),
             :client => client,
             :check => check,
             :occurrences => 1,
             :action => (flapping ? :flapping : :create),
             :timestamp => Time.now.to_i
           }
-          event[:id] = stored_event ? stored_event[:id] : random_uuid
           if check[:status] != 0 || flapping
             if stored_event && check[:status] == stored_event[:check][:status]
               event[:occurrences] = stored_event[:occurrences] + 1
