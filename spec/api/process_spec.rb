@@ -394,6 +394,29 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can create a client expected to produce keepalives (eventually)" do
+    api_test do
+      options = {
+        :body => {
+          :name => "i-888888",
+          :address => "8.8.8.8",
+          :subscriptions => [
+            "test"
+          ],
+          :keepalives => true
+        }
+      }
+      api_request("/clients", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        api_request("/client/i-888888") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body[:keepalives]).to be(true)
+          async_done
+        end
+      end
+    end
+  end
+
   it "can not provide a nonexistent client" do
     api_test do
       api_request("/client/nonexistent") do |http, body|
