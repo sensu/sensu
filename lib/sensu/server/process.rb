@@ -444,7 +444,7 @@ module Sensu
           stored_event = event_json ? Sensu::JSON.load(event_json) : nil
           flapping = check_flapping?(stored_event, check)
           event = {
-            :id => random_uuid,
+            :id => (stored_event ? stored_event[:id] : random_uuid),
             :client => client,
             :check => check,
             :occurrences => 1,
