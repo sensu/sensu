@@ -180,7 +180,8 @@ module Sensu
             data = Sensu::JSON.load(env["rack.input"].read)
             valid = rules.all? do |key, rule|
               value = data[key]
-              (value.is_a?(rule[:type]) || (rule[:nil_ok] && value.nil?)) &&
+              (Array(rule[:type]).any? {|type| value.is_a?(type)} ||
+                (rule[:nil_ok] && value.nil?)) &&
                 (value.nil? || rule[:regex].nil?) ||
                 (rule[:regex] && (value =~ rule[:regex]) == 0)
             end
@@ -353,10 +354,11 @@ module Sensu
         rules = {
           :name => {:type => String, :nil_ok => false, :regex => /\A[\w\.-]+\z/},
           :address => {:type => String, :nil_ok => false},
-          :subscriptions => {:type => Array, :nil_ok => false}
+          :subscriptions => {:type => Array, :nil_ok => false},
+          :keepalives => {:type => [TrueClass, FalseClass], :nil_ok => true}
         }
         read_data(rules) do |data|
-          data[:keepalives] = false
+          data[:keepalives] = data.fetch(:keepalives, false)
           data[:version] = VERSION
           data[:timestamp] = Time.now.to_i
           settings.redis.set("client:#{data[:name]}", Sensu::JSON.dump(data)) do
