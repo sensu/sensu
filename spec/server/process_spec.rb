@@ -205,6 +205,36 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can have event ids persist until the event is resolved" do
+    async_wrapper do
+      @server.setup_redis do
+        redis.flushdb do
+          client = client_template
+          redis.set("client:i-424242", Sensu::JSON.dump(client)) do
+            result = result_template
+            @server.process_check_result(result)
+            timer(1) do
+              redis.hget("events:i-424242", "test") do |event_json|
+                event = Sensu::JSON.load(event_json)
+                event_id = event[:id]
+                expect(event[:occurrences]).to eq(1)
+                @server.process_check_result(result)
+                timer(1) do
+                  redis.hget("events:i-424242", "test") do |event_json|
+                    event = Sensu::JSON.load(event_json)
+                    expect(event[:id]).to eq(event_id)
+                    expect(event[:occurrences]).to eq(2)
+                    async_done
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can not resolve events when provided the option" do
     async_wrapper do
       @server.setup_redis do
@@ -220,6 +250,7 @@ describe "Sensu::Server::Process" do
                 expect(event[:action]).to eq("create")
                 expect(event[:occurrences]).to eq(1)
                 result[:check][:status] = 0
+                @server.process_check_result(result)
                 timer(1) do
                   redis.hget("events:i-424242", "test") do |event_json|
                     event = Sensu::JSON.load(event_json)
