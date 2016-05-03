@@ -85,12 +85,12 @@ module Sensu
     #
     # @param settings [Object]
     def validate_settings!(settings)
-      @logger.info("validating latest configuration")
       if settings.errors.empty?
-        @logger.info("latest configuration is valid")
+        puts "configuration is valid"
         exit
       else
-        @logger.fatal("latest configuration is invalid", :errors => @settings.errors)
+        puts "configuration is invalid"
+        puts Sensu::JSON.dump({:errors => @settings.errors}, :pretty => true)
         exit 2
       end
     end
