@@ -365,6 +365,16 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can not provide a nonexistent client" do
+    api_test do
+      api_request("/client/nonexistent") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
   it "can create and provide a client" do
     api_test do
       options = {
@@ -417,11 +427,21 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can not provide a nonexistent client" do
+  it "can not create an invalid client" do
     api_test do
-      api_request("/client/nonexistent") do |http, body|
-        expect(http.response_header.status).to eq(404)
-        expect(body).to be_empty
+      options = {
+        :body => {
+          :name => "i-888888",
+          :address => "8.8.8.8",
+          :subscriptions => [
+            "test"
+          ],
+          :keepalives => true,
+          :keepalive => "invalid"
+        }
+      }
+      api_request("/clients", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
         async_done
       end
     end

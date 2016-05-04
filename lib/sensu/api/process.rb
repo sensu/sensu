@@ -1,4 +1,5 @@
 require "sensu/daemon"
+require "sensu/api/validators"
 
 gem "sinatra", "1.4.6"
 gem "async_sinatra", "1.2.0"
@@ -361,10 +362,15 @@ module Sensu
           data[:keepalives] = data.fetch(:keepalives, false)
           data[:version] = VERSION
           data[:timestamp] = Time.now.to_i
-          settings.redis.set("client:#{data[:name]}", Sensu::JSON.dump(data)) do
-            settings.redis.sadd("clients", data[:name]) do
-              created!(Sensu::JSON.dump(:name => data[:name]))
+          validator = Validators::Client.new
+          if validator.valid?(data)
+            settings.redis.set("client:#{data[:name]}", Sensu::JSON.dump(data)) do
+              settings.redis.sadd("clients", data[:name]) do
+                created!(Sensu::JSON.dump(:name => data[:name]))
+              end
             end
+          else
+            bad_request!
           end
         end
       end
