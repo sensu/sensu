@@ -11,7 +11,9 @@ module Sensu
       include Mutate
       include Handle
 
-      attr_reader :is_leader, :handling_event_count
+      attr_reader :is_leader
+      attr_reader :processing_check_result_count
+      attr_reader :handling_event_count
 
       METRIC_CHECK_TYPE = "metric".freeze
 
@@ -40,6 +42,7 @@ module Sensu
         super
         @is_leader = false
         @timers[:leader] = Array.new
+        @processing_check_result_count = 0
         @handling_event_count = 0
       end
 
@@ -468,6 +471,8 @@ module Sensu
             end
           elsif check[:type] == METRIC_CHECK_TYPE
             yield(event)
+          else
+            @processing_check_result_count -= 1
           end
           event_bridges(event)
         end
@@ -544,6 +549,7 @@ module Sensu
       #
       # @param result [Hash] data.
       def process_check_result(result)
+        @processing_check_result_count += 1
         @logger.debug("processing result", :result => result)
         retrieve_client(result) do |client|
           check = case
@@ -559,6 +565,7 @@ module Sensu
               check[:total_state_change] = total_state_change
               update_event_registry(client, check) do |event|
                 process_event(event)
+                @processing_check_result_count -= 1
               end
             end
           end
@@ -1040,6 +1047,25 @@ module Sensu
         @transport.unsubscribe if @transport
       end
 
+      # Complete check result processing currently in progress. The
+      # `:processing_check_result_count` is used to determine if check
+      # result processing is complete, when it is equal to `0`. The
+      # provided callback is called when handling is complete.
+      #
+      # @yield [] callback/block to call when event handling is
+      #   complete.
+      def complete_check_result_processing
+        @logger.info("completing in progress check result processing", {
+          :processing_check_result_count => @processing_check_result_count
+        })
+        retry_until_true do
+          if @processing_check_result_count == 0
+            yield
+            true
+          end
+        end
+      end
+
       # Complete event handling currently in progress. The
       # `:handling_event_count` is used to determine if event handling
       # is complete, when it is equal to `0`. The provided callback is
@@ -1048,7 +1074,7 @@ module Sensu
       # @yield [] callback/block to call when event handling is
       #   complete.
       def complete_event_handling
-        @logger.info("completing event handling in progress", {
+        @logger.info("completing in progress event handling", {
           :handling_event_count => @handling_event_count
         })
         retry_until_true do
@@ -1124,10 +1150,12 @@ module Sensu
         @logger.warn("stopping")
         pause
         @state = :stopping
-        complete_event_handling do
-          @redis.close if @redis
-          @transport.close if @transport
-          super
+        complete_check_result_processing do
+          complete_event_handling do
+            @redis.close if @redis
+            @transport.close if @transport
+            super
+          end
         end
       end
     end
