@@ -4,7 +4,7 @@ module Sensu
   module Server
     module Handle
       # Create a handler error callback, for logging the error and
-      # decrementing the `@handling_event_count` by `1`.
+      # decrementing the `@in_progress[:events]` by `1`.
       #
       # @param handler [Object]
       # @param event_data [Object]
@@ -16,14 +16,14 @@ module Sensu
             :event_data => event_data,
             :error => error.to_s
           })
-          @handling_event_count -= 1 if @handling_event_count
+          @in_progress[:events] -= 1 if @in_progress
         end
       end
 
       # Execute a pipe event handler, using the defined handler
       # command to spawn a process, passing it event data via STDIN.
       # Log the handler output lines and decrement the
-      # `@handling_event_count` by `1` when the handler executes
+      # `@in_progress[:events]` by `1` when the handler executes
       # successfully.
       #
       # @param handler [Hash] definition.
@@ -36,7 +36,7 @@ module Sensu
             :handler => handler,
             :output => output.split("\n+")
           })
-          @handling_event_count -= 1 if @handling_event_count
+          @in_progress[:events] -= 1 if @in_progress
         end
       end
 
@@ -47,7 +47,7 @@ module Sensu
       # `handler_error()` method is used to create the `on_error`
       # callback for the connection handler. The `on_error` callback
       # is call in the event of any error(s). The
-      # `@handling_event_count` is decremented by `1` when the data is
+      # `@in_progress[:events]` is decremented by `1` when the data is
       # transmitted successfully, `on_success`.
       #
       # @param handler [Hash] definition.
@@ -57,7 +57,7 @@ module Sensu
         begin
           EM::connect(handler[:socket][:host], handler[:socket][:port], Socket) do |socket|
             socket.on_success = Proc.new do
-              @handling_event_count -= 1 if @handling_event_count
+              @in_progress[:events] -= 1 if @in_progress
             end
             socket.on_error = on_error
             timeout = handler[:timeout] || 10
@@ -71,7 +71,7 @@ module Sensu
       end
 
       # Transmit event data to a UDP socket, then close the
-      # connection. The `@handling_event_count` is decremented by `1`
+      # connection. The `@in_progress[:events]` is decremented by `1`
       # when the data is assumed to have been transmitted.
       #
       # @param handler [Hash] definition.
@@ -81,7 +81,7 @@ module Sensu
           EM::open_datagram_socket("0.0.0.0", 0, nil) do |socket|
             socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
             socket.close_connection_after_writing
-            @handling_event_count -= 1 if @handling_event_count
+            @in_progress[:events] -= 1 if @in_progress
           end
         rescue => error
           handler_error(handler, event_data).call(error)
@@ -90,7 +90,7 @@ module Sensu
 
       # Publish event data to a Sensu transport pipe. Event data that
       # is `nil` or empty will not be published, to prevent transport
-      # errors. The `@handling_event_count` is decremented by `1`,
+      # errors. The `@in_progress[:events]` is decremented by `1`,
       # even if the event data is not published.
       #
       # @param handler [Hash] definition.
@@ -105,14 +105,14 @@ module Sensu
             end
           end
         end
-        @handling_event_count -= 1 if @handling_event_count
+        @in_progress[:events] -= 1 if @in_progress
       end
 
       # Run a handler extension, within the Sensu EventMachine reactor
       # (event loop). The extension API `safe_run()` method is used to
       # guard against most errors. The `safe_run()` callback is always
       # called, logging the extension run output and status, and
-      # decrementing the `@handling_event_count` by `1`.
+      # decrementing the `@in_progress[:events]` by `1`.
       #
       # @param handler [Hash] definition.
       # @param event_data [Object] to pass to the handler extension.
@@ -123,7 +123,7 @@ module Sensu
             :output => output,
             :status => status
           })
-          @handling_event_count -= 1 if @handling_event_count
+          @in_progress[:events] -= 1 if @in_progress
         end
       end
 

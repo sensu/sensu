@@ -345,14 +345,14 @@ module Sensu
         end
         if filter_message
           @logger.info(filter_message, details)
-          @handling_event_count -= 1 if @handling_event_count
+          @in_progress[:events] -= 1 if @in_progress
         else
           event_filtered?(handler, event) do |filtered|
             unless filtered
               yield(event)
             else
               @logger.info("event was filtered", details)
-              @handling_event_count -= 1 if @handling_event_count
+              @in_progress[:events] -= 1 if @in_progress
             end
           end
         end

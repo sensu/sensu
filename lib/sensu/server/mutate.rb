@@ -6,7 +6,7 @@ module Sensu
       # created callback can be used for standard mutators and mutator
       # extensions. The provided callback will only be called when the
       # mutator status is `0` (OK). If the status is not `0`, an error
-      # is logged, and the `@handling_event_count` is decremented by
+      # is logged, and the `@in_progress[:events]` is decremented by
       # `1`.
       #
       # @param mutator [Object] definition or extension.
@@ -25,7 +25,7 @@ module Sensu
               :output => output,
               :status => status
             })
-            @handling_event_count -= 1 if @handling_event_count
+            @in_progress[:events] -= 1 if @in_progress
           end
         end
       end
@@ -63,7 +63,7 @@ module Sensu
       # mutator is used, unless the handler specifies another mutator.
       # If a mutator does not exist, not defined or a missing
       # extension, an error will be logged and the
-      # `@handling_event_count` is decremented by `1`. This method
+      # `@in_progress[:events]` is decremented by `1`. This method
       # first checks for the existence of a standard mutator, then
       # checks for an extension if a standard mutator is not defined.
       #
@@ -84,7 +84,7 @@ module Sensu
           @logger.error("unknown mutator", {
             :mutator_name => mutator_name
           })
-          @handling_event_count -= 1 if @handling_event_count
+          @in_progress[:events] -= 1 if @in_progress
         end
       end
     end
