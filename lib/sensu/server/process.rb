@@ -11,7 +11,7 @@ module Sensu
       include Mutate
       include Handle
 
-      attr_reader :is_leader, :handling_event_count
+      attr_reader :is_leader, :in_progress
 
       METRIC_CHECK_TYPE = "metric".freeze
 
@@ -40,17 +40,23 @@ module Sensu
         super
         @is_leader = false
         @timers[:leader] = Array.new
-        @handling_event_count = 0
+        @in_progress = Hash.new(0)
       end
 
       # Set up the Redis and Transport connection objects, `@redis`
-      # and `@transport`. This method "drys" up many instances of
-      # `setup_redis()` and `setup_transport()`.
+      # and `@transport`. This method updates the Redis on error
+      # callback to reset the in progress check result counter. This
+      # method "drys" up many instances of `setup_redis()` and
+      # `setup_transport()`, particularly in the specs.
       #
       # @yield callback/block called after connecting to Redis and the
       #   Sensu Transport.
       def setup_connections
         setup_redis do
+          @redis.on_error do |error|
+            @logger.error("redis connection error", :error => error.to_s)
+            @in_progress[:check_results] = 0
+          end
           setup_transport do
             yield
           end
@@ -235,7 +241,7 @@ module Sensu
       #
       # This method determines the appropriate handlers for an event,
       # filtering and mutating the event data for each of them. The
-      # `@handling_event_count` is incremented by `1`, for each event
+      # `@in_progress[:events]` is incremented by `1`, for each event
       # handler chain (filter -> mutate -> handle).
       #
       # @param event [Hash]
@@ -245,7 +251,7 @@ module Sensu
         handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || DEFAULT_HANDLER_NAME)
         handlers = derive_handlers(handler_list)
         handlers.each do |handler|
-          @handling_event_count += 1
+          @in_progress[:events] += 1
           filter_event(handler, event) do |event|
             mutate_event(handler, event) do |event_data|
               handle_event(handler, event_data)
@@ -428,10 +434,11 @@ module Sensu
       # registry. If the previous conditions are not met, and check
       # `:type` is `metric` and the `:status` is `0`, the event
       # registry is not updated, but the provided callback is called
-      # with the event data. All event data is sent to event bridge
-      # extensions, including events that do not normally produce an
-      # action. JSON serialization is used when storing data in the
-      # registry.
+      # with the event data. If none of the previous conditions are
+      # met, the `@in_progress[:check_results]` counter is decremented
+      # by `1`. All event data is sent to event bridge extensions,
+      # including events that do not normally produce an action. JSON
+      # serialization is used when storing data in the registry.
       #
       # @param client [Hash]
       # @param check [Hash]
@@ -468,6 +475,8 @@ module Sensu
             end
           elsif check[:type] == METRIC_CHECK_TYPE
             yield(event)
+          else
+            @in_progress[:check_results] -= 1
           end
           event_bridges(event)
         end
@@ -536,14 +545,18 @@ module Sensu
 
       # Process a check result, storing its data, inspecting its
       # contents, and taking the appropriate actions (eg. update the
-      # event registry). A check result must have a valid client name,
-      # associated with a client in the registry or one will be
-      # created. If a local check definition exists for the check
-      # name, and the check result is not from a standalone check
-      # execution, it's merged with the check result for more context.
+      # event registry). The `@in_progress[:check_results]` counter is
+      # incremented by `1` prior to check result processing and then
+      # decremented by `1` after updating the event registry. A check
+      # result must have a valid client name, associated with a client
+      # in the registry or one will be created. If a local check
+      # definition exists for the check name, and the check result is
+      # not from a standalone check execution, it's merged with the
+      # check result for more context.
       #
       # @param result [Hash] data.
       def process_check_result(result)
+        @in_progress[:check_results] += 1
         @logger.debug("processing result", :result => result)
         retrieve_client(result) do |client|
           check = case
@@ -559,6 +572,7 @@ module Sensu
               check[:total_state_change] = total_state_change
               update_event_registry(client, check) do |event|
                 process_event(event)
+                @in_progress[:check_results] -= 1
               end
             end
           end
@@ -1040,19 +1054,16 @@ module Sensu
         @transport.unsubscribe if @transport
       end
 
-      # Complete event handling currently in progress. The
-      # `:handling_event_count` is used to determine if event handling
-      # is complete, when it is equal to `0`. The provided callback is
-      # called when handling is complete.
+      # Complete in progress work and then call the provided callback.
+      # This method will wait until all counters stored in the
+      # `@in_progress` hash equal `0`.
       #
-      # @yield [] callback/block to call when event handling is
-      #   complete.
-      def complete_event_handling
-        @logger.info("completing event handling in progress", {
-          :handling_event_count => @handling_event_count
-        })
+      # @yield [] callback/block to call when in progress work is
+      #   completed.
+      def complete_in_progress
+        @logger.info("completing work in progress", :in_progress => @in_progress)
         retry_until_true do
-          if @handling_event_count == 0
+          if @in_progress.values.all? {|count| count == 0}
             yield
             true
           end
@@ -1124,7 +1135,7 @@ module Sensu
         @logger.warn("stopping")
         pause
         @state = :stopping
-        complete_event_handling do
+        complete_in_progress do
           @redis.close if @redis
           @transport.close if @transport
           super
