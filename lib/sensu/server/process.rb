@@ -55,7 +55,7 @@ module Sensu
         setup_redis do
           @redis.on_error do |error|
             @logger.error("redis connection error", :error => error.to_s)
-            @in_progress[:results] = 0
+            @in_progress[:check_results] = 0
           end
           setup_transport do
             yield
