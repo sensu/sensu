@@ -40,20 +40,23 @@ module Sensu
         super
         @is_leader = false
         @timers[:leader] = Array.new
-        @in_progress = {
-          :check_results => 0,
-          :events => 0
-        }
+        @in_progress = Hash.new(0)
       end
 
       # Set up the Redis and Transport connection objects, `@redis`
-      # and `@transport`. This method "drys" up many instances of
-      # `setup_redis()` and `setup_transport()`.
+      # and `@transport`. This method also updates the Redis on error
+      # callback to reset the in progress check result counter. This
+      # method "drys" up many instances of `setup_redis()` and
+      # `setup_transport()`, particularly in the specs.
       #
       # @yield callback/block called after connecting to Redis and the
       #   Sensu Transport.
       def setup_connections
         setup_redis do
+          @redis.on_error do |error|
+            @logger.error("redis connection error", :error => error.to_s)
+            @in_progress[:results] = 0
+          end
           setup_transport do
             yield
           end
