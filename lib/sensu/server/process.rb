@@ -44,7 +44,7 @@ module Sensu
       end
 
       # Set up the Redis and Transport connection objects, `@redis`
-      # and `@transport`. This method also updates the Redis on error
+      # and `@transport`. This method updates the Redis on error
       # callback to reset the in progress check result counter. This
       # method "drys" up many instances of `setup_redis()` and
       # `setup_transport()`, particularly in the specs.
@@ -434,10 +434,11 @@ module Sensu
       # registry. If the previous conditions are not met, and check
       # `:type` is `metric` and the `:status` is `0`, the event
       # registry is not updated, but the provided callback is called
-      # with the event data. All event data is sent to event bridge
-      # extensions, including events that do not normally produce an
-      # action. JSON serialization is used when storing data in the
-      # registry.
+      # with the event data. If none of the previous conditions are
+      # met, the `@in_progress[:check_results]` counter is decremented
+      # by `1`. All event data is sent to event bridge extensions,
+      # including events that do not normally produce an action. JSON
+      # serialization is used when storing data in the registry.
       #
       # @param client [Hash]
       # @param check [Hash]
@@ -544,11 +545,14 @@ module Sensu
 
       # Process a check result, storing its data, inspecting its
       # contents, and taking the appropriate actions (eg. update the
-      # event registry). A check result must have a valid client name,
-      # associated with a client in the registry or one will be
-      # created. If a local check definition exists for the check
-      # name, and the check result is not from a standalone check
-      # execution, it's merged with the check result for more context.
+      # event registry). The `@in_progress[:check_results]` counter is
+      # incremented by `1` prior to check result processing and then
+      # decremented by `1` after updating the event registry. A check
+      # result must have a valid client name, associated with a client
+      # in the registry or one will be created. If a local check
+      # definition exists for the check name, and the check result is
+      # not from a standalone check execution, it's merged with the
+      # check result for more context.
       #
       # @param result [Hash] data.
       def process_check_result(result)
