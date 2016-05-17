@@ -4,11 +4,11 @@ gem "eventmachine", "1.2.0.1"
 
 gem "sensu-json", "1.1.1"
 gem "sensu-logger", "1.2.0"
-gem "sensu-settings", "4.1.1"
+gem "sensu-settings", "5.0.0"
 gem "sensu-extension", "1.5.0"
 gem "sensu-extensions", "1.5.0"
 gem "sensu-transport", "6.0.0"
-gem "sensu-spawn", "1.8.0"
+gem "sensu-spawn", "2.0.0"
 gem "sensu-redis", "1.3.0"
 
 require "time"
@@ -49,6 +49,7 @@ module Sensu
       setup_logger(options)
       load_settings(options)
       load_extensions(options)
+      setup_spawn
       setup_process(options)
     end
 
@@ -151,6 +152,14 @@ module Sensu
         extension.logger = @logger
         extension.settings = extension_settings
       end
+    end
+
+    # Set up Sensu spawn, creating a worker to create, control, and
+    # limit spawned child processes.
+    #
+    # https://github.com/sensu/sensu-spawn
+    def setup_spawn
+      Spawn.setup(@settings[:sensu][:spawn])
     end
 
     # Manage the current process, optionally daemonize and/or write
