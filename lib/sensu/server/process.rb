@@ -98,15 +98,11 @@ module Sensu
       #
       # @param client [Hash] definition.
       def create_client_registration_event(client)
-        event = {
-          :id => random_uuid,
-          :client => client,
-          :check => create_registration_check(client),
-          :occurrences => 1,
-          :action => :create,
-          :timestamp => Time.now.to_i
-        }
-        process_event(event)
+        check = create_registration_check(client)
+        create_event(client, check) do |event|
+          event_bridges(event)
+          process_event(event)
+        end
       end
 
       # Process an initial client registration, when it is first added
@@ -426,86 +422,105 @@ module Sensu
       end
 
       # Update the event registry, stored in Redis. This method
-      # determines if check data results in the creation or update of
-      # event data in the registry. Existing event data for a
-      # client/check pair is fetched, used in conditionals and the
-      # composition of the new event data. If a check `:status` is not
+      # determines if event data warrants in the creation or update of
+      # event data in the registry. If a check `:status` is not
       # `0`, or it has been flapping, an event is created/updated in
-      # the registry. If there was existing event data, but the check
-      # `:status` is now `0`, the event is removed (resolved) from the
-      # registry. If the previous conditions are not met, and check
-      # `:type` is `metric` and the `:status` is `0`, the event
-      # registry is not updated, but the provided callback is called
-      # with the event data. If none of the previous conditions are
-      # met, the `@in_progress[:check_results]` counter is decremented
-      # by `1`. All event data is sent to event bridge extensions,
-      # including events that do not normally produce an action. JSON
-      # serialization is used when storing data in the registry.
+      # the registry. If the event `:action` is `:resolve`, the event
+      # is removed (resolved) from the registry. If the previous
+      # conditions are not met and check `:type` is `metric`, the
+      # registry is not updated, but further event processing is
+      # required (`yield(true)`). JSON serialization is used when
+      # storing data in the registry.
+      #
+      # @param event [Hash]
+      # @yield callback [event] callback/block called after the event
+      #   registry has been updated.
+      # @yieldparam process [TrueClass, FalseClass] indicating if the
+      #   event requires further processing.
+      def update_event_registry(event)
+        client_name = event[:client][:name]
+        if event[:check][:status] != 0 || event[:action] == :flapping
+          @redis.hset("events:#{client_name}", event[:check][:name], Sensu::JSON.dump(event)) do
+            yield(true)
+          end
+        elsif event[:action] == :resolve &&
+            (event[:check][:auto_resolve] != false || event[:check][:force_resolve])
+          @redis.hdel("events:#{client_name}", event[:check][:name]) do
+            yield(true)
+          end
+        elsif event[:check][:type] == METRIC_CHECK_TYPE
+          yield(true)
+        else
+          yield(false)
+        end
+      end
+
+      # Create an event, using the provided client and check result
+      # data. Existing event data for the client/check pair is fetched
+      # from the event registry to be used in the composition of the
+      # new event.
       #
       # @param client [Hash]
       # @param check [Hash]
       # @yield callback [event] callback/block called with the
-      #   resulting event data if the event registry is updated, or
-      #   the check is of type `:metric`.
+      #   resulting event.
       # @yieldparam event [Hash]
-      def update_event_registry(client, check)
-        @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
-          stored_event = event_json ? Sensu::JSON.load(event_json) : nil
-          flapping = check_flapping?(stored_event, check)
-          event = {
-            :id => (stored_event ? stored_event[:id] : random_uuid),
-            :client => client,
-            :check => check,
-            :occurrences => 1,
-            :action => (flapping ? :flapping : :create),
-            :timestamp => Time.now.to_i
-          }
-          if check[:status] != 0 || flapping
-            if stored_event && check[:status] == stored_event[:check][:status]
-              event[:occurrences] = stored_event[:occurrences] + 1
+      def create_event(client, check)
+        check_history(client, check) do |history, total_state_change|
+          check[:history] = history
+          check[:total_state_change] = total_state_change
+          @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
+            stored_event = event_json ? Sensu::JSON.load(event_json) : nil
+            flapping = check_flapping?(stored_event, check)
+            event = {
+              :client => client,
+              :check => check,
+              :occurrences => 1,
+              :action => (flapping ? :flapping : :create),
+              :timestamp => Time.now.to_i
+            }
+            if stored_event
+              event[:id] = stored_event[:id]
+              event[:last_state_change] = stored_event[:last_state_change]
+              event[:last_ok] = stored_event[:last_ok]
+              event[:occurrences] = stored_event[:occurrences]
+            else
+              event[:id] = random_uuid
             end
-            @redis.hset("events:#{client[:name]}", check[:name], Sensu::JSON.dump(event)) do
-              yield(event)
-            end
-          elsif stored_event
-            event[:occurrences] = stored_event[:occurrences]
-            event[:action] = :resolve
-            unless check[:auto_resolve] == false && !check[:force_resolve]
-              @redis.hdel("events:#{client[:name]}", check[:name]) do
-                yield(event)
+            if check[:status] != 0 || flapping
+              if history[-1] == history[-2]
+                event[:occurrences] += 1
+              else
+                event[:last_state_change] = event[:timestamp]
               end
+            elsif stored_event
+              event[:last_state_change] = event[:timestamp]
+              event[:action] = :resolve
             end
-          elsif check[:type] == METRIC_CHECK_TYPE
+            if check[:status] == 0
+              event[:last_ok] = event[:timestamp]
+            end
             yield(event)
-          else
-            @in_progress[:check_results] -= 1
           end
-          event_bridges(event)
         end
       end
 
-      # Create a blank client (data) and add it to the client
-      # registry. Only the client name is known, the other client
-      # attributes must be updated via the API (POST /clients:client).
-      # Dynamically created clients and those updated via the API will
-      # have client keepalives disabled, `:keepalives` is set to
-      # `false`.
+      # Create a blank client (data). Only the client name is known,
+      # the other client attributes must be updated via the API (POST
+      # /clients:client). Dynamically created clients and those
+      # updated via the API will have client keepalives disabled by
+      # default, `:keepalives` is set to `false`.
       #
       # @param name [Hash] to use for the client.
-      # @yield [client] callback/block to be called with the
-      #   dynamically created client data.
-      # @yieldparam client [Hash]
+      # @return [Hash] client.
       def create_client(name)
-        client = {
+        {
           :name => name,
           :address => "unknown",
           :subscriptions => [],
           :keepalives => false,
           :version => VERSION
         }
-        update_client_registry(client) do
-          yield(client)
-        end
       end
 
       # Retrieve a client (data) from Redis if it exists. If a client
@@ -538,7 +553,8 @@ module Sensu
               yield(client)
             end
           else
-            create_client(client_key) do |client|
+            client = create_client(client_key)
+            update_client_registry(client) do
               yield(client)
             end
           end
@@ -571,11 +587,10 @@ module Sensu
           check[:origin] = result[:client] if check[:source]
           aggregate_check_result(client, check) if check[:aggregate]
           store_check_result(client, check) do
-            check_history(client, check) do |history, total_state_change|
-              check[:history] = history
-              check[:total_state_change] = total_state_change
-              update_event_registry(client, check) do |event|
-                process_event(event)
+            create_event(client, check) do |event|
+              event_bridges(event)
+              update_event_registry(event) do |process|
+                process_event(event) if process
                 @in_progress[:check_results] -= 1
               end
             end
