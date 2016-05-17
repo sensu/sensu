@@ -566,6 +566,7 @@ module Sensu
             result[:check]
           end
           check[:type] ||= "standard"
+          check[:origin] = result[:client] if check[:source]
           aggregate_check_result(client, check) if check[:aggregate]
           store_check_result(client, check) do
             check_history(client, check) do |history, total_state_change|
