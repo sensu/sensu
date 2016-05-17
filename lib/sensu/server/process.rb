@@ -239,8 +239,8 @@ module Sensu
       #
       # This method determines the appropriate handlers for an event,
       # filtering and mutating the event data for each of them. The
-      # `@in_progress[:events]` is incremented by `1`, for each event
-      # handler chain (filter -> mutate -> handle).
+      # `@in_progress[:events]` counter is incremented by `1`, for
+      # each event handler chain (filter -> mutate -> handle).
       #
       # @param event [Hash]
       def process_event(event)
@@ -511,7 +511,7 @@ module Sensu
       # updated via the API will have client keepalives disabled by
       # default, `:keepalives` is set to `false`.
       #
-      # @param name [Hash] to use for the client.
+      # @param name [String] to use for the client.
       # @return [Hash] client.
       def create_client(name)
         {
