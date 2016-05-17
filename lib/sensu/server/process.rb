@@ -13,6 +13,8 @@ module Sensu
 
       attr_reader :is_leader, :in_progress
 
+      STANDARD_CHECK_TYPE = "standard".freeze
+
       METRIC_CHECK_TYPE = "metric".freeze
 
       EVENT_FLAPPING_ACTION = "flapping".freeze
@@ -565,7 +567,7 @@ module Sensu
           else
             result[:check]
           end
-          check[:type] ||= "standard"
+          check[:type] ||= STANDARD_CHECK_TYPE
           check[:origin] = result[:client] if check[:source]
           aggregate_check_result(client, check) if check[:aggregate]
           store_check_result(client, check) do
