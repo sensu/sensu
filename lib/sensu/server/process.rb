@@ -491,6 +491,7 @@ module Sensu
               if history[-1] == history[-2]
                 event[:occurrences] += 1
               else
+                event[:occurrences] = 1
                 event[:last_state_change] = event[:timestamp]
               end
             elsif stored_event
