@@ -275,35 +275,27 @@ module Sensu
         end
       end
 
-      # Add a check result to an aggregate. A check aggregate uses the
-      # check `:name` and the `:issued` timestamp as its unique
-      # identifier. An aggregate uses several counters: the total
-      # number of results in the aggregate, and a counter for each
-      # check severity (ok, warning, etc). Check output is also
-      # stored, to be summarized to aid in identifying outliers for a
-      # check execution across a number of Sensu clients. JSON
-      # serialization is used for storing check result data.
+      # Add a check result to an aggregate. The aggregate name is
+      # determined by the value of check `:aggregate`. If check
+      # `:aggregate` is `true` (legacy), the check `:name` is used as
+      # the aggregate name. If check `:aggregate` is a string, it is
+      # used as the aggregate name. This method will add the client
+      # name to the aggregate, all other processing (e.g. counters) is
+      # done by the Sensu API on request.
       #
       # @param client [Hash]
       # @param check [Hash]
       def aggregate_check_result(client, check)
+        aggregate = (check[:aggregate].is_a?(String) ? check[:aggregate] : check[:name])
         @logger.debug("adding check result to aggregate", {
+          :aggregate => aggregate,
           :client => client,
           :check => check
         })
-        result_set = "#{check[:name]}:#{check[:issued]}"
-        result_data = Sensu::JSON.dump(:output => check[:output], :status => check[:status])
-        @redis.multi
-        @redis.hset("aggregation:#{result_set}", client[:name], result_data)
-        SEVERITIES.each do |severity|
-          @redis.hsetnx("aggregate:#{result_set}", severity, 0)
+        aggregate_member = "#{client[:name]}:#{check[:name]}"
+        @redis.sadd("aggregates:#{aggregate}", aggregate_member) do
+          @redis.sadd("aggregates", aggregate)
         end
-        severity = (SEVERITIES[check[:status]] || "unknown")
-        @redis.hincrby("aggregate:#{result_set}", severity, 1)
-        @redis.hincrby("aggregate:#{result_set}", "total", 1)
-        @redis.sadd("aggregates:#{check[:name]}", check[:issued])
-        @redis.sadd("aggregates", check[:name])
-        @redis.exec
       end
 
       # Truncate check output. For metric checks, (`"type":
@@ -885,48 +877,6 @@ module Sensu
         end
       end
 
-      # Prune check result aggregations (aggregates). Sensu only
-      # stores the 20 latest aggregations for a check, to keep the
-      # amount of data stored to a minimum.
-      def prune_check_result_aggregations
-        @logger.info("pruning check result aggregations")
-        @redis.smembers("aggregates") do |checks|
-          checks.each do |check_name|
-            @redis.smembers("aggregates:#{check_name}") do |aggregates|
-              if aggregates.length > 20
-                aggregates.sort!
-                aggregates.take(aggregates.length - 20).each do |check_issued|
-                  result_set = "#{check_name}:#{check_issued}"
-                  @redis.multi
-                  @redis.srem("aggregates:#{check_name}", check_issued)
-                  @redis.del("aggregate:#{result_set}")
-                  @redis.del("aggregation:#{result_set}")
-                  @redis.exec do
-                    @logger.debug("pruned aggregation", {
-                      :check => {
-                        :name => check_name,
-                        :issued => check_issued
-                      }
-                    })
-                  end
-                end
-              end
-            end
-          end
-        end
-      end
-
-      # Set up the check result aggregation pruner, using periodic
-      # timer to run `prune_check_result_aggregations()` every 20
-      # seconds. The timer is stored in the timers hash under
-      # `:leader`.
-      def setup_check_result_aggregation_pruner
-        @logger.debug("pruning check result aggregations")
-        @timers[:leader] << EM::PeriodicTimer.new(20) do
-          prune_check_result_aggregations
-        end
-      end
-
       # Set up the leader duties, tasks only performed by a single
       # Sensu server at a time. The duties include publishing check
       # requests, monitoring for stale clients, and pruning check
@@ -935,7 +885,6 @@ module Sensu
         setup_check_request_publisher
         setup_client_monitor
         setup_check_result_monitor
-        setup_check_result_aggregation_pruner
       end
 
       # Create a lock timestamp (integer), current time including
