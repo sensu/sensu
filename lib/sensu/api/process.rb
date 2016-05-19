@@ -595,7 +595,7 @@ module Sensu
         response = {
           :clients => 0,
           :checks => 0,
-          :status => {
+          :results => {
             :ok => 0,
             :warning => 0,
             :critical => 0,
@@ -630,12 +630,12 @@ module Sensu
                     results.reject! do |result|
                       result[:executed] < timestamp
                     end
-                    response[:status][:stale] = results.length - result_count
+                    response[:results][:stale] = results.length - result_count
                   end
-                  response[:status][:total] = results.length
+                  response[:results][:total] = results.length
                   results.each do |result|
                     severity = (SEVERITIES[result[:status]] || "unknown")
-                    response[:status][severity.to_sym] += 1
+                    response[:results][severity.to_sym] += 1
                   end
                   body Sensu::JSON.dump(response)
                 end
