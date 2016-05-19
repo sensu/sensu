@@ -758,7 +758,7 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can provide a specific aggregate with parameters" do
+  it "can provide a specific aggregate" do
     api_test do
       server = Sensu::Server::Process.new(options)
       server.setup_redis do
@@ -773,12 +773,12 @@ describe "Sensu::API::Process" do
             expect(body).to be_kind_of(Hash)
             expect(body[:clients]).to eq(1)
             expect(body[:checks]).to eq(1)
-            expect(body[:status][:ok]).to eq(0)
-            expect(body[:status][:warning]).to eq(1)
-            expect(body[:status][:critical]).to eq(0)
-            expect(body[:status][:unknown]).to eq(0)
-            expect(body[:status][:total]).to eq(1)
-            expect(body[:status][:stale]).to eq(0)
+            expect(body[:results][:ok]).to eq(0)
+            expect(body[:results][:warning]).to eq(1)
+            expect(body[:results][:critical]).to eq(0)
+            expect(body[:results][:unknown]).to eq(0)
+            expect(body[:results][:total]).to eq(1)
+            expect(body[:results][:stale]).to eq(0)
             async_done
           end
         end
