@@ -665,9 +665,10 @@ module Sensu
         response = Array.new
         settings.redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
           unless aggregate_members.empty?
-            clients = Hash.new([])
+            clients = Hash.new
             aggregate_members.each do |member|
               client_name, check_name = member.split(":")
+              clients[client_name] ||= []
               clients[client_name] << check_name
             end
             clients.each do |client_name, checks|
@@ -687,9 +688,10 @@ module Sensu
         response = Array.new
         settings.redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
           unless aggregate_members.empty?
-            checks = Hash.new([])
+            checks = Hash.new
             aggregate_members.each do |member|
               client_name, check_name = member.split(":")
+              checks[check_name] ||= []
               checks[check_name] << client_name
             end
             checks.each do |check_name, clients|
