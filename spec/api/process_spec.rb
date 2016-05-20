@@ -764,8 +764,6 @@ describe "Sensu::API::Process" do
       server.setup_redis do
         client = client_template
         check = check_template
-        timestamp = epoch
-        check[:issued] = timestamp
         server.aggregate_check_result(client, check)
         timer(1) do
           api_request("/aggregates/test") do |http, body|
@@ -789,6 +787,64 @@ describe "Sensu::API::Process" do
   it "can not provide a nonexistent aggregate" do
     api_test do
       api_request("/aggregates/nonexistent") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can provide aggregate client information" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          api_request("/aggregates/test/clients") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body[0]).to be_kind_of(Hash)
+            expect(body[0][:name]).to eq("i-424242")
+            expect(body[0][:checks]).to eq(["test"])
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can not provide aggregate client information for a nonexistent aggregate" do
+    api_test do
+      api_request("/aggregates/nonexistent/clients") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can provide aggregate check information" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          api_request("/aggregates/test/checks") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body[0]).to be_kind_of(Hash)
+            expect(body[0][:name]).to eq("test")
+            expect(body[0][:clients]).to eq(["i-424242"])
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can not provide aggregate check information for a nonexistent aggregate" do
+    api_test do
+      api_request("/aggregates/nonexistent/checks") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
