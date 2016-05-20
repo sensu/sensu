@@ -705,6 +705,47 @@ module Sensu
         end
       end
 
+      aget %r{^/aggregates/([\w\.-]+)/results/([\w\.-]+)/?$} do |aggregate, severity|
+        response = Array.new
+        unless SEVERITIES.include?(severity)
+          settings.redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
+            unless aggregate_members.empty?
+              summaries = Hash.new({})
+              aggregate_members.each_with_index do |member, index|
+                client_name, check_name = member.split(":")
+                result_key = "result:#{client_name}:#{check_name}"
+                settings.redis.get(result_key) do |result_json|
+                  unless result_json.nil?
+                    result = Sensu::JSON.load(result_json)
+                    if SEVERITIES[result[:status]] == severity
+                      summaries[check_name][result[:output]] ||= {:total => 0, :clients => []}
+                      summaries[check_name][result[:output]][:total] += 1
+                      summaries[check_name][result[:output]][:clients] << client_name
+                    end
+                  end
+                  if index == aggregate_members.length - 1
+                    summaries.each do |check_name, outputs|
+                      summary = outputs.map do |output, output_summary|
+                        {:output => output}.merge(output_summary)
+                      end
+                      response << {
+                        :check => check_name,
+                        :summary => summary
+                      }
+                    end
+                    body Sensu::JSON.dump(response)
+                  end
+                end
+              end
+            else
+              not_found!
+            end
+          end
+        else
+          bad_request!
+        end
+      end
+
       apost %r{^/stash(?:es)?/(.*)/?} do |path|
         read_data do |data|
           settings.redis.set("stash:#{path}", Sensu::JSON.dump(data)) do
