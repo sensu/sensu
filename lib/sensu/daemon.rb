@@ -2,7 +2,7 @@ require "rubygems"
 
 gem "eventmachine", "1.2.0.1"
 
-gem "sensu-json", "1.1.1"
+gem "sensu-json", "2.0.0"
 gem "sensu-logger", "1.2.0"
 gem "sensu-settings", "5.0.0"
 gem "sensu-extension", "1.5.0"
