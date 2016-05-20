@@ -758,13 +758,11 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can provide a specific aggregate" do
+  it "can provide an aggregate" do
     api_test do
       server = Sensu::Server::Process.new(options)
       server.setup_redis do
-        client = client_template
-        check = check_template
-        server.aggregate_check_result(client, check)
+        server.aggregate_check_result(client_template, check_template)
         timer(1) do
           api_request("/aggregates/test") do |http, body|
             expect(http.response_header.status).to eq(200)
@@ -845,6 +843,49 @@ describe "Sensu::API::Process" do
   it "can not provide aggregate check information for a nonexistent aggregate" do
     api_test do
       api_request("/aggregates/nonexistent/checks") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can provide a aggregate result summary for a severity" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          api_request("/aggregates/test/results/warning") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body[0]).to be_kind_of(Hash)
+            expect(body[0][:check]).to eq("test")
+            expect(body[0][:summary]).to be_kind_of(Array)
+            expect(body[0][:summary][0]).to be_kind_of(Hash)
+            expect(body[0][:summary][0][:output]).to eq("WARNING")
+            expect(body[0][:summary][0][:total]).to eq(1)
+            expect(body[0][:summary][0][:clients]).to eq(["i-424242"])
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can not provide a aggregate result summary for an invalid severity" do
+    api_test do
+      api_request("/aggregates/test/results/invalid") do |http, body|
+        expect(http.response_header.status).to eq(400)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can not provide a aggregate result summary for a nonexistent aggregate" do
+    api_test do
+      api_request("/aggregates/nonexistent/results/warning") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done

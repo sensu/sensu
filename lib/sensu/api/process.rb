@@ -709,10 +709,10 @@ module Sensu
 
       aget %r{^/aggregates/([\w\.-]+)/results/([\w\.-]+)/?$} do |aggregate, severity|
         response = Array.new
-        unless SEVERITIES.include?(severity)
+        if SEVERITIES.include?(severity)
           settings.redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
             unless aggregate_members.empty?
-              summaries = Hash.new({})
+              summaries = Hash.new
               aggregate_members.each_with_index do |member, index|
                 client_name, check_name = member.split(":")
                 result_key = "result:#{client_name}:#{check_name}"
@@ -720,6 +720,7 @@ module Sensu
                   unless result_json.nil?
                     result = Sensu::JSON.load(result_json)
                     if SEVERITIES[result[:status]] == severity
+                      summaries[check_name] ||= {}
                       summaries[check_name][result[:output]] ||= {:total => 0, :clients => []}
                       summaries[check_name][result[:output]][:total] += 1
                       summaries[check_name][result[:output]][:clients] << client_name
