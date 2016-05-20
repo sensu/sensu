@@ -623,14 +623,14 @@ module Sensu
                 if index == aggregate_members.length - 1
                   response[:clients] = clients.uniq.length
                   response[:checks] = checks.uniq.length
-                  max_age = integer_parameter(params[:mag_age])
+                  max_age = integer_parameter(params[:max_age])
                   if max_age
                     result_count = results.length
                     timestamp = Time.now.to_i - max_age
                     results.reject! do |result|
                       result[:executed] < timestamp
                     end
-                    response[:results][:stale] = results.length - result_count
+                    response[:results][:stale] = result_count - results.length
                   end
                   response[:results][:total] = results.length
                   results.each do |result|
@@ -713,13 +713,16 @@ module Sensu
           settings.redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
             unless aggregate_members.empty?
               summaries = Hash.new
+              max_age = integer_parameter(params[:max_age])
+              current_timestamp = Time.now.to_i
               aggregate_members.each_with_index do |member, index|
                 client_name, check_name = member.split(":")
                 result_key = "result:#{client_name}:#{check_name}"
                 settings.redis.get(result_key) do |result_json|
                   unless result_json.nil?
                     result = Sensu::JSON.load(result_json)
-                    if SEVERITIES[result[:status]] == severity
+                    if SEVERITIES[result[:status]] == severity &&
+                        (max_age.nil? || result[:executed] >= (current_timestamp - max_age))
                       summaries[check_name] ||= {}
                       summaries[check_name][result[:output]] ||= {:total => 0, :clients => []}
                       summaries[check_name][result[:output]][:total] += 1

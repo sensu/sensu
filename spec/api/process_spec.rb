@@ -782,6 +782,32 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can provide an aggregate with a result max age" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        check = check_template
+        check[:executed] = epoch - 128
+        server.aggregate_check_result(client_template, check)
+        timer(1) do
+          api_request("/aggregates/test?max_age=120") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Hash)
+            expect(body[:clients]).to eq(1)
+            expect(body[:checks]).to eq(1)
+            expect(body[:results][:ok]).to eq(0)
+            expect(body[:results][:warning]).to eq(0)
+            expect(body[:results][:critical]).to eq(0)
+            expect(body[:results][:unknown]).to eq(0)
+            expect(body[:results][:total]).to eq(0)
+            expect(body[:results][:stale]).to eq(1)
+            async_done
+          end
+        end
+      end
+    end
+  end
+
   it "can not provide a nonexistent aggregate" do
     api_test do
       api_request("/aggregates/nonexistent") do |http, body|
@@ -866,6 +892,25 @@ describe "Sensu::API::Process" do
             expect(body[0][:summary][0][:output]).to eq("WARNING")
             expect(body[0][:summary][0][:total]).to eq(1)
             expect(body[0][:summary][0][:clients]).to eq(["i-424242"])
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can provide a aggregate result summary for a severity with a result max age" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        check = check_template
+        check[:executed] = epoch - 128
+        server.aggregate_check_result(client_template, check)
+        timer(1) do
+          api_request("/aggregates/test/results/warning?max_age=120") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body).to be_empty
             async_done
           end
         end
