@@ -863,12 +863,11 @@ module Sensu
 
       # Determine stale check results, those that have not executed in
       # a specified amount of time (check TTL). This method iterates
-      # through the client registry and check results for checks with
-      # a defined TTL value (in seconds). If a check result has a
-      # defined TTL, the time since last check execution (in seconds)
-      # is calculated. If the time since last execution is equal to or
-      # greater than the check TTL, a warning check result is
-      # published with the appropriate check output.
+      # through stored check results that have a defined TTL value (in
+      # seconds). The time since last check execution (in seconds) is
+      # calculated for each check result. If the time since last
+      # execution is equal to or greater than the check TTL, a warning
+      # check result is published with the appropriate check output.
       def determine_stale_check_results
         @logger.info("determining stale check results")
         @redis.smembers("ttl") do |result_keys|
