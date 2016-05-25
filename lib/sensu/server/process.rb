@@ -329,7 +329,7 @@ module Sensu
       # @param client [Hash]
       # @param check [Hash]
       # @yield [] callback/block called after the check data has been
-      # stored (history, etc).
+      #   stored (history, etc).
       def store_check_result(client, check)
         @logger.debug("storing check result", :check => check)
         result_key = "#{client[:name]}:#{check[:name]}"
@@ -781,45 +781,72 @@ module Sensu
         check.merge(:name => "keepalive", :issued => timestamp, :executed => timestamp)
       end
 
+      # Create client keepalive check results. This method will
+      # retrieve clients from the registry, creating a keepalive
+      # check definition for each client, using the
+      # `create_keepalive_check()` method, containing client specific
+      # keepalive thresholds. If the time since the latest keepalive
+      # is equal to or greater than a threshold, the check `:output`
+      # is set to a descriptive message, and `:status` is set to the
+      # appropriate non-zero value. If a client has been sending
+      # keepalives, `:output` and `:status` are set to indicate an OK
+      # state. The `publish_check_result()` method is used to publish
+      # the client keepalive check results.
+      #
+      # @param clients [Array] of client names.
+      # @yield [] callback/block called after the client keepalive
+      #   check results have been created.
+      def create_client_keepalive_check_results(clients)
+        client_keys = clients.map { |client_name| "client:#{client_name}" }
+        @redis.mget(*client_keys) do |client_json_objects|
+          client_json_objects.each do |client_json|
+            unless client_json.nil?
+              client = Sensu::JSON.load(client_json)
+              next if client[:keepalives] == false
+              check = create_keepalive_check(client)
+              time_since_last_keepalive = Time.now.to_i - client[:timestamp]
+              check[:output] = "No keepalive sent from client for "
+              check[:output] << "#{time_since_last_keepalive} seconds"
+              case
+              when time_since_last_keepalive >= check[:thresholds][:critical]
+                check[:output] << " (>=#{check[:thresholds][:critical]})"
+                check[:status] = 2
+              when time_since_last_keepalive >= check[:thresholds][:warning]
+                check[:output] << " (>=#{check[:thresholds][:warning]})"
+                check[:status] = 1
+              else
+                check[:output] = "Keepalive sent from client "
+                check[:output] << "#{time_since_last_keepalive} seconds ago"
+                check[:status] = 0
+              end
+              publish_check_result(client[:name], check)
+            end
+          end
+          yield
+        end
+      end
+
       # Determine stale clients, those that have not sent a keepalive
-      # in a specified amount of time (thresholds). This method
-      # iterates through the client registry, creating a keepalive
-      # check definition with the `create_keepalive_check()` method,
-      # containing client specific staleness thresholds. If the time
-      # since the latest keepalive is equal to or greater than a
-      # threshold, the check `:output` is set to a descriptive
-      # message, and `:status` is set to the appropriate non-zero
-      # value. If a client has been sending keepalives, `:output` and
-      # `:status` are set to indicate an OK state. A check result is
-      # published for every client in the registry.
+      # in a specified amount of time. This method iterates through
+      # the client registry, creating a keepalive check result for
+      # each client. The `create_client_keepalive_check_results()`
+      # method is used to inspect and create keepalive check results
+      # for each slice of clients from the registry. A relatively
+      # small clients slice size (20) is used to reduce the number of
+      # clients inspected within a single tick of the EM reactor.
       def determine_stale_clients
         @logger.info("determining stale clients")
         @redis.smembers("clients") do |clients|
-          clients.each do |client_name|
-            @redis.get("client:#{client_name}") do |client_json|
-              unless client_json.nil?
-                client = Sensu::JSON.load(client_json)
-                next if client[:keepalives] == false
-                check = create_keepalive_check(client)
-                time_since_last_keepalive = Time.now.to_i - client[:timestamp]
-                check[:output] = "No keepalive sent from client for "
-                check[:output] << "#{time_since_last_keepalive} seconds"
-                case
-                when time_since_last_keepalive >= check[:thresholds][:critical]
-                  check[:output] << " (>=#{check[:thresholds][:critical]})"
-                  check[:status] = 2
-                when time_since_last_keepalive >= check[:thresholds][:warning]
-                  check[:output] << " (>=#{check[:thresholds][:warning]})"
-                  check[:status] = 1
-                else
-                  check[:output] = "Keepalive sent from client "
-                  check[:output] << "#{time_since_last_keepalive} seconds ago"
-                  check[:status] = 0
-                end
-                publish_check_result(client[:name], check)
+          client_count = clients.length
+          keepalive_check_results = Proc.new do |slice_start, slice_size|
+            unless slice_start > client_count - 1
+              clients_slice = clients.slice(slice_start..slice_size)
+              create_client_keepalive_check_results(clients_slice) do
+                keepalive_check_results.call(slice_start + 20, slice_size + 20)
               end
             end
           end
+          keepalive_check_results.call(0, 19)
         end
       end
 
