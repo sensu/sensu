@@ -338,6 +338,7 @@ module Sensu
         @redis.multi
         @redis.sadd("result:#{client[:name]}", check[:name])
         @redis.set("result:#{result_key}", Sensu::JSON.dump(check_truncated))
+        @redis.sadd("ttl", result_key) if check[:ttl]
         @redis.rpush(history_key, check[:status])
         @redis.ltrim(history_key, -21, -1)
         @redis.exec do
@@ -870,24 +871,22 @@ module Sensu
       # published with the appropriate check output.
       def determine_stale_check_results
         @logger.info("determining stale check results")
-        @redis.smembers("clients") do |clients|
-          clients.each do |client_name|
-            @redis.smembers("result:#{client_name}") do |checks|
-              checks.each do |check_name|
-                result_key = "#{client_name}:#{check_name}"
-                @redis.get("result:#{result_key}") do |result_json|
-                  unless result_json.nil?
-                    check = Sensu::JSON.load(result_json)
-                    next unless check[:ttl] && check[:executed] && !check[:force_resolve]
-                    time_since_last_execution = Time.now.to_i - check[:executed]
-                    if time_since_last_execution >= check[:ttl]
-                      check[:output] = "Last check execution was "
-                      check[:output] << "#{time_since_last_execution} seconds ago"
-                      check[:status] = 1
-                      publish_check_result(client_name, check)
-                    end
-                  end
+        @redis.smembers("ttl") do |result_keys|
+          result_keys.each do |result_key|
+            @redis.get("result:#{result_key}") do |result_json|
+              unless result_json.nil?
+                check = Sensu::JSON.load(result_json)
+                next unless check[:ttl] && check[:executed] && !check[:force_resolve]
+                time_since_last_execution = Time.now.to_i - check[:executed]
+                if time_since_last_execution >= check[:ttl]
+                  client_name = result_key.split(":").first
+                  check[:output] = "Last check execution was "
+                  check[:output] << "#{time_since_last_execution} seconds ago"
+                  check[:status] = 1
+                  publish_check_result(client_name, check)
                 end
+              else
+                @redis.srem("ttl", result_key)
               end
             end
           end
