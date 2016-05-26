@@ -99,6 +99,37 @@ module Sensu
         end
       end
 
+      # Perform token-substitution for a object. Strings
+      # are passed to substitute_tokens(), arrays and sub-hashes are
+      # processed recursively. Numbers (and other types?) are skipped
+      # at the moment, because substitute_tokens() can not handle them
+      # anyway.
+      #
+      # @param	[Object]
+      # @return	[Object] updated object of the same type as the argument
+      # 	plus accumulated list of unmatched tokens
+      def obj_substitute_tokens(obj)
+        case obj
+        when Hash
+          unmatched_tokens = []
+          obj.each do |key, value|
+            obj[key], unmatched = obj_substitute_tokens(value)
+            unmatched_tokens.push(*unmatched)
+          end
+        when Array
+          unmatched_tokens = []
+          obj.map! {|value|
+            value, unmatched = obj_substitute_tokens(value)
+            unmatched_tokens.push(*unmatched)
+            value
+	  }
+        when String
+          obj, unmatched_tokens = substitute_tokens(obj, @settings[:client])
+        end
+	unmatched_tokens.uniq! if unmatched_tokens
+        [obj, unmatched_tokens]
+      end
+
       # Execute a check command, capturing its output (STDOUT/ERR),
       # exit status code, execution duration, timestamp, and publish
       # the result. This method guards against multiple executions for
@@ -113,11 +144,11 @@ module Sensu
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          command, unmatched_tokens = substitute_tokens(check[:command], @settings[:client])
+          check, unmatched_tokens = obj_substitute_tokens(check)
           if unmatched_tokens.empty?
-            check[:executed] = Time.now.to_i
             started = Time.now.to_f
-            Spawn.process(command, :timeout => check[:timeout]) do |output, status|
+            check[:executed] = started.to_i
+            Spawn.process(check[:command], :timeout => check[:timeout]) do |output, status|
               check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               check[:output] = output
               check[:status] = status
