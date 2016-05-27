@@ -302,8 +302,15 @@ module Sensu
       # @yieldparam filtered [TrueClass,FalseClass] indicating if the
       #   event was filtered.
       def event_filtered?(handler, event)
-        if handler.has_key?(:filters) || handler.has_key?(:filter)
-          filter_list = Array(handler[:filters] || handler[:filter]).dup
+        handler_has_filters = (handler.has_key?(:filters) ||
+                               handler.has_key?(:filter) ||
+                               handler.respond_to?(:filters) ||
+                               handler.respond_to?(:filter))
+        if handler_has_filters
+          filter_list = Array(handler[:filters] ||
+                              handler[:filter] ||
+                              handler.instance_variable_get(:@filters) ||
+                              handler.instance_variable_get(:@filter)).dup
           filter = Proc.new do |filter_list|
             filter_name = filter_list.shift
             if filter_name.nil?
