@@ -99,7 +99,7 @@ module Sensu
         end
       end
 
-      # Perform token-substitution for a object. Strings
+      # Perform token-substitution for an object. Strings
       # are passed to substitute_tokens(), arrays and sub-hashes are
       # processed recursively. Numbers (and other types?) are skipped
       # at the moment, because substitute_tokens() can not handle them
@@ -122,11 +122,11 @@ module Sensu
             value, unmatched = obj_substitute_tokens(value)
             unmatched_tokens.push(*unmatched)
             value
-	  }
+          }
         when String
           obj, unmatched_tokens = substitute_tokens(obj, @settings[:client])
         end
-	unmatched_tokens.uniq! if unmatched_tokens
+        unmatched_tokens.uniq! if unmatched_tokens
         [obj, unmatched_tokens]
       end
 
