@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-extension", "1.5.0"
   s.add_dependency "sensu-extensions", "1.5.0"
   s.add_dependency "sensu-transport", "5.0.0"
-  s.add_dependency "sensu-spawn", "1.8.0"
+  s.add_dependency "sensu-spawn", "2.2.0"
   s.add_dependency "sensu-redis", "1.3.0"
   s.add_dependency "sinatra", "1.4.6"
   s.add_dependency "async_sinatra", "1.2.0"
