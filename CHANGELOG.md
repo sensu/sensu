@@ -1,3 +1,12 @@
+## 0.23.3 - 2016-05-26
+
+### Fixes
+
+Fixed child process write/read deadlocks when writing to STDIN or reading
+from STDOUT/ERR, when the data size exceeds the pipe buffers.
+
+Fixed child process spawn timeout deadlock, now using stdlib Timeout.
+
 ## 0.23.2 - 2016-04-25
 
 ### Fixes
