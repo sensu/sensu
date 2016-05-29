@@ -827,7 +827,7 @@ module Sensu
                     check = Sensu::JSON.load(result_json)
                     next unless check[:ttl] && check[:executed] && !check[:force_resolve]
                     time_since_last_execution = Time.now.to_i - check[:executed]
-                    if time_since_last_execution >= check[:ttl]
+                    if time_since_last_execution >= check[:ttl].to_i
                       check[:output] = "Last check execution was "
                       check[:output] << "#{time_since_last_execution} seconds ago"
                       check[:status] = 1
