@@ -748,6 +748,27 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can delete an aggregate with an all caps name" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        check = check_template
+        check[:name] = "TEST"
+        server.aggregate_check_result(client_template, check)
+        timer(1) do
+          api_request("/aggregates/TEST", :delete) do |http, body|
+            expect(http.response_header.status).to eq(204)
+            expect(body).to be_empty
+            redis.sismember("aggregates", "TEST") do |exists|
+              expect(exists).to be(false)
+              async_done
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can not delete a nonexistent aggregate" do
     api_test do
       api_request("/aggregates/nonexistent", :delete) do |http, body|
