@@ -99,35 +99,31 @@ module Sensu
         end
       end
 
-      # Perform token-substitution for an object. Strings are passed
-      # to substitute_tokens(), arrays and sub-hashes are processed
-      # recursively. Numbers (and other types?) are skipped at the
-      # moment, because substitute_tokens() can not handle them
-      # anyway.
+      # Perform token substitution for an object. String values are
+      # passed to `substitute_tokens()`, arrays and sub-hashes are
+      # processed recursively. Numeric values are ignored.
       #
-      # @param	[Object]
-      # @return	[Object] updated object of the same type as the argument
-      # 	plus accumulated list of unmatched tokens
-      def obj_substitute_tokens(obj)
-        case obj
+      # @param object [Object]
+      # @return	[Array] containing the updated object with substituted
+      #   values and an array of unmatched tokens.
+      def object_substitute_tokens(object)
+        unmatched_tokens = []
+        case object
         when Hash
-          unmatched_tokens = []
-          obj.each do |key, value|
-            obj[key], unmatched = obj_substitute_tokens(value)
+          object.each do |key, value|
+            object[key], unmatched = object_substitute_tokens(value)
             unmatched_tokens.push(*unmatched)
           end
         when Array
-          unmatched_tokens = []
-          obj.map! do |value|
-            value, unmatched = obj_substitute_tokens(value)
+          object.map! do |value|
+            value, unmatched = object_substitute_tokens(value)
             unmatched_tokens.push(*unmatched)
             value
           end
         when String
-          obj, unmatched_tokens = substitute_tokens(obj, @settings[:client])
+          object, unmatched_tokens = substitute_tokens(object, @settings[:client])
         end
-        unmatched_tokens.uniq! if unmatched_tokens
-        [obj, unmatched_tokens]
+        [object, unmatched_tokens.uniq]
       end
 
       # Execute a check command, capturing its output (STDOUT/ERR),
@@ -144,7 +140,7 @@ module Sensu
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          check, unmatched_tokens = obj_substitute_tokens(check)
+          check, unmatched_tokens = object_substitute_tokens(check)
           if unmatched_tokens.empty?
             started = Time.now.to_f
             check[:executed] = started.to_i

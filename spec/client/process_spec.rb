@@ -85,6 +85,31 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can substitute tokens in a check definition" do
+    check = check_template
+    check[:command] = "echo :::nested.attribute:::"
+    check[:foo] = [":::missing|default:::"]
+    check[:bar] = {
+      :baz => ":::missing:::",
+      :qux => ":::missing|qux:::",
+      :quux => {
+        :corge => ":::missing:::",
+        :grault => ":::nonexistent:::",
+        :garply => ":::missing|garply:::"
+      }
+    }
+    substituted, unmatched_tokens = @client.object_substitute_tokens(check)
+    expect(substituted[:name]).to eq("test")
+    expect(substituted[:command]).to eq("echo true")
+    expect(substituted[:foo].first).to eq("default")
+    expect(substituted[:bar][:baz]).to eq("")
+    expect(substituted[:bar][:qux]).to eq("qux")
+    expect(substituted[:bar][:quux][:corge]).to eq("")
+    expect(substituted[:bar][:quux][:grault]).to eq("")
+    expect(substituted[:bar][:quux][:garply]).to eq("garply")
+    expect(unmatched_tokens).to match_array(["missing", "nonexistent"])
+  end
+
   it "can substitute check command tokens with attributes, default values, and execute it" do
     async_wrapper do
       result_queue do |payload|
