@@ -84,8 +84,8 @@ module Sensu
         def stop
           @logger.warn("stopping")
           stop_server do
-            settings.redis.close if settings.redis
-            settings.transport.close if settings.transport
+            settings.redis.close if settings.respond_to?(:redis)
+            settings.transport.close if settings.respond_to?(:transport)
             super
           end
         end
@@ -125,15 +125,17 @@ module Sensu
         end
 
         def connected?
-          settings.redis && settings.redis.connected? &&
-            settings.transport && settings.transport.connected?
-        end
-
-        def protected!
-          if settings.api[:user] && settings.api[:password]
-            return if !(settings.api[:user] && settings.api[:password]) || authorized?
-            headers["WWW-Authenticate"] = 'Basic realm="Restricted Area"'
-            unauthorized!
+          if settings.respond_to?(:redis) && settings.respond_to?(:transport)
+            unless ["/info", "/health"].include?(env["REQUEST_PATH"])
+              unless settings.redis.connected?
+                not_connected!("not connected to redis")
+              end
+              unless settings.transport.connected?
+                not_connected!("not connected to transport")
+              end
+            end
+          else
+            not_connected!("redis and transport connections not initialized")
           end
         end
 
@@ -145,8 +147,20 @@ module Sensu
             @auth.credentials == [settings.api[:user], settings.api[:password]]
         end
 
-        def error!
-          throw(:halt, [500, ""])
+        def protected!
+          if settings.api[:user] && settings.api[:password]
+            return if authorized?
+            headers["WWW-Authenticate"] = 'Basic realm="Restricted Area"'
+            unauthorized!
+          end
+        end
+
+        def error!(body="")
+          throw(:halt, [500, body])
+        end
+
+        def not_connected!(message)
+          error!(Sensu::JSON.dump(:error => message))
         end
 
         def bad_request!
@@ -315,7 +329,7 @@ module Sensu
         settings.cors.each do |header, value|
           headers["Access-Control-Allow-#{header}"] = value
         end
-        error! unless connected? || %w[/info /health].include?(env["REQUEST_PATH"])
+        connected?
         protected! unless env["REQUEST_METHOD"] == "OPTIONS"
       end
 
