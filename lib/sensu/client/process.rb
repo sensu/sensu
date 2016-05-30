@@ -129,9 +129,10 @@ module Sensu
       # Execute a check command, capturing its output (STDOUT/ERR),
       # exit status code, execution duration, timestamp, and publish
       # the result. This method guards against multiple executions for
-      # the same check. Check command tokens are substituted with the
-      # associated client attribute values. If there are unmatched
-      # check command tokens, the check command will not be executed,
+      # the same check. Check attribute value tokens are substituted
+      # with the associated client attribute values, via
+      # `object_substitute_tokens()`. If there are unmatched check
+      # attribute value tokens, the check will not be executed,
       # instead a check result will be published reporting the
       # unmatched tokens.
       #
