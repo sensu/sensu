@@ -315,7 +315,7 @@ module Sensu
         settings.cors.each do |header, value|
           headers["Access-Control-Allow-#{header}"] = value
         end
-        error! unless connected?
+        error! unless connected? || %w[/info /health].include?(env["REQUEST_PATH"])
         protected! unless env["REQUEST_METHOD"] == "OPTIONS"
       end
 
