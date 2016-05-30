@@ -23,10 +23,9 @@ module Sensu
           bootstrap(options)
           setup_process(options)
           EM::run do
-            setup_connections do
-              start
-              setup_signal_traps
-            end
+            setup_connections
+            start
+            setup_signal_traps
           end
         end
 
@@ -125,6 +124,11 @@ module Sensu
           env["rack.input"].rewind
         end
 
+        def connected?
+          settings.redis && settings.redis.connected? &&
+            settings.transport && settings.transport.connected?
+        end
+
         def protected!
           if settings.api[:user] && settings.api[:password]
             return if !(settings.api[:user] && settings.api[:password]) || authorized?
@@ -139,6 +143,10 @@ module Sensu
             @auth.basic? &&
             @auth.credentials &&
             @auth.credentials == [settings.api[:user], settings.api[:password]]
+        end
+
+        def error!
+          throw(:halt, [500, ""])
         end
 
         def bad_request!
@@ -307,6 +315,7 @@ module Sensu
         settings.cors.each do |header, value|
           headers["Access-Control-Allow-#{header}"] = value
         end
+        error! unless connected?
         protected! unless env["REQUEST_METHOD"] == "OPTIONS"
       end
 
