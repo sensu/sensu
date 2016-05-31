@@ -2,14 +2,14 @@ require "rubygems"
 
 gem "eventmachine", "1.2.0.1"
 
-gem "sensu-json", "1.1.1"
+gem "sensu-json", "2.0.0"
 gem "sensu-logger", "1.2.0"
-gem "sensu-settings", "3.4.0"
+gem "sensu-settings", "5.1.0"
 gem "sensu-extension", "1.5.0"
 gem "sensu-extensions", "1.5.0"
-gem "sensu-transport", "5.0.0"
+gem "sensu-transport", "6.0.0"
 gem "sensu-spawn", "2.2.0"
-gem "sensu-redis", "1.3.0"
+gem "sensu-redis", "1.4.0"
 
 require "time"
 require "uri"
@@ -49,6 +49,7 @@ module Sensu
       setup_logger(options)
       load_settings(options)
       load_extensions(options)
+      setup_spawn
       setup_process(options)
     end
 
@@ -64,56 +65,78 @@ module Sensu
       @logger.setup_signal_traps
     end
 
-    # Log setting or extension loading concerns, sensitive information
+    # Log setting or extension loading notices, sensitive information
     # is redacted.
     #
-    # @param concerns [Array] to be logged.
-    # @param level [Symbol] to log the concerns at.
-    def log_concerns(concerns=[], level=:warn)
-      concerns.each do |concern|
+    # @param notices [Array] to be logged.
+    # @param level [Symbol] to log the notices at.
+    def log_notices(notices=[], level=:warn)
+      notices.each do |concern|
         message = concern.delete(:message)
         @logger.send(level, message, redact_sensitive(concern))
       end
     end
 
-    # Print the Sensu settings and immediately exit the process. This
-    # method is used while troubleshooting configuration issues,
-    # triggered by a CLI argument, e.g. `--print_config`. Sensu
-    # settings with sensitive values (e.g. passwords) are first
-    # redacted.
+    # Determine if the Sensu settings are valid, if there are load or
+    # validation errors, and immediately exit the process with the
+    # appropriate exit status code. This method is used to determine
+    # if the latest configuration changes are valid prior to
+    # restarting the Sensu service, triggered by a CLI argument, e.g.
+    # `--validate_config`.
     #
     # @param settings [Object]
-    def print_settings(settings)
+    def validate_settings!(settings)
+      if settings.errors.empty?
+        puts "configuration is valid"
+        exit
+      else
+        puts "configuration is invalid"
+        puts Sensu::JSON.dump({:errors => @settings.errors}, :pretty => true)
+        exit 2
+      end
+    end
+
+    # Print the Sensu settings (JSON) to STDOUT and immediately exit
+    # the process with the appropriate exit status code. This method
+    # is used while troubleshooting configuration issues, triggered by
+    # a CLI argument, e.g. `--print_config`. Sensu settings with
+    # sensitive values (e.g. passwords) are first redacted.
+    #
+    # @param settings [Object]
+    def print_settings!(settings)
       redacted_settings = redact_sensitive(settings.to_hash)
       @logger.warn("outputting compiled configuration and exiting")
       puts Sensu::JSON.dump(redacted_settings, :pretty => true)
-      exit
+      exit(settings.errors.empty? ? 0 : 2)
     end
 
-    # Load Sensu settings and validate them. If there are validation
-    # failures, log them (concerns), then cause the Sensu process to
-    # exit (2). This method creates the settings instance variable:
-    # `@settings`. If the `print_config` option is true, this method
-    # calls `print_settings()` to output the compiled configuration
-    # settings and then exit the process.
+    # Load Sensu settings. This method creates the settings instance
+    # variable: `@settings`. If the `validate_config` option is true,
+    # this method calls `validate_settings!()` to validate the latest
+    # compiled configuration settings and will then exit the process.
+    # If the `print_config` option is true, this method calls
+    # `print_settings!()` to output the compiled configuration
+    # settings and will then exit the process. If there are loading or
+    # validation errors, they will be logged (notices), and this
+    # method will exit(2) the process.
+    #
     #
     # https://github.com/sensu/sensu-settings
     #
     # @param options [Hash]
     def load_settings(options={})
       @settings = Settings.get(options)
-      log_concerns(@settings.warnings)
-      failures = @settings.validate
-      unless failures.empty?
-        @logger.fatal("invalid settings")
-        log_concerns(failures, :fatal)
+      validate_settings!(@settings) if options[:validate_config]
+      log_notices(@settings.warnings)
+      log_notices(@settings.errors, :fatal)
+      print_settings!(@settings) if options[:print_config]
+      unless @settings.errors.empty?
         @logger.fatal("SENSU NOT RUNNING!")
         exit 2
       end
-      print_settings(@settings) if options[:print_config]
     end
 
-    # Load Sensu extensions and log any concerns. Set the logger and
+    # Load Sensu extensions and log any notices. Set the logger and
     # settings for each extension instance. This method creates the
     # extensions instance variable: `@extensions`.
     #
@@ -123,12 +146,26 @@ module Sensu
     # @param options [Hash]
     def load_extensions(options={})
       @extensions = Extensions.get(options)
-      log_concerns(@extensions.warnings)
+      log_notices(@extensions.warnings)
       extension_settings = @settings.to_hash.dup
       @extensions.all.each do |extension|
         extension.logger = @logger
         extension.settings = extension_settings
       end
+    end
+
+    # Set up Sensu spawn, creating a worker to create, control, and
+    # limit spawned child processes. This method adjusts the
+    # EventMachine thread pool size to accommodate the concurrent
+    # process spawn limit and other Sensu process operations.
+    #
+    # https://github.com/sensu/sensu-spawn
+    def setup_spawn
+      @logger.info("configuring sensu spawn", :settings => @settings[:sensu][:spawn])
+      threadpool_size = @settings[:sensu][:spawn][:limit] + 10
+      @logger.debug("setting eventmachine threadpool size", :size => threadpool_size)
+      EM.threadpool_size = threadpool_size
+      Spawn.setup(@settings[:sensu][:spawn])
     end
 
     # Manage the current process, optionally daemonize and/or write

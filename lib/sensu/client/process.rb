@@ -99,12 +99,40 @@ module Sensu
         end
       end
 
+      # Perform token substitution for an object. String values are
+      # passed to `substitute_tokens()`, arrays and sub-hashes are
+      # processed recursively. Numeric values are ignored.
+      #
+      # @param object [Object]
+      # @return	[Array] containing the updated object with substituted
+      #   values and an array of unmatched tokens.
+      def object_substitute_tokens(object)
+        unmatched_tokens = []
+        case object
+        when Hash
+          object.each do |key, value|
+            object[key], unmatched = object_substitute_tokens(value)
+            unmatched_tokens.push(*unmatched)
+          end
+        when Array
+          object.map! do |value|
+            value, unmatched = object_substitute_tokens(value)
+            unmatched_tokens.push(*unmatched)
+            value
+          end
+        when String
+          object, unmatched_tokens = substitute_tokens(object, @settings[:client])
+        end
+        [object, unmatched_tokens.uniq]
+      end
+
       # Execute a check command, capturing its output (STDOUT/ERR),
       # exit status code, execution duration, timestamp, and publish
       # the result. This method guards against multiple executions for
-      # the same check. Check command tokens are substituted with the
-      # associated client attribute values. If there are unmatched
-      # check command tokens, the check command will not be executed,
+      # the same check. Check attribute value tokens are substituted
+      # with the associated client attribute values, via
+      # `object_substitute_tokens()`. If there are unmatched check
+      # attribute value tokens, the check will not be executed,
       # instead a check result will be published reporting the
       # unmatched tokens.
       #
@@ -113,11 +141,11 @@ module Sensu
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          command, unmatched_tokens = substitute_tokens(check[:command], @settings[:client])
+          check, unmatched_tokens = object_substitute_tokens(check)
           if unmatched_tokens.empty?
-            check[:executed] = Time.now.to_i
             started = Time.now.to_f
-            Spawn.process(command, :timeout => check[:timeout]) do |output, status|
+            check[:executed] = started.to_i
+            Spawn.process(check[:command], :timeout => check[:timeout]) do |output, status|
               check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               check[:output] = output
               check[:status] = status

@@ -124,34 +124,30 @@ describe "Sensu::Server::Process" do
   it "can aggregate check results" do
     async_wrapper do
       @server.setup_redis do
-        timestamp = epoch
         clients = ["foo", "bar", "baz", "qux"]
         redis.flushdb do
-          clients.each_with_index do |client_name, index|
+          clients.each do |client_name|
             client = client_template
             client[:name] = client_name
             check = check_template
-            check[:issued] = timestamp
-            check[:executed] = timestamp + index
-            check[:status] = index
+            check[:aggregate] = true
+            @server.aggregate_check_result(client, check)
+            check = check_template
+            check[:aggregate] = "foobar"
             @server.aggregate_check_result(client, check)
           end
           timer(2) do
-            result_set = "test:#{timestamp}"
             redis.sismember("aggregates", "test") do |exists|
               expect(exists).to be(true)
-              redis.sismember("aggregates:test", timestamp.to_s) do |exists|
+              redis.sismember("aggregates", "foobar") do |exists|
                 expect(exists).to be(true)
-                redis.hgetall("aggregate:#{result_set}") do |aggregate|
-                  expect(aggregate["total"]).to eq("4")
-                  expect(aggregate["ok"]).to eq("1")
-                  expect(aggregate["warning"]).to eq("1")
-                  expect(aggregate["critical"]).to eq("1")
-                  expect(aggregate["unknown"]).to eq("1")
-                  redis.hgetall("aggregation:#{result_set}") do |aggregation|
-                    clients.each do |client_name|
-                      expect(aggregation).to include(client_name)
-                    end
+                expected_members = clients.map do |client_name|
+                  "#{client_name}:test"
+                end
+                redis.smembers("aggregates:test") do |aggregate_members|
+                  expect(aggregate_members).to match_array(expected_members)
+                  redis.smembers("aggregates:foobar") do |aggregate_members|
+                    expect(aggregate_members).to match_array(expected_members)
                     async_done
                   end
                 end
@@ -205,6 +201,36 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can have event ids persist until the event is resolved" do
+    async_wrapper do
+      @server.setup_redis do
+        redis.flushdb do
+          client = client_template
+          redis.set("client:i-424242", Sensu::JSON.dump(client)) do
+            result = result_template
+            @server.process_check_result(result)
+            timer(1) do
+              redis.hget("events:i-424242", "test") do |event_json|
+                event = Sensu::JSON.load(event_json)
+                event_id = event[:id]
+                expect(event[:occurrences]).to eq(1)
+                @server.process_check_result(result)
+                timer(1) do
+                  redis.hget("events:i-424242", "test") do |event_json|
+                    event = Sensu::JSON.load(event_json)
+                    expect(event[:id]).to eq(event_id)
+                    expect(event[:occurrences]).to eq(2)
+                    async_done
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can not resolve events when provided the option" do
     async_wrapper do
       @server.setup_redis do
@@ -220,6 +246,7 @@ describe "Sensu::Server::Process" do
                 expect(event[:action]).to eq("create")
                 expect(event[:occurrences]).to eq(1)
                 result[:check][:status] = 0
+                @server.process_check_result(result)
                 timer(1) do
                   redis.hget("events:i-424242", "test") do |event_json|
                     event = Sensu::JSON.load(event_json)
@@ -587,47 +614,6 @@ describe "Sensu::Server::Process" do
                       expect(event[:check][:output]).to match(/Last check execution was 3[0-9] seconds ago/)
                       expect(event[:check][:status]).to eq(1)
                       async_done
-                    end
-                  end
-                end
-              end
-            end
-          end
-        end
-      end
-    end
-  end
-
-  it "can prune aggregations" do
-    async_wrapper do
-      @server.setup_redis do
-        redis.flushdb do
-          client = client_template
-          redis.set("client:i-424242", Sensu::JSON.dump(client)) do
-            timestamp = epoch - 26
-            26.times do |index|
-              check = check_template
-              check[:issued] = timestamp + index
-              check[:status] = index
-              @server.aggregate_check_result(client, check)
-            end
-            timer(1) do
-              redis.smembers("aggregates:test") do |aggregates|
-                aggregates.sort!
-                expect(aggregates.size).to eq(26)
-                oldest = aggregates.shift
-                @server.prune_check_result_aggregations
-                timer(1) do
-                  redis.smembers("aggregates:test") do |aggregates|
-                    expect(aggregates.size).to eq(20)
-                    expect(aggregates).not_to include(oldest)
-                    result_set = "test:#{oldest}"
-                    redis.exists("aggregate:#{result_set}") do |exists|
-                      expect(exists).to be(false)
-                      redis.exists("aggregation:#{result_set}") do |exists|
-                        expect(exists).to be(false)
-                        async_done
-                      end
                     end
                   end
                 end

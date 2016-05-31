@@ -66,10 +66,10 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(204)
         expect(body).to be_empty
         api_request("/health?consumers=1000") do |http, body|
-          expect(http.response_header.status).to eq(503)
+          expect(http.response_header.status).to eq(412)
           expect(body).to be_empty
           api_request("/health?consumers=1000&messages=1000") do |http, body|
-            expect(http.response_header.status).to eq(503)
+            expect(http.response_header.status).to eq(412)
             async_done
           end
         end
@@ -365,6 +365,16 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can not provide a nonexistent client" do
+    api_test do
+      api_request("/client/nonexistent") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
   it "can create and provide a client" do
     api_test do
       options = {
@@ -394,12 +404,25 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can not provide a nonexistent client" do
+  it "can create a client expected to produce keepalives (eventually)" do
     api_test do
-      api_request("/client/nonexistent") do |http, body|
-        expect(http.response_header.status).to eq(404)
-        expect(body).to be_empty
-        async_done
+      options = {
+        :body => {
+          :name => "i-888888",
+          :address => "8.8.8.8",
+          :subscriptions => [
+            "test"
+          ],
+          :keepalives => true
+        }
+      }
+      api_request("/clients", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        api_request("/client/i-888888") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body[:keepalives]).to be(true)
+          async_done
+        end
       end
     end
   end
@@ -698,10 +721,7 @@ describe "Sensu::API::Process" do
         timer(1) do
           api_request("/aggregates") do |http, body|
             expect(body).to be_kind_of(Array)
-            test_aggregate = Proc.new do |aggregate|
-              aggregate[:check] == "test"
-            end
-            expect(body).to contain(test_aggregate)
+            expect(body).to include({:name => "test"})
             async_done
           end
         end
@@ -709,35 +729,7 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can provide an aggregate list" do
-    api_test do
-      server = Sensu::Server::Process.new(options)
-      server.setup_redis do
-        timestamp = epoch
-        3.times do |index|
-          check = check_template
-          check[:issued] = timestamp + index
-          server.aggregate_check_result(client_template, check)
-        end
-        timer(1) do
-          api_request("/aggregates/test") do |http, body|
-            expect(body).to be_kind_of(Array)
-            expect(body.size).to eq(3)
-            expect(body).to include(timestamp)
-            api_request("/aggregates/test?limit=1") do |http, body|
-              expect(body.size).to eq(1)
-              api_request("/aggregates/test?limit=1&age=30") do |http, body|
-                expect(body).to be_empty
-                async_done
-              end
-            end
-          end
-        end
-      end
-    end
-  end
-
-  it "can delete aggregates" do
+  it "can delete an aggregate" do
     api_test do
       server = Sensu::Server::Process.new(options)
       server.setup_redis do
@@ -756,7 +748,28 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can not delete nonexistent aggregates" do
+  it "can delete an aggregate with an all caps name" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        check = check_template
+        check[:name] = "TEST"
+        server.aggregate_check_result(client_template, check)
+        timer(1) do
+          api_request("/aggregates/TEST", :delete) do |http, body|
+            expect(http.response_header.status).to eq(204)
+            expect(body).to be_empty
+            redis.sismember("aggregates", "TEST") do |exists|
+              expect(exists).to be(false)
+              async_done
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can not delete a nonexistent aggregate" do
     api_test do
       api_request("/aggregates/nonexistent", :delete) do |http, body|
         expect(http.response_header.status).to eq(404)
@@ -766,32 +779,49 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can provide a specific aggregate with parameters" do
+  it "can provide an aggregate" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          api_request("/aggregates/test") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Hash)
+            expect(body[:clients]).to eq(1)
+            expect(body[:checks]).to eq(1)
+            expect(body[:results][:ok]).to eq(0)
+            expect(body[:results][:warning]).to eq(1)
+            expect(body[:results][:critical]).to eq(0)
+            expect(body[:results][:unknown]).to eq(0)
+            expect(body[:results][:total]).to eq(1)
+            expect(body[:results][:stale]).to eq(0)
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can provide an aggregate with a result max age" do
     api_test do
       server = Sensu::Server::Process.new(options)
       server.setup_redis do
         check = check_template
-        timestamp = epoch
-        check[:issued] = timestamp
+        check[:executed] = epoch - 128
         server.aggregate_check_result(client_template, check)
         timer(1) do
-          parameters = "?results=true&summarize=output"
-          api_request("/aggregates/test/#{timestamp}#{parameters}") do |http, body|
+          api_request("/aggregates/test?max_age=120") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Hash)
-            expect(body[:ok]).to eq(0)
-            expect(body[:warning]).to eq(1)
-            expect(body[:critical]).to eq(0)
-            expect(body[:unknown]).to eq(0)
-            expect(body[:total]).to eq(1)
-            expect(body[:results]).to be_kind_of(Array)
-            expect(body[:results].size).to eq(1)
-            expect(body[:results][0][:client]).to eq("i-424242")
-            expect(body[:results][0][:output]).to eq("WARNING")
-            expect(body[:results][0][:status]).to eq(1)
-            expect(body[:outputs]).to be_kind_of(Hash)
-            expect(body[:outputs].size).to eq(1)
-            expect(body[:outputs][:"WARNING"]).to eq(1)
+            expect(body[:clients]).to eq(1)
+            expect(body[:checks]).to eq(1)
+            expect(body[:results][:ok]).to eq(0)
+            expect(body[:results][:warning]).to eq(0)
+            expect(body[:results][:critical]).to eq(0)
+            expect(body[:results][:unknown]).to eq(0)
+            expect(body[:results][:total]).to eq(0)
+            expect(body[:results][:stale]).to eq(1)
             async_done
           end
         end
@@ -801,7 +831,127 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent aggregate" do
     api_test do
-      api_request("/aggregates/test/#{epoch}") do |http, body|
+      api_request("/aggregates/nonexistent") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can provide aggregate client information" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          api_request("/aggregates/test/clients") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body[0]).to be_kind_of(Hash)
+            expect(body[0][:name]).to eq("i-424242")
+            expect(body[0][:checks]).to eq(["test"])
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can not provide aggregate client information for a nonexistent aggregate" do
+    api_test do
+      api_request("/aggregates/nonexistent/clients") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can provide aggregate check information" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          api_request("/aggregates/test/checks") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body[0]).to be_kind_of(Hash)
+            expect(body[0][:name]).to eq("test")
+            expect(body[0][:clients]).to eq(["i-424242"])
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can not provide aggregate check information for a nonexistent aggregate" do
+    api_test do
+      api_request("/aggregates/nonexistent/checks") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can provide a aggregate result summary for a severity" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          api_request("/aggregates/test/results/warning") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body[0]).to be_kind_of(Hash)
+            expect(body[0][:check]).to eq("test")
+            expect(body[0][:summary]).to be_kind_of(Array)
+            expect(body[0][:summary][0]).to be_kind_of(Hash)
+            expect(body[0][:summary][0][:output]).to eq("WARNING")
+            expect(body[0][:summary][0][:total]).to eq(1)
+            expect(body[0][:summary][0][:clients]).to eq(["i-424242"])
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can provide a aggregate result summary for a severity with a result max age" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        check = check_template
+        check[:executed] = epoch - 128
+        server.aggregate_check_result(client_template, check)
+        timer(1) do
+          api_request("/aggregates/test/results/warning?max_age=120") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body).to be_empty
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can not provide a aggregate result summary for an invalid severity" do
+    api_test do
+      api_request("/aggregates/test/results/invalid") do |http, body|
+        expect(http.response_header.status).to eq(400)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can not provide a aggregate result summary for a nonexistent aggregate" do
+    api_test do
+      api_request("/aggregates/nonexistent/results/warning") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done

@@ -106,6 +106,7 @@ module Helpers
   def check_template
     {
       :name => "test",
+      :type => "standard",
       :issued => epoch,
       :command => "echo WARNING && exit 1",
       :output => "WARNING",

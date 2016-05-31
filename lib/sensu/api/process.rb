@@ -1,10 +1,11 @@
 require "sensu/daemon"
+require "sensu/api/validators"
 
 gem "sinatra", "1.4.6"
 gem "async_sinatra", "1.2.0"
 
 unless RUBY_PLATFORM =~ /java/
-  gem "thin", "1.6.3"
+  gem "thin", "1.6.4"
   require "thin"
 end
 
@@ -22,10 +23,9 @@ module Sensu
           bootstrap(options)
           setup_process(options)
           EM::run do
-            setup_connections do
-              start
-              setup_signal_traps
-            end
+            setup_connections
+            start
+            setup_signal_traps
           end
         end
 
@@ -84,8 +84,8 @@ module Sensu
         def stop
           @logger.warn("stopping")
           stop_server do
-            settings.redis.close if settings.redis
-            settings.transport.close if settings.transport
+            settings.redis.close if settings.respond_to?(:redis)
+            settings.transport.close if settings.respond_to?(:transport)
             super
           end
         end
@@ -124,11 +124,18 @@ module Sensu
           env["rack.input"].rewind
         end
 
-        def protected!
-          if settings.api[:user] && settings.api[:password]
-            return if !(settings.api[:user] && settings.api[:password]) || authorized?
-            headers["WWW-Authenticate"] = 'Basic realm="Restricted Area"'
-            unauthorized!
+        def connected?
+          if settings.respond_to?(:redis) && settings.respond_to?(:transport)
+            unless ["/info", "/health"].include?(env["REQUEST_PATH"])
+              unless settings.redis.connected?
+                not_connected!("not connected to redis")
+              end
+              unless settings.transport.connected?
+                not_connected!("not connected to transport")
+              end
+            end
+          else
+            not_connected!("redis and transport connections not initialized")
           end
         end
 
@@ -138,6 +145,22 @@ module Sensu
             @auth.basic? &&
             @auth.credentials &&
             @auth.credentials == [settings.api[:user], settings.api[:password]]
+        end
+
+        def protected!
+          if settings.api[:user] && settings.api[:password]
+            return if authorized?
+            headers["WWW-Authenticate"] = 'Basic realm="Restricted Area"'
+            unauthorized!
+          end
+        end
+
+        def error!(body="")
+          throw(:halt, [500, body])
+        end
+
+        def not_connected!(message)
+          error!(Sensu::JSON.dump(:error => message))
         end
 
         def bad_request!
@@ -152,8 +175,8 @@ module Sensu
           ahalt 404
         end
 
-        def unavailable!
-          ahalt 503
+        def precondition_failed!
+          ahalt 412
         end
 
         def created!(response)
@@ -306,6 +329,7 @@ module Sensu
         settings.cors.each do |header, value|
           headers["Access-Control-Allow-#{header}"] = value
         end
+        connected?
         protected! unless env["REQUEST_METHOD"] == "OPTIONS"
       end
 
@@ -342,27 +366,27 @@ module Sensu
               healthy << (info[:keepalives][:messages] <= max_messages)
               healthy << (info[:results][:messages] <= max_messages)
             end
-            healthy.all? ? no_content! : unavailable!
+            healthy.all? ? no_content! : precondition_failed!
           end
         else
-          unavailable!
+          precondition_failed!
         end
       end
 
       apost "/clients/?" do
-        rules = {
-          :name => {:type => String, :nil_ok => false, :regex => /\A[\w\.-]+\z/},
-          :address => {:type => String, :nil_ok => false},
-          :subscriptions => {:type => Array, :nil_ok => false}
-        }
-        read_data(rules) do |data|
-          data[:keepalives] = false
+        read_data do |data|
+          data[:keepalives] = data.fetch(:keepalives, false)
           data[:version] = VERSION
           data[:timestamp] = Time.now.to_i
-          settings.redis.set("client:#{data[:name]}", Sensu::JSON.dump(data)) do
-            settings.redis.sadd("clients", data[:name]) do
-              created!(Sensu::JSON.dump(:name => data[:name]))
+          validator = Validators::Client.new
+          if validator.valid?(data)
+            settings.redis.set("client:#{data[:name]}", Sensu::JSON.dump(data)) do
+              settings.redis.sadd("clients", data[:name]) do
+                created!(Sensu::JSON.dump(:name => data[:name]))
+              end
             end
+          else
+            bad_request!
           end
         end
       end
@@ -582,62 +606,75 @@ module Sensu
       end
 
       aget "/aggregates/?" do
-        response = Array.new
-        settings.redis.smembers("aggregates") do |checks|
-          unless checks.empty?
-            checks.each_with_index do |check_name, index|
-              settings.redis.smembers("aggregates:#{check_name}") do |aggregates|
-                aggregates.reverse!
-                aggregates.map! do |issued|
-                  issued.to_i
+        settings.redis.smembers("aggregates") do |aggregates|
+          aggregates.map! do |aggregate|
+            {:name => aggregate}
+          end
+          body Sensu::JSON.dump(aggregates)
+        end
+      end
+
+      aget %r{^/aggregates/([\w\.-]+)/?$} do |aggregate|
+        response = {
+          :clients => 0,
+          :checks => 0,
+          :results => {
+            :ok => 0,
+            :warning => 0,
+            :critical => 0,
+            :unknown => 0,
+            :total => 0,
+            :stale => 0
+          }
+        }
+        settings.redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
+          unless aggregate_members.empty?
+            clients = []
+            checks = []
+            results = []
+            aggregate_members.each_with_index do |member, index|
+              client_name, check_name = member.split(":")
+              clients << client_name
+              checks << check_name
+              result_key = "result:#{client_name}:#{check_name}"
+              settings.redis.get(result_key) do |result_json|
+                unless result_json.nil?
+                  results << Sensu::JSON.load(result_json)
+                else
+                  settings.redis.srem("aggregates:#{aggregate}", member)
                 end
-                item = {
-                  :check => check_name,
-                  :issued => aggregates
-                }
-                response << item
-                if index == checks.length - 1
+                if index == aggregate_members.length - 1
+                  response[:clients] = clients.uniq.length
+                  response[:checks] = checks.uniq.length
+                  max_age = integer_parameter(params[:max_age])
+                  if max_age
+                    result_count = results.length
+                    timestamp = Time.now.to_i - max_age
+                    results.reject! do |result|
+                      result[:executed] < timestamp
+                    end
+                    response[:results][:stale] = result_count - results.length
+                  end
+                  response[:results][:total] = results.length
+                  results.each do |result|
+                    severity = (SEVERITIES[result[:status]] || "unknown")
+                    response[:results][severity.to_sym] += 1
+                  end
                   body Sensu::JSON.dump(response)
                 end
               end
             end
-          else
-            body Sensu::JSON.dump(response)
-          end
-        end
-      end
-
-      aget %r{^/aggregates/([\w\.-]+)/?$} do |check_name|
-        settings.redis.smembers("aggregates:#{check_name}") do |aggregates|
-          unless aggregates.empty?
-            aggregates.reverse!
-            aggregates.map! do |issued|
-              issued.to_i
-            end
-            age = integer_parameter(params[:age])
-            if age
-              timestamp = Time.now.to_i - age
-              aggregates.reject! do |issued|
-                issued > timestamp
-              end
-            end
-            body Sensu::JSON.dump(pagination(aggregates))
           else
             not_found!
           end
         end
       end
 
-      adelete %r{^/aggregates/([\w\.-]+)/?$} do |check_name|
-        settings.redis.smembers("aggregates:#{check_name}") do |aggregates|
-          unless aggregates.empty?
-            aggregates.each do |check_issued|
-              result_set = "#{check_name}:#{check_issued}"
-              settings.redis.del("aggregation:#{result_set}")
-              settings.redis.del("aggregate:#{result_set}")
-            end
-            settings.redis.del("aggregates:#{check_name}") do
-              settings.redis.srem("aggregates", check_name) do
+      adelete %r{^/aggregates/([\w\.-]+)/?$} do |aggregate|
+        settings.redis.smembers("aggregates") do |aggregates|
+          if aggregates.include?(aggregate)
+            settings.redis.srem("aggregates", aggregate) do
+              settings.redis.del("aggregates:#{aggregate}") do
                 no_content!
               end
             end
@@ -647,37 +684,94 @@ module Sensu
         end
       end
 
-      aget %r{^/aggregates?/([\w\.-]+)/([\w\.-]+)/?$} do |check_name, check_issued|
-        result_set = "#{check_name}:#{check_issued}"
-        settings.redis.hgetall("aggregate:#{result_set}") do |aggregate|
-          unless aggregate.empty?
-            response = aggregate.inject(Hash.new) do |totals, (status, count)|
-              totals[status] = Integer(count)
-              totals
+      aget %r{^/aggregates/([\w\.-]+)/clients/?$} do |aggregate|
+        response = Array.new
+        settings.redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
+          unless aggregate_members.empty?
+            clients = Hash.new
+            aggregate_members.each do |member|
+              client_name, check_name = member.split(":")
+              clients[client_name] ||= []
+              clients[client_name] << check_name
             end
-            settings.redis.hgetall("aggregation:#{result_set}") do |results|
-              parsed_results = results.inject(Array.new) do |parsed, (client_name, check_json)|
-                check = Sensu::JSON.load(check_json)
-                parsed << check.merge(:client => client_name)
-              end
-              if params[:summarize]
-                options = params[:summarize].split(",")
-                if options.include?("output")
-                  outputs = Hash.new(0)
-                  parsed_results.each do |result|
-                    outputs[result[:output]] += 1
-                  end
-                  response[:outputs] = outputs
-                end
-              end
-              if params[:results]
-                response[:results] = parsed_results
-              end
-              body Sensu::JSON.dump(response)
+            clients.each do |client_name, checks|
+              response << {
+                :name => client_name,
+                :checks => checks
+              }
             end
+            body Sensu::JSON.dump(response)
           else
             not_found!
           end
+        end
+      end
+
+      aget %r{^/aggregates/([\w\.-]+)/checks/?$} do |aggregate|
+        response = Array.new
+        settings.redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
+          unless aggregate_members.empty?
+            checks = Hash.new
+            aggregate_members.each do |member|
+              client_name, check_name = member.split(":")
+              checks[check_name] ||= []
+              checks[check_name] << client_name
+            end
+            checks.each do |check_name, clients|
+              response << {
+                :name => check_name,
+                :clients => clients
+              }
+            end
+            body Sensu::JSON.dump(response)
+          else
+            not_found!
+          end
+        end
+      end
+
+      aget %r{^/aggregates/([\w\.-]+)/results/([\w\.-]+)/?$} do |aggregate, severity|
+        response = Array.new
+        if SEVERITIES.include?(severity)
+          settings.redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
+            unless aggregate_members.empty?
+              summaries = Hash.new
+              max_age = integer_parameter(params[:max_age])
+              current_timestamp = Time.now.to_i
+              aggregate_members.each_with_index do |member, index|
+                client_name, check_name = member.split(":")
+                result_key = "result:#{client_name}:#{check_name}"
+                settings.redis.get(result_key) do |result_json|
+                  unless result_json.nil?
+                    result = Sensu::JSON.load(result_json)
+                    if SEVERITIES[result[:status]] == severity &&
+                        (max_age.nil? || result[:executed] >= (current_timestamp - max_age))
+                      summaries[check_name] ||= {}
+                      summaries[check_name][result[:output]] ||= {:total => 0, :clients => []}
+                      summaries[check_name][result[:output]][:total] += 1
+                      summaries[check_name][result[:output]][:clients] << client_name
+                    end
+                  end
+                  if index == aggregate_members.length - 1
+                    summaries.each do |check_name, outputs|
+                      summary = outputs.map do |output, output_summary|
+                        {:output => output}.merge(output_summary)
+                      end
+                      response << {
+                        :check => check_name,
+                        :summary => summary
+                      }
+                    end
+                    body Sensu::JSON.dump(response)
+                  end
+                end
+              end
+            else
+              not_found!
+            end
+          end
+        else
+          bad_request!
         end
       end
 

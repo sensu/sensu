@@ -11,7 +11,9 @@ module Sensu
       include Mutate
       include Handle
 
-      attr_reader :is_leader, :handling_event_count
+      attr_reader :is_leader, :in_progress
+
+      STANDARD_CHECK_TYPE = "standard".freeze
 
       METRIC_CHECK_TYPE = "metric".freeze
 
@@ -40,17 +42,23 @@ module Sensu
         super
         @is_leader = false
         @timers[:leader] = Array.new
-        @handling_event_count = 0
+        @in_progress = Hash.new(0)
       end
 
       # Set up the Redis and Transport connection objects, `@redis`
-      # and `@transport`. This method "drys" up many instances of
-      # `setup_redis()` and `setup_transport()`.
+      # and `@transport`. This method updates the Redis on error
+      # callback to reset the in progress check result counter. This
+      # method "drys" up many instances of `setup_redis()` and
+      # `setup_transport()`, particularly in the specs.
       #
       # @yield callback/block called after connecting to Redis and the
       #   Sensu Transport.
       def setup_connections
         setup_redis do
+          @redis.on_error do |error|
+            @logger.error("redis connection error", :error => error.to_s)
+            @in_progress[:check_results] = 0
+          end
           setup_transport do
             yield
           end
@@ -90,15 +98,11 @@ module Sensu
       #
       # @param client [Hash] definition.
       def create_client_registration_event(client)
-        event = {
-          :id => random_uuid,
-          :client => client,
-          :check => create_registration_check(client),
-          :occurrences => 1,
-          :action => :create,
-          :timestamp => Time.now.to_i
-        }
-        process_event(event)
+        check = create_registration_check(client)
+        create_event(client, check) do |event|
+          event_bridges(event)
+          process_event(event)
+        end
       end
 
       # Process an initial client registration, when it is first added
@@ -235,8 +239,8 @@ module Sensu
       #
       # This method determines the appropriate handlers for an event,
       # filtering and mutating the event data for each of them. The
-      # `@handling_event_count` is incremented by `1`, for each event
-      # handler chain (filter -> mutate -> handle).
+      # `@in_progress[:events]` counter is incremented by `1`, for
+      # each event handler chain (filter -> mutate -> handle).
       #
       # @param event [Hash]
       def process_event(event)
@@ -245,7 +249,7 @@ module Sensu
         handler_list = Array((event[:check][:handlers] || event[:check][:handler]) || DEFAULT_HANDLER_NAME)
         handlers = derive_handlers(handler_list)
         handlers.each do |handler|
-          @handling_event_count += 1
+          @in_progress[:events] += 1
           filter_event(handler, event) do |event|
             mutate_event(handler, event) do |event_data|
               handle_event(handler, event_data)
@@ -271,35 +275,27 @@ module Sensu
         end
       end
 
-      # Add a check result to an aggregate. A check aggregate uses the
-      # check `:name` and the `:issued` timestamp as its unique
-      # identifier. An aggregate uses several counters: the total
-      # number of results in the aggregate, and a counter for each
-      # check severity (ok, warning, etc). Check output is also
-      # stored, to be summarized to aid in identifying outliers for a
-      # check execution across a number of Sensu clients. JSON
-      # serialization is used for storing check result data.
+      # Add a check result to an aggregate. The aggregate name is
+      # determined by the value of check `:aggregate`. If check
+      # `:aggregate` is `true` (legacy), the check `:name` is used as
+      # the aggregate name. If check `:aggregate` is a string, it is
+      # used as the aggregate name. This method will add the client
+      # name to the aggregate, all other processing (e.g. counters) is
+      # done by the Sensu API on request.
       #
       # @param client [Hash]
       # @param check [Hash]
       def aggregate_check_result(client, check)
+        aggregate = (check[:aggregate].is_a?(String) ? check[:aggregate] : check[:name])
         @logger.debug("adding check result to aggregate", {
+          :aggregate => aggregate,
           :client => client,
           :check => check
         })
-        result_set = "#{check[:name]}:#{check[:issued]}"
-        result_data = Sensu::JSON.dump(:output => check[:output], :status => check[:status])
-        @redis.multi
-        @redis.hset("aggregation:#{result_set}", client[:name], result_data)
-        SEVERITIES.each do |severity|
-          @redis.hsetnx("aggregate:#{result_set}", severity, 0)
+        aggregate_member = "#{client[:name]}:#{check[:name]}"
+        @redis.sadd("aggregates:#{aggregate}", aggregate_member) do
+          @redis.sadd("aggregates", aggregate)
         end
-        severity = (SEVERITIES[check[:status]] || "unknown")
-        @redis.hincrby("aggregate:#{result_set}", severity, 1)
-        @redis.hincrby("aggregate:#{result_set}", "total", 1)
-        @redis.sadd("aggregates:#{check[:name]}", check[:issued])
-        @redis.sadd("aggregates", check[:name])
-        @redis.exec
       end
 
       # Truncate check output. For metric checks, (`"type":
@@ -333,7 +329,7 @@ module Sensu
       # @param client [Hash]
       # @param check [Hash]
       # @yield [] callback/block called after the check data has been
-      # stored (history, etc).
+      #   stored (history, etc).
       def store_check_result(client, check)
         @logger.debug("storing check result", :check => check)
         result_key = "#{client[:name]}:#{check[:name]}"
@@ -342,6 +338,7 @@ module Sensu
         @redis.multi
         @redis.sadd("result:#{client[:name]}", check[:name])
         @redis.set("result:#{result_key}", Sensu::JSON.dump(check_truncated))
+        @redis.sadd("ttl", result_key) if check[:ttl]
         @redis.rpush(history_key, check[:status])
         @redis.ltrim(history_key, -21, -1)
         @redis.exec do
@@ -418,83 +415,106 @@ module Sensu
       end
 
       # Update the event registry, stored in Redis. This method
-      # determines if check data results in the creation or update of
-      # event data in the registry. Existing event data for a
-      # client/check pair is fetched, used in conditionals and the
-      # composition of the new event data. If a check `:status` is not
+      # determines if event data warrants in the creation or update of
+      # event data in the registry. If a check `:status` is not
       # `0`, or it has been flapping, an event is created/updated in
-      # the registry. If there was existing event data, but the check
-      # `:status` is now `0`, the event is removed (resolved) from the
-      # registry. If the previous conditions are not met, and check
-      # `:type` is `metric` and the `:status` is `0`, the event
-      # registry is not updated, but the provided callback is called
-      # with the event data. All event data is sent to event bridge
-      # extensions, including events that do not normally produce an
-      # action. JSON serialization is used when storing data in the
-      # registry.
+      # the registry. If the event `:action` is `:resolve`, the event
+      # is removed (resolved) from the registry. If the previous
+      # conditions are not met and check `:type` is `metric`, the
+      # registry is not updated, but further event processing is
+      # required (`yield(true)`). JSON serialization is used when
+      # storing data in the registry.
+      #
+      # @param event [Hash]
+      # @yield callback [event] callback/block called after the event
+      #   registry has been updated.
+      # @yieldparam process [TrueClass, FalseClass] indicating if the
+      #   event requires further processing.
+      def update_event_registry(event)
+        client_name = event[:client][:name]
+        if event[:check][:status] != 0 || event[:action] == :flapping
+          @redis.hset("events:#{client_name}", event[:check][:name], Sensu::JSON.dump(event)) do
+            yield(true)
+          end
+        elsif event[:action] == :resolve &&
+            (event[:check][:auto_resolve] != false || event[:check][:force_resolve])
+          @redis.hdel("events:#{client_name}", event[:check][:name]) do
+            yield(true)
+          end
+        elsif event[:check][:type] == METRIC_CHECK_TYPE
+          yield(true)
+        else
+          yield(false)
+        end
+      end
+
+      # Create an event, using the provided client and check result
+      # data. Existing event data for the client/check pair is fetched
+      # from the event registry to be used in the composition of the
+      # new event.
       #
       # @param client [Hash]
       # @param check [Hash]
       # @yield callback [event] callback/block called with the
-      #   resulting event data if the event registry is updated, or
-      #   the check is of type `:metric`.
+      #   resulting event.
       # @yieldparam event [Hash]
-      def update_event_registry(client, check)
-        @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
-          stored_event = event_json ? Sensu::JSON.load(event_json) : nil
-          flapping = check_flapping?(stored_event, check)
-          event = {
-            :id => random_uuid,
-            :client => client,
-            :check => check,
-            :occurrences => 1,
-            :action => (flapping ? :flapping : :create),
-            :timestamp => Time.now.to_i
-          }
-          if check[:status] != 0 || flapping
-            if stored_event && check[:status] == stored_event[:check][:status]
-              event[:occurrences] = stored_event[:occurrences] + 1
+      def create_event(client, check)
+        check_history(client, check) do |history, total_state_change|
+          check[:history] = history
+          check[:total_state_change] = total_state_change
+          @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
+            stored_event = event_json ? Sensu::JSON.load(event_json) : nil
+            flapping = check_flapping?(stored_event, check)
+            event = {
+              :client => client,
+              :check => check,
+              :occurrences => 1,
+              :action => (flapping ? :flapping : :create),
+              :timestamp => Time.now.to_i
+            }
+            if stored_event
+              event[:id] = stored_event[:id]
+              event[:last_state_change] = stored_event[:last_state_change]
+              event[:last_ok] = stored_event[:last_ok]
+              event[:occurrences] = stored_event[:occurrences]
+            else
+              event[:id] = random_uuid
             end
-            @redis.hset("events:#{client[:name]}", check[:name], Sensu::JSON.dump(event)) do
-              yield(event)
-            end
-          elsif stored_event
-            event[:occurrences] = stored_event[:occurrences]
-            event[:action] = :resolve
-            unless check[:auto_resolve] == false && !check[:force_resolve]
-              @redis.hdel("events:#{client[:name]}", check[:name]) do
-                yield(event)
+            if check[:status] != 0 || flapping
+              if history[-1] == history[-2]
+                event[:occurrences] += 1
+              else
+                event[:occurrences] = 1
+                event[:last_state_change] = event[:timestamp]
               end
+            elsif stored_event
+              event[:last_state_change] = event[:timestamp]
+              event[:action] = :resolve
             end
-          elsif check[:type] == METRIC_CHECK_TYPE
+            if check[:status] == 0
+              event[:last_ok] = event[:timestamp]
+            end
             yield(event)
           end
-          event_bridges(event)
         end
       end
 
-      # Create a blank client (data) and add it to the client
-      # registry. Only the client name is known, the other client
-      # attributes must be updated via the API (POST /clients:client).
-      # Dynamically created clients and those updated via the API will
-      # have client keepalives disabled, `:keepalives` is set to
-      # `false`.
+      # Create a blank client (data). Only the client name is known,
+      # the other client attributes must be updated via the API (POST
+      # /clients:client). Dynamically created clients and those
+      # updated via the API will have client keepalives disabled by
+      # default, `:keepalives` is set to `false`.
       #
-      # @param name [Hash] to use for the client.
-      # @yield [client] callback/block to be called with the
-      #   dynamically created client data.
-      # @yieldparam client [Hash]
+      # @param name [String] to use for the client.
+      # @return [Hash] client.
       def create_client(name)
-        client = {
+        {
           :name => name,
           :address => "unknown",
           :subscriptions => [],
           :keepalives => false,
           :version => VERSION
         }
-        update_client_registry(client) do
-          yield(client)
-        end
       end
 
       # Retrieve a client (data) from Redis if it exists. If a client
@@ -527,7 +547,8 @@ module Sensu
               yield(client)
             end
           else
-            create_client(client_key) do |client|
+            client = create_client(client_key)
+            update_client_registry(client) do
               yield(client)
             end
           end
@@ -536,14 +557,18 @@ module Sensu
 
       # Process a check result, storing its data, inspecting its
       # contents, and taking the appropriate actions (eg. update the
-      # event registry). A check result must have a valid client name,
-      # associated with a client in the registry or one will be
-      # created. If a local check definition exists for the check
-      # name, and the check result is not from a standalone check
-      # execution, it's merged with the check result for more context.
+      # event registry). The `@in_progress[:check_results]` counter is
+      # incremented by `1` prior to check result processing and then
+      # decremented by `1` after updating the event registry. A check
+      # result must have a valid client name, associated with a client
+      # in the registry or one will be created. If a local check
+      # definition exists for the check name, and the check result is
+      # not from a standalone check execution, it's merged with the
+      # check result for more context.
       #
       # @param result [Hash] data.
       def process_check_result(result)
+        @in_progress[:check_results] += 1
         @logger.debug("processing result", :result => result)
         retrieve_client(result) do |client|
           check = case
@@ -552,13 +577,15 @@ module Sensu
           else
             result[:check]
           end
+          check[:type] ||= STANDARD_CHECK_TYPE
+          check[:origin] = result[:client] if check[:source]
           aggregate_check_result(client, check) if check[:aggregate]
           store_check_result(client, check) do
-            check_history(client, check) do |history, total_state_change|
-              check[:history] = history
-              check[:total_state_change] = total_state_change
-              update_event_registry(client, check) do |event|
-                process_event(event)
+            create_event(client, check) do |event|
+              event_bridges(event)
+              update_event_registry(event) do |process|
+                process_event(event) if process
+                @in_progress[:check_results] -= 1
               end
             end
           end
@@ -755,45 +782,72 @@ module Sensu
         check.merge(:name => "keepalive", :issued => timestamp, :executed => timestamp)
       end
 
+      # Create client keepalive check results. This method will
+      # retrieve clients from the registry, creating a keepalive
+      # check definition for each client, using the
+      # `create_keepalive_check()` method, containing client specific
+      # keepalive thresholds. If the time since the latest keepalive
+      # is equal to or greater than a threshold, the check `:output`
+      # is set to a descriptive message, and `:status` is set to the
+      # appropriate non-zero value. If a client has been sending
+      # keepalives, `:output` and `:status` are set to indicate an OK
+      # state. The `publish_check_result()` method is used to publish
+      # the client keepalive check results.
+      #
+      # @param clients [Array] of client names.
+      # @yield [] callback/block called after the client keepalive
+      #   check results have been created.
+      def create_client_keepalive_check_results(clients)
+        client_keys = clients.map { |client_name| "client:#{client_name}" }
+        @redis.mget(*client_keys) do |client_json_objects|
+          client_json_objects.each do |client_json|
+            unless client_json.nil?
+              client = Sensu::JSON.load(client_json)
+              next if client[:keepalives] == false
+              check = create_keepalive_check(client)
+              time_since_last_keepalive = Time.now.to_i - client[:timestamp]
+              check[:output] = "No keepalive sent from client for "
+              check[:output] << "#{time_since_last_keepalive} seconds"
+              case
+              when time_since_last_keepalive >= check[:thresholds][:critical]
+                check[:output] << " (>=#{check[:thresholds][:critical]})"
+                check[:status] = 2
+              when time_since_last_keepalive >= check[:thresholds][:warning]
+                check[:output] << " (>=#{check[:thresholds][:warning]})"
+                check[:status] = 1
+              else
+                check[:output] = "Keepalive sent from client "
+                check[:output] << "#{time_since_last_keepalive} seconds ago"
+                check[:status] = 0
+              end
+              publish_check_result(client[:name], check)
+            end
+          end
+          yield
+        end
+      end
+
       # Determine stale clients, those that have not sent a keepalive
-      # in a specified amount of time (thresholds). This method
-      # iterates through the client registry, creating a keepalive
-      # check definition with the `create_keepalive_check()` method,
-      # containing client specific staleness thresholds. If the time
-      # since the latest keepalive is equal to or greater than a
-      # threshold, the check `:output` is set to a descriptive
-      # message, and `:status` is set to the appropriate non-zero
-      # value. If a client has been sending keepalives, `:output` and
-      # `:status` are set to indicate an OK state. A check result is
-      # published for every client in the registry.
+      # in a specified amount of time. This method iterates through
+      # the client registry, creating a keepalive check result for
+      # each client. The `create_client_keepalive_check_results()`
+      # method is used to inspect and create keepalive check results
+      # for each slice of clients from the registry. A relatively
+      # small clients slice size (20) is used to reduce the number of
+      # clients inspected within a single tick of the EM reactor.
       def determine_stale_clients
         @logger.info("determining stale clients")
         @redis.smembers("clients") do |clients|
-          clients.each do |client_name|
-            @redis.get("client:#{client_name}") do |client_json|
-              unless client_json.nil?
-                client = Sensu::JSON.load(client_json)
-                next if client[:keepalives] == false
-                check = create_keepalive_check(client)
-                time_since_last_keepalive = Time.now.to_i - client[:timestamp]
-                check[:output] = "No keepalive sent from client for "
-                check[:output] << "#{time_since_last_keepalive} seconds"
-                case
-                when time_since_last_keepalive >= check[:thresholds][:critical]
-                  check[:output] << " (>=#{check[:thresholds][:critical]})"
-                  check[:status] = 2
-                when time_since_last_keepalive >= check[:thresholds][:warning]
-                  check[:output] << " (>=#{check[:thresholds][:warning]})"
-                  check[:status] = 1
-                else
-                  check[:output] = "Keepalive sent from client "
-                  check[:output] << "#{time_since_last_keepalive} seconds ago"
-                  check[:status] = 0
-                end
-                publish_check_result(client[:name], check)
+          client_count = clients.length
+          keepalive_check_results = Proc.new do |slice_start, slice_size|
+            unless slice_start > client_count - 1
+              clients_slice = clients.slice(slice_start..slice_size)
+              create_client_keepalive_check_results(clients_slice) do
+                keepalive_check_results.call(slice_start + 20, slice_size + 20)
               end
             end
           end
+          keepalive_check_results.call(0, 19)
         end
       end
 
@@ -809,32 +863,29 @@ module Sensu
 
       # Determine stale check results, those that have not executed in
       # a specified amount of time (check TTL). This method iterates
-      # through the client registry and check results for checks with
-      # a defined TTL value (in seconds). If a check result has a
-      # defined TTL, the time since last check execution (in seconds)
-      # is calculated. If the time since last execution is equal to or
-      # greater than the check TTL, a warning check result is
-      # published with the appropriate check output.
+      # through stored check results that have a defined TTL value (in
+      # seconds). The time since last check execution (in seconds) is
+      # calculated for each check result. If the time since last
+      # execution is equal to or greater than the check TTL, a warning
+      # check result is published with the appropriate check output.
       def determine_stale_check_results
         @logger.info("determining stale check results")
-        @redis.smembers("clients") do |clients|
-          clients.each do |client_name|
-            @redis.smembers("result:#{client_name}") do |checks|
-              checks.each do |check_name|
-                result_key = "#{client_name}:#{check_name}"
-                @redis.get("result:#{result_key}") do |result_json|
-                  unless result_json.nil?
-                    check = Sensu::JSON.load(result_json)
-                    next unless check[:ttl] && check[:executed] && !check[:force_resolve]
-                    time_since_last_execution = Time.now.to_i - check[:executed]
-                    if time_since_last_execution >= check[:ttl]
-                      check[:output] = "Last check execution was "
-                      check[:output] << "#{time_since_last_execution} seconds ago"
-                      check[:status] = 1
-                      publish_check_result(client_name, check)
-                    end
-                  end
+        @redis.smembers("ttl") do |result_keys|
+          result_keys.each do |result_key|
+            @redis.get("result:#{result_key}") do |result_json|
+              unless result_json.nil?
+                check = Sensu::JSON.load(result_json)
+                next unless check[:ttl] && check[:executed] && !check[:force_resolve]
+                time_since_last_execution = Time.now.to_i - check[:executed]
+                if time_since_last_execution >= check[:ttl]
+                  client_name = result_key.split(":").first
+                  check[:output] = "Last check execution was "
+                  check[:output] << "#{time_since_last_execution} seconds ago"
+                  check[:status] = 1
+                  publish_check_result(client_name, check)
                 end
+              else
+                @redis.srem("ttl", result_key)
               end
             end
           end
@@ -851,48 +902,6 @@ module Sensu
         end
       end
 
-      # Prune check result aggregations (aggregates). Sensu only
-      # stores the 20 latest aggregations for a check, to keep the
-      # amount of data stored to a minimum.
-      def prune_check_result_aggregations
-        @logger.info("pruning check result aggregations")
-        @redis.smembers("aggregates") do |checks|
-          checks.each do |check_name|
-            @redis.smembers("aggregates:#{check_name}") do |aggregates|
-              if aggregates.length > 20
-                aggregates.sort!
-                aggregates.take(aggregates.length - 20).each do |check_issued|
-                  result_set = "#{check_name}:#{check_issued}"
-                  @redis.multi
-                  @redis.srem("aggregates:#{check_name}", check_issued)
-                  @redis.del("aggregate:#{result_set}")
-                  @redis.del("aggregation:#{result_set}")
-                  @redis.exec do
-                    @logger.debug("pruned aggregation", {
-                      :check => {
-                        :name => check_name,
-                        :issued => check_issued
-                      }
-                    })
-                  end
-                end
-              end
-            end
-          end
-        end
-      end
-
-      # Set up the check result aggregation pruner, using periodic
-      # timer to run `prune_check_result_aggregations()` every 20
-      # seconds. The timer is stored in the timers hash under
-      # `:leader`.
-      def setup_check_result_aggregation_pruner
-        @logger.debug("pruning check result aggregations")
-        @timers[:leader] << EM::PeriodicTimer.new(20) do
-          prune_check_result_aggregations
-        end
-      end
-
       # Set up the leader duties, tasks only performed by a single
       # Sensu server at a time. The duties include publishing check
       # requests, monitoring for stale clients, and pruning check
@@ -901,7 +910,6 @@ module Sensu
         setup_check_request_publisher
         setup_client_monitor
         setup_check_result_monitor
-        setup_check_result_aggregation_pruner
       end
 
       # Create a lock timestamp (integer), current time including
@@ -1040,19 +1048,16 @@ module Sensu
         @transport.unsubscribe if @transport
       end
 
-      # Complete event handling currently in progress. The
-      # `:handling_event_count` is used to determine if event handling
-      # is complete, when it is equal to `0`. The provided callback is
-      # called when handling is complete.
+      # Complete in progress work and then call the provided callback.
+      # This method will wait until all counters stored in the
+      # `@in_progress` hash equal `0`.
       #
-      # @yield [] callback/block to call when event handling is
-      #   complete.
-      def complete_event_handling
-        @logger.info("completing event handling in progress", {
-          :handling_event_count => @handling_event_count
-        })
+      # @yield [] callback/block to call when in progress work is
+      #   completed.
+      def complete_in_progress
+        @logger.info("completing work in progress", :in_progress => @in_progress)
         retry_until_true do
-          if @handling_event_count == 0
+          if @in_progress.values.all? { |count| count == 0 }
             yield
             true
           end
@@ -1124,7 +1129,7 @@ module Sensu
         @logger.warn("stopping")
         pause
         @state = :stopping
-        complete_event_handling do
+        complete_in_progress do
           @redis.close if @redis
           @transport.close if @transport
           super
