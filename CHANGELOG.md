@@ -6,7 +6,7 @@ Sensu check ["Aggregates 2.0"](https://github.com/sensu/sensu/issues/1218)
 breaks the existing Sensu API aggregate endpoints.
 
 Sensu API GET /health endpoint, failed health checks now respond with a
-412 (preconditions failed) instead of a 503.
+`412` (preconditions failed) instead of a `503`.
 
 ### Features
 
@@ -15,7 +15,7 @@ now have the same event ID until the event is resolved.
 
 Added a CLI option/argument to cause the Sensu service to validate its
 compiled configuration settings and exit with the appropriate exit
-code, e.g. 2 for invalid. The CLI option is `--validate_config`. This
+code, e.g. `2` for invalid. The CLI option is `--validate_config`. This
 feature is now used when restarting a Sensu service to first validate the
 new configuration before stopping the running service.
 
@@ -28,7 +28,7 @@ Check results for proxy clients (a.k.a JIT clients) will now have a check
 "origin" set to the client name of the result producer.
 
 Configurable Sensu Spawn concurrent child process limit (checks, mutators,
-& pipe handlers). The default limit is still 12 and the EventMachine
+& pipe handlers). The default limit is still `12` and the EventMachine
 threadpool size is automatically adjusted to accommodate a larger limit.
 
 Sensu check ["Aggregates 2.0"](https://github.com/sensu/sensu/issues/1218).
@@ -39,7 +39,7 @@ attribute value, no longer just the check command.
 ### Other
 
 Sensu API GET /health endpoint, failed health check now responds with a
-412 (preconditions failed) instead of a 503.
+`412` (preconditions failed) instead of a `503`.
 
 Sensu API POST /clients endpoint can now create clients in the registry
 that are expected to produce keepalives, and validates clients with the
@@ -51,10 +51,10 @@ JrJackson is now used to parse JSON when Sensu is running on JRuby.
 
 The Sensu API now listens immediately on service start, even before it has
 successfully connected to Redis and the Sensu Transport. It will now
-respond with a 500 response, with a descriptive error message, when it has
-not yet initialized its connections or it is reconnecting to either Redis
-or the Sensu Transport. The API /info and /health endpoints will still
-respond normally while reconnecting.
+respond with a `500` response, with a descriptive error message, when it
+has not yet initialized its connections or it is reconnecting to either
+Redis or the Sensu Transport. The API /info and /health endpoints will
+still respond normally while reconnecting.
 
 ## 0.23.3 - 2016-05-26
 
