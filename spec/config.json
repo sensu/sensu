@@ -165,6 +165,8 @@
         "warning": 10
       }
     },
+    "deregister": true,
+    "deregister_handler": "DEREGISTER_HANDLER",
     "version": "TOBEREPLACED",
     "nested": {
       "attribute": true
