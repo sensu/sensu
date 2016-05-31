@@ -155,10 +155,16 @@ module Sensu
     end
 
     # Set up Sensu spawn, creating a worker to create, control, and
-    # limit spawned child processes.
+    # limit spawned child processes. This method adjusts the
+    # EventMachine thread pool size to accommodate the concurrent
+    # process spawn limit and other Sensu process operations.
     #
     # https://github.com/sensu/sensu-spawn
     def setup_spawn
+      @logger.info("configuring sensu spawn", :settings => @settings[:sensu][:spawn])
+      threadpool_size = @settings[:sensu][:spawn][:limit] + 10
+      @logger.debug("setting eventmachine threadpool size", :size => threadpool_size)
+      EM.threadpool_size = threadpool_size
       Spawn.setup(@settings[:sensu][:spawn])
     end
 
