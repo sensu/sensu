@@ -1057,7 +1057,7 @@ module Sensu
       def complete_in_progress
         @logger.info("completing work in progress", :in_progress => @in_progress)
         retry_until_true do
-          if @in_progress.values.all? {|count| count == 0}
+          if @in_progress.values.all? { |count| count == 0 }
             yield
             true
           end
