@@ -393,7 +393,9 @@ module Sensu
           :output => "client initiated deregistration",
           :status => 1,
           :issued => timestamp,
-          :executed => timestamp
+          :executed => timestamp,
+          :interval => 1,
+          :refresh => 1
         }
         publish_check_result(check.merge(overrides))
       end
