@@ -76,6 +76,8 @@ describe "Sensu::Client::Process" do
         expect(result[:check][:name]).to eq("deregistration")
         expect(result[:check][:status]).to eq(1)
         expect(result[:check][:handler]).to eq("DEREGISTER_HANDLER")
+        expect(result[:check][:interval]).to eq(1)
+        expect(result[:check][:refresh]).to eq(1)
         async_done
       end
       timer(0.5) do
