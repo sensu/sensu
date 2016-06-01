@@ -373,21 +373,29 @@ module Sensu
         end
       end
 
-      # Sends a deregister event to be processed by sensu server
+      # Create a deregistration event for a client. Client
+      # definitions may contain `:deregistration` configuration,
+      # containing custom attributes and handler information. By
+      # default, the deregistration event sets the `:handler` to
+      # `registration`. If the client provides its own `:deregistration`
+      # configuration, it's deep merged with the defaults. The
+      # check `:name`, `:output`, `:status`, `:issued`, and
+      # `:executed` values are always overridden to guard against
+      # an invalid definition.
       def send_deregister_event
-        if @settings[:client][:deregister_handler].nil?
-          @logger.warn("deregister enabled but no handler passed, not sending event")
-        else
-          @logger.info("sending deregister event to #{@settings[:client][:deregister_handler]}")
-          check = {
-            :name => 'deregister',
-            :output => 'delete client as a result of clean shutdown',
-            :process => 'init',
-            :status => 1,
-            :handler => @settings[:client][:deregister_handler]
-          }
-          publish_check_result(check)
+        check = {:handler => "deregistration"}
+        if @settings[:client].has_key?(:deregistration)
+          check = deep_merge(check, @settings[:client][:deregistration])
         end
+        timestamp = Time.now.to_i
+        overrides = {
+          :name => "deregistration",
+          :output => "client initiated deregistration",
+          :status => 1,
+          :issued => timestamp,
+          :executed => timestamp
+        }
+        publish_check_result(check.merge(overrides))
       end
 
       # Close the Sensu client TCP and UDP sockets. This method
