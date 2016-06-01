@@ -481,8 +481,8 @@ module Sensu
       # deregister event if configured to do so.
       def stop
         @logger.warn("stopping")
-        send_deregister_event if @settings[:client][:deregister] == true
         pause
+        send_deregister_event if @settings[:client][:deregister] == true
         @state = :stopping
         complete_checks_in_progress do
           close_sockets
