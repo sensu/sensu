@@ -166,7 +166,9 @@
       }
     },
     "deregister": true,
-    "deregister_handler": "DEREGISTER_HANDLER",
+    "deregistration": {
+      "handler": "DEREGISTER_HANDLER"
+    },
     "version": "TOBEREPLACED",
     "nested": {
       "attribute": true
