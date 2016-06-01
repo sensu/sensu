@@ -381,7 +381,9 @@ module Sensu
       # configuration, it's deep merged with the defaults. The
       # check `:name`, `:output`, `:status`, `:issued`, and
       # `:executed` values are always overridden to guard against
-      # an invalid definition.
+      # an invalid definition. The check `:interval` and `:refresh`
+      # values are always overridden to guard against deregistration
+      # events being filtered out by the server.
       def send_deregister_event
         check = {:handler => "deregistration"}
         if @settings[:client].has_key?(:deregistration)
