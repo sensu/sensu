@@ -68,19 +68,20 @@ describe "Sensu::Client::Process" do
     end
   end
 
-  it "can send a deregister event" do
+  it "can send a deregistraion event" do
     async_wrapper do
       result_queue do |payload|
-        result = MultiJson.load(payload)
+        result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
-        expect(result[:check][:name]).to eq("deregister")
+        expect(result[:check][:name]).to eq("deregistration")
         expect(result[:check][:status]).to eq(1)
         expect(result[:check][:handler]).to eq("DEREGISTER_HANDLER")
         async_done
       end
       timer(0.5) do
-        @client.setup_transport
-        @client.send_deregister_event
+        @client.setup_transport do
+          @client.send_deregister_event
+        end
       end
     end
   end
