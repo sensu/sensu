@@ -373,6 +373,35 @@ module Sensu
         end
       end
 
+      # Create a deregistration event for a client. Client
+      # definitions may contain `:deregistration` configuration,
+      # containing custom attributes and handler information. By
+      # default, the deregistration event sets the `:handler` to
+      # `registration`. If the client provides its own `:deregistration`
+      # configuration, it's deep merged with the defaults. The
+      # check `:name`, `:output`, `:status`, `:issued`, and
+      # `:executed` values are always overridden to guard against
+      # an invalid definition. The check `:interval` and `:refresh`
+      # values are always overridden to guard against deregistration
+      # events being filtered out by the server.
+      def send_deregister_event
+        check = {:handler => "deregistration"}
+        if @settings[:client].has_key?(:deregistration)
+          check = deep_merge(check, @settings[:client][:deregistration])
+        end
+        timestamp = Time.now.to_i
+        overrides = {
+          :name => "deregistration",
+          :output => "client initiated deregistration",
+          :status => 1,
+          :issued => timestamp,
+          :executed => timestamp,
+          :interval => 1,
+          :refresh => 1
+        }
+        publish_check_result(check.merge(overrides))
+      end
+
       # Close the Sensu client TCP and UDP sockets. This method
       # iterates through `@sockets`, which contains socket server
       # signatures (Fixnum) and connection objects. A signature
@@ -448,10 +477,12 @@ module Sensu
       # Stop the Sensu client process, pausing it, completing check
       # executions in progress, closing the transport connection, and
       # exiting the process (exit 0). After pausing the process, the
-      # process/daemon `@state` is set to `:stopping`.
+      # process/daemon `@state` is set to `:stopping`.  Also sends
+      # deregister event if configured to do so.
       def stop
         @logger.warn("stopping")
         pause
+        send_deregister_event if @settings[:client][:deregister] == true
         @state = :stopping
         complete_checks_in_progress do
           close_sockets
