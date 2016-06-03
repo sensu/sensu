@@ -68,7 +68,7 @@ describe "Sensu::Client::Process" do
     end
   end
 
-  it "can send a deregistraion event" do
+  it "can send a deregistraion check result" do
     async_wrapper do
       result_queue do |payload|
         result = Sensu::JSON.load(payload)

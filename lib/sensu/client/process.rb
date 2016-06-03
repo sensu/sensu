@@ -376,7 +376,7 @@ module Sensu
       # Create a check result intended for deregistering a client.
       # Client definitions may contain `:deregistration` configuration,
       # containing custom attributes and handler information. By
-      # default, the deregistration event sets the `:handler` to
+      # default, the deregistration check result sets the `:handler` to
       # `deregistration`. If the client provides its own `:deregistration`
       # configuration, it's deep merged with the defaults. The
       # check `:name`, `:output`, `:status`, `:issued`, and
@@ -474,7 +474,7 @@ module Sensu
       # executions in progress, closing the transport connection, and
       # exiting the process (exit 0). After pausing the process, the
       # process/daemon `@state` is set to `:stopping`.  Also sends
-      # deregister event if configured to do so.
+      # deregistration check result if configured to do so.
       def stop
         @logger.warn("stopping")
         pause
