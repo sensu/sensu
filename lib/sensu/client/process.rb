@@ -373,19 +373,17 @@ module Sensu
         end
       end
 
-      # Create a deregistration event for a client. Client
-      # definitions may contain `:deregistration` configuration,
+      # Create a check result intended for deregistering a client.
+      # Client definitions may contain `:deregistration` configuration,
       # containing custom attributes and handler information. By
       # default, the deregistration event sets the `:handler` to
-      # `registration`. If the client provides its own `:deregistration`
+      # `deregistration`. If the client provides its own `:deregistration`
       # configuration, it's deep merged with the defaults. The
       # check `:name`, `:output`, `:status`, `:issued`, and
       # `:executed` values are always overridden to guard against
-      # an invalid definition. The check `:interval` and `:refresh`
-      # values are always overridden to guard against deregistration
-      # events being filtered out by the server.
-      def send_deregister_event
-        check = {:handler => "deregistration"}
+      # an invalid definition.
+      def deregister
+        check = {:handler => "deregistration", :interval => 1}
         if @settings[:client].has_key?(:deregistration)
           check = deep_merge(check, @settings[:client][:deregistration])
         end
@@ -395,9 +393,7 @@ module Sensu
           :output => "client initiated deregistration",
           :status => 1,
           :issued => timestamp,
-          :executed => timestamp,
-          :interval => 1,
-          :refresh => 1
+          :executed => timestamp
         }
         publish_check_result(check.merge(overrides))
       end
@@ -482,7 +478,7 @@ module Sensu
       def stop
         @logger.warn("stopping")
         pause
-        send_deregister_event if @settings[:client][:deregister] == true
+        deregister if @settings[:client][:deregister] == true
         @state = :stopping
         complete_checks_in_progress do
           close_sockets
