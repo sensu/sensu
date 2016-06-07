@@ -1,3 +1,17 @@
+## 0.24.1 - 2016-06-07
+
+### Fixes
+
+Fixed a critical bug in Sensu server resume() which caused the server to
+crash when querying the state of the Sensu Transport connection before it
+had been initialized. [#1321](https://github.com/sensu/sensu/pull/1321)
+
+### Other
+
+Updated references to unmatched tokens, i.e. check result output message,
+to better represent the new scope of token substitution.
+[#1322](https://github.com/sensu/sensu/pull/1322)
+
 ## 0.24.0 - 2016-06-06
 
 ### Important
