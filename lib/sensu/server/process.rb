@@ -1106,15 +1106,24 @@ module Sensu
       # Resume the Sensu server process if it is currently or will
       # soon be paused. The `retry_until_true` helper method is used
       # to determine if the process is paused and if the Redis and
-      # transport connections are connected. If the conditions are
-      # met, `bootstrap()` will be called and true is returned to stop
-      # `retry_until_true`.
+      # transport connections are initiated and connected. If the
+      # conditions are met, `bootstrap()` will be called and true is
+      # returned to stop `retry_until_true`. If the transport has not
+      # yet been initiated, true is is returned, without calling
+      # bootstrap, as we expect bootstrap will be called after the
+      # transport initializes.
       def resume
         retry_until_true(1) do
           if @state == :paused
-            if @redis.connected? && @transport.connected?
-              bootstrap
-              true
+            if @redis.connected?
+              if @transport
+                if @transport.connected?
+                  bootstrap
+                  true
+                end
+              else
+                true
+              end
             end
           end
         end
