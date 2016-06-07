@@ -112,7 +112,7 @@ describe "Sensu::Client::Process" do
     expect(unmatched_tokens).to match_array(["missing", "nonexistent"])
   end
 
-  it "can substitute check command tokens with attributes, default values, and execute it" do
+  it "can substitute tokens in a command with client attribute values, default values, and execute it" do
     async_wrapper do
       result_queue do |payload|
         result = Sensu::JSON.load(payload)
@@ -133,12 +133,12 @@ describe "Sensu::Client::Process" do
     end
   end
 
-  it "can substitute check command tokens with attributes and handle unmatched tokens" do
+  it "can substitute tokens in a command and handle unmatched tokens" do
     async_wrapper do
       result_queue do |payload|
         result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
-        expect(result[:check][:output]).to eq("Unmatched command tokens: nonexistent, noexistent.hash, empty.hash")
+        expect(result[:check][:output]).to eq("Unmatched client token(s): nonexistent, noexistent.hash, empty.hash")
         async_done
       end
       timer(0.5) do
