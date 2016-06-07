@@ -153,7 +153,7 @@ module Sensu
               @checks_in_progress.delete(check[:name])
             end
           else
-            check[:output] = "Unmatched command tokens: " + unmatched_tokens.join(", ")
+            check[:output] = "Unmatched client token(s): " + unmatched_tokens.join(", ")
             check[:status] = 3
             check[:handle] = false
             publish_check_result(check)
