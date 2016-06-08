@@ -101,15 +101,6 @@ module Sensu
           error!(Sensu::JSON.dump(:error => message))
         end
 
-        def bad_request!
-          ahalt 400
-        end
-
-        def created!(response)
-          status 201
-          body response
-        end
-
         def accepted!(response)
           status 202
           body response
@@ -211,62 +202,6 @@ module Sensu
 
       aoptions "/*" do
         body ""
-      end
-
-      apost "/clients/?" do
-        read_data do |data|
-          data[:keepalives] = data.fetch(:keepalives, false)
-          data[:version] = VERSION
-          data[:timestamp] = Time.now.to_i
-          validator = Validators::Client.new
-          if validator.valid?(data)
-            settings.redis.set("client:#{data[:name]}", Sensu::JSON.dump(data)) do
-              settings.redis.sadd("clients", data[:name]) do
-                created!(Sensu::JSON.dump(:name => data[:name]))
-              end
-            end
-          else
-            bad_request!
-          end
-        end
-      end
-
-      aget %r{^/clients/([\w\.-]+)/history/?$} do |client_name|
-        response = Array.new
-        settings.redis.smembers("result:#{client_name}") do |checks|
-          unless checks.empty?
-            checks.each_with_index do |check_name, index|
-              result_key = "#{client_name}:#{check_name}"
-              history_key = "history:#{result_key}"
-              settings.redis.lrange(history_key, -21, -1) do |history|
-                history.map! do |status|
-                  status.to_i
-                end
-                settings.redis.get("result:#{result_key}") do |result_json|
-                  unless result_json.nil?
-                    result = Sensu::JSON.load(result_json)
-                    last_execution = result[:executed]
-                    unless history.empty? || last_execution.nil?
-                      item = {
-                        :check => check_name,
-                        :history => history,
-                        :last_execution => last_execution.to_i,
-                        :last_status => history.last,
-                        :last_result => result
-                      }
-                      response << item
-                    end
-                  end
-                  if index == checks.length - 1
-                    body Sensu::JSON.dump(response)
-                  end
-                end
-              end
-            end
-          else
-            body Sensu::JSON.dump(response)
-          end
-        end
       end
 
       adelete %r{^/clients?/([\w\.-]+)/?$} do |client_name|

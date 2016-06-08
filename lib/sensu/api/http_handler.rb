@@ -9,6 +9,7 @@ require "base64"
 module Sensu
   module API
     GET_METHOD = "GET".freeze
+    POST_METHOD = "POST".freeze
 
     class HTTPHandler < EM::HttpServer::Server
       include Routes
@@ -51,6 +52,25 @@ module Sensu
             key, value = pair.split("=")
             @params[key.to_sym] = value
           end
+        end
+      end
+
+      def read_data(rules={})
+        begin
+          data = Sensu::JSON.load(@http_content)
+          valid = rules.all? do |key, rule|
+            value = data[key]
+            (value.is_a?(rule[:type]) || (rule[:nil_ok] && value.nil?)) &&
+              (value.nil? || rule[:regex].nil?) ||
+              (rule[:regex] && (value =~ rule[:regex]) == 0)
+          end
+          if valid
+            yield(data)
+          else
+            bad_request!
+          end
+        rescue Sensu::JSON::ParseError
+          bad_request!
         end
       end
 
@@ -104,6 +124,24 @@ module Sensu
         end
       end
 
+      def created!
+        @response_status = 201
+        @response_status_string = "Created"
+        respond
+      end
+
+      def no_content!
+        @response_status = 204
+        @response_status_string = "No Response"
+        respond
+      end
+
+      def bad_request!
+        @response_status = 400
+        @response_status_string = "Bad Request"
+        respond
+      end
+
       def unauthorized!
         @response.headers["WWW-Authenticate"] = 'Basic realm="Restricted Area"'
         @response_status = 401
@@ -114,12 +152,6 @@ module Sensu
       def not_found!
         @response_status = 404
         @response_status_string = "Not Found"
-        respond
-      end
-
-      def no_content!
-        @response_status = 204
-        @response_status_string = "No Response"
         respond
       end
 
@@ -137,12 +169,19 @@ module Sensu
             get_info
           when GET_HEALTH_URI
             get_health
-          when GET_CLIENTS_URI
+          when CLIENTS_URI
             get_clients
           when GET_CLIENT_URI
             get_client
           when GET_CLIENT_HISTORY_URI
             get_client_history
+          else
+            not_found!
+          end
+        when POST_METHOD
+          case @http_request_uri
+          when CLIENTS_URI
+            post_clients
           else
             not_found!
           end
