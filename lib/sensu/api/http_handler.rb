@@ -202,6 +202,8 @@ module Sensu
             post_clients
           when REQUEST_URI
             post_request
+          when RESOLVE_URI
+            post_resolve
           else
             not_found!
           end
