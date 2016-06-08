@@ -79,7 +79,7 @@ module Sensu
         @response.status_string = @response_status_string || "OK"
         if @response_content
           @response.content_type "application/json"
-          @response.content = @response_content
+          @response.content = Sensu::JSON.dump(@response_content)
         end
         log_response
         @response.send_response
@@ -141,6 +141,8 @@ module Sensu
             get_clients
           when GET_CLIENT_URI
             get_client
+          when GET_CLIENT_HISTORY_URI
+            get_client_history
           else
             not_found!
           end

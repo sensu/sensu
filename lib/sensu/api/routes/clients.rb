@@ -4,6 +4,7 @@ module Sensu
       module Clients
         GET_CLIENTS_URI = "/clients".freeze
         GET_CLIENT_URI = /^\/clients\/([\w\.-]+)$/
+        GET_CLIENT_HISTORY_URI = /^\/clients\/([\w\.-]+)\/history$/
 
         def get_clients
           @response_content = []
@@ -37,6 +38,45 @@ module Sensu
               respond
             else
               not_found!
+            end
+          end
+        end
+
+        def get_client_history
+          client_name = GET_CLIENT_HISTORY_URI.match(@http_request_uri)[1]
+          @response_content = []
+          @redis.smembers("result:#{client_name}") do |checks|
+            unless checks.empty?
+              checks.each_with_index do |check_name, index|
+                result_key = "#{client_name}:#{check_name}"
+                history_key = "history:#{result_key}"
+                @redis.lrange(history_key, -21, -1) do |history|
+                  history.map! do |status|
+                    status.to_i
+                  end
+                  @redis.get("result:#{result_key}") do |result_json|
+                    unless result_json.nil?
+                      result = Sensu::JSON.load(result_json)
+                      last_execution = result[:executed]
+                      unless history.empty? || last_execution.nil?
+                        item = {
+                          :check => check_name,
+                          :history => history,
+                          :last_execution => last_execution.to_i,
+                          :last_status => history.last,
+                          :last_result => result
+                        }
+                        @response_content << item
+                      end
+                    end
+                    if index == checks.length - 1
+                      respond
+                    end
+                  end
+                end
+              end
+            else
+              respond
             end
           end
         end
