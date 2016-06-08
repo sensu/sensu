@@ -1,130 +1,13 @@
 require "sensu/daemon"
-require "sensu/api/validators"
-require "sensu/api/routes"
-
-gem "em-http-server", "0.1.8"
+require "sensu/api/http_handler"
 
 gem "sinatra", "1.4.6"
 gem "async_sinatra", "1.2.0"
-
-require "em-http-server"
-require "base64"
 
 require "sinatra/async"
 
 module Sensu
   module API
-    GET_METHOD = "GET".freeze
-
-    class HTTPHandler < EM::HttpServer::Server
-      include Routes
-
-      attr_accessor :logger, :settings, :redis, :transport
-
-      def log_request
-        _, @remote_address = Socket.unpack_sockaddr_in(get_peername)
-        @logger.debug("request #{@http_request_method} #{@http_request_uri}", {
-          :remote_address => @remote_address,
-          :user_agent => @http[:user_agent],
-          :request_method => @http_request_method,
-          :request_uri => @http_request_uri,
-          :request_query_string => @http_query_string,
-          :request_body => @http_content
-        })
-      end
-
-      def log_response
-        @logger.info("#{@http_request_method} #{@http_request_uri}", {
-          :remote_address => @remote_address,
-          :user_agent => @http[:user_agent],
-          :request_method => @http_request_method,
-          :request_uri => @http_request_uri,
-          :request_query_string => @http_query_string,
-          :request_body => @http_content,
-          :response_status => @response.status,
-          :response_body => @response.content
-        })
-      end
-
-      def create_response
-        @response = EM::DelegatedHttpResponse.new(self)
-      end
-
-      def respond!
-        @response.status = @response_status || 200
-        @response.status_string = @response_status_string || "OK"
-        if @response_content
-          @response.content_type "application/json"
-          @response.content = @response_content
-        end
-        log_response
-        @response.send_response
-      end
-
-      def authorized?
-        api = @settings[:api]
-        if api && api[:user] && api[:password]
-          if @http[:authorization]
-            scheme, base64 = @http[:authorization].split("\s")
-            if scheme == "Basic"
-              user, password = ::Base64.decode64(base64).split(":")
-              user == api[:user] && password == api[:password]
-            else
-              false
-            end
-          else
-            false
-          end
-        else
-          true
-        end
-      end
-
-      def unauthorized!
-        @response.headers["WWW-Authenticate"] = 'Basic realm="Restricted Area"'
-        @response_status = 401
-        @response_status_string = "Unauthorized"
-        respond!
-      end
-
-      def not_found!
-        @response_status = 404
-        @response_status_string = "Not Found"
-        respond!
-      end
-
-      def route_request
-        case @http_request_method
-        when GET_METHOD
-          case @http_request_uri
-          when INFO_URI
-            get_info
-          else
-            not_found!
-          end
-        else
-          not_found!
-        end
-      end
-
-      def process_http_request
-        log_request
-        create_response
-        if authorized?
-          route_request
-        else
-          unauthorized!
-        end
-      end
-
-      def http_request_errback(error)
-        @logger.error("unexpected api error", {
-          :error => error,
-          :backtrace => error.backtrace.join("\n")
-        })
-      end
-    end
-
     class Process < Sinatra::Base
       register Sinatra::Async
 
@@ -195,17 +78,6 @@ module Sensu
       end
 
       helpers do
-        def request_log_line
-          settings.logger.info([env["REQUEST_METHOD"], env["REQUEST_PATH"]].join(" "), {
-            :remote_address => env["REMOTE_ADDR"],
-            :user_agent => env["HTTP_USER_AGENT"],
-            :request_method => env["REQUEST_METHOD"],
-            :request_uri => env["REQUEST_URI"],
-            :request_body => env["rack.input"].read
-          })
-          env["rack.input"].rewind
-        end
-
         def connected?
           if settings.respond_to?(:redis) && settings.respond_to?(:transport)
             unless ["/info", "/health"].include?(env["REQUEST_PATH"])
@@ -221,22 +93,6 @@ module Sensu
           end
         end
 
-        def authorized?
-          @auth ||=  Rack::Auth::Basic::Request.new(request.env)
-          @auth.provided? &&
-            @auth.basic? &&
-            @auth.credentials &&
-            @auth.credentials == [settings.api[:user], settings.api[:password]]
-        end
-
-        def protected!
-          if settings.api[:user] && settings.api[:password]
-            return if authorized?
-            headers["WWW-Authenticate"] = 'Basic realm="Restricted Area"'
-            unauthorized!
-          end
-        end
-
         def error!(body="")
           throw(:halt, [500, body])
         end
@@ -247,18 +103,6 @@ module Sensu
 
         def bad_request!
           ahalt 400
-        end
-
-        def unauthorized!
-          throw(:halt, [401, ""])
-        end
-
-        def not_found!
-          ahalt 404
-        end
-
-        def precondition_failed!
-          ahalt 412
         end
 
         def created!(response)
@@ -273,11 +117,6 @@ module Sensu
 
         def issued!
           accepted!(Sensu::JSON.dump(:issued => Time.now.to_i))
-        end
-
-        def no_content!
-          status 204
-          body ""
         end
 
         def read_data(rules={})
@@ -299,10 +138,6 @@ module Sensu
           end
         end
 
-        def integer_parameter(parameter)
-          parameter =~ /\A[0-9]+\z/ ? parameter.to_i : nil
-        end
-
         def pagination(items)
           limit = integer_parameter(params[:limit])
           offset = integer_parameter(params[:offset]) || 0
@@ -316,31 +151,6 @@ module Sensu
             Array(paginated)
           else
             items
-          end
-        end
-
-        def transport_info
-          info = {
-            :keepalives => {
-              :messages => nil,
-              :consumers => nil
-            },
-            :results => {
-              :messages => nil,
-              :consumers => nil
-            },
-            :connected => settings.transport.connected?
-          }
-          if settings.transport.connected?
-            settings.transport.stats("keepalives") do |stats|
-              info[:keepalives] = stats
-              settings.transport.stats("results") do |stats|
-                info[:results] = stats
-                yield(info)
-              end
-            end
-          else
-            yield(info)
           end
         end
 
@@ -417,42 +227,6 @@ module Sensu
 
       aoptions "/*" do
         body ""
-      end
-
-      aget "/info/?" do
-        transport_info do |info|
-          response = {
-            :sensu => {
-              :version => VERSION
-            },
-            :transport => info,
-            :redis => {
-              :connected => settings.redis.connected?
-            }
-          }
-          body Sensu::JSON.dump(response)
-        end
-      end
-
-      aget "/health/?" do
-        if settings.redis.connected? && settings.transport.connected?
-          healthy = Array.new
-          min_consumers = integer_parameter(params[:consumers])
-          max_messages = integer_parameter(params[:messages])
-          transport_info do |info|
-            if min_consumers
-              healthy << (info[:keepalives][:consumers] >= min_consumers)
-              healthy << (info[:results][:consumers] >= min_consumers)
-            end
-            if max_messages
-              healthy << (info[:keepalives][:messages] <= max_messages)
-              healthy << (info[:results][:messages] <= max_messages)
-            end
-            healthy.all? ? no_content! : precondition_failed!
-          end
-        else
-          precondition_failed!
-        end
       end
 
       apost "/clients/?" do
