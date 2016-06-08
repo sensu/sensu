@@ -11,6 +11,7 @@ module Sensu
     GET_METHOD = "GET".freeze
     POST_METHOD = "POST".freeze
     DELETE_METHOD = "DELETE".freeze
+    OPTIONS_METHOD = "OPTIONS".freeze
 
     class HTTPHandler < EM::HttpServer::Server
       include Routes
@@ -205,6 +206,8 @@ module Sensu
           else
             not_found!
           end
+        when OPTIONS_METHOD
+          respond
         else
           not_found!
         end
