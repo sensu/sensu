@@ -10,6 +10,7 @@ module Sensu
   module API
     GET_METHOD = "GET".freeze
     POST_METHOD = "POST".freeze
+    DELETE_METHOD = "DELETE".freeze
 
     class HTTPHandler < EM::HttpServer::Server
       include Routes
@@ -74,6 +75,36 @@ module Sensu
         end
       end
 
+      def publish_check_result(client_name, check)
+        check[:issued] = Time.now.to_i
+        check[:executed] = Time.now.to_i
+        check[:status] ||= 0
+        payload = {
+          :client => client_name,
+          :check => check
+        }
+        @logger.info("publishing check result", :payload => payload)
+        @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
+          if info[:error]
+            @logger.error("failed to publish check result", {
+              :payload => payload,
+              :error => info[:error].to_s
+            })
+          end
+        end
+      end
+
+      def resolve_event(event_json)
+        event = Sensu::JSON.load(event_json)
+        check = event[:check].merge(
+          :output => "Resolving on request of the API",
+          :status => 0,
+          :force_resolve => true
+        )
+        check.delete(:history)
+        publish_check_result(event[:client][:name], check)
+      end
+
       def create_response
         @response = EM::DelegatedHttpResponse.new(self)
       end
@@ -130,6 +161,12 @@ module Sensu
         respond
       end
 
+      def accepted!
+        @response_status = 202
+        @response_status_string = "Accepted"
+        respond
+      end
+
       def no_content!
         @response_status = 204
         @response_status_string = "No Response"
@@ -171,7 +208,7 @@ module Sensu
             get_health
           when CLIENTS_URI
             get_clients
-          when GET_CLIENT_URI
+          when CLIENT_URI
             get_client
           when GET_CLIENT_HISTORY_URI
             get_client_history
@@ -182,6 +219,13 @@ module Sensu
           case @http_request_uri
           when CLIENTS_URI
             post_clients
+          else
+            not_found!
+          end
+        when DELETE_METHOD
+          case @http_request_uri
+          when CLIENT_URI
+            delete_client
           else
             not_found!
           end
