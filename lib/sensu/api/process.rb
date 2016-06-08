@@ -112,10 +112,6 @@ module Sensu
         protected! unless env["REQUEST_METHOD"] == "OPTIONS"
       end
 
-      aoptions "/*" do
-        body ""
-      end
-
       aget "/events/?" do
         response = Array.new
         settings.redis.smembers("clients") do |clients|
