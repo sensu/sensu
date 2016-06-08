@@ -1,22 +1,130 @@
 require "sensu/daemon"
 require "sensu/api/validators"
+require "sensu/api/routes"
 
 gem "em-http-server", "0.1.8"
 
 gem "sinatra", "1.4.6"
 gem "async_sinatra", "1.2.0"
 
-unless RUBY_PLATFORM =~ /java/
-  gem "thin", "1.6.4"
-  require "thin"
-end
-
 require "em-http-server"
+require "base64"
 
 require "sinatra/async"
 
 module Sensu
   module API
+    GET_METHOD = "GET".freeze
+
+    class HTTPHandler < EM::HttpServer::Server
+      include Routes
+
+      attr_accessor :logger, :settings, :redis, :transport
+
+      def log_request
+        _, @remote_address = Socket.unpack_sockaddr_in(get_peername)
+        @logger.debug("request #{@http_request_method} #{@http_request_uri}", {
+          :remote_address => @remote_address,
+          :user_agent => @http[:user_agent],
+          :request_method => @http_request_method,
+          :request_uri => @http_request_uri,
+          :request_query_string => @http_query_string,
+          :request_body => @http_content
+        })
+      end
+
+      def log_response
+        @logger.info("#{@http_request_method} #{@http_request_uri}", {
+          :remote_address => @remote_address,
+          :user_agent => @http[:user_agent],
+          :request_method => @http_request_method,
+          :request_uri => @http_request_uri,
+          :request_query_string => @http_query_string,
+          :request_body => @http_content,
+          :response_status => @response.status,
+          :response_body => @response.content
+        })
+      end
+
+      def create_response
+        @response = EM::DelegatedHttpResponse.new(self)
+      end
+
+      def respond!
+        @response.status = @response_status || 200
+        @response.status_string = @response_status_string || "OK"
+        if @response_content
+          @response.content_type "application/json"
+          @response.content = @response_content
+        end
+        log_response
+        @response.send_response
+      end
+
+      def authorized?
+        api = @settings[:api]
+        if api && api[:user] && api[:password]
+          if @http[:authorization]
+            scheme, base64 = @http[:authorization].split("\s")
+            if scheme == "Basic"
+              user, password = ::Base64.decode64(base64).split(":")
+              user == api[:user] && password == api[:password]
+            else
+              false
+            end
+          else
+            false
+          end
+        else
+          true
+        end
+      end
+
+      def unauthorized!
+        @response.headers["WWW-Authenticate"] = 'Basic realm="Restricted Area"'
+        @response_status = 401
+        @response_status_string = "Unauthorized"
+        respond!
+      end
+
+      def not_found!
+        @response_status = 404
+        @response_status_string = "Not Found"
+        respond!
+      end
+
+      def route_request
+        case @http_request_method
+        when GET_METHOD
+          case @http_request_uri
+          when INFO_URI
+            get_info
+          else
+            not_found!
+          end
+        else
+          not_found!
+        end
+      end
+
+      def process_http_request
+        log_request
+        create_response
+        if authorized?
+          route_request
+        else
+          unauthorized!
+        end
+      end
+
+      def http_request_errback(error)
+        @logger.error("unexpected api error", {
+          :error => error,
+          :backtrace => error.backtrace.join("\n")
+        })
+      end
+    end
+
     class Process < Sinatra::Base
       register Sinatra::Async
 
@@ -28,16 +136,14 @@ module Sensu
           setup_process(options)
           EM::run do
             setup_connections
-            start
             setup_signal_traps
+            start
           end
         end
 
         def setup_connections
           setup_redis do |redis|
-            set :redis, redis
             setup_transport do |transport|
-              set :transport, transport
               yield if block_given?
             end
           end
@@ -45,53 +151,25 @@ module Sensu
 
         def bootstrap(options)
           setup_logger(options)
-          set :logger, @logger
           load_settings(options)
-          set :api, @settings[:api] || {}
-          set :checks, @settings[:checks]
-          set :all_checks, @settings.checks
-          set :cors, @settings[:cors] || {
-            "Origin" => "*",
-            "Methods" => "GET, POST, PUT, DELETE, OPTIONS",
-            "Credentials" => "true",
-            "Headers" => "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-          }
-        end
-
-        def start_server
-          Thin::Logging.silent = true
-          bind = settings.api[:bind] || "0.0.0.0"
-          port = settings.api[:port] || 4567
-          @logger.info("api listening", {
-            :bind => bind,
-            :port => port
-          })
-          @thin = Thin::Server.new(bind, port, self)
-          @thin.start
-        end
-
-        def stop_server
-          @thin.stop
-          retry_until_true do
-            unless @thin.running?
-              yield
-              true
-            end
-          end
         end
 
         def start
-          start_server
+          @http_server = EM::start_server("0.0.0.0", 4567, HTTPHandler) do |handler|
+            handler.logger = @logger
+            handler.settings = @settings
+            handler.redis = @redis
+            handler.transport = @transport
+          end
           super
         end
 
         def stop
           @logger.warn("stopping")
-          stop_server do
-            settings.redis.close if settings.respond_to?(:redis)
-            settings.transport.close if settings.respond_to?(:transport)
-            super
-          end
+          EM.stop_server(@http_server)
+          @redis.close if @redis
+          @transport.close if @transport
+          super
         end
 
         def test(options={})
