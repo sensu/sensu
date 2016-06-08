@@ -2,7 +2,7 @@ module Sensu
   module API
     module Routes
       module Info
-        INFO_URI = "/info".freeze
+        GET_INFO_URI = "/info".freeze
 
         def transport_info
           info = {
