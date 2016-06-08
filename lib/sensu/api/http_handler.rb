@@ -187,6 +187,12 @@ module Sensu
             get_checks
           when CHECK_URI
             get_check
+          when EVENTS_URI
+            get_events
+          when EVENTS_CLIENT_URI
+            get_events_client
+          when EVENT_URI
+            get_event
           else
             not_found!
           end
@@ -203,6 +209,8 @@ module Sensu
           case @http_request_uri
           when CLIENT_URI
             delete_client
+          when EVENT_URI
+            delete_event
           else
             not_found!
           end
