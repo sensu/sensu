@@ -22,6 +22,7 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-transport", "6.0.0"
   s.add_dependency "sensu-spawn", "2.2.0"
   s.add_dependency "sensu-redis", "1.4.0"
+  s.add_dependency "em-http-server", "0.1.8"
   s.add_dependency "sinatra", "1.4.6"
   s.add_dependency "async_sinatra", "1.2.0"
   s.add_dependency "thin", "1.6.4" unless RUBY_PLATFORM =~ /java/

@@ -1,6 +1,8 @@
 require "sensu/daemon"
 require "sensu/api/validators"
 
+gem "em-http-server", "0.1.8"
+
 gem "sinatra", "1.4.6"
 gem "async_sinatra", "1.2.0"
 
@@ -8,6 +10,8 @@ unless RUBY_PLATFORM =~ /java/
   gem "thin", "1.6.4"
   require "thin"
 end
+
+require "em-http-server"
 
 require "sinatra/async"
 
