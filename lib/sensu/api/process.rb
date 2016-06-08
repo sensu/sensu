@@ -101,64 +101,6 @@ module Sensu
           error!(Sensu::JSON.dump(:error => message))
         end
 
-        def accepted!(response)
-          status 202
-          body response
-        end
-
-        def issued!
-          accepted!(Sensu::JSON.dump(:issued => Time.now.to_i))
-        end
-
-        def read_data(rules={})
-          begin
-            data = Sensu::JSON.load(env["rack.input"].read)
-            valid = rules.all? do |key, rule|
-              value = data[key]
-              (value.is_a?(rule[:type]) || (rule[:nil_ok] && value.nil?)) &&
-                (value.nil? || rule[:regex].nil?) ||
-                (rule[:regex] && (value =~ rule[:regex]) == 0)
-            end
-            if valid
-              yield(data)
-            else
-              bad_request!
-            end
-          rescue Sensu::JSON::ParseError
-            bad_request!
-          end
-        end
-
-        def publish_check_result(client_name, check)
-          check[:issued] = Time.now.to_i
-          check[:executed] = Time.now.to_i
-          check[:status] ||= 0
-          payload = {
-            :client => client_name,
-            :check => check
-          }
-          settings.logger.info("publishing check result", :payload => payload)
-          settings.transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
-            if info[:error]
-              settings.logger.error("failed to publish check result", {
-                :payload => payload,
-                :error => info[:error].to_s
-              })
-            end
-          end
-        end
-
-        def resolve_event(event_json)
-          event = Sensu::JSON.load(event_json)
-          check = event[:check].merge(
-            :output => "Resolving on request of the API",
-            :status => 0,
-            :force_resolve => true
-          )
-          check.delete(:history)
-          publish_check_result(event[:client][:name], check)
-        end
-
         def transport_publish_options(subscription, message)
           _, raw_type = subscription.split(":", 2).reverse
           case raw_type

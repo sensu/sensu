@@ -3,7 +3,7 @@ module Sensu
     module Routes
       module Clients
         CLIENTS_URI = "/clients".freeze
-        GET_CLIENT_URI = /^\/clients\/([\w\.-]+)$/
+        CLIENT_URI = /^\/clients\/([\w\.-]+)$/
         GET_CLIENT_HISTORY_URI = /^\/clients\/([\w\.-]+)\/history$/
 
         def post_clients
@@ -50,7 +50,7 @@ module Sensu
         end
 
         def get_client
-          client_name = GET_CLIENT_URI.match(@http_request_uri)[1]
+          client_name = CLIENT_URI.match(@http_request_uri)[1]
           @redis.get("client:#{client_name}") do |client_json|
             unless client_json.nil?
               @response_content = client_json
@@ -96,6 +96,49 @@ module Sensu
               end
             else
               respond
+            end
+          end
+        end
+
+        def delete_client
+          client_name = CLIENT_URI.match(@http_request_uri)[1]
+          @redis.get("client:#{client_name}") do |client_json|
+            unless client_json.nil?
+              @redis.hgetall("events:#{client_name}") do |events|
+                events.each do |check_name, event_json|
+                  resolve_event(event_json)
+                end
+                delete_client = Proc.new do |attempts|
+                  attempts += 1
+                  @redis.hgetall("events:#{client_name}") do |events|
+                    if events.empty? || attempts == 5
+                      @logger.info("deleting client from registry", :client_name => client_name)
+                      @redis.srem("clients", client_name) do
+                        @redis.del("client:#{client_name}")
+                        @redis.del("client:#{client_name}:signature")
+                        @redis.del("events:#{client_name}")
+                        @redis.smembers("result:#{client_name}") do |checks|
+                          checks.each do |check_name|
+                            result_key = "#{client_name}:#{check_name}"
+                            @redis.del("result:#{result_key}")
+                            @redis.del("history:#{result_key}")
+                          end
+                          @redis.del("result:#{client_name}")
+                        end
+                      end
+                    else
+                      EM::Timer.new(1) do
+                        delete_client.call(attempts)
+                      end
+                    end
+                  end
+                end
+                delete_client.call(0)
+                @response_content = {:issued => Time.now.to_i}
+                accepted!
+              end
+            else
+              not_found!
             end
           end
         end
