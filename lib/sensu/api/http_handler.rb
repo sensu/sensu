@@ -203,6 +203,10 @@ module Sensu
             get_aggregate_checks
           when AGGREGATE_RESULTS_SEVERITY_URI
             get_aggregate_results_severity
+          when STASHES_URI
+            get_stashes
+          when STASH_URI
+            get_stash
           else
             not_found!
           end
@@ -214,6 +218,10 @@ module Sensu
             post_request
           when RESOLVE_URI
             post_resolve
+          when STASHES_URI
+            post_stashes
+          when STASH_URI
+            post_stash
           else
             not_found!
           end
@@ -225,6 +233,8 @@ module Sensu
             delete_event
           when AGGREGATE_URI
             delete_aggregate
+          when STASH_URI
+            delete_stash
           else
             not_found!
           end
