@@ -193,6 +193,16 @@ module Sensu
             get_events_client
           when EVENT_URI
             get_event
+          when AGGREGATES_URI
+            get_aggregates
+          when AGGREGATE_URI
+            get_aggregate
+          when AGGREGATE_CLIENTS_URI
+            get_aggregate_clients
+          when AGGREGATE_CHECKS_URI
+            get_aggregate_checks
+          when AGGREGATE_RESULTS_SEVERITY_URI
+            get_aggregate_results_severity
           else
             not_found!
           end
@@ -213,6 +223,8 @@ module Sensu
             delete_client
           when EVENT_URI
             delete_event
+          when AGGREGATE_URI
+            delete_aggregate
           else
             not_found!
           end
