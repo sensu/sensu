@@ -20,20 +20,20 @@ module Sensu
 
         def get_aggregate
           aggregate = AGGREGATE_URI.match(@http_request_uri)[1]
-          @response_content = {
-            :clients => 0,
-            :checks => 0,
-            :results => {
-              :ok => 0,
-              :warning => 0,
-              :critical => 0,
-              :unknown => 0,
-              :total => 0,
-              :stale => 0
-            }
-          }
           @redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
             unless aggregate_members.empty?
+              @response_content = {
+                :clients => 0,
+                :checks => 0,
+                :results => {
+                  :ok => 0,
+                  :warning => 0,
+                  :critical => 0,
+                  :unknown => 0,
+                  :total => 0,
+                  :stale => 0
+                }
+              }
               clients = []
               checks = []
               results = []
