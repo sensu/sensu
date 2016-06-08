@@ -2,9 +2,28 @@ module Sensu
   module API
     module Routes
       module Clients
-        GET_CLIENTS_URI = "/clients".freeze
+        CLIENTS_URI = "/clients".freeze
         GET_CLIENT_URI = /^\/clients\/([\w\.-]+)$/
         GET_CLIENT_HISTORY_URI = /^\/clients\/([\w\.-]+)\/history$/
+
+        def post_clients
+          read_data do |client|
+            client[:keepalives] = client.fetch(:keepalives, false)
+            client[:version] = VERSION
+            client[:timestamp] = Time.now.to_i
+            validator = Validators::Client.new
+            if validator.valid?(client)
+              @redis.set("client:#{client[:name]}", Sensu::JSON.dump(client)) do
+                @redis.sadd("clients", client[:name]) do
+                  @response_content = {:name => client[:name]}
+                  created!
+                end
+              end
+            else
+              bad_request!
+            end
+          end
+        end
 
         def get_clients
           @response_content = []
