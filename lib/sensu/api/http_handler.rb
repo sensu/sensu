@@ -80,6 +80,21 @@ module Sensu
         @response = EM::DelegatedHttpResponse.new(self)
       end
 
+      def set_cors_headers
+        api = @settings[:api]
+        api[:cors] ||= {
+          "Origin" => "*",
+          "Methods" => "GET, POST, PUT, DELETE, OPTIONS",
+          "Credentials" => "true",
+          "Headers" => "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+        }
+        if api[:cors].is_a?(Hash)
+          api[:cors].each do |header, value|
+            @response.headers["Access-Control-Allow-#{header}"] = value
+          end
+        end
+      end
+
       def pagination(items)
         limit = integer_parameter(@params[:limit])
         offset = integer_parameter(@params[:offset]) || 0
@@ -110,10 +125,12 @@ module Sensu
       def authorized?
         api = @settings[:api]
         if api && api[:user] && api[:password]
-          if @http[:authorization]
+          if @http_request_method == OPTIONS_METHOD
+            true
+          elsif @http[:authorization]
             scheme, base64 = @http[:authorization].split("\s")
             if scheme == "Basic"
-              user, password = ::Base64.decode64(base64).split(":")
+              user, password = Base64.decode64(base64).split(":")
               user == api[:user] && password == api[:password]
             else
               false
@@ -259,6 +276,7 @@ module Sensu
         log_request
         parse_parameters
         create_response
+        set_cors_headers
         if authorized?
           route_request
         else
