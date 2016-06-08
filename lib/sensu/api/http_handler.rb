@@ -58,6 +58,22 @@ module Sensu
         @response = EM::DelegatedHttpResponse.new(self)
       end
 
+      def pagination(items)
+        limit = integer_parameter(@params[:limit])
+        offset = integer_parameter(@params[:offset]) || 0
+        unless limit.nil?
+          @response.headers["X-Pagination"] = Sensu::JSON.dump(
+            :limit => limit,
+            :offset => offset,
+            :total => items.length
+          )
+          paginated = items.slice(offset, limit)
+          Array(paginated)
+        else
+          items
+        end
+      end
+
       def respond
         @response.status = @response_status || 200
         @response.status_string = @response_status_string || "OK"
@@ -117,10 +133,12 @@ module Sensu
         case @http_request_method
         when GET_METHOD
           case @http_request_uri
-          when INFO_URI
+          when GET_INFO_URI
             get_info
-          when HEALTH_URI
+          when GET_HEALTH_URI
             get_health
+          when GET_CLIENTS_URI
+            get_clients
           else
             not_found!
           end

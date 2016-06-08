@@ -6,7 +6,7 @@ module Sensu
       module Health
         include Info
 
-        HEALTH_URI = "/health".freeze
+        GET_HEALTH_URI = "/health".freeze
 
         def get_health
           if @redis.connected? && @transport.connected?
