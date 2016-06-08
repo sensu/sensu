@@ -42,10 +42,6 @@ module Sensu
         })
       end
 
-      def integer_parameter(parameter)
-        parameter =~ /\A[0-9]+\z/ ? parameter.to_i : nil
-      end
-
       def parse_parameters
         @params = {}
         if @http_query_string
@@ -54,6 +50,10 @@ module Sensu
             @params[key.to_sym] = value
           end
         end
+      end
+
+      def integer_parameter(parameter)
+        parameter =~ /\A[0-9]+\z/ ? parameter.to_i : nil
       end
 
       def read_data(rules={})
@@ -73,36 +73,6 @@ module Sensu
         rescue Sensu::JSON::ParseError
           bad_request!
         end
-      end
-
-      def publish_check_result(client_name, check)
-        check[:issued] = Time.now.to_i
-        check[:executed] = Time.now.to_i
-        check[:status] ||= 0
-        payload = {
-          :client => client_name,
-          :check => check
-        }
-        @logger.info("publishing check result", :payload => payload)
-        @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
-          if info[:error]
-            @logger.error("failed to publish check result", {
-              :payload => payload,
-              :error => info[:error].to_s
-            })
-          end
-        end
-      end
-
-      def resolve_event(event_json)
-        event = Sensu::JSON.load(event_json)
-        check = event[:check].merge(
-          :output => "Resolving on request of the API",
-          :status => 0,
-          :force_resolve => true
-        )
-        check.delete(:history)
-        publish_check_result(event[:client][:name], check)
       end
 
       def create_response

@@ -1,33 +1,12 @@
+require "sensu/api/utilities/transport_info"
+
 module Sensu
   module API
     module Routes
       module Info
-        INFO_URI = "/info".freeze
+        include Utilities::TransportInfo
 
-        def transport_info
-          info = {
-            :keepalives => {
-              :messages => nil,
-              :consumers => nil
-            },
-            :results => {
-              :messages => nil,
-              :consumers => nil
-            },
-            :connected => @transport.connected?
-          }
-          if @transport.connected?
-            @transport.stats("keepalives") do |stats|
-              info[:keepalives] = stats
-              @transport.stats("results") do |stats|
-                info[:results] = stats
-                yield(info)
-              end
-            end
-          else
-            yield(info)
-          end
-        end
+        INFO_URI = "/info".freeze
 
         def get_info
           transport_info do |info|
