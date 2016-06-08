@@ -202,16 +202,20 @@ module Sensu
         case @http_request_method
         when GET_METHOD
           case @http_request_uri
-          when GET_INFO_URI
+          when INFO_URI
             get_info
-          when GET_HEALTH_URI
+          when HEALTH_URI
             get_health
           when CLIENTS_URI
             get_clients
           when CLIENT_URI
             get_client
-          when GET_CLIENT_HISTORY_URI
+          when CLIENT_HISTORY_URI
             get_client_history
+          when CHECKS_URI
+            get_checks
+          when CHECK_URI
+            get_check
           else
             not_found!
           end

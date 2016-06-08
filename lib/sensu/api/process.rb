@@ -146,60 +146,6 @@ module Sensu
         body ""
       end
 
-      adelete %r{^/clients?/([\w\.-]+)/?$} do |client_name|
-        settings.redis.get("client:#{client_name}") do |client_json|
-          unless client_json.nil?
-            settings.redis.hgetall("events:#{client_name}") do |events|
-              events.each do |check_name, event_json|
-                resolve_event(event_json)
-              end
-              delete_client = Proc.new do |attempts|
-                attempts += 1
-                settings.redis.hgetall("events:#{client_name}") do |events|
-                  if events.empty? || attempts == 5
-                    settings.logger.info("deleting client from registry", :client_name => client_name)
-                    settings.redis.srem("clients", client_name) do
-                      settings.redis.del("client:#{client_name}")
-                      settings.redis.del("client:#{client_name}:signature")
-                      settings.redis.del("events:#{client_name}")
-                      settings.redis.smembers("result:#{client_name}") do |checks|
-                        checks.each do |check_name|
-                          result_key = "#{client_name}:#{check_name}"
-                          settings.redis.del("result:#{result_key}")
-                          settings.redis.del("history:#{result_key}")
-                        end
-                        settings.redis.del("result:#{client_name}")
-                      end
-                    end
-                  else
-                    EM::Timer.new(1) do
-                      delete_client.call(attempts)
-                    end
-                  end
-                end
-              end
-              delete_client.call(0)
-              issued!
-            end
-          else
-            not_found!
-          end
-        end
-      end
-
-      aget "/checks/?" do
-        body Sensu::JSON.dump(settings.all_checks)
-      end
-
-      aget %r{^/checks?/([\w\.-]+)/?$} do |check_name|
-        if settings.checks[check_name]
-          response = settings.checks[check_name].merge(:name => check_name)
-          body Sensu::JSON.dump(response)
-        else
-          not_found!
-        end
-      end
-
       apost "/request/?" do
         rules = {
           :check => {:type => String, :nil_ok => false},

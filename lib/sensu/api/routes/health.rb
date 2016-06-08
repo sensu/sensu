@@ -2,7 +2,7 @@ module Sensu
   module API
     module Routes
       module Health
-        GET_HEALTH_URI = "/health".freeze
+        HEALTH_URI = "/health".freeze
 
         def get_health
           if @redis.connected? && @transport.connected?
