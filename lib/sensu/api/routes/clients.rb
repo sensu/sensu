@@ -1,3 +1,5 @@
+require "sensu/api/utilities/resolve_event"
+
 module Sensu
   module API
     module Routes
