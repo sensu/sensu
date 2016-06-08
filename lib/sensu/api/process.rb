@@ -138,22 +138,6 @@ module Sensu
           end
         end
 
-        def pagination(items)
-          limit = integer_parameter(params[:limit])
-          offset = integer_parameter(params[:offset]) || 0
-          unless limit.nil?
-            headers["X-Pagination"] = Sensu::JSON.dump(
-              :limit => limit,
-              :offset => offset,
-              :total => items.length
-            )
-            paginated = items.slice(offset, limit)
-            Array(paginated)
-          else
-            items
-          end
-        end
-
         def publish_check_result(client_name, check)
           check[:issued] = Time.now.to_i
           check[:executed] = Time.now.to_i
@@ -243,40 +227,6 @@ module Sensu
             end
           else
             bad_request!
-          end
-        end
-      end
-
-      aget "/clients/?" do
-        response = Array.new
-        settings.redis.smembers("clients") do |clients|
-          clients = pagination(clients)
-          unless clients.empty?
-            clients.each_with_index do |client_name, index|
-              settings.redis.get("client:#{client_name}") do |client_json|
-                unless client_json.nil?
-                  response << Sensu::JSON.load(client_json)
-                else
-                  settings.logger.error("client data missing from registry", :client_name => client_name)
-                  settings.redis.srem("clients", client_name)
-                end
-                if index == clients.length - 1
-                  body Sensu::JSON.dump(response)
-                end
-              end
-            end
-          else
-            body Sensu::JSON.dump(response)
-          end
-        end
-      end
-
-      aget %r{^/clients?/([\w\.-]+)/?$} do |client_name|
-        settings.redis.get("client:#{client_name}") do |client_json|
-          unless client_json.nil?
-            body client_json
-          else
-            not_found!
           end
         end
       end
