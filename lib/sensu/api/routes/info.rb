@@ -4,21 +4,44 @@ module Sensu
       module Info
         INFO_URI = "/info".freeze
 
-        def get_info
-          #          transport_info do |info|
-          content = {
-            :sensu => {
-              :version => VERSION
+        def transport_info
+          info = {
+            :keepalives => {
+              :messages => nil,
+              :consumers => nil
             },
-            :transport => {},#info,
-            :redis => {
-              :connected => @redis.connected?
-            }
+            :results => {
+              :messages => nil,
+              :consumers => nil
+            },
+            :connected => @transport.connected?
           }
-          @response_status = 200
-          @response_content = content
-          respond!
-          #          end
+          if @transport.connected?
+            @transport.stats("keepalives") do |stats|
+              info[:keepalives] = stats
+              @transport.stats("results") do |stats|
+                info[:results] = stats
+                yield(info)
+              end
+            end
+          else
+            yield(info)
+          end
+        end
+
+        def get_info
+          transport_info do |info|
+            @response_content = {
+              :sensu => {
+                :version => VERSION
+              },
+              :transport => info,
+              :redis => {
+                :connected => @redis.connected?
+              }
+            }
+            respond
+          end
         end
       end
     end
