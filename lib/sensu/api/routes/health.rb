@@ -1,11 +1,7 @@
-require "sensu/api/routes/info"
-
 module Sensu
   module API
     module Routes
       module Health
-        include Info
-
         GET_HEALTH_URI = "/health".freeze
 
         def get_health

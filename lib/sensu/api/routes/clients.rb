@@ -3,6 +3,7 @@ module Sensu
     module Routes
       module Clients
         GET_CLIENTS_URI = "/clients".freeze
+        GET_CLIENT_URI = /^\/clients\/([\w\.-]+)$/
 
         def get_clients
           @response_content = []
@@ -24,6 +25,18 @@ module Sensu
               end
             else
               respond
+            end
+          end
+        end
+
+        def get_client
+          client_name = GET_CLIENT_URI.match(@http_request_uri)[1]
+          @redis.get("client:#{client_name}") do |client_json|
+            unless client_json.nil?
+              @response_content = client_json
+              respond
+            else
+              not_found!
             end
           end
         end

@@ -139,6 +139,8 @@ module Sensu
             get_health
           when GET_CLIENTS_URI
             get_clients
+          when GET_CLIENT_URI
+            get_client
           else
             not_found!
           end
