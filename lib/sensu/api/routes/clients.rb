@@ -4,7 +4,7 @@ module Sensu
       module Clients
         CLIENTS_URI = "/clients".freeze
         CLIENT_URI = /^\/clients\/([\w\.-]+)$/
-        GET_CLIENT_HISTORY_URI = /^\/clients\/([\w\.-]+)\/history$/
+        CLIENT_HISTORY_URI = /^\/clients\/([\w\.-]+)\/history$/
 
         def post_clients
           read_data do |client|
@@ -62,7 +62,7 @@ module Sensu
         end
 
         def get_client_history
-          client_name = GET_CLIENT_HISTORY_URI.match(@http_request_uri)[1]
+          client_name = CLIENT_HISTORY_URI.match(@http_request_uri)[1]
           @response_content = []
           @redis.smembers("result:#{client_name}") do |checks|
             unless checks.empty?
