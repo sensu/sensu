@@ -207,6 +207,12 @@ module Sensu
             get_stashes
           when STASH_URI
             get_stash
+          when RESULTS_URI
+            get_results
+          when RESULTS_CLIENT_URI
+            get_results_client
+          when RESULT_URI
+            get_result
           else
             not_found!
           end
@@ -222,6 +228,8 @@ module Sensu
             post_stashes
           when STASH_URI
             post_stash
+          when RESULTS_URI
+            post_results
           else
             not_found!
           end
@@ -235,6 +243,8 @@ module Sensu
             delete_aggregate
           when STASH_URI
             delete_stash
+          when RESULT_URI
+            delete_result
           else
             not_found!
           end

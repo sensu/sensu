@@ -7,6 +7,7 @@ require "sensu/api/routes/events"
 require "sensu/api/routes/resolve"
 require "sensu/api/routes/aggregates"
 require "sensu/api/routes/stashes"
+require "sensu/api/routes/results"
 
 module Sensu
   module API
@@ -20,6 +21,7 @@ module Sensu
       include Resolve
       include Aggregates
       include Stashes
+      include Results
     end
   end
 end
