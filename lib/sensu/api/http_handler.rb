@@ -59,7 +59,7 @@ module Sensu
       def read_data(rules={})
         begin
           data = Sensu::JSON.load(@http_content)
-          valid = rules.all? do |key, rule|
+          valid = data.is_a?(Hash) && rules.all? do |key, rule|
             value = data[key]
             (value.is_a?(rule[:type]) || (rule[:nil_ok] && value.nil?)) &&
               (value.nil? || rule[:regex].nil?) ||
@@ -223,6 +223,8 @@ module Sensu
           case @http_request_uri
           when CLIENTS_URI
             post_clients
+          when REQUEST_URI
+            post_request
           else
             not_found!
           end

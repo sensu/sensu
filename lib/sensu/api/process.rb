@@ -100,36 +100,6 @@ module Sensu
         def not_connected!(message)
           error!(Sensu::JSON.dump(:error => message))
         end
-
-        def transport_publish_options(subscription, message)
-          _, raw_type = subscription.split(":", 2).reverse
-          case raw_type
-          when "direct", "roundrobin"
-            [:direct, subscription, message]
-          else
-            [:fanout, subscription, message]
-          end
-        end
-
-        def publish_check_request(check)
-          payload = check.merge(:issued => Time.now.to_i)
-          settings.logger.info("publishing check request", {
-            :payload => payload,
-            :subscribers => check[:subscribers]
-          })
-          check[:subscribers].each do |subscription|
-            options = transport_publish_options(subscription.to_s, Sensu::JSON.dump(payload))
-            settings.transport.publish(*options) do |info|
-              if info[:error]
-                settings.logger.error("failed to publish check request", {
-                  :subscription => subscription,
-                  :payload => payload,
-                  :error => info[:error].to_s
-                })
-              end
-            end
-          end
-        end
       end
 
       before do
@@ -144,25 +114,6 @@ module Sensu
 
       aoptions "/*" do
         body ""
-      end
-
-      apost "/request/?" do
-        rules = {
-          :check => {:type => String, :nil_ok => false},
-          :subscribers => {:type => Array, :nil_ok => true}
-        }
-        read_data(rules) do |data|
-          if settings.checks[data[:check]]
-            check = settings.checks[data[:check]].dup
-            check[:name] = data[:check]
-            check[:subscribers] ||= Array.new
-            check[:subscribers] = data[:subscribers] if data[:subscribers]
-            publish_check_request(check)
-            issued!
-          else
-            not_found!
-          end
-        end
       end
 
       aget "/events/?" do
