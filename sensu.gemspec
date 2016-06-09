@@ -4,7 +4,6 @@ require File.join(File.dirname(__FILE__), "lib", "sensu", "constants")
 Gem::Specification.new do |s|
   s.name        = "sensu"
   s.version     = Sensu::VERSION
-  s.platform    = RUBY_PLATFORM =~ /java/ ? Gem::Platform::JAVA : Gem::Platform::RUBY
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["portertech@gmail.com", "amdprophet@gmail.com"]
   s.homepage    = "http://sensuapp.org"
