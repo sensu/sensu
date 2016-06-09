@@ -244,7 +244,7 @@ module Sensu
           when :udp
             process_data(data)
           when :tcp
-            if EM.reactor_running?
+            if EM::reactor_running?
               reset_watchdog
             end
             @data_buffer << data
