@@ -619,15 +619,16 @@ module Sensu
         end
       end
 
-      # Determine the Sensu transport publish options for a
-      # subscription. If a subscription begins with a transport pipe
+      # Determine the Sensu Transport publish options for a
+      # subscription. If a subscription begins with a Transport pipe
       # type, either "direct:" or "roundrobin:", the subscription uses
-      # a direct transport pipe. If a subscription does not specify a
-      # transport pipe type, a fanout transport pipe is used.
+      # a direct Transport pipe. If a subscription does not specify a
+      # Transport pipe type, a fanout Transport pipe is used.
       #
       # @param subscription [String]
-      # @return [Array] containing the transport publish options:
-      #   the transport pipe type, pipe, and the message to be
+      # @param message [String]
+      # @return [Array] containing the Transport publish options:
+      #   the Transport pipe type, pipe, and the message to be
       #   published.
       def transport_publish_options(subscription, message)
         _, raw_type = subscription.split(":", 2).reverse
@@ -639,13 +640,13 @@ module Sensu
         end
       end
 
-      # Publish a check request to the transport. A check request is
+      # Publish a check request to the Transport. A check request is
       # composed of a check `:name`, an `:issued` timestamp, a check
       # `:command` if available, and a check `:extension if available.
-      # The check request is published to a transport pipe, for each
+      # The check request is published to a Transport pipe, for each
       # of the check `:subscribers` in its definition, eg. "webserver".
       # JSON serialization is used when publishing the check request
-      # payload to the transport pipes. Transport errors are logged.
+      # payload to the Transport pipes. Transport errors are logged.
       #
       # @param check [Hash] definition.
       def publish_check_request(check)
@@ -727,12 +728,12 @@ module Sensu
         schedule_check_executions(standard_checks + extension_checks)
       end
 
-      # Publish a check result to the transport for processing. A
+      # Publish a check result to the Transport for processing. A
       # check result is composed of a client name and a check
       # definition, containing check `:output` and `:status`. A client
       # signature is added to the check result payload if one is
       # registered for the client. JSON serialization is used when
-      # publishing the check result payload to the transport pipe.
+      # publishing the check result payload to the Transport pipe.
       # Transport errors are logged.
       #
       # @param client_name [String]

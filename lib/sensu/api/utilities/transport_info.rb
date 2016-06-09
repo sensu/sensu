@@ -2,6 +2,11 @@ module Sensu
   module API
     module Utilities
       module TransportInfo
+        # Retreive the Sensu Transport info, if the API is connected
+        # to it, keepalive messages and consumers, and results
+        # messages and consumers.
+        #
+        # @yield [Hash] passes Transport info to the callback/block.
         def transport_info
           info = {
             :keepalives => {
