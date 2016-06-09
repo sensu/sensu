@@ -2,7 +2,7 @@ module Sensu
   module API
     module Routes
       module Stashes
-        STASHES_URI = "/stashes".freeze
+        STASHES_URI = /^\/stashes$/
         STASH_URI = /^\/stash(?:es)?\/(.*)$/
 
         def post_stash

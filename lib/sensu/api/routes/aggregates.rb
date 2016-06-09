@@ -2,7 +2,7 @@ module Sensu
   module API
     module Routes
       module Aggregates
-        AGGREGATES_URI = "/aggregates".freeze
+        AGGREGATES_URI = /^\/aggregates$/
         AGGREGATE_URI = /^\/aggregates\/([\w\.-]+)$/
         AGGREGATE_CLIENTS_URI = /^\/aggregates\/([\w\.-]+)\/clients$/
         AGGREGATE_CHECKS_URI = /^\/aggregates\/([\w\.-]+)\/checks$/

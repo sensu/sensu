@@ -6,7 +6,7 @@ module Sensu
       module Results
         include Utilities::PublishCheckResult
 
-        RESULTS_URI = "/results".freeze
+        RESULTS_URI = /^\/results$/
         RESULTS_CLIENT_URI = /^\/results\/([\w\.-]+)$/
         RESULT_URI = /^\/results\/([\w\.-]+)\/([\w\.-]+)$/
 

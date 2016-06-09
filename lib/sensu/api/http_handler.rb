@@ -8,11 +8,6 @@ require "base64"
 
 module Sensu
   module API
-    GET_METHOD = "GET".freeze
-    POST_METHOD = "POST".freeze
-    DELETE_METHOD = "DELETE".freeze
-    OPTIONS_METHOD = "OPTIONS".freeze
-
     class HTTPHandler < EM::HttpServer::Server
       include Routes
 
@@ -213,88 +208,17 @@ module Sensu
       end
 
       def route_request
-        case @http_request_method
-        when GET_METHOD
-          case @http_request_uri
-          when INFO_URI
-            get_info
-          when HEALTH_URI
-            get_health
-          when CLIENTS_URI
-            get_clients
-          when CLIENT_URI
-            get_client
-          when CLIENT_HISTORY_URI
-            get_client_history
-          when CHECKS_URI
-            get_checks
-          when CHECK_URI
-            get_check
-          when EVENTS_URI
-            get_events
-          when EVENTS_CLIENT_URI
-            get_events_client
-          when EVENT_URI
-            get_event
-          when AGGREGATES_URI
-            get_aggregates
-          when AGGREGATE_URI
-            get_aggregate
-          when AGGREGATE_CLIENTS_URI
-            get_aggregate_clients
-          when AGGREGATE_CHECKS_URI
-            get_aggregate_checks
-          when AGGREGATE_RESULTS_SEVERITY_URI
-            get_aggregate_results_severity
-          when STASHES_URI
-            get_stashes
-          when STASH_URI
-            get_stash
-          when RESULTS_URI
-            get_results
-          when RESULTS_CLIENT_URI
-            get_results_client
-          when RESULT_URI
-            get_result
-          else
-            not_found!
-          end
-        when POST_METHOD
-          case @http_request_uri
-          when CLIENTS_URI
-            post_clients
-          when REQUEST_URI
-            post_request
-          when RESOLVE_URI
-            post_resolve
-          when STASHES_URI
-            post_stashes
-          when STASH_URI
-            post_stash
-          when RESULTS_URI
-            post_results
-          else
-            not_found!
-          end
-        when DELETE_METHOD
-          case @http_request_uri
-          when CLIENT_URI
-            delete_client
-          when EVENT_URI
-            delete_event
-          when AGGREGATE_URI
-            delete_aggregate
-          when STASH_URI
-            delete_stash
-          when RESULT_URI
-            delete_result
-          else
-            not_found!
-          end
-        when OPTIONS_METHOD
+        if @http_request_method == OPTIONS_METHOD
           respond
         else
-          not_found!
+          route = ROUTES[@http_request_method].detect do |route|
+            @http_request_uri =~ route[0]
+          end
+          unless route.nil?
+            send(route[1])
+          else
+            not_found!
+          end
         end
       end
 
