@@ -6,7 +6,7 @@ module Sensu
       module Events
         include Utilities::ResolveEvent
 
-        EVENTS_URI = "/events".freeze
+        EVENTS_URI = /^\/events$/
         EVENTS_CLIENT_URI = /^\/events\/([\w\.-]+)$/
         EVENT_URI = /^\/events\/([\w\.-]+)\/([\w\.-]+)$/
 

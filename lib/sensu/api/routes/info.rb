@@ -6,7 +6,7 @@ module Sensu
       module Info
         include Utilities::TransportInfo
 
-        INFO_URI = "/info".freeze
+        INFO_URI = /^\/info$/
 
         def get_info
           transport_info do |info|

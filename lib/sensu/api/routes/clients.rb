@@ -6,7 +6,7 @@ module Sensu
       module Clients
         include Utilities::ResolveEvent
 
-        CLIENTS_URI = "/clients".freeze
+        CLIENTS_URI = /^\/clients$/
         CLIENT_URI = /^\/clients\/([\w\.-]+)$/
         CLIENT_HISTORY_URI = /^\/clients\/([\w\.-]+)\/history$/
 

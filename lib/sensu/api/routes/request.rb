@@ -6,7 +6,7 @@ module Sensu
       module Request
         include Utilities::PublishCheckRequest
 
-        REQUEST_URI = "/request".freeze
+        REQUEST_URI = /^\/request$/
 
         def post_request
           rules = {

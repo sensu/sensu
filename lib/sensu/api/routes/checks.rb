@@ -2,7 +2,7 @@ module Sensu
   module API
     module Routes
       module Checks
-        CHECKS_URI = "/checks".freeze
+        CHECKS_URI = /^\/checks$/
         CHECK_URI = /^\/checks\/([\w\.-]+)$/
 
         def get_checks

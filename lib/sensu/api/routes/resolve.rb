@@ -6,7 +6,7 @@ module Sensu
       module Resolve
         include Utilities::ResolveEvent
 
-        RESOLVE_URI = "/resolve".freeze
+        RESOLVE_URI = /^\/resolve$/
 
         def post_resolve
           rules = {
