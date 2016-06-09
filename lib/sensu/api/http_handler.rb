@@ -143,6 +143,26 @@ module Sensu
         end
       end
 
+      def connected?
+        connected = true
+        if @redis && @transport
+          unless [INFO_URI, HEALTH_URI].include?(@http_request_uri)
+            unless @redis.connected?
+              @response_content = {:error => "not connected to redis"}
+              connected = false
+            end
+            unless @transport.connected?
+              @response_content = {:error => "not connected to transport"}
+              connected = false
+            end
+          end
+        else
+          @response_content = {:error => "redis and transport connections not initialized"}
+          connected = false
+        end
+        connected
+      end
+
       def created!
         @response_status = 201
         @response_status_string = "Created"
@@ -183,6 +203,12 @@ module Sensu
       def precondition_failed!
         @response_status = 412
         @response_status_string = "Precondition Failed"
+        respond
+      end
+
+      def error!
+        @response_status = 500
+        @response_status_string = "Internal Server Error"
         respond
       end
 
@@ -278,7 +304,11 @@ module Sensu
         create_response
         set_cors_headers
         if authorized?
-          route_request
+          if connected?
+            route_request
+          else
+            error!
+          end
         else
           unauthorized!
         end
@@ -289,6 +319,7 @@ module Sensu
           :error => error.to_s,
           :backtrace => error.backtrace.join("\n")
         })
+        error! rescue nil
       end
     end
   end

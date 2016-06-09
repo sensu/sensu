@@ -1076,7 +1076,7 @@ module Sensu
       end
 
       # Start the Sensu server process, connecting to Redis, the
-      # transport, and calling the `bootstrap()` method.
+      # Transport, and calling the `bootstrap()` method.
       def start
         setup_connections do
           bootstrap

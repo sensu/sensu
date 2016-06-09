@@ -37,9 +37,10 @@ module Sensu
     attr_reader :start_time
 
     # Initialize the Sensu process. Set the start time, initial
-    # service state, set up the logger, load settings, load
-    # extensions, and optionally daemonize the process and/or create a
-    # PID file. A subclass may override this method.
+    # service state, set up the logger, and load settings. This method
+    # will load extensions and setup Sensu Spawn if the Sensu process
+    # is not the Sensu API. This method can and optionally daemonize
+    # the process and/or create a PID file.
     #
     # @param options [Hash]
     def initialize(options={})
@@ -48,8 +49,10 @@ module Sensu
       @timers = {:run => []}
       setup_logger(options)
       load_settings(options)
-      load_extensions(options)
-      setup_spawn
+      unless sensu_service_name == "api"
+        load_extensions(options)
+        setup_spawn
+      end
       setup_process(options)
     end
 
@@ -164,7 +167,7 @@ module Sensu
       @logger.info("configuring sensu spawn", :settings => @settings[:sensu][:spawn])
       threadpool_size = @settings[:sensu][:spawn][:limit] + 10
       @logger.debug("setting eventmachine threadpool size", :size => threadpool_size)
-      EM.threadpool_size = threadpool_size
+      EM::threadpool_size = threadpool_size
       Spawn.setup(@settings[:sensu][:spawn])
     end
 
@@ -264,7 +267,7 @@ module Sensu
           @logger.info("reconnected to transport")
           resume
         end
-        yield(@transport)
+        yield(@transport) if block_given?
       end
     end
 
@@ -295,11 +298,18 @@ module Sensu
           @logger.info("reconnected to redis")
           resume
         end
-        yield(@redis)
+        yield(@redis) if block_given?
       end
     end
 
     private
+
+    # Get the Sensu service name.
+    #
+    # @return [String] Sensu service name.
+    def sensu_service_name
+      File.basename($0).split("-").last
+    end
 
     # Write the current process ID (PID) to a file (PID file). This
     # method will cause the Sensu service to exit (2) if the PID file
