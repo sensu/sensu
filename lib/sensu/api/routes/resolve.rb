@@ -8,6 +8,7 @@ module Sensu
 
         RESOLVE_URI = /^\/resolve$/
 
+        # POST /resolve
         def post_resolve
           rules = {
             :client => {:type => String, :nil_ok => false},

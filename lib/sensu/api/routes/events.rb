@@ -10,6 +10,7 @@ module Sensu
         EVENTS_CLIENT_URI = /^\/events\/([\w\.-]+)$/
         EVENT_URI = /^\/events\/([\w\.-]+)\/([\w\.-]+)$/
 
+        # GET /events
         def get_events
           @response_content = []
           @redis.smembers("clients") do |clients|
@@ -30,6 +31,7 @@ module Sensu
           end
         end
 
+        # GET /events/:client_name
         def get_events_client
           client_name = parse_uri(EVENTS_CLIENT_URI).first
           @response_content = []
@@ -41,6 +43,7 @@ module Sensu
           end
         end
 
+        # GET /events/:client_name/:check_name
         def get_event
           client_name, check_name = parse_uri(EVENT_URI)
           @redis.hgetall("events:#{client_name}") do |events|
@@ -54,6 +57,7 @@ module Sensu
           end
         end
 
+        # DELETE /events/:client_name/:check_name
         def delete_event
           client_name, check_name = parse_uri(EVENT_URI)
           @redis.hgetall("events:#{client_name}") do |events|

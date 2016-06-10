@@ -8,6 +8,7 @@ module Sensu
 
         INFO_URI = /^\/info$/
 
+        # GET /info
         def get_info
           transport_info do |info|
             @response_content = {

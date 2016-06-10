@@ -10,6 +10,7 @@ module Sensu
         CLIENT_URI = /^\/clients\/([\w\.-]+)$/
         CLIENT_HISTORY_URI = /^\/clients\/([\w\.-]+)\/history$/
 
+        # POST /clients
         def post_clients
           read_data do |client|
             client[:keepalives] = client.fetch(:keepalives, false)
@@ -29,6 +30,7 @@ module Sensu
           end
         end
 
+        # GET /clients
         def get_clients
           @response_content = []
           @redis.smembers("clients") do |clients|
@@ -53,6 +55,7 @@ module Sensu
           end
         end
 
+        # GET /clients/:client_name
         def get_client
           client_name = parse_uri(CLIENT_URI).first
           @redis.get("client:#{client_name}") do |client_json|
@@ -65,6 +68,7 @@ module Sensu
           end
         end
 
+        # GET /clients/:client_name/history
         def get_client_history
           client_name = parse_uri(CLIENT_HISTORY_URI).first
           @response_content = []
@@ -104,6 +108,7 @@ module Sensu
           end
         end
 
+        # DELETE /clients/:client_name
         def delete_client
           client_name = parse_uri(CLIENT_URI).first
           @redis.get("client:#{client_name}") do |client_json|

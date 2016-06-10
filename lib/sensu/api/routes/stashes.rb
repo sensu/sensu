@@ -5,6 +5,7 @@ module Sensu
         STASHES_URI = /^\/stashes$/
         STASH_URI = /^\/stash(?:es)?\/(.*)$/
 
+        # POST /stash/:path or /stashes/:path
         def post_stash
           path = parse_uri(STASH_URI).first
           read_data do |data|
@@ -17,6 +18,7 @@ module Sensu
           end
         end
 
+        # GET /stash/:path or /stashes/:path
         def get_stash
           path = parse_uri(STASH_URI).first
           @redis.get("stash:#{path}") do |stash_json|
@@ -29,6 +31,7 @@ module Sensu
           end
         end
 
+        # DELETE /stash/:path or /stashes/:path
         def delete_stash
           path = parse_uri(STASH_URI).first
           @redis.exists("stash:#{path}") do |stash_exists|
@@ -44,6 +47,7 @@ module Sensu
           end
         end
 
+        # GET /stashes
         def get_stashes
           @response_content = []
           @redis.smembers("stashes") do |stashes|
@@ -74,6 +78,7 @@ module Sensu
           end
         end
 
+        # POST /stashes
         def post_stashes
           rules = {
             :path => {:type => String, :nil_ok => false},

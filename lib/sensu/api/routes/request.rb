@@ -8,6 +8,7 @@ module Sensu
 
         REQUEST_URI = /^\/request$/
 
+        # POST /request
         def post_request
           rules = {
             :check => {:type => String, :nil_ok => false},

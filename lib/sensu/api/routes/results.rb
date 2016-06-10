@@ -10,6 +10,7 @@ module Sensu
         RESULTS_CLIENT_URI = /^\/results\/([\w\.-]+)$/
         RESULT_URI = /^\/results\/([\w\.-]+)\/([\w\.-]+)$/
 
+        # POST /results
         def post_results
           rules = {
             :name => {:type => String, :nil_ok => false, :regex => /\A[\w\.-]+\z/},
@@ -24,6 +25,7 @@ module Sensu
           end
         end
 
+        # GET /results
         def get_results
           @response_content = []
           @redis.smembers("clients") do |clients|
@@ -54,6 +56,7 @@ module Sensu
           end
         end
 
+        # GET /results/:client_name
         def get_results_client
           client_name = parse_uri(RESULTS_CLIENT_URI).first
           @response_content = []
@@ -72,11 +75,12 @@ module Sensu
                 end
               end
             else
-              not_found!
+              respond
             end
           end
         end
 
+        # GET /results/:client_name/:check_name
         def get_result
           client_name, check_name = parse_uri(RESULT_URI)
           result_key = "result:#{client_name}:#{check_name}"
@@ -91,6 +95,7 @@ module Sensu
           end
         end
 
+        # DELETE /results/:client_name/:check_name
         def delete_result
           client_name, check_name = parse_uri(RESULT_URI)
           result_key = "result:#{client_name}:#{check_name}"

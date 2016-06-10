@@ -5,11 +5,13 @@ module Sensu
         CHECKS_URI = /^\/checks$/
         CHECK_URI = /^\/checks\/([\w\.-]+)$/
 
+        # GET /checks
         def get_checks
           @response_content = @settings.checks
           respond
         end
 
+        # GET /checks/:check_name
         def get_check
           check_name = parse_uri(CHECK_URI).first
           if @settings[:checks][check_name]

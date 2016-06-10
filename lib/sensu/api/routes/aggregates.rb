@@ -8,6 +8,7 @@ module Sensu
         AGGREGATE_CHECKS_URI = /^\/aggregates\/([\w\.-]+)\/checks$/
         AGGREGATE_RESULTS_SEVERITY_URI = /^\/aggregates\/([\w\.-]+)\/results\/([\w\.-]+)$/
 
+        # GET /aggregates
         def get_aggregates
           @redis.smembers("aggregates") do |aggregates|
             aggregates.map! do |aggregate|
@@ -18,6 +19,7 @@ module Sensu
           end
         end
 
+        # GET /aggregates/:aggregate
         def get_aggregate
           aggregate = parse_uri(AGGREGATE_URI).first
           @redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
@@ -75,6 +77,7 @@ module Sensu
           end
         end
 
+        # DELETE /aggregates/:aggregate
         def delete_aggregate
           aggregate = parse_uri(AGGREGATE_URI).first
           @redis.smembers("aggregates") do |aggregates|
@@ -90,6 +93,7 @@ module Sensu
           end
         end
 
+        # GET /aggregates/:aggregate/clients
         def get_aggregate_clients
           aggregate = parse_uri(AGGREGATE_CLIENTS_URI).first
           @response_content = []
@@ -114,6 +118,7 @@ module Sensu
           end
         end
 
+        # GET /aggregates/:aggregate/checks
         def get_aggregate_checks
           aggregate = parse_uri(AGGREGATE_CHECKS_URI).first
           @response_content = []
@@ -138,6 +143,7 @@ module Sensu
           end
         end
 
+        # GET /aggregates/:aggregate/results/:severity
         def get_aggregate_results_severity
           aggregate, severity = parse_uri(AGGREGATE_RESULTS_SEVERITY_URI)
           if SEVERITIES.include?(severity)
