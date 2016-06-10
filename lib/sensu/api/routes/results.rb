@@ -55,7 +55,7 @@ module Sensu
         end
 
         def get_results_client
-          client_name = RESULTS_CLIENT_URI.match(@http_request_uri)[1]
+          client_name = parse_uri(RESULTS_CLIENT_URI).first
           @response_content = []
           @redis.smembers("result:#{client_name}") do |checks|
             unless checks.empty?
@@ -78,9 +78,7 @@ module Sensu
         end
 
         def get_result
-          uri_match = RESULT_URI.match(@http_request_uri)
-          client_name = uri_match[1]
-          check_name = uri_match[2]
+          client_name, check_name = parse_uri(RESULT_URI)
           result_key = "result:#{client_name}:#{check_name}"
           @redis.get(result_key) do |result_json|
             unless result_json.nil?
@@ -94,9 +92,7 @@ module Sensu
         end
 
         def delete_result
-          uri_match = RESULT_URI.match(@http_request_uri)
-          client_name = uri_match[1]
-          check_name = uri_match[2]
+          client_name, check_name = parse_uri(RESULT_URI)
           result_key = "result:#{client_name}:#{check_name}"
           @redis.exists(result_key) do |result_exists|
             if result_exists

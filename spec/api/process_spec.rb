@@ -639,6 +639,25 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can create a stash with id (path) containing a uri encoded space" do
+    api_test do
+      options = {
+        :body => {
+          :key => "value"
+        }
+      }
+      api_request("/stash/foo%20bar", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        expect(body).to include(:path)
+        redis.get("stash:foo bar") do |stash_json|
+          stash = Sensu::JSON.load(stash_json)
+          expect(stash).to eq({:key => "value"})
+          async_done
+        end
+      end
+    end
+  end
+
   it "can not create a non-json stash with id" do
     api_test do
       options = {

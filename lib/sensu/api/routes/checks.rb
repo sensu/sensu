@@ -11,7 +11,7 @@ module Sensu
         end
 
         def get_check
-          check_name = CHECK_URI.match(@http_request_uri)[1]
+          check_name = parse_uri(CHECK_URI).first
           if @settings[:checks][check_name]
             @response_content = @settings[:checks][check_name].merge(:name => check_name)
             respond

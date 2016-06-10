@@ -76,7 +76,7 @@ module Sensu
         end
 
         def delete_aggregate
-          aggregate = AGGREGATE_URI.match(@http_request_uri)[1]
+          aggregate = parse_uri(AGGREGATE_URI).first
           @redis.smembers("aggregates") do |aggregates|
             if aggregates.include?(aggregate)
               @redis.srem("aggregates", aggregate) do
@@ -91,7 +91,7 @@ module Sensu
         end
 
         def get_aggregate_clients
-          aggregate = AGGREGATE_CLIENTS_URI.match(@http_request_uri)[1]
+          aggregate = parse_uri(AGGREGATE_CLIENTS_URI).first
           @response_content = []
           @redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
             unless aggregate_members.empty?
@@ -115,7 +115,7 @@ module Sensu
         end
 
         def get_aggregate_checks
-          aggregate = AGGREGATE_CHECKS_URI.match(@http_request_uri)[1]
+          aggregate = parse_uri(AGGREGATE_CHECKS_URI).first
           @response_content = []
           @redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
             unless aggregate_members.empty?
@@ -139,13 +139,11 @@ module Sensu
         end
 
         def get_aggregate_results_severity
-          uri_match = AGGREGATE_RESULTS_SEVERITY_URI.match(@http_request_uri)
-          aggregate = uri_match[1]
-          severity = uri_match[2]
-          @response_content = []
+          aggregate, severity = parse_uri(AGGREGATE_RESULTS_SEVERITY_URI)
           if SEVERITIES.include?(severity)
             @redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
               unless aggregate_members.empty?
+                @response_content = []
                 summaries = Hash.new
                 max_age = integer_parameter(@params[:max_age])
                 current_timestamp = Time.now.to_i

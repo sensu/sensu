@@ -31,7 +31,7 @@ module Sensu
         end
 
         def get_events_client
-          client_name = EVENTS_CLIENT_URI.match(@http_request_uri)[1]
+          client_name = parse_uri(EVENTS_CLIENT_URI).first
           @response_content = []
           @redis.hgetall("events:#{client_name}") do |events|
             events.each do |check_name, event_json|
@@ -42,9 +42,7 @@ module Sensu
         end
 
         def get_event
-          uri_match = EVENT_URI.match(@http_request_uri)
-          client_name = uri_match[1]
-          check_name = uri_match[2]
+          client_name, check_name = parse_uri(EVENT_URI)
           @redis.hgetall("events:#{client_name}") do |events|
             event_json = events[check_name]
             unless event_json.nil?
@@ -57,9 +55,7 @@ module Sensu
         end
 
         def delete_event
-          uri_match = EVENT_URI.match(@http_request_uri)
-          client_name = uri_match[1]
-          check_name = uri_match[2]
+          client_name, check_name = parse_uri(EVENT_URI)
           @redis.hgetall("events:#{client_name}") do |events|
             if events.include?(check_name)
               resolve_event(events[check_name])
