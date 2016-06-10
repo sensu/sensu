@@ -43,9 +43,19 @@ module Sensu
         })
       end
 
-      # Parse the HTTP query string for parameters. This method
-      # creates `@params`, a hash of parsed query parameters, used by
-      # the API routes.
+      # Parse the HTTP request URI using a regular expression,
+      # returning the URI unescaped match data values.
+      #
+      # @param regex [Regexp]
+      # @return [Array] URI unescaped match data values.
+      def parse_uri(regex)
+        uri_match = regex.match(@http_request_uri)[1..-1]
+        uri_match.map { |s| URI.unescape(s) }
+      end
+
+      # Parse the HTTP request query string for parameters. This
+      # method creates `@params`, a hash of parsed query parameters,
+      # used by the API routes.
       def parse_parameters
         @params = {}
         if @http_query_string

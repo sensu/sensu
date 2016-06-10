@@ -19,7 +19,7 @@ module Sensu
         end
 
         def get_aggregate
-          aggregate = AGGREGATE_URI.match(@http_request_uri)[1]
+          aggregate = parse_uri(AGGREGATE_URI).first
           @redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
             unless aggregate_members.empty?
               @response_content = {
