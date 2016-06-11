@@ -22,24 +22,26 @@ module Sensu
         @logger.debug("api request", {
           :remote_address => @remote_address,
           :user_agent => @http[:user_agent],
-          :request_method => @http_request_method,
-          :request_uri => @http_request_uri,
-          :request_query_string => @http_query_string,
-          :request_body => @http_content
+          :method => @http_request_method,
+          :uri => @http_request_uri,
+          :query_string => @http_query_string,
+          :body => @http_content
         })
       end
 
       # Log the HTTP response.
       def log_response
         @logger.info("api response", {
-          :remote_address => @remote_address,
-          :user_agent => @http[:user_agent],
-          :request_method => @http_request_method,
-          :request_uri => @http_request_uri,
-          :request_query_string => @http_query_string,
-          :request_body => @http_content,
-          :response_status => @response.status,
-          :response_body => @response.content
+          :request => {
+            :remote_address => @remote_address,
+            :user_agent => @http[:user_agent],
+            :method => @http_request_method,
+            :uri => @http_request_uri,
+            :query_string => @http_query_string,
+            :body => @http_content
+          },
+          :status => @response.status,
+          :content_length => @response.content.to_s.bytesize
         })
       end
 
