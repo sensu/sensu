@@ -5,13 +5,15 @@ module Sensu
         CHECKS_URI = /^\/checks$/
         CHECK_URI = /^\/checks\/([\w\.-]+)$/
 
+        # GET /checks
         def get_checks
           @response_content = @settings.checks
           respond
         end
 
+        # GET /checks/:check_name
         def get_check
-          check_name = CHECK_URI.match(@http_request_uri)[1]
+          check_name = parse_uri(CHECK_URI).first
           if @settings[:checks][check_name]
             @response_content = @settings[:checks][check_name].merge(:name => check_name)
             respond

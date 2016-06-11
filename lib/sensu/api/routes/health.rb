@@ -8,6 +8,7 @@ module Sensu
 
         HEALTH_URI = /^\/health$/
 
+        # GET /health
         def get_health
           if @redis.connected? && @transport.connected?
             healthy = []
