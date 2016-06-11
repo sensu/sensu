@@ -13,33 +13,40 @@ module Sensu
 
       attr_accessor :logger, :settings, :redis, :transport
 
-      # Log the HTTP request. This method determines the remote
-      # address for the HTTP client, `@remote_address`. The debug log
-      # level is used for requests as response logging includes the
-      # same information.
-      def log_request
-        _, @remote_address = Socket.unpack_sockaddr_in(get_peername)
-        @logger.debug("api request", {
-          :remote_address => @remote_address,
+      # Create a hash containing the HTTP request details. This method
+      # determines the remote address for the HTTP client (using
+      # EventMachine Connection `get_peername()`).
+      #
+      # @result [Hash]
+      def request_details
+        return @request_details if @request_details
+        _, remote_address = Socket.unpack_sockaddr_in(get_peername)
+        @request_details = {
+          :remote_address => remote_address,
           :user_agent => @http[:user_agent],
-          :request_method => @http_request_method,
-          :request_uri => @http_request_uri,
-          :request_query_string => @http_query_string,
-          :request_body => @http_content
-        })
+          :method => @http_request_method,
+          :uri => @http_request_uri,
+          :query_string => @http_query_string,
+          :body => @http_content
+        }
+        if @http[:x_forwarded_for]
+          @request_details[:x_forwarded_for] = @http[:x_forwarded_for]
+        end
+        @request_details
+      end
+
+      # Log the HTTP request. The debug log level is used for requests
+      # as response logging includes the same information.
+      def log_request
+        @logger.debug("api request", request_details)
       end
 
       # Log the HTTP response.
       def log_response
         @logger.info("api response", {
-          :remote_address => @remote_address,
-          :user_agent => @http[:user_agent],
-          :request_method => @http_request_method,
-          :request_uri => @http_request_uri,
-          :request_query_string => @http_query_string,
-          :request_body => @http_content,
-          :response_status => @response.status,
-          :response_body => @response.content
+          :request => request_details,
+          :status => @response.status,
+          :content_length => @response.content.to_s.bytesize
         })
       end
 
