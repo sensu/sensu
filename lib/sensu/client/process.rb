@@ -131,21 +131,24 @@ module Sensu
       # the result. This method guards against multiple executions for
       # the same check. Check attribute value tokens are substituted
       # with the associated client attribute values, via
-      # `object_substitute_tokens()`. If there are unmatched check
-      # attribute value tokens, the check will not be executed,
-      # instead a check result will be published reporting the
-      # unmatched tokens.
+      # `object_substitute_tokens()`. The original check command is
+      # always published, to guard against publishing
+      # sensitive/redacted client attribute values. If there are
+      # unmatched check attribute value tokens, the check will not be
+      # executed, instead a check result will be published reporting
+      # the unmatched tokens.
       #
       # @param check [Hash]
       def execute_check_command(check)
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          check, unmatched_tokens = object_substitute_tokens(check)
+          substituted, unmatched_tokens = object_substitute_tokens(check.dup)
+          check = substituted.merge(:command => check[:command])
           if unmatched_tokens.empty?
             started = Time.now.to_f
             check[:executed] = started.to_i
-            Spawn.process(check[:command], :timeout => check[:timeout]) do |output, status|
+            Spawn.process(substituted[:command], :timeout => check[:timeout]) do |output, status|
               check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               check[:output] = output
               check[:status] = status
@@ -373,6 +376,31 @@ module Sensu
         end
       end
 
+      # Create a check result intended for deregistering a client.
+      # Client definitions may contain `:deregistration` configuration,
+      # containing custom attributes and handler information. By
+      # default, the deregistration check result sets the `:handler` to
+      # `deregistration`. If the client provides its own `:deregistration`
+      # configuration, it's deep merged with the defaults. The
+      # check `:name`, `:output`, `:status`, `:issued`, and
+      # `:executed` values are always overridden to guard against
+      # an invalid definition.
+      def deregister
+        check = {:handler => "deregistration", :interval => 1}
+        if @settings[:client].has_key?(:deregistration)
+          check = deep_merge(check, @settings[:client][:deregistration])
+        end
+        timestamp = Time.now.to_i
+        overrides = {
+          :name => "deregistration",
+          :output => "client initiated deregistration",
+          :status => 1,
+          :issued => timestamp,
+          :executed => timestamp
+        }
+        publish_check_result(check.merge(overrides))
+      end
+
       # Close the Sensu client TCP and UDP sockets. This method
       # iterates through `@sockets`, which contains socket server
       # signatures (Fixnum) and connection objects. A signature
@@ -448,10 +476,12 @@ module Sensu
       # Stop the Sensu client process, pausing it, completing check
       # executions in progress, closing the transport connection, and
       # exiting the process (exit 0). After pausing the process, the
-      # process/daemon `@state` is set to `:stopping`.
+      # process/daemon `@state` is set to `:stopping`.  Also sends
+      # deregistration check result if configured to do so.
       def stop
         @logger.warn("stopping")
         pause
+        deregister if @settings[:client][:deregister] == true
         @state = :stopping
         complete_checks_in_progress do
           close_sockets

@@ -4,7 +4,6 @@ require File.join(File.dirname(__FILE__), "lib", "sensu", "constants")
 Gem::Specification.new do |s|
   s.name        = "sensu"
   s.version     = Sensu::VERSION
-  s.platform    = RUBY_PLATFORM =~ /java/ ? Gem::Platform::JAVA : Gem::Platform::RUBY
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["portertech@gmail.com", "amdprophet@gmail.com"]
   s.homepage    = "http://sensuapp.org"
@@ -22,9 +21,7 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-transport", "6.0.0"
   s.add_dependency "sensu-spawn", "2.2.0"
   s.add_dependency "sensu-redis", "1.4.0"
-  s.add_dependency "sinatra", "1.4.6"
-  s.add_dependency "async_sinatra", "1.2.0"
-  s.add_dependency "thin", "1.6.4" unless RUBY_PLATFORM =~ /java/
+  s.add_dependency "em-http-server", "0.1.8"
 
   s.add_development_dependency "rake", "10.5.0"
   s.add_development_dependency "rspec", "~> 3.0.0"

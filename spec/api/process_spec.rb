@@ -38,10 +38,10 @@ describe "Sensu::API::Process" do
   end
 
   it "can handle integer parameters" do
-    api = Sensu::API::Process.new!
-    expect(api.integer_parameter("42")).to eq(42)
-    expect(api.integer_parameter("abc")).to eq(nil)
-    expect(api.integer_parameter("42\nabc")).to eq(nil)
+    handler = Sensu::API::HTTPHandler.new(nil)
+    expect(handler.integer_parameter("42")).to eq(42)
+    expect(handler.integer_parameter("abc")).to eq(nil)
+    expect(handler.integer_parameter("42\nabc")).to eq(nil)
   end
 
   it "can provide basic version and health information" do
@@ -224,7 +224,7 @@ describe "Sensu::API::Process" do
 
   it "can provide a specific event" do
     api_test do
-      api_request("/event/i-424242/test") do |http, body|
+      api_request("/events/i-424242/test") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
         expect(body[:client]).to be_kind_of(Hash)
@@ -243,7 +243,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent event" do
     api_test do
-      api_request("/event/i-424242/nonexistent") do |http, body|
+      api_request("/events/i-424242/nonexistent") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -263,7 +263,7 @@ describe "Sensu::API::Process" do
         end
       end
       timer(0.5) do
-        api_request("/event/i-424242/test", :delete) do |http, body|
+        api_request("/events/i-424242/test", :delete) do |http, body|
           expect(http.response_header.status).to eq(202)
           expect(body).to include(:issued)
         end
@@ -273,7 +273,7 @@ describe "Sensu::API::Process" do
 
   it "can not delete a nonexistent event" do
     api_test do
-      api_request("/event/i-424242/nonexistent", :delete) do |http, body|
+      api_request("/events/i-424242/nonexistent", :delete) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -353,7 +353,7 @@ describe "Sensu::API::Process" do
 
   it "can provide a specific client" do
     api_test do
-      api_request("/client/i-424242") do |http, body|
+      api_request("/clients/i-424242") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
         expect(body[:name]).to eq("i-424242")
@@ -367,7 +367,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent client" do
     api_test do
-      api_request("/client/nonexistent") do |http, body|
+      api_request("/clients/nonexistent") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -390,7 +390,7 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(201)
         expect(body).to be_kind_of(Hash)
         expect(body[:name]).to eq("i-888888")
-        api_request("/client/i-888888") do |http, body|
+        api_request("/clients/i-888888") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body).to be_kind_of(Hash)
           expect(body[:name]).to eq("i-888888")
@@ -418,7 +418,7 @@ describe "Sensu::API::Process" do
       }
       api_request("/clients", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
-        api_request("/client/i-888888") do |http, body|
+        api_request("/clients/i-888888") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body[:keepalives]).to be(true)
           async_done
@@ -446,7 +446,7 @@ describe "Sensu::API::Process" do
 
   it "can delete a client" do
     api_test do
-      api_request("/client/i-424242", :delete) do |http, body|
+      api_request("/clients/i-424242", :delete) do |http, body|
         expect(http.response_header.status).to eq(202)
         expect(body).to include(:issued)
         async_done
@@ -456,7 +456,7 @@ describe "Sensu::API::Process" do
 
   it "can not delete a noexistent client" do
     api_test do
-      api_request("/client/nonexistent", :delete) do |http, body|
+      api_request("/clients/nonexistent", :delete) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -466,7 +466,7 @@ describe "Sensu::API::Process" do
 
   it "can provide a specific defined check" do
     api_test do
-      api_request("/check/tokens") do |http, body|
+      api_request("/checks/tokens") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
         expect(body[:name]).to eq("tokens")
@@ -478,7 +478,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent defined check" do
     api_test do
-      api_request("/check/nonexistent") do |http, body|
+      api_request("/checks/nonexistent") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -631,6 +631,25 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(201)
         expect(body).to include(:path)
         redis.get("stash:tester") do |stash_json|
+          stash = Sensu::JSON.load(stash_json)
+          expect(stash).to eq({:key => "value"})
+          async_done
+        end
+      end
+    end
+  end
+
+  it "can create a stash with id (path) containing a uri encoded space" do
+    api_test do
+      options = {
+        :body => {
+          :key => "value"
+        }
+      }
+      api_request("/stash/foo%20bar", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        expect(body).to include(:path)
+        redis.get("stash:foo bar") do |stash_json|
           stash = Sensu::JSON.load(stash_json)
           expect(stash).to eq({:key => "value"})
           async_done
