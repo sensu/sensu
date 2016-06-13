@@ -22,13 +22,13 @@ module Sensu
         end
       end
 
-      # Start the Sensu API HTTP server. This method sets the service
-      # state to `:running`.
-      def start
-        api = @settings[:api] || {}
-        bind = api[:bind] || "0.0.0.0"
-        port = api[:port] || 4567
+      # Start the API HTTP server. This method sets `@http_server`.
+      #
+      # @param bind [String] address to listen on.
+      # @param port [Integer] to listen on.
+      def start_http_server(bind, port)
         @logger.info("api listening", {
+          :protocol => "http",
           :bind => bind,
           :port => port
         })
@@ -38,6 +38,15 @@ module Sensu
           handler.redis = @redis
           handler.transport = @transport
         end
+      end
+
+      # Start the Sensu API HTTP server. This method sets the service
+      # state to `:running`.
+      def start
+        api = @settings[:api] || {}
+        bind = api[:bind] || "0.0.0.0"
+        port = api[:port] || 4567
+        start_http_server(bind, port)
         super
       end
 
