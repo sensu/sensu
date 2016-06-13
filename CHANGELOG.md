@@ -1,8 +1,34 @@
+## 0.25.0 - 2016-06-13
+
+### Important
+
+Sensu API legacy singular resources, e.g. `/check/:check_name`, have been
+removed. Singular resources were never documented and have not been used
+by most community tooling, e.g. Uchiwa, since the early Sensu releases.
+
+### Fixes
+
+Fixed a critical bug in Sensu client `execute_check_command()` where a
+check result would contain a check command with client tokens substituted,
+potentially exposing sensitive/redacted client attribute values.
+
+### Features
+
+The Sensu API has been rewritten to use EM HTTP Server, removing Rack and
+Thin as API runtime dependencies. The API no longer uses Rack async,
+making for cleaner HTTP request logic and much improved HTTP request and
+response logging.
+
+Sensu client auto de-registration on sensu-client process stop is now
+supported by the Sensu client itself, no longer depending on the package
+init script. The package init script de-registration functionality still
+remains, but is considered to be deprecated at this time.
+
 ## 0.24.1 - 2016-06-07
 
 ### Fixes
 
-Fixed a critical bug in Sensu server resume() which caused the server to
+Fixed a critical bug in Sensu server `resume()` which caused the server to
 crash when querying the state of the Sensu Transport connection before it
 had been initialized. [#1321](https://github.com/sensu/sensu/pull/1321)
 
