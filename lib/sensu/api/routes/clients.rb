@@ -1,3 +1,4 @@
+require "sensu/api/validators/client"
 require "sensu/api/utilities/resolve_event"
 
 module Sensu
