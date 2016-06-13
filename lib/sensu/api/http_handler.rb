@@ -1,4 +1,3 @@
-require "sensu/api/validators"
 require "sensu/api/routes"
 
 gem "em-http-server", "0.1.8"

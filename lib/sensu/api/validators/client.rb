@@ -1,12 +1,10 @@
+require "sensu/api/validators/invalid"
 require "sensu/settings/rules"
 require "sensu/settings/validators/client"
 
 module Sensu
   module API
     module Validators
-      # The error class for validation.
-      class Invalid < RuntimeError; end
-
       class Client
         # Include Sensu Settings rules and client validator.
         include Sensu::Settings::Rules

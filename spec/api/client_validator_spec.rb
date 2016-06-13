@@ -1,4 +1,4 @@
-require "sensu/api/validators"
+require "sensu/api/validators/client"
 
 describe "Sensu::API::Process" do
   it "can validate a client definition" do
