@@ -141,11 +141,12 @@ module Sensu
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          check, unmatched_tokens = object_substitute_tokens(check)
+          substituted, unmatched_tokens = object_substitute_tokens(check)
+          check = substituted.merge(:command => check[:command])
           if unmatched_tokens.empty?
             started = Time.now.to_f
             check[:executed] = started.to_i
-            Spawn.process(check[:command], :timeout => check[:timeout]) do |output, status|
+            Spawn.process(substituted[:command], :timeout => check[:timeout]) do |output, status|
               check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               check[:output] = output
               check[:status] = status

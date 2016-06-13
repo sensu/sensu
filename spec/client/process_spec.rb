@@ -133,19 +133,20 @@ describe "Sensu::Client::Process" do
 
   it "can substitute tokens in a command with client attribute values, default values, and execute it" do
     async_wrapper do
+      check = check_template
+      command = "echo :::nested.attribute|default::: :::missing|default:::"
+      command << " :::missing|::: :::nested.attribute:::::::nested.attribute:::"
+      command << " :::empty|localhost::: :::empty.hash|localhost:8080:::"
+      check[:command] = command
       result_queue do |payload|
         result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
+        expect(result[:check][:command]).to eq(check[:command])
         expect(result[:check][:output]).to eq("true default true:true localhost localhost:8080\n")
         async_done
       end
       timer(0.5) do
         @client.setup_transport do
-          check = check_template
-          command = "echo :::nested.attribute|default::: :::missing|default:::"
-          command << " :::missing|::: :::nested.attribute:::::::nested.attribute:::"
-          command << " :::empty|localhost::: :::empty.hash|localhost:8080:::"
-          check[:command] = command
           @client.execute_check_command(check)
         end
       end
