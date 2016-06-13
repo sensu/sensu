@@ -131,17 +131,19 @@ module Sensu
       # the result. This method guards against multiple executions for
       # the same check. Check attribute value tokens are substituted
       # with the associated client attribute values, via
-      # `object_substitute_tokens()`. If there are unmatched check
-      # attribute value tokens, the check will not be executed,
-      # instead a check result will be published reporting the
-      # unmatched tokens.
+      # `object_substitute_tokens()`. The original check command is
+      # always published, to guard against publishing
+      # sensitive/redacted client attribute values. If there are
+      # unmatched check attribute value tokens, the check will not be
+      # executed, instead a check result will be published reporting
+      # the unmatched tokens.
       #
       # @param check [Hash]
       def execute_check_command(check)
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          substituted, unmatched_tokens = object_substitute_tokens(check)
+          substituted, unmatched_tokens = object_substitute_tokens(check.dup)
           check = substituted.merge(:command => check[:command])
           if unmatched_tokens.empty?
             started = Time.now.to_f
