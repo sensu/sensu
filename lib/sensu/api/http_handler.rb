@@ -176,6 +176,7 @@ module Sensu
           @response.content_type "application/json"
           @response.content = Sensu::JSON.dump(@response_content)
         end
+        @response.headers["Connection"] = "close"
         log_response
         @response.send_response
       end
