@@ -1,3 +1,11 @@
+## 0.25.1 - 2016-06-14
+
+### Fixes
+
+The Sensu API now sets the HTTP response header "Connection" to "close".
+Uchiwa was experiencing intermittent EOF errors.
+[#1340](https://github.com/sensu/sensu/issues/1340)
+
 ## 0.25.0 - 2016-06-13
 
 ### Important
