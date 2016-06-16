@@ -1,3 +1,12 @@
+## 0.25.2 - 2016-06-16
+
+### Fixes
+
+The Sensu API now responds to HEAD requests for GET routes.
+
+The Sensu API now responds to unsupported HTTP request methods with a 404
+(Not Found), i.e. PUT.
+
 ## 0.25.1 - 2016-06-14
 
 ### Fixes
