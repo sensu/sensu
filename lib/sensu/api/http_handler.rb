@@ -172,7 +172,7 @@ module Sensu
       def respond
         @response.status = @response_status || 200
         @response.status_string = @response_status_string || "OK"
-        if @response_content
+        if @response_content && @http_request_method != HEAD_METHOD
           @response.content_type "application/json"
           @response.content = Sensu::JSON.dump(@response_content)
         end
@@ -305,7 +305,7 @@ module Sensu
       def route_request
         if @http_request_method == OPTIONS_METHOD
           respond
-        else
+        elsif ROUTES.has_key?(@http_request_method)
           route = ROUTES[@http_request_method].detect do |route|
             @http_request_uri =~ route[0]
           end
@@ -314,6 +314,8 @@ module Sensu
           else
             not_found!
           end
+        else
+          not_found!
         end
       end
 
