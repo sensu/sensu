@@ -685,6 +685,16 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can indicate if a stash exists" do
+    api_test do
+      api_request("/stash/test/test", :head) do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
   it "can not provide a nonexistent stash" do
     api_test do
       api_request("/stash/nonexistent") do |http, body|
