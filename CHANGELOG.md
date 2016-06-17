@@ -1,3 +1,10 @@
+## 0.25.3 - 2016-06-17
+
+### Fixes
+
+Fixed a bug in the Sensu API where it was unable to set the CORS HTTP
+headers when the API had not been configured (no `"api": {}` definition).
+
 ## 0.25.2 - 2016-06-16
 
 ### Fixes
