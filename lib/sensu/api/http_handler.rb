@@ -122,7 +122,7 @@ module Sensu
 
       # Set the cors (Cross-origin resource sharing) HTTP headers.
       def set_cors_headers
-        api = @settings[:api]
+        api = @settings[:api] || {}
         api[:cors] ||= {
           "Origin" => "*",
           "Methods" => "GET, POST, PUT, DELETE, OPTIONS",
