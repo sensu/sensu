@@ -1,3 +1,10 @@
+## 0.25.4 - 2016-06-20
+
+### Fixes
+
+Fixed a race condition bug in the Sensu API where the `@redis` and
+`@transport` objects were not initialized before serving API requests.
+
 ## 0.25.3 - 2016-06-17
 
 ### Fixes
