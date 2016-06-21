@@ -26,9 +26,7 @@ module Sensu
       #   transport connections have been established.
       def setup_connections
         setup_redis do |redis|
-          @redis = redis
           setup_transport do |transport|
-            @transport = transport
             yield if block_given?
           end
         end
@@ -55,13 +53,14 @@ module Sensu
       # Start the Sensu API HTTP server. This method sets the service
       # state to `:running`.
       def start
+        api = @settings[:api] || {}
+        bind = api[:bind] || "0.0.0.0"
+        port = api[:port] || 4567
         setup_connections do
-          api = @settings[:api] || {}
-          bind = api[:bind] || "0.0.0.0"
-          port = api[:port] || 4567
           start_http_server(bind, port)
-          super
+          yield if block_given?
         end
+        super
       end
 
       # Stop the Sensu API process. This method stops the HTTP server,
@@ -81,11 +80,8 @@ module Sensu
       # @param options [Hash]
       def self.test(options={})
         api = self.new(options)
-        api.setup_redis do
-          api.setup_transport do
-            api.start
-            yield
-          end
+        api.start do
+          yield
         end
       end
     end
