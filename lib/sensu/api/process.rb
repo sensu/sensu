@@ -15,10 +15,20 @@ module Sensu
       def self.run(options={})
         api = self.new(options)
         EM::run do
-          api.setup_redis
-          api.setup_transport
           api.start
           api.setup_signal_traps
+        end
+      end
+
+      # Setup connections to redis and transport
+      #
+      # @yield [Object] a callback/block to be called after redis and
+      #   transport connections have been established.
+      def setup_connections
+        setup_redis do |redis|
+          setup_transport do |transport|
+            yield if block_given?
+          end
         end
       end
 
@@ -46,7 +56,10 @@ module Sensu
         api = @settings[:api] || {}
         bind = api[:bind] || "0.0.0.0"
         port = api[:port] || 4567
-        start_http_server(bind, port)
+        setup_connections do
+          start_http_server(bind, port)
+          yield if block_given?
+        end
         super
       end
 
@@ -67,11 +80,8 @@ module Sensu
       # @param options [Hash]
       def self.test(options={})
         api = self.new(options)
-        api.setup_redis do
-          api.setup_transport do
-            api.start
-            yield
-          end
+        api.start do
+          yield
         end
       end
     end
