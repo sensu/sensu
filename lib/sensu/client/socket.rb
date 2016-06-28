@@ -1,4 +1,11 @@
 require "sensu/json"
+$HTTP_PARSER_AVAILABLE = true
+begin
+  require "json"
+  require "http-parser"
+rescue LoadError
+  $HTTP_PARSER_AVAILABLE = false
+end
 
 module Sensu
   module Client
@@ -78,9 +85,77 @@ module Sensu
       def post_init
         @protocol ||= :tcp
         @data_buffer = ""
+        @data_chunks = 0
         @parse_error = nil
         @watchdog = nil
         @mode = MODE_ACCEPT
+        @http_parser = nil
+        @http_req = nil
+        @http_req_done = false
+        @http_url = ""
+        @http_headers = {}
+        @http_body = ""
+      end
+
+      # Initialize the http parser
+      #
+      # @param [HttpParser::Parser] The parser to initialize
+      def http_init_parser(parser)
+        current_header = ""
+        parsing_header = false
+
+        parser.on_message_begin do |inst|
+          @logger.debug("HTTP request started")
+        end
+
+        parser.on_message_complete do |inst|
+          @logger.debug("HTTP request completed")
+          @http_req_done = true
+        end
+
+        parser.on_headers_complete do |inst|
+          @logger.debug("HTTP headers done")
+          if not @http_headers.key?("CONTENT-LENGTH")
+            @logger.warn("No content-length specified in HTTP request")
+            @logger.warn("HTTP headers: ", @http_headers)
+          end
+        end
+
+        parser.on_url do |inst, data|
+          @logger.debug("HTTP URL chunk parsed: #{data}")
+          @http_url << data
+        end
+
+        parser.on_header_field do |inst, data|
+          @logger.debug("HTTP Header name chunk parsed: #{data}")
+          if not parsing_header
+            parsing_header = true
+            current_header = data
+          else
+            current_header << data
+          end
+        end
+
+        parser.on_header_value do |inst, data|
+          @logger.debug("HTTP Header #{current_header} value chunk parsed: #{data}")
+          if parsing_header
+            parsing_header = false
+            @http_headers[current_header.upcase] = data
+            current_header = data
+          else
+            @http_headers[current_header.upcase] << data
+          end
+        end
+
+        parser.on_body do |inst, data|
+          @logger.debug("HTTP Body chunk parsed: #{data}")
+          @http_body << data
+          @logger.debug("HTTP Body length is #{@http_body.length}, content-length is #{@http_headers['CONTENT-LENGTH']}")
+          if @http_body.length == @http_headers["CONTENT-LENGTH"].to_i
+            @logger.debug("Done receiving HTTP body of length #{@http_headers['CONTENT-LENGTH']}")
+            @http_req_done = true
+          end
+        end
       end
 
       # Send a response to the sender, close the
@@ -89,6 +164,7 @@ module Sensu
       # @param [String] data to send as a response.
       def respond(data)
         if @protocol == :tcp
+          @logger.debug("Responding to request", :data => data)
           send_data(data)
           close_connection_after_writing
         end
@@ -111,7 +187,11 @@ module Sensu
             :data => @data_buffer,
             :parse_error => @parse_error
           })
-          respond("invalid")
+          if @http_parser
+            http_respond("Timed out", 408, "Timed out waiting for all the request")
+          else
+            respond("invalid")
+          end
         end
       end
 
@@ -170,7 +250,11 @@ module Sensu
         check[:executed] ||= Time.now.to_i
         validate_check_result(check)
         publish_check_result(check)
-        respond("ok")
+        if @http_parser
+          http_respond("ok", 200, "Check Accepted")
+        else
+          respond("ok")
+        end
       end
 
       # Parse a JSON check result. For UDP, immediately raise a parser
@@ -184,7 +268,9 @@ module Sensu
           cancel_watchdog
           process_check_result(check)
         rescue Sensu::JSON::ParseError, ArgumentError => error
-          if @protocol == :tcp
+          # HTTP data is delivered is parsed only once, if it's invalid
+          # no point in waiting for more
+          if @protocol == :tcp and not @http_parser
             @parse_error = error.to_s
           else
             raise error
@@ -192,24 +278,109 @@ module Sensu
         end
       end
 
-      # Process the data received. This method validates the data
-      # encoding, provides ping/pong functionality, and passes potential
-      # check results on for further processing.
+      # Send an HTTP response
       #
-      # @param [String] data to be processed.
-      def process_data(data)
-        if data.strip == PING_REQUEST
-          @logger.debug("socket received ping")
-          respond("pong")
+      # @param [String] response string to include in the json reply
+      # @param [Int] code to use in the HTTP response
+      # @param [String] message to use in the HTTP response
+      def http_respond(response, code, message)
+        response_data = {
+          :response => response
+        }.to_json
+        http_response = [
+          "HTTP/1.1 #{code} #{message}",
+          "Content-Type: application/json",
+          "Content-Length: #{response_data.length}",
+          "Connection: close\r\n",
+          response_data
+        ].join("\r\n")
+        respond(http_response)
+      end
+
+      # Route http request to the proper handler
+      # If request urls actually grow we can put a nice
+      # hash-based lookup here to call the proper handler
+      # instead of hard-coding the handlers
+      #
+      # @param [String] url requested
+      # @param [String] headers
+      # @param [String] body
+      def route_http_req(url, headers, body)
+        if url == '/ping'
+          @logger.debug("http received ping")
+          http_respond("pong", 200, "Pong!")
+        elsif url == '/check'
+          if headers['CONTENT-TYPE'].include? 'json'
+            begin
+              parse_check_result(body)
+            rescue => error
+              @logger.error("failed to process check result from http payload", {
+                :data => body,
+                :error => error.to_s
+              })
+              http_respond("Invalid or incomplete json check data", 400, "Bad Check Data")
+            end
+          else
+            @logger.warn("HTTP request does not include json content type")
+            http_respond("Content-type must be application/json", 415, "Unsupported Media Type")
+          end
         else
-          @logger.debug("socket received data", :data => data)
+            http_respond("Invalid URL provided", 404, "Not Found")
+        end
+      end
+
+      # Process http data chunk
+      # If the http request is finished it will process the request
+      # according to the requested url and payload
+      #
+      # @param [String] data chunk to be processed.
+      def process_http_data(data)
+        @logger.debug("HTTP chunk received", {:http_parser => @http_parser, :data => data})
+        if not $HTTP_PARSER_AVAILABLE
+          http_respond("No http parser available", 501, "Not Implemented")
+        else
+          if not @http_parser
+            # Initialize the parser and request objects
+            @http_parser = HttpParser::Parser.new(&method(:http_init_parser))
+            @http_req = HttpParser::Parser.new_instance do |inst|
+              inst.type = :request
+            end
+          end
+          # Parse this chunk of data
+          @http_parser.parse(@http_req, data)
+          # If the request is done, route it
+          if @http_req_done
+            route_http_req(@http_url, @http_headers, @http_body)
+          end
+        end
+      end
+
+      # Process the data received.
+      # This method determines the type of request (raw or http)
+      # and processes it accordingly.
+      #
+      # @param [String] data chunk to be processed.
+      # @param [String] buffer of collected data so far for this connection
+      def process_data(data, data_buffer)
+        @logger.debug("Processing data chunk number #{@data_chunks}: ", {:data => data})
+        # Determine if this is an http request or a raw udp/tcp request
+        # we assume the only raw-request supported other than json check data
+        # are 'ping' requests.
+        if @data_chunks == 1 and data.strip == PING_REQUEST
+          @logger.debug("socket received raw ping")
+          respond("pong")
+        elsif @http_parser or (@data_chunks == 1 and data.strip[0] != '{')
+          process_http_data(data)
+        else
+          # Not a raw ping, not an http request, better be valid json!
           unless valid_utf8?(data)
             @logger.warn("data from socket is not a valid UTF-8 sequence, processing it anyways", :data => data)
           end
+          @logger.debug("Processing raw check data", {:data => data_buffer})
           begin
-            parse_check_result(data)
+            parse_check_result(data_buffer)
           rescue => error
-            @logger.error("failed to process check result from socket", {
+            @logger.error("failed to process raw check result from socket", {
               :data => data,
               :error => error.to_s
             })
@@ -240,15 +411,16 @@ module Sensu
       # @param [String] data received from the sender.
       def receive_data(data)
         unless @mode == MODE_REJECT
+          @data_chunks += 1
+          @data_buffer << data
           case @protocol
           when :udp
-            process_data(data)
+            process_data(data, @data_buffer)
           when :tcp
             if EM::reactor_running?
               reset_watchdog
             end
-            @data_buffer << data
-            process_data(@data_buffer)
+            process_data(data, @data_buffer)
           end
         end
       end
