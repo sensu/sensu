@@ -301,9 +301,12 @@ module Sensu
       # @param [Int] code to use in the HTTP response
       # @param [String] message to use in the HTTP response
       def http_respond(response, code, message)
-        response_data = {
-          :response => response
-        }.to_json
+        response_data = case response
+                          when Hash then response.to_json
+                          when String then {
+                            :response => response
+                          }.to_json
+                        end
         http_response = [
           "HTTP/1.1 #{code} #{message}",
           "Content-Type: application/json",
@@ -326,6 +329,9 @@ module Sensu
         if url == '/ping'
           @logger.debug("http received ping")
           http_respond("pong", 200, "Pong!")
+        elsif url == '/settings'
+          @logger.debug("settings request", @settings.to_hash)
+          http_respond(@settings.to_hash, 200, "OK")
         elsif url == '/check'
           if headers['CONTENT-TYPE'].include? 'json'
             begin
