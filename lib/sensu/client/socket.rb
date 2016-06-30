@@ -251,6 +251,7 @@ module Sensu
               :payload => payload,
               :error => info[:error].to_s
             })
+            raise IOError, info[:error].to_s
           end
         end
       end
@@ -329,12 +330,24 @@ module Sensu
           if headers['CONTENT-TYPE'].include? 'json'
             begin
               parse_check_result(body)
-            rescue => error
-              @logger.error("failed to process check result from http payload", {
+            rescue Sensu::JSON::ParseError, ArgumentError => error
+              @logger.error("failed to parse check result", {
                 :data => body,
                 :error => error.to_s
               })
-              http_respond("Invalid or incomplete json check data", 400, "Bad Check Data")
+              http_respond("Error parsing check result: #{error.to_s}", 400, "Bad Request")
+            rescue IOError => error
+              @logger.error("failed to process check result", {
+                :data => body,
+                :error => error.to_s
+              })
+              http_respond("IO error processing check result: #{error.to_s}", 504, "Transport Disconnected")
+            rescue => error
+              @logger.error("Failed to process check result from http payload", {
+                :data => body,
+                :error => error.to_s
+              })
+              http_respond("Error when processing check: #{error.to_s}", 500, "Internal Server Error")
             end
           else
             @logger.warn("HTTP request does not include json content type")
