@@ -53,6 +53,22 @@ module Sensu
     # +WATCHDOG_DELAY+ (default is 500 msec) since the most recent chunk
     # of data was received, the agent will give up on the sender, and
     # instead respond +"invalid"+ and close the connection.
+    #
+    # == HTTP Protocol ==
+    #
+    # This is naturally implemented on top of the TCP protocol and
+    # requires sending an appropiate HTTP request. All requests
+    # will be responded with an appropiate HTTP response code and
+    # json body with a 'response' member typically set to 'ok' but
+    # that depends on the URL requested and whether the operation
+    # requested was successful or not.
+    # The following urls are available:
+    # /ping
+    #   This endpoint will simply return a 200 OK with a pong response
+    # /check
+    #   This endpoint must receive an application/json body with the
+    #   check information.
+    # Requesting an invalid URL returns 404, as it should be expected.
     class Socket < EM::Connection
       class DataError < StandardError; end
 
