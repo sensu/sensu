@@ -641,22 +641,19 @@ module Sensu
       end
 
       # Publish a check request to the Transport. A check request is
-      # composed of a check `:name`, an `:issued` timestamp, a check
-      # `:command` if available, and a check `:extension if available.
-      # The check request is published to a Transport pipe, for each
-      # of the check `:subscribers` in its definition, eg. "webserver".
-      # JSON serialization is used when publishing the check request
+      # composed of a check definition (minus `:subscribers` and
+      # `:interval`) and an `:issued` timestamp. The check request is
+      # published to a Transport pipe, for each of the check
+      # `:subscribers` in its definition, eg. "webserver". JSON
+      # serialization is used when publishing the check request
       # payload to the Transport pipes. Transport errors are logged.
       #
       # @param check [Hash] definition.
       def publish_check_request(check)
-        payload = {
-          :name => check[:name],
-          :issued => Time.now.to_i
-        }
-        payload[:command] = check[:command] if check.has_key?(:command)
-        payload[:source] = check[:source] if check.has_key?(:source)
-        payload[:extension] = check[:extension] if check.has_key?(:extension)
+        payload = check.reject do |key, value|
+          [:subscribers, :interval].include?(key)
+        end
+        payload[:issued] = Time.now.to_i
         @logger.info("publishing check request", {
           :payload => payload,
           :subscribers => check[:subscribers]
