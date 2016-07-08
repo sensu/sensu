@@ -243,7 +243,7 @@ module Sensu
     def setup_transport
       transport_name = @settings[:transport][:name]
       transport_settings = @settings[transport_name]
-      transport_settings[:mode] = @mode 
+      transport_settings[:mode] = @mode unless @mode.nil? 
       @logger.debug("connecting to transport", {
         :name => transport_name,
         :settings => transport_settings
