@@ -32,6 +32,7 @@ module Sensu
         @standalone_mode = @settings[:client][:standalone_mode] || false
         @checks_in_progress = []
         @sockets = []
+        @mode = 'client' 
       end
 
       # Create a Sensu client keepalive payload, to be sent over the
