@@ -1,3 +1,16 @@
+## 0.25.5 - 2016-07-12
+
+### Fixes
+
+Reverted the Sensu API race condition fix, it was a red herring. Desired
+behaviour has been restored.
+
+Custom check definition attributes are now included in check request
+payloads, fixing check attribute token substitution for pubsub checks.
+
+Transport connectivity issues are now handled while querying the Transport
+for pipe stats for API `/info` and `/health`.
+
 ## 0.25.4 - 2016-06-20
 
 ### Fixes
