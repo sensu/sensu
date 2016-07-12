@@ -17,13 +17,18 @@ module Sensu
               :messages => nil,
               :consumers => nil
             },
-            :connected => @transport.connected?
+            :connected => false
           }
           if @transport.connected?
             @transport.stats("keepalives") do |stats|
               info[:keepalives] = stats
-              @transport.stats("results") do |stats|
-                info[:results] = stats
+              if @transport.connected?
+                @transport.stats("results") do |stats|
+                  info[:results] = stats
+                  info[:connected] = @transport.connected?
+                  yield(info)
+                end
+              else
                 yield(info)
               end
             end
