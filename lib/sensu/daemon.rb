@@ -37,16 +37,18 @@ module Sensu
     attr_reader :start_time
 
     # Initialize the Sensu process. Set the start time, initial
-    # service state, set up the logger, and load settings. This method
-    # will load extensions and setup Sensu Spawn if the Sensu process
-    # is not the Sensu API. This method can and optionally daemonize
-    # the process and/or create a PID file.
+    # service state, double the maximum number of EventMachine timers,
+    # set up the logger, and load settings. This method will load
+    # extensions and setup Sensu Spawn if the Sensu process is not the
+    # Sensu API. This method can and optionally daemonize the process
+    # and/or create a PID file.
     #
     # @param options [Hash]
     def initialize(options={})
       @start_time = Time.now.to_i
       @state = :initializing
       @timers = {:run => []}
+      EM::set_max_timers(200000)
       setup_logger(options)
       load_settings(options)
       unless sensu_service_name == "api"
