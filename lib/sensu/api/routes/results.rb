@@ -46,7 +46,9 @@ module Sensu
                       end
                     end
                   elsif client_index == clients.length - 1
-                    respond
+                    @redis.ping do
+                      respond
+                    end
                   end
                 end
               end
