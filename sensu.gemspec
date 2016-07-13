@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-extensions", "1.5.0"
   s.add_dependency "sensu-transport", "6.0.0"
   s.add_dependency "sensu-spawn", "2.2.0"
-  s.add_dependency "sensu-redis", "1.4.0"
+  s.add_dependency "sensu-redis", "1.5.0"
   s.add_dependency "em-http-server", "0.1.8"
 
   s.add_development_dependency "rake", "10.5.0"
