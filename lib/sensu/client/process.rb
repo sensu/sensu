@@ -303,15 +303,17 @@ module Sensu
       # @param checks [Array] of definitions.
       def schedule_checks(checks)
         checks.each do |check|
-          execute_check = Proc.new do
-            check[:issued] = Time.now.to_i
-            process_check_request(check.dup)
-          end
-          execution_splay = testing? ? 0 : calculate_execution_splay(check)
-          interval = testing? ? 0.5 : check[:interval]
-          @timers[:run] << EM::Timer.new(execution_splay) do
-            execute_check.call
-            @timers[:run] << EM::PeriodicTimer.new(interval, &execute_check)
+          if check.key?('interval')
+            execute_check = Proc.new do
+              check[:issued] = Time.now.to_i
+              process_check_request(check.dup)
+            end
+            execution_splay = testing? ? 0 : calculate_execution_splay(check)
+            interval = testing? ? 0.5 : check[:interval]
+            @timers[:run] << EM::Timer.new(execution_splay) do
+              execute_check.call
+              @timers[:run] << EM::PeriodicTimer.new(interval, &execute_check)
+            end
           end
         end
       end
