@@ -296,7 +296,6 @@ module Sensu
       def aggregate_check_result(client, check)
         check_aggregate = (check[:aggregate].is_a?(String) ? check[:aggregate] : check[:name])
         aggregate_list = Array(check[:aggregates] || check_aggregate)
-
         aggregate_list.each do |aggregate|
           @logger.debug("adding check result to aggregate", {
             :aggregate => aggregate,
