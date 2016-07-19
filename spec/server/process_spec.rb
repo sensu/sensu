@@ -159,6 +159,31 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can aggregate check results across multiple named aggregates" do
+    async_wrapper do
+      @server.setup_redis do
+        aggregates = ["foo", "bar", "baz", "qux"]
+        redis.flushdb do
+          client = client_template
+          client[:name] = "aggro"
+          check = check_template
+          check[:aggregates] = aggregates
+          @server.aggregate_check_result(client, check)
+        end
+        aggregates.each do |aggregate|
+          timer(2) do
+            redis.sismember("aggregates", aggregate) do |exists|
+              expect(exists).to be(true)
+            end
+            redis.smembers("aggregates:#{aggregate}") do |aggregate_members|
+              expect(aggregate_members).to include("aggro:test")
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can process results with flap detection" do
     async_wrapper do
       @server.setup_redis do
