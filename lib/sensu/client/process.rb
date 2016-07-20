@@ -318,16 +318,16 @@ module Sensu
 
       # Setup standalone check executions, scheduling standard check
       # definition and check extension executions. Check definitions
-      # and extensions with `:standalone` set to `true` and have an
-      # `:interval` will be scheduled by the Sensu client for
-      # execution.
+      # and extensions with `:standalone` set to `true`, have a
+      # integer `:interval`, and do not have `:publish` set to `false`
+      # will be scheduled by the Sensu client for execution.
       def setup_standalone
         @logger.debug("scheduling standalone checks")
         standard_checks = @settings.checks.select do |check|
-          check[:standalone] && check[:interval].is_a?(Integer)
+          check[:standalone] && check[:interval].is_a?(Integer) && check[:publish] != false
         end
         extension_checks = @extensions.checks.select do |check|
-          check[:standalone] && check[:interval].is_a?(Integer)
+          check[:standalone] && check[:interval].is_a?(Integer) && check[:publish] != false
         end
         schedule_checks(standard_checks + extension_checks)
       end
