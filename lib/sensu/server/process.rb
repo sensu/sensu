@@ -275,26 +275,37 @@ module Sensu
         end
       end
 
-      # Add a check result to an aggregate. The aggregate name is
-      # determined by the value of check `:aggregate`. If check
-      # `:aggregate` is `true` (legacy), the check `:name` is used as
-      # the aggregate name. If check `:aggregate` is a string, it is
-      # used as the aggregate name. This method will add the client
-      # name to the aggregate, all other processing (e.g. counters) is
-      # done by the Sensu API on request.
+      # Add a check result to one or more aggregates. The aggregate name is
+      # determined by the value of check `:aggregates` array, if present,
+      # and falling back to `:aggregate` otherwise.
+      #
+      # When one or more aggregates are specified as `:aggregates`, the
+      # client name and check are updated on each aggregate.
+      #
+      # When no aggregates are specified as `:aggregates`, and `:aggregate`
+      # is `true` (legacy), the check `:name` is used as the aggregate name.
+      #
+      # When no aggregates are specified as `:aggregates` and check `:aggregate`
+      # is a string, it used as the aggregate name.
+      #
+      # This method will add the client name to configured aggregates, all
+      # other processing (e.g. counters) is done by the Sensu API on request.
       #
       # @param client [Hash]
       # @param check [Hash]
       def aggregate_check_result(client, check)
-        aggregate = (check[:aggregate].is_a?(String) ? check[:aggregate] : check[:name])
-        @logger.debug("adding check result to aggregate", {
-          :aggregate => aggregate,
-          :client => client,
-          :check => check
-        })
-        aggregate_member = "#{client[:name]}:#{check[:name]}"
-        @redis.sadd("aggregates:#{aggregate}", aggregate_member) do
-          @redis.sadd("aggregates", aggregate)
+        check_aggregate = (check[:aggregate].is_a?(String) ? check[:aggregate] : check[:name])
+        aggregate_list = Array(check[:aggregates] || check_aggregate)
+        aggregate_list.each do |aggregate|
+          @logger.debug("adding check result to aggregate", {
+            :aggregate => aggregate,
+            :client => client,
+            :check => check
+          })
+          aggregate_member = "#{client[:name]}:#{check[:name]}"
+          @redis.sadd("aggregates:#{aggregate}", aggregate_member) do
+            @redis.sadd("aggregates", aggregate)
+          end
         end
       end
 
@@ -579,7 +590,7 @@ module Sensu
           end
           check[:type] ||= STANDARD_CHECK_TYPE
           check[:origin] = result[:client] if check[:source]
-          aggregate_check_result(client, check) if check[:aggregate]
+          aggregate_check_result(client, check) if check[:aggregates] || check[:aggregate]
           store_check_result(client, check) do
             create_event(client, check) do |event|
               event_bridges(event)
