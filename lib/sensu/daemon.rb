@@ -48,7 +48,7 @@ module Sensu
       @start_time = Time.now.to_i
       @state = :initializing
       @timers = {:run => []}
-      EM::set_max_timers(200000)
+      EM::set_max_timers(200000) unless EM::reactor_running?
       setup_logger(options)
       load_settings(options)
       unless sensu_service_name == "api"
