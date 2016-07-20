@@ -590,7 +590,7 @@ module Sensu
           end
           check[:type] ||= STANDARD_CHECK_TYPE
           check[:origin] = result[:client] if check[:source]
-          aggregate_check_result(client, check) if check[:aggregate]
+          aggregate_check_result(client, check) if check[:aggregates] || check[:aggregate]
           store_check_result(client, check) do
             create_event(client, check) do |event|
               event_bridges(event)
