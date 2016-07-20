@@ -161,7 +161,6 @@ describe "Sensu::Server::Process" do
 
   it "can aggregate check results across multiple named aggregates" do
     async_wrapper do
-
       aggregates = ["foo", "bar"]
       redis.flushdb do
         client = client_template
