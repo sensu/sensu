@@ -652,6 +652,8 @@ module Sensu
       def publish_check_request(check)
         payload = {
           :name => check[:name],
+          :interval => check[:interval],
+          :type => check[:type],
           :issued => Time.now.to_i
         }
         payload[:command] = check[:command] if check.has_key?(:command)

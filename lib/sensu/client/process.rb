@@ -1,5 +1,6 @@
 require "sensu/daemon"
 require "sensu/client/socket"
+require "sensu/client/store"
 
 module Sensu
   module Client
@@ -30,6 +31,18 @@ module Sensu
         @safe_mode = @settings[:client][:safe_mode] || false
         @checks_in_progress = []
         @sockets = []
+
+        # For metric caching support
+        # TODO: Cache limit?
+        @metrics_cache = @settings[:client][:metrics_cache] || false
+        # TODO: Persist this to disk so it can survive restarts or a client crash?
+        # FIXME: If a check is discovered here but fails to be scheduled
+        # by the server once, we should remove it from this hash as it
+        # is likely removed from our check list in the server
+        @metrics_checks_cache = {}
+        @metrics_cache_store = nil
+        @metrics_sync_timer = nil
+        @ack_count_on_keepalive = -1
       end
 
       # Create a Sensu client keepalive payload, to be sent over the
@@ -49,14 +62,25 @@ module Sensu
       # Publish a Sensu client keepalive to the transport for
       # processing. JSON serialization is used for transport messages.
       def publish_keepalive
-        payload = keepalive_payload
-        @logger.debug("publishing keepalive", :payload => payload)
-        @transport.publish(:direct, "keepalives", Sensu::JSON.dump(payload)) do |info|
-          if info[:error]
-            @logger.error("failed to publish keepalive", {
-              :payload => payload,
-              :error => info[:error].to_s
-            })
+        @logger.debug("Publish count: #{@transport.publish_count} Ack count: #{@transport.ack_count}")
+        curr_ack_count = @transport.ack_count
+        # transports that do not support ack count return -1 always
+        # and we also set our initial counter to -1 to not trigger this
+        # connection broken detection logic until the second keepalive
+        if @ack_count_on_keepalive > -1 and @ack_count_on_keepalive == curr_ack_count
+          @logger.error("Connection broken, publish count: #{@transport.publish_count}, ack count: #{curr_ack_count}")
+          @transport.reconnect(true)
+        else
+          @ack_count_on_keepalive = curr_ack_count
+          payload = keepalive_payload
+          @logger.debug("publishing keepalive", :payload => payload)
+          @transport.publish(:direct, "keepalives", Sensu::JSON.dump(payload)) do |info|
+            if info[:error]
+              @logger.error("failed to publish keepalive", {
+                :payload => payload,
+                :error => info[:error].to_s
+              })
+            end
           end
         end
       end
@@ -70,6 +94,18 @@ module Sensu
         publish_keepalive
         @timers[:run] << EM::PeriodicTimer.new(20) do
           publish_keepalive
+        end
+      end
+
+      def publish_raw_check_result(payload)
+        @logger.info("publishing check result", :payload => payload)
+        @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
+          if info[:error]
+            @logger.error("failed to publish check result", {
+              :payload => payload,
+              :error => info[:error].to_s
+            })
+          end
         end
       end
 
@@ -88,14 +124,15 @@ module Sensu
           :check => check
         }
         payload[:signature] = @settings[:client][:signature] if @settings[:client][:signature]
-        @logger.info("publishing check result", :payload => payload)
-        @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
-          if info[:error]
-            @logger.error("failed to publish check result", {
-              :payload => payload,
-              :error => info[:error].to_s
-            })
-          end
+        # if the metrics cache store is open it means metrics check results should be cached
+        if @metrics_cache_store and check[:type] == 'metric'
+          @logger.info("Caching metrics results for check #{check[:name]}", :payload => payload)
+          rkey = "results:#{check[:name]}:#{Time.now.to_i}"
+          @metrics_cache_store.set(rkey, payload.to_json)
+        elsif @state == :running and @transport.connected?
+          publish_raw_check_result(payload)
+        else
+          @logger.error("Dropping results for check #{check[:name]} (transport not connected or not running?)")
         end
       end
 
@@ -208,6 +245,11 @@ module Sensu
       # @param check [Hash]
       def process_check_request(check)
         @logger.debug("processing check", :check => check)
+        if @metrics_cache and check.has_key?(:type) and check[:type] == 'metric'
+          # metric cache is configured, we need to keep a cache
+          # of the metric checks being run
+          @metrics_checks_cache[check[:name]] = check
+        end
         if @settings.check_exists?(check[:name])
           check.merge!(@settings[:checks][check[:name]])
         end
@@ -425,6 +467,7 @@ module Sensu
         setup_keepalives
         setup_subscriptions
         setup_standalone
+        setup_metric_cache_syncing
         @state = :running
       end
 
@@ -438,6 +481,39 @@ module Sensu
         end
       end
 
+      def stop_metrics_sync_timer
+        if not @metrics_sync_timer.nil?
+          @metrics_sync_timer.cancel
+          @metrics_sync_timer = nil
+        end
+      end
+
+      # Stop any scheduled timers
+      def stop_timers
+        @timers[:run].each do |timer|
+          timer.cancel
+        end
+        @timers[:run].clear
+        stop_metrics_sync_timer
+      end
+
+      def start_metrics_cache
+        if @metrics_checks_cache.length == 0
+          @logger.debug("No metric check definitions cached")
+          return
+        end
+        begin
+          @logger.info("Starting metrics cache")
+          @metrics_checks_cache.each do |name, check|
+            @logger.debug("Self-scheduling check #{name} with interval #{check[:interval]}")
+          end
+          open_metric_store
+          schedule_checks(@metrics_checks_cache.values)
+        rescue
+          @logger.error("Failed to initialize metrics cache: #{$!}")
+        end
+      end
+
       # Pause the Sensu client process, unless it is being paused or
       # has already been paused. The process/daemon `@state` is first
       # set to `:pausing`, to indicate that it's in progress. All run
@@ -448,12 +524,74 @@ module Sensu
       def pause
         unless @state == :pausing || @state == :paused
           @state = :pausing
-          @timers[:run].each do |timer|
-            timer.cancel
-          end
-          @timers[:run].clear
+          stop_timers
           @transport.unsubscribe if @transport
           @state = :paused
+          if @metrics_cache
+            start_metrics_cache
+          end
+        end
+      end
+
+      def publish_cached_metrics
+        block_size = 10
+        check_count = @metrics_checks_cache.length
+        if check_count > block_size
+          block_size = check_count
+        end
+        publish_count = 0
+        last_published_key = nil
+        current_metrics = @metrics_cache_store.length
+        @logger.info("Current cached metrics: #{current_metrics}")
+        @metrics_cache_store.each do |data|
+          publish_raw_check_result(Sensu::JSON.load(data[1]))
+          publish_count += 1
+          last_published_key = data[0]
+          if publish_count == block_size
+            raise StopIteration
+          end
+        end
+        # clear the metrics we pushed already
+        @logger.info("Published #{publish_count} cached metric results (last_key=#{last_published_key})")
+        @metrics_cache_store.clear(last_published_key)
+        cached_metrics = @metrics_cache_store.length
+        @logger.info("Remaining cached metrics: #{cached_metrics}")
+        if cached_metrics == 0
+          stop_metrics_sync_timer
+          close_metric_store
+        end
+      end
+
+      def close_metric_store
+        if @metrics_cache_store.nil?
+          return
+        end
+        drop = false
+        if @metrics_cache_store.length == 0
+          @logger.debug('Dropping empty metric cache store')
+          drop = true
+        end
+        @metrics_cache_store.close(drop)
+        @metrics_cache_store = nil
+      end
+
+      def open_metric_store
+        if @metrics_cache_store.nil?
+          @metrics_cache_store = Store.new('metrics', @logger)
+        end
+      end
+
+      def setup_metric_cache_syncing
+        open_metric_store
+        cached_metrics = @metrics_cache_store.length
+        if cached_metrics == 0
+          @logger.debug("No metrics cached")
+          close_metric_store
+        else
+          @logger.info("Starting syncing of #{cached_metrics} cached metrics results")
+          @metrics_sync_timer = EM::PeriodicTimer.new(1) do
+            publish_cached_metrics
+          end
         end
       end
 
@@ -466,11 +604,20 @@ module Sensu
         retry_until_true(1) do
           if @state == :paused
             if @transport.connected?
+              if @metrics_cache_store
+                # stop the self-scheduled metrics timers
+                stop_timers
+              end
               bootstrap
               true
             end
           end
         end
+      end
+
+      def stop_metrics_cache
+        close_metric_store
+        @metrics_cache = false
       end
 
       # Stop the Sensu client process, pausing it, completing check
@@ -480,6 +627,7 @@ module Sensu
       # deregistration check result if configured to do so.
       def stop
         @logger.warn("stopping")
+        stop_metrics_cache
         pause
         deregister if @settings[:client][:deregister] == true
         @state = :stopping
