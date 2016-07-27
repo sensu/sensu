@@ -2,6 +2,7 @@ require "sensu/daemon"
 require "sensu/server/filter"
 require "sensu/server/mutate"
 require "sensu/server/handle"
+require "parse-cron"
 
 module Sensu
   module Server
@@ -683,6 +684,30 @@ module Sensu
         (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
       end
 
+      # The use of a Timer to implement cron like this is slightly problematic
+      # in that if you are testing on yur laptop for example, and you close the
+      # lid after the next check is scheduled, and you open it back up, the scheduled
+      # check will still execute 'x' seconds from the original calculated 'fire' time
+      # even if that time has already passed. So watch out for that.
+      # 
+      # @param cron_expression [String] The cron expression you want to use.
+      # @param check [Hash] definition.
+      # @param create_check_request [block] reference to block to execute on next cron fire.
+      def schedule_cron(cron_expression, check, &create_check_request)
+        @logger.debug("Scheduling next cron tick for", :check => check)
+        cron_parser = CronParser.new(cron_expression)
+        now = Time.now
+        @logger.debug("It is now: #{now}")
+        next_time = cron_parser.next(now)
+        @logger.debug("Next scheduled run is: #{next_time}")
+        time_difference = next_time - now
+        @logger.debug("Time difference is: #{time_difference}")
+        @timers[:leader] << EM::Timer.new(time_difference) do
+          create_check_request.call
+          schedule_cron(cron_expression, check, &create_check_request)
+        end
+      end
+
       # Schedule check executions, using EventMachine periodic timers,
       # using a calculated execution splay. The timers are stored in
       # the timers hash under `:leader`, as check request publishing
@@ -692,6 +717,8 @@ module Sensu
       # @param checks [Array] of definitions.
       def schedule_check_executions(checks)
         checks.each do |check|
+          
+          # This is an anonymous block of code, called in the block below
           create_check_request = Proc.new do
             unless check_request_subdued?(check)
               publish_check_request(check)
@@ -699,12 +726,18 @@ module Sensu
               @logger.info("check request was subdued", :check => check)
             end
           end
-          execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
-          interval = testing? ? 0.5 : check[:interval]
-          @timers[:leader] << EM::Timer.new(execution_splay) do
-            create_check_request.call
-            @timers[:leader] << EM::PeriodicTimer.new(interval, &create_check_request)
-          end
+
+          if check.has_key?(:cron)
+            cron_expression = check[:cron]
+            schedule_cron(cron_expression, check, &create_check_request)
+          else
+            execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
+            interval = testing? ? 0.5 : check[:interval]
+            @timers[:leader] << EM::Timer.new(execution_splay) do
+              create_check_request.call
+              @timers[:leader] << EM::PeriodicTimer.new(interval, &create_check_request)
+            end
+          end 
         end
       end
 
