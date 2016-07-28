@@ -7,6 +7,7 @@ module Sensu
       include Daemon
 
       attr_accessor :safe_mode
+      attr_accessor :standalone_mode
 
       # Create an instance of the Sensu client process, start the
       # client within the EventMachine event loop, and set up client
@@ -28,8 +29,10 @@ module Sensu
       def initialize(options={})
         super
         @safe_mode = @settings[:client][:safe_mode] || false
+        @standalone_mode = @settings[:client][:standalone_mode] || false
         @checks_in_progress = []
         @sockets = []
+        @mode = 'client' 
       end
 
       # Create a Sensu client keepalive payload, to be sent over the
@@ -423,7 +426,7 @@ module Sensu
       # sets the process/daemon `@state` to `:running`.
       def bootstrap
         setup_keepalives
-        setup_subscriptions
+        setup_subscriptions unless @standalone_mode
         setup_standalone
         @state = :running
       end

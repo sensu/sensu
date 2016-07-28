@@ -43,6 +43,7 @@ module Sensu
         @is_leader = false
         @timers[:leader] = Array.new
         @in_progress = Hash.new(0)
+        @mode = 'server'
       end
 
       # Set up the Redis and Transport connection objects, `@redis`
