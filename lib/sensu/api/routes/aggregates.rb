@@ -160,7 +160,7 @@ module Sensu
                     unless result_json.nil?
                       result = Sensu::JSON.load(result_json)
                       if SEVERITIES[result[:status]] == severity &&
-                          (max_age.nil? || result[:executed] >= (current_timestamp - max_age))
+                          (max_age.nil? || result[:executed].nil? || result[:executed] >= (current_timestamp - max_age))
                         summaries[check_name] ||= {}
                         summaries[check_name][result[:output]] ||= {:total => 0, :clients => []}
                         summaries[check_name][result[:output]][:total] += 1
