@@ -693,7 +693,8 @@ module Sensu
       # @param cron_expression [String] The cron expression you want to use.
       # @param check [Hash] definition.
       # @param create_check_request [block] reference to block to execute on next cron fire.
-      def schedule_cron(cron_expression, check, &create_check_request)
+      def schedule_cron(check, &create_check_request)
+        cron_expression = check[:cron]
         @logger.debug("Scheduling next cron tick for", :check => check)
         cron_parser = CronParser.new(cron_expression)
         now = Time.now
@@ -704,8 +705,22 @@ module Sensu
         @logger.debug("Time difference is: #{time_difference}")
         @timers[:leader] << EM::Timer.new(time_difference) do
           create_check_request.call
-          schedule_cron(cron_expression, check, &create_check_request)
+          schedule_cron(check, &create_check_request)
         end
+      end
+
+      # The block that creates the check request once the EM timer fires.
+      #
+      # @param check [Hash] definition.
+      def get_check_request_block(check)
+        create_check_request = Proc.new do
+            unless check_request_subdued?(check)
+              publish_check_request(check)
+            else
+              @logger.info("check request was subdued", :check => check)
+            end
+        end
+        return create_check_request
       end
 
       # Schedule check executions, using EventMachine periodic timers,
@@ -717,19 +732,9 @@ module Sensu
       # @param checks [Array] of definitions.
       def schedule_check_executions(checks)
         checks.each do |check|
-          
-          # This is an anonymous block of code, called in the block below
-          create_check_request = Proc.new do
-            unless check_request_subdued?(check)
-              publish_check_request(check)
-            else
-              @logger.info("check request was subdued", :check => check)
-            end
-          end
-
+          create_check_request = get_check_request_block(check)
           if check.has_key?(:cron)
-            cron_expression = check[:cron]
-            schedule_cron(cron_expression, check, &create_check_request)
+            schedule_cron(check, &create_check_request)
           else
             execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
             interval = testing? ? 0.5 : check[:interval]

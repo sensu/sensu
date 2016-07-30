@@ -662,4 +662,15 @@ describe "Sensu::Server::Process" do
       end
     end
   end
+
+  it "can schedule checks using cron" do
+    async_wrapper do
+      check = check_template
+      check[:cron] = "* * * * *"
+      create_check_request = @server.get_check_request_block(check)
+      @server.schedule_cron(check, &create_check_request)
+      expect(@server.instance_variable_get(:@timers).length == 1)
+      async_done
+    end
+  end
 end
