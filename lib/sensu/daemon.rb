@@ -4,9 +4,9 @@ gem "eventmachine", "1.2.0.1"
 
 gem "sensu-json", "2.0.0"
 gem "sensu-logger", "1.2.0"
-gem "sensu-settings", "6.0.0"
+gem "sensu-settings", "7.0.0"
 gem "sensu-extension", "1.5.0"
-gem "sensu-extensions", "1.5.0"
+gem "sensu-extensions", "1.6.0"
 gem "sensu-transport", "6.0.0"
 gem "sensu-spawn", "2.2.0"
 gem "sensu-redis", "1.5.0"
@@ -150,7 +150,8 @@ module Sensu
     #
     # @param options [Hash]
     def load_extensions(options={})
-      @extensions = Extensions.get(options)
+      extensions_options = options.merge(:extensions => @settings[:extensions])
+      @extensions = Extensions.get(extensions_options)
       log_notices(@extensions.warnings)
       extension_settings = @settings.to_hash.dup
       @extensions.all.each do |extension|
