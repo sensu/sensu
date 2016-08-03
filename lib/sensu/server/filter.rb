@@ -113,6 +113,16 @@ module Sensu
         end
       end
 
+      # Determine if an event handler is silenced.
+      #
+      # @param handler [Hash] definition.
+      # @param event [Hash]
+      # @return [TrueClass, FalseClass]
+      def handler_silenced?(handler, event)
+        event[:silenced] && !handler[:handle_silenced] &&
+          !(event[:check][:type] == "metric" && event[:check][:status] == 0)
+      end
+
       # Determine if handling is disabled for an event. Check
       # definitions can disable event handling with an attribute,
       # `:handle`, by setting it to `false`.
@@ -340,6 +350,8 @@ module Sensu
           "handler does not handle action"
         when !handle_severity?(handler, event)
           "handler does not handle event severity"
+        when handler_silenced?(handler, event)
+          "handler is silenced"
         when handler_subdued?(handler, event)
           "handler is subdued"
         end
