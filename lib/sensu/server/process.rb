@@ -425,6 +425,28 @@ module Sensu
         end
       end
 
+      # Determine if an event has been silenced. This method compiles
+      # an array of possible silenced registry entry keys for the
+      # event. The current silenced registry is fetched to be compared
+      # with the compiled array of possible entry keys. If the current
+      # silenced registry contains one of the entry keys, the event
+      # data is updated to indicate that it has been silenced.
+      #
+      # @param event [Hash]
+      # @yield callback [event] callback/block called after the event
+      #   data has been updated to indicate if it has been silenced.
+      def event_silenced?(event)
+        check_name = event[:check][:name]
+        silenced_keys = event[:client][:subscriptions].map { |subscription|
+          ["silenced:#{subscription}:*", "silenced:#{subscription}:#{check_name}"]
+        }.flatten
+        silenced_keys << "silenced:*:#{check_name}"
+        @redis.smembers("silenced") do |silenced|
+          event[:silenced] = (silenced - silenced_keys).length < silenced.length
+          yield(event)
+        end
+      end
+
       # Update the event registry, stored in Redis. This method
       # determines if event data warrants in the creation or update of
       # event data in the registry. If a check `:status` is not
@@ -505,7 +527,9 @@ module Sensu
             if check[:status] == 0
               event[:last_ok] = event[:timestamp]
             end
-            yield(event)
+            event_silenced?(event) do |event|
+              yield(event)
+            end
           end
         end
       end

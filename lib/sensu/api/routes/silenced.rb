@@ -20,7 +20,7 @@ module Sensu
             if data[:subscription] || data[:check]
               subscription = data.fetch(:subscription, "*")
               check = data.fetch(:check, "*")
-              silenced_key = "#{subscription}:#{check}"
+              silenced_key = "silenced:#{subscription}:#{check}"
               silenced_info = {
                 :subscription => data[:subscription],
                 :check => data[:check],
@@ -28,7 +28,6 @@ module Sensu
                 :reason => data[:reason],
                 :creator => data[:creator]
               }
-              puts silenced_info.inspect
               @redis.set(silenced_key, Sensu::JSON.dump(silenced_info)) do
                 @redis.sadd("silenced", silenced_key) do
                   if data[:expire]
@@ -73,7 +72,7 @@ module Sensu
           @response_content = []
           @redis.smembers("silenced") do |silenced_keys|
             silenced_keys.select! do |key|
-              key =~ /^#{subscription}:/
+              key =~ /^silenced:#{subscription}:/
             end
             unless silenced_keys.empty?
               @redis.mget(*silenced_keys) do |silenced|
@@ -98,7 +97,7 @@ module Sensu
           @response_content = []
           @redis.smembers("silenced") do |silenced_keys|
             silenced_keys.select! do |key|
-              key =~ /^.*:#{check_name}$/
+              key =~ /.*:#{check_name}$/
             end
             unless silenced_keys.empty?
               @redis.mget(*silenced_keys) do |silenced|
@@ -127,7 +126,7 @@ module Sensu
             if data[:subscription] || data[:check]
               subscription = data.fetch(:subscription, "*")
               check = data.fetch(:check, "*")
-              silenced_key = "#{subscription}:#{check}"
+              silenced_key = "silenced:#{subscription}:#{check}"
               @redis.srem("silenced", silenced_key) do
                 @redis.del(silenced_key) do
                   no_content!
