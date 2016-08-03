@@ -427,22 +427,35 @@ module Sensu
 
       # Determine if an event has been silenced. This method compiles
       # an array of possible silenced registry entry keys for the
-      # event. The current silenced registry is fetched to be compared
-      # with the compiled array of possible entry keys. If the current
-      # silenced registry contains one of the entry keys, the event
-      # data is updated to indicate that it has been silenced.
+      # event. An attempt is made to fetch one or more of the silenced
+      # registry entries to determine if the event has been silenced.
+      # The event data is updated to indicate if the event has been
+      # silenced. If the event is silenced and the event action is
+      # `:resolve`, silenced registry entries with
+      # `:expire_on_resolve` set to true will be deleted.
       #
       # @param event [Hash]
       # @yield callback [event] callback/block called after the event
       #   data has been updated to indicate if it has been silenced.
       def event_silenced?(event)
         check_name = event[:check][:name]
-        silenced_keys = event[:client][:subscriptions].map { |subscription|
+        compiled_keys = event[:client][:subscriptions].map { |subscription|
           ["silenced:#{subscription}:*", "silenced:#{subscription}:#{check_name}"]
         }.flatten
-        silenced_keys << "silenced:*:#{check_name}"
-        @redis.smembers("silenced") do |silenced|
-          event[:silenced] = (silenced - silenced_keys).length < silenced.length
+        compiled_keys << "silenced:*:#{check_name}"
+        @redis.mget(*compiled_keys) do |silenced|
+          event[:silenced] = !silenced.compact.empty?
+          if event[:silenced] && event[:action] == :resolve
+            compiled_keys.each_with_index do |silenced_key, silenced_index|
+              if silenced[silenced_index]
+                silenced_info = Sensu::JSON.load(silenced[silenced_index])
+                if silenced_info[:expire_on_resolve]
+                  @redis.srem("silenced", silenced_key)
+                  @redis.del(silenced_key)
+                end
+              end
+            end
+          end
           yield(event)
         end
       end
@@ -484,7 +497,8 @@ module Sensu
       # Create an event, using the provided client and check result
       # data. Existing event data for the client/check pair is fetched
       # from the event registry to be used in the composition of the
-      # new event.
+      # new event. The silenced registry is used to determine if the
+      # event has been silenced.
       #
       # @param client [Hash]
       # @param check [Hash]
