@@ -8,6 +8,7 @@ require "sensu/api/routes/resolve"
 require "sensu/api/routes/aggregates"
 require "sensu/api/routes/stashes"
 require "sensu/api/routes/results"
+require "sensu/api/routes/silenced"
 
 module Sensu
   module API
@@ -22,6 +23,7 @@ module Sensu
       include Aggregates
       include Stashes
       include Results
+      include Silenced
 
       GET_METHOD = "GET".freeze
       HEAD_METHOD = "HEAD".freeze
@@ -49,7 +51,10 @@ module Sensu
         [STASH_URI, :get_stash],
         [RESULTS_URI, :get_results],
         [RESULTS_CLIENT_URI, :get_results_client],
-        [RESULT_URI, :get_result]
+        [RESULT_URI, :get_result],
+        [SILENCED_URI, :get_silenced],
+        [SILENCED_SUBSCRIPTION_URI, :get_silenced_subscription],
+        [SILENCED_CHECK_URI, :get_silenced_check]
       ]
 
       ROUTES = {
@@ -61,7 +66,9 @@ module Sensu
           [RESOLVE_URI, :post_resolve],
           [STASHES_URI, :post_stashes],
           [STASH_URI, :post_stash],
-          [RESULTS_URI, :post_results]
+          [RESULTS_URI, :post_results],
+          [SILENCED_URI, :post_silenced],
+          [SILENCED_CLEAR_URI, :post_silenced_clear]
         ],
         DELETE_METHOD => [
           [CLIENT_URI, :delete_client],
