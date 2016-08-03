@@ -14,7 +14,8 @@ module Sensu
             :check => {:type => String, :nil_ok => true, :regex => /\A[\w\.-]+\z/},
             :expire => {:type => Integer, :nil_ok => true},
             :reason => {:type => String, :nil_ok => true},
-            :creator => {:type => String, :nil_ok => true}
+            :creator => {:type => String, :nil_ok => true},
+            :expire_on_resolve => {:type => [TrueClass, FalseClass], :nil_ok => true}
           }
           read_data(rules) do |data|
             if data[:subscription] || data[:check]
