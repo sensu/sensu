@@ -7,6 +7,41 @@ module Sensu
         SILENCED_CHECK_URI = /^\/silenced\/checks\/([\w\.-]+)$/
         SILENCED_CLEAR_URI = /^\/silenced\/clear$/
 
+        # Fetch silenced registry entries for the provided silenced
+        # entry keys.
+        #
+        # @param silenced_keys [Array]
+        # @yield callback [entries] callback/block called after the
+        #   silenced registry entries have been fetched.
+        def fetch_silenced(silenced_keys=[])
+          entries = []
+          unless silenced_keys.empty?
+            @redis.mget(*silenced_keys) do |silenced|
+              silenced_keys.each_with_index do |silenced_key, silenced_index|
+                if silenced[silenced_index]
+                  silenced_info = Sensu::JSON.load(silenced[silenced_index])
+                  @redis.ttl(silenced_key) do |ttl|
+                    silenced_info[:expire] = ttl
+                    entries << silenced_info
+                    if silenced_index == silenced_keys.length - 1
+                      yield(entries)
+                    end
+                  end
+                else
+                  @redis.srem("silenced", silenced_key)
+                  if silenced_index == silenced_keys.length - 1
+                    @redis.ping do
+                      yield(entries)
+                    end
+                  end
+                end
+              end
+            end
+          else
+            yield(entries)
+          end
+        end
+
         # POST /silenced
         def post_silenced
           rules = {
@@ -25,9 +60,9 @@ module Sensu
               silenced_info = {
                 :subscription => data[:subscription],
                 :check => data[:check],
-                :expire => data[:expire],
                 :reason => data[:reason],
-                :creator => data[:creator]
+                :creator => data[:creator],
+                :expire_on_resolve => data.fetch(:expire_on_resolve, false)
               }
               @redis.set(silenced_key, Sensu::JSON.dump(silenced_info)) do
                 @redis.sadd("silenced", silenced_key) do
@@ -48,20 +83,10 @@ module Sensu
 
         # GET /silenced
         def get_silenced
-          @response_content = []
           @redis.smembers("silenced") do |silenced_keys|
-            unless silenced_keys.empty?
-              @redis.mget(*silenced_keys) do |silenced|
-                silenced_keys.each_with_index do |silenced_key, silenced_index|
-                  if silenced[silenced_index]
-                    @response_content << Sensu::JSON.load(silenced[silenced_index])
-                  else
-                    @redis.srem("silenced", silenced_key)
-                  end
-                end
-                respond
-              end
-            else
+            silenced_keys = pagination(silenced_keys)
+            fetch_silenced(silenced_keys) do |silenced|
+              @response_content = silenced
               respond
             end
           end
@@ -70,23 +95,13 @@ module Sensu
         # GET /silenced/subscriptions/:subscription
         def get_silenced_subscription
           subscription = parse_uri(SILENCED_SUBSCRIPTION_URI).first
-          @response_content = []
           @redis.smembers("silenced") do |silenced_keys|
             silenced_keys.select! do |key|
               key =~ /^silenced:#{subscription}:/
             end
-            unless silenced_keys.empty?
-              @redis.mget(*silenced_keys) do |silenced|
-                silenced_keys.each_with_index do |silenced_key, silenced_index|
-                  if silenced[silenced_index]
-                    @response_content << Sensu::JSON.load(silenced[silenced_index])
-                  else
-                    @redis.srem("silenced", silenced_key)
-                  end
-                end
-                respond
-              end
-            else
+            silenced_keys = pagination(silenced_keys)
+            fetch_silenced(silenced_keys) do |silenced|
+              @response_content = silenced
               respond
             end
           end
@@ -95,23 +110,13 @@ module Sensu
         # GET /silenced/checks/:check
         def get_silenced_check
           check_name = parse_uri(SILENCED_CHECK_URI).first
-          @response_content = []
           @redis.smembers("silenced") do |silenced_keys|
             silenced_keys.select! do |key|
               key =~ /.*:#{check_name}$/
             end
-            unless silenced_keys.empty?
-              @redis.mget(*silenced_keys) do |silenced|
-                silenced_keys.each_with_index do |silenced_key, silenced_index|
-                  if silenced[silenced_index]
-                    @response_content << Sensu::JSON.load(silenced[silenced_index])
-                  else
-                    @redis.srem("silenced", silenced_key)
-                  end
-                end
-                respond
-              end
-            else
+            silenced_keys = pagination(silenced_keys)
+            fetch_silenced(silenced_keys) do |silenced|
+              @response_content = silenced
               respond
             end
           end
@@ -129,8 +134,8 @@ module Sensu
               check = data.fetch(:check, "*")
               silenced_key = "silenced:#{subscription}:#{check}"
               @redis.srem("silenced", silenced_key) do
-                @redis.del(silenced_key) do
-                  no_content!
+                @redis.del(silenced_key) do |deleted|
+                  deleted ? no_content! : not_found!
                 end
               end
             else
