@@ -439,20 +439,22 @@ module Sensu
       #   data has been updated to indicate if it has been silenced.
       def event_silenced?(event)
         check_name = event[:check][:name]
-        compiled_keys = event[:client][:subscriptions].map { |subscription|
-          ["silenced:#{subscription}:*", "silenced:#{subscription}:#{check_name}"]
+        silenced_keys = event[:client][:subscriptions].map { |subscription|
+          ["silence:#{subscription}:*", "silence:#{subscription}:#{check_name}"]
         }.flatten
-        compiled_keys << "silenced:*:#{check_name}"
-        @redis.mget(*compiled_keys) do |silenced|
-          event[:silenced] = !silenced.compact.empty?
-          if event[:silenced] && event[:action] == :resolve
-            compiled_keys.each_with_index do |silenced_key, silenced_index|
-              if silenced[silenced_index]
-                silenced_info = Sensu::JSON.load(silenced[silenced_index])
-                if silenced_info[:expire_on_resolve]
-                  @redis.srem("silenced", silenced_key)
-                  @redis.del(silenced_key)
-                end
+        silenced_keys << "silence:*:#{check_name}"
+        @redis.mget(*silenced_keys) do |silenced|
+          silenced.compact!
+          event[:silenced] = !silenced.empty?
+          event[:silenced_by] = []
+          if event[:silenced]
+            silenced.each do |silenced_json|
+              silenced_info = Sensu::JSON.load(silenced_json)
+              event[:silenced_by] << silenced_info[:id]
+              silenced_key = "silence:#{silenced_info[:id]}"
+              if silenced_info[:expire_on_resolve] && event[:action] == :resolve
+                @redis.srem("silenced", silenced_key)
+                @redis.del(silenced_key)
               end
             end
           end

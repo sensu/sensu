@@ -1179,8 +1179,9 @@ describe "Sensu::API::Process" do
       }
       api_request("/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
-        redis.get("silenced:test:*") do |silenced_info_json|
+        redis.get("silence:test:*") do |silenced_info_json|
           silenced_info = Sensu::JSON.load(silenced_info_json)
+          expect(silenced_info[:id]).to eq("test:*")
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to be_nil
           expect(silenced_info[:reason]).to be_nil
@@ -1201,8 +1202,9 @@ describe "Sensu::API::Process" do
       }
       api_request("/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
-        redis.get("silenced:*:test") do |silenced_info_json|
+        redis.get("silence:*:test") do |silenced_info_json|
           silenced_info = Sensu::JSON.load(silenced_info_json)
+          expect(silenced_info[:id]).to eq("*:test")
           expect(silenced_info[:subscription]).to be_nil
           expect(silenced_info[:check]).to eq("test")
           expect(silenced_info[:reason]).to be_nil
@@ -1228,14 +1230,15 @@ describe "Sensu::API::Process" do
       }
       api_request("/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
-        redis.get("silenced:test:test") do |silenced_info_json|
+        redis.get("silence:test:test") do |silenced_info_json|
           silenced_info = Sensu::JSON.load(silenced_info_json)
+          expect(silenced_info[:id]).to eq("test:test")
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
           expect(silenced_info[:reason]).to eq("testing")
           expect(silenced_info[:creator]).to eq("rspec")
           expect(silenced_info[:expire_on_resolve]).to eq(true)
-          redis.ttl("silenced:test:test") do |ttl|
+          redis.ttl("silence:test:test") do |ttl|
             expect(ttl).to be_within(10).of(3600)
             async_done
           end
@@ -1372,6 +1375,7 @@ describe "Sensu::API::Process" do
           expect(body.length).to eq(1)
           silenced_info = body.first
           expect(silenced_info).to be_kind_of(Hash)
+          expect(silenced_info[:id]).to eq("test:test")
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
           expect(silenced_info[:expire]).to be_within(10).of(3600)
@@ -1409,7 +1413,7 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can delete a silenced registry entry" do
+  it "can clear a silenced registry entry with a subscription and check" do
     api_test do
       options = {
         :body => {
@@ -1427,6 +1431,46 @@ describe "Sensu::API::Process" do
           expect(silenced_info).to be_kind_of(Hash)
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
+          api_request("/silenced/clear", :post, options) do |http, body|
+            expect(http.response_header.status).to eq(204)
+            api_request("/silenced/clear", :post, options) do |http, body|
+              expect(http.response_header.status).to eq(404)
+              api_request("/silenced") do |http, body|
+                expect(http.response_header.status).to eq(200)
+                expect(body).to be_kind_of(Array)
+                expect(body).to be_empty
+                async_done
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can clear a silenced registry entry with an id" do
+    api_test do
+      options = {
+        :body => {
+          :check => "test"
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        api_request("/silenced") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Array)
+          expect(body.length).to eq(1)
+          silenced_info = body.first
+          expect(silenced_info).to be_kind_of(Hash)
+          expect(silenced_info[:id]).to eq("*:test")
+          expect(silenced_info[:subscription]).to be_nil
+          expect(silenced_info[:check]).to eq("test")
+          options = {
+            :body => {
+              :id => "*:test"
+            }
+          }
           api_request("/silenced/clear", :post, options) do |http, body|
             expect(http.response_header.status).to eq(204)
             api_request("/silenced/clear", :post, options) do |http, body|

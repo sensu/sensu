@@ -56,14 +56,16 @@ module Sensu
             if data[:subscription] || data[:check]
               subscription = data.fetch(:subscription, "*")
               check = data.fetch(:check, "*")
-              silenced_key = "silenced:#{subscription}:#{check}"
+              silenced_id = "#{subscription}:#{check}"
               silenced_info = {
+                :id => silenced_id,
                 :subscription => data[:subscription],
                 :check => data[:check],
                 :reason => data[:reason],
                 :creator => data[:creator],
                 :expire_on_resolve => data.fetch(:expire_on_resolve, false)
               }
+              silenced_key = "silence:#{silenced_id}"
               @redis.set(silenced_key, Sensu::JSON.dump(silenced_info)) do
                 @redis.sadd("silenced", silenced_key) do
                   if data[:expire]
@@ -97,7 +99,7 @@ module Sensu
           subscription = parse_uri(SILENCED_SUBSCRIPTION_URI).first
           @redis.smembers("silenced") do |silenced_keys|
             silenced_keys.select! do |key|
-              key =~ /^silenced:#{subscription}:/
+              key =~ /^silence:#{subscription}:/
             end
             silenced_keys = pagination(silenced_keys)
             fetch_silenced(silenced_keys) do |silenced|
@@ -125,14 +127,16 @@ module Sensu
         # POST /silenced/clear
         def post_silenced_clear
           rules = {
+            :id => {:type => String, :nil_ok => true},
             :subscription => {:type => String, :nil_ok => true},
             :check => {:type => String, :nil_ok => true, :regex => /\A[\w\.-]+\z/}
           }
           read_data(rules) do |data|
-            if data[:subscription] || data[:check]
+            if !data[:id].nil? || (data[:subscription] || data[:check])
               subscription = data.fetch(:subscription, "*")
               check = data.fetch(:check, "*")
-              silenced_key = "silenced:#{subscription}:#{check}"
+              silenced_id = data[:id] || "#{subscription}:#{check}"
+              silenced_key = "silence:#{silenced_id}"
               @redis.srem("silenced", silenced_key) do
                 @redis.del(silenced_key) do |deleted|
                   deleted ? no_content! : not_found!
