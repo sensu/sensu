@@ -64,6 +64,7 @@ describe "Sensu::API::Process" do
     api_test do
       api_request("/health?consumers=0&messages=1000") do |http, body|
         expect(http.response_header.status).to eq(204)
+        expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
         api_request("/health?consumers=1000") do |http, body|
           expect(http.response_header.status).to eq(412)
