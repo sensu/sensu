@@ -64,6 +64,7 @@ describe "Sensu::API::Process" do
     api_test do
       api_request("/health?consumers=0&messages=1000") do |http, body|
         expect(http.response_header.status).to eq(204)
+        expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
         api_request("/health?consumers=1000") do |http, body|
           expect(http.response_header.status).to eq(412)
@@ -723,6 +724,7 @@ describe "Sensu::API::Process" do
     api_test do
       api_request("/stash/test/test", :delete) do |http, body|
         expect(http.response_header.status).to eq(204)
+        expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
         redis.exists("stash:test/test") do |exists|
           expect(exists).to be(false)
@@ -766,6 +768,7 @@ describe "Sensu::API::Process" do
         timer(1) do
           api_request("/aggregates/test", :delete) do |http, body|
             expect(http.response_header.status).to eq(204)
+            expect(http.response_header.http_reason).to eq('No Content')
             expect(body).to be_empty
             redis.sismember("aggregates", "test") do |exists|
               expect(exists).to be(false)
@@ -787,6 +790,7 @@ describe "Sensu::API::Process" do
         timer(1) do
           api_request("/aggregates/TEST", :delete) do |http, body|
             expect(http.response_header.status).to eq(204)
+            expect(http.response_header.http_reason).to eq('No Content')
             expect(body).to be_empty
             redis.sismember("aggregates", "TEST") do |exists|
               expect(exists).to be(false)
@@ -1154,6 +1158,7 @@ describe "Sensu::API::Process" do
     api_test do
       api_request("/results/i-424242/test", :delete) do |http, body|
         expect(http.response_header.status).to eq(204)
+        expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
         async_done
       end
