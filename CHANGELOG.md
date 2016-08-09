@@ -1,3 +1,10 @@
+## 0.25.7 - 2016-08-09
+
+### Fixes
+
+Fixed the Sensu API 204 status response string, changing "No Response" to
+the correct string "No Content".
+
 ## 0.25.6 - 2016-07-28
 
 ### Fixes
