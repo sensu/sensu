@@ -101,6 +101,16 @@ describe "Sensu::Server::Filter" do
     expect(@server.check_request_subdued?(check)).to be(true)
   end
 
+  it "can determine if handler handles a silenced event" do
+    expect(@server.handler_silenced?(@handler, @event)).to be(false)
+    @event[:silenced] = true
+    expect(@server.handler_silenced?(@handler, @event)).to be(true)
+    @handler[:handle_silenced] = true
+    expect(@server.handler_silenced?(@handler, @event)).to be(false)
+    @handler[:handle_silenced] = false
+    expect(@server.handler_silenced?(@handler, @event)).to be(true)
+  end
+
   it "can determine if handling is disabled for an event" do
     expect(@server.handling_disabled?(@event)).to be(false)
     @event[:check][:handle] = false
@@ -218,6 +228,11 @@ describe "Sensu::Server::Filter" do
         raise "not filtered"
       end
       handler.delete(:severities)
+      @event[:silenced] = true
+      @server.filter_event(handler, @event) do
+        raise "not filtered"
+      end
+      @event[:silenced] = false
       handler[:subdue] = {
         :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
         :end => (Time.now + 3600).strftime("%l:00 %p").strip

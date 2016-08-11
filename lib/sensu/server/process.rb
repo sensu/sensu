@@ -425,6 +425,50 @@ module Sensu
         end
       end
 
+      # Determine if an event has been silenced. This method compiles
+      # an array of possible silenced registry entry keys for the
+      # event. An attempt is made to fetch one or more of the silenced
+      # registry entries to determine if the event has been silenced.
+      # The event data is updated to indicate if the event has been
+      # silenced. If the event is silenced and the event action is
+      # `:resolve`, silenced registry entries with
+      # `:expire_on_resolve` set to true will be deleted. Silencing is
+      # disabled for events with a check status of `0` (OK), unless
+      # the event action is `:resolve` or `:flapping`.
+      #
+      # @param event [Hash]
+      # @yield callback [event] callback/block called after the event
+      #   data has been updated to indicate if it has been silenced.
+      def event_silenced?(event)
+        event[:silenced] = false
+        event[:silenced_by] = []
+        if event[:check][:status] != 0 || event[:action] != :create
+          check_name = event[:check][:name]
+          silenced_keys = event[:client][:subscriptions].map { |subscription|
+            ["silence:#{subscription}:*", "silence:#{subscription}:#{check_name}"]
+          }.flatten
+          silenced_keys << "silence:*:#{check_name}"
+          @redis.mget(*silenced_keys) do |silenced|
+            silenced.compact!
+            event[:silenced] = !silenced.empty?
+            if event[:silenced]
+              silenced.each do |silenced_json|
+                silenced_info = Sensu::JSON.load(silenced_json)
+                event[:silenced_by] << silenced_info[:id]
+                silenced_key = "silence:#{silenced_info[:id]}"
+                if silenced_info[:expire_on_resolve] && event[:action] == :resolve
+                  @redis.srem("silenced", silenced_key)
+                  @redis.del(silenced_key)
+                end
+              end
+            end
+            yield(event)
+          end
+        else
+          yield(event)
+        end
+      end
+
       # Update the event registry, stored in Redis. This method
       # determines if event data warrants in the creation or update of
       # event data in the registry. If a check `:status` is not
@@ -462,7 +506,8 @@ module Sensu
       # Create an event, using the provided client and check result
       # data. Existing event data for the client/check pair is fetched
       # from the event registry to be used in the composition of the
-      # new event.
+      # new event. The silenced registry is used to determine if the
+      # event has been silenced.
       #
       # @param client [Hash]
       # @param check [Hash]
@@ -505,7 +550,9 @@ module Sensu
             if check[:status] == 0
               event[:last_ok] = event[:timestamp]
             end
-            yield(event)
+            event_silenced?(event) do |event|
+              yield(event)
+            end
           end
         end
       end

@@ -231,6 +231,37 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can process results with silencing" do
+    async_wrapper do
+      @server.setup_redis do
+        redis.flushdb do
+          redis.set("client:i-424242", Sensu::JSON.dump(client_template)) do
+            silenced_info = {
+              :id => "test:*"
+            }
+            redis.set("silence:test:*", Sensu::JSON.dump(silenced_info)) do
+              silenced_info[:id] = "*:test"
+              redis.set("silence:*:test", Sensu::JSON.dump(silenced_info)) do
+                silenced_info[:id] = "test:test"
+                redis.set("silence:test:test", Sensu::JSON.dump(silenced_info)) do
+                  @server.process_check_result(result_template)
+                  timer(1) do
+                    redis.hget("events:i-424242", "test") do |event_json|
+                      event = Sensu::JSON.load(event_json)
+                      expect(event[:silenced]).to eq(true)
+                      expect(event[:silenced_by]).to eq(["test:*", "test:test", "*:test"])
+                      async_done
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can have event ids persist until the event is resolved" do
     async_wrapper do
       @server.setup_redis do
@@ -318,6 +349,8 @@ describe "Sensu::Server::Process" do
                           expect(event[:id]).to be_kind_of(String)
                           expect(event[:check][:status]).to eq(1)
                           expect(event[:occurrences]).to eq(2)
+                          expect(event[:silenced]).to eq(false)
+                          expect(event[:silenced_by]).to be_empty
                           expect(event[:action]).to eq("create")
                           expect(event[:timestamp]).to be_within(10).of(epoch)
                           read_event_file = Proc.new do

@@ -1169,4 +1169,322 @@ describe "Sensu::API::Process" do
       end
     end
   end
+
+  it "can create a silenced registry entry for a subscription" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test"
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        redis.get("silence:test:*") do |silenced_info_json|
+          silenced_info = Sensu::JSON.load(silenced_info_json)
+          expect(silenced_info[:id]).to eq("test:*")
+          expect(silenced_info[:subscription]).to eq("test")
+          expect(silenced_info[:check]).to be_nil
+          expect(silenced_info[:reason]).to be_nil
+          expect(silenced_info[:creator]).to be_nil
+          expect(silenced_info[:expire_on_resolve]).to eq(false)
+          async_done
+        end
+      end
+    end
+  end
+
+  it "can create a silenced registry entry for a check" do
+    api_test do
+      options = {
+        :body => {
+          :check => "test"
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        redis.get("silence:*:test") do |silenced_info_json|
+          silenced_info = Sensu::JSON.load(silenced_info_json)
+          expect(silenced_info[:id]).to eq("*:test")
+          expect(silenced_info[:subscription]).to be_nil
+          expect(silenced_info[:check]).to eq("test")
+          expect(silenced_info[:reason]).to be_nil
+          expect(silenced_info[:creator]).to be_nil
+          expect(silenced_info[:expire_on_resolve]).to eq(false)
+          async_done
+        end
+      end
+    end
+  end
+
+  it "can create a silenced registry entry that expires" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => "test",
+          :expire => 3600,
+          :reason => "testing",
+          :creator => "rspec",
+          :expire_on_resolve => true
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        redis.get("silence:test:test") do |silenced_info_json|
+          silenced_info = Sensu::JSON.load(silenced_info_json)
+          expect(silenced_info[:id]).to eq("test:test")
+          expect(silenced_info[:subscription]).to eq("test")
+          expect(silenced_info[:check]).to eq("test")
+          expect(silenced_info[:reason]).to eq("testing")
+          expect(silenced_info[:creator]).to eq("rspec")
+          expect(silenced_info[:expire_on_resolve]).to eq(true)
+          redis.ttl("silence:test:test") do |ttl|
+            expect(ttl).to be_within(10).of(3600)
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can not create a silenced registry entry when missing a subscription and/or check" do
+    api_test do
+      options = {
+        :body => {
+          :expire => 3600,
+          :reason => "testing",
+          :creator => "rspec",
+          :expire_on_resolve => true
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
+  it "can not create a silenced registry entry with an invalid subscription" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => 1,
+          :check => "test"
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
+  it "can not create a silenced registry entry with an invalid check" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => 1
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
+  it "can not create a silenced registry entry with an invalid expire" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => "test",
+          :expire => "3600"
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
+  it "can not create a silenced registry entry with an invalid reason" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => "test",
+          :reason => 1
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
+  it "can not create a silenced registry entry with an invalid creator" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => "test",
+          :creator => 1
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
+  it "can not create a silenced registry entry with an invalid expire_on_resolve" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => "test",
+          :expire_on_resolve => "true"
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
+  it "can provide the silenced registry" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => "test",
+          :expire => 3600
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        api_request("/silenced") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Array)
+          expect(body.length).to eq(1)
+          silenced_info = body.first
+          expect(silenced_info).to be_kind_of(Hash)
+          expect(silenced_info[:id]).to eq("test:test")
+          expect(silenced_info[:subscription]).to eq("test")
+          expect(silenced_info[:check]).to eq("test")
+          expect(silenced_info[:expire]).to be_within(10).of(3600)
+          api_request("/silenced/subscriptions/test") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body.length).to eq(1)
+            silenced_info = body.first
+            expect(silenced_info).to be_kind_of(Hash)
+            expect(silenced_info[:subscription]).to eq("test")
+            expect(silenced_info[:expire]).to be_within(10).of(3600)
+            api_request("/silenced/subscriptions/nonexistent") do |http, body|
+              expect(http.response_header.status).to eq(200)
+              expect(body).to be_kind_of(Array)
+              expect(body).to be_empty
+              api_request("/silenced/checks/test") do |http, body|
+                expect(http.response_header.status).to eq(200)
+                expect(body).to be_kind_of(Array)
+                expect(body.length).to eq(1)
+                silenced_info = body.first
+                expect(silenced_info).to be_kind_of(Hash)
+                expect(silenced_info[:check]).to eq("test")
+                expect(silenced_info[:expire]).to be_within(10).of(3600)
+                api_request("/silenced/checks/nonexistent") do |http, body|
+                  expect(http.response_header.status).to eq(200)
+                  expect(body).to be_kind_of(Array)
+                  expect(body).to be_empty
+                  async_done
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can clear a silenced registry entry with a subscription and check" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => "test"
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        api_request("/silenced") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Array)
+          expect(body.length).to eq(1)
+          silenced_info = body.first
+          expect(silenced_info).to be_kind_of(Hash)
+          expect(silenced_info[:subscription]).to eq("test")
+          expect(silenced_info[:check]).to eq("test")
+          api_request("/silenced/clear", :post, options) do |http, body|
+            expect(http.response_header.status).to eq(204)
+            api_request("/silenced/clear", :post, options) do |http, body|
+              expect(http.response_header.status).to eq(404)
+              api_request("/silenced") do |http, body|
+                expect(http.response_header.status).to eq(200)
+                expect(body).to be_kind_of(Array)
+                expect(body).to be_empty
+                async_done
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can clear a silenced registry entry with an id" do
+    api_test do
+      options = {
+        :body => {
+          :check => "test"
+        }
+      }
+      api_request("/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        api_request("/silenced") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Array)
+          expect(body.length).to eq(1)
+          silenced_info = body.first
+          expect(silenced_info).to be_kind_of(Hash)
+          expect(silenced_info[:id]).to eq("*:test")
+          expect(silenced_info[:subscription]).to be_nil
+          expect(silenced_info[:check]).to eq("test")
+          options = {
+            :body => {
+              :id => "*:test"
+            }
+          }
+          api_request("/silenced/clear", :post, options) do |http, body|
+            expect(http.response_header.status).to eq(204)
+            api_request("/silenced/clear", :post, options) do |http, body|
+              expect(http.response_header.status).to eq(404)
+              api_request("/silenced") do |http, body|
+                expect(http.response_header.status).to eq(200)
+                expect(body).to be_kind_of(Array)
+                expect(body).to be_empty
+                async_done
+              end
+            end
+          end
+        end
+      end
+    end
+  end
 end

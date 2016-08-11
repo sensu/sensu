@@ -132,6 +132,8 @@ module Helpers
       :client => client,
       :check => check,
       :occurrences => 1,
+      :silenced => false,
+      :silenced_by => [],
       :action => :create
     }
   end
