@@ -432,32 +432,39 @@ module Sensu
       # The event data is updated to indicate if the event has been
       # silenced. If the event is silenced and the event action is
       # `:resolve`, silenced registry entries with
-      # `:expire_on_resolve` set to true will be deleted.
+      # `:expire_on_resolve` set to true will be deleted. Silencing is
+      # disabled for events with a check status of `0` (OK), unless
+      # the event action is `:resolve` or `:flapping`.
       #
       # @param event [Hash]
       # @yield callback [event] callback/block called after the event
       #   data has been updated to indicate if it has been silenced.
       def event_silenced?(event)
-        check_name = event[:check][:name]
-        silenced_keys = event[:client][:subscriptions].map { |subscription|
-          ["silence:#{subscription}:*", "silence:#{subscription}:#{check_name}"]
-        }.flatten
-        silenced_keys << "silence:*:#{check_name}"
-        @redis.mget(*silenced_keys) do |silenced|
-          silenced.compact!
-          event[:silenced] = !silenced.empty?
-          event[:silenced_by] = []
-          if event[:silenced]
-            silenced.each do |silenced_json|
-              silenced_info = Sensu::JSON.load(silenced_json)
-              event[:silenced_by] << silenced_info[:id]
-              silenced_key = "silence:#{silenced_info[:id]}"
-              if silenced_info[:expire_on_resolve] && event[:action] == :resolve
-                @redis.srem("silenced", silenced_key)
-                @redis.del(silenced_key)
+        event[:silenced] = false
+        event[:silenced_by] = []
+        if event[:check][:status] != 0 || event[:action] != :create
+          check_name = event[:check][:name]
+          silenced_keys = event[:client][:subscriptions].map { |subscription|
+            ["silence:#{subscription}:*", "silence:#{subscription}:#{check_name}"]
+          }.flatten
+          silenced_keys << "silence:*:#{check_name}"
+          @redis.mget(*silenced_keys) do |silenced|
+            silenced.compact!
+            event[:silenced] = !silenced.empty?
+            if event[:silenced]
+              silenced.each do |silenced_json|
+                silenced_info = Sensu::JSON.load(silenced_json)
+                event[:silenced_by] << silenced_info[:id]
+                silenced_key = "silence:#{silenced_info[:id]}"
+                if silenced_info[:expire_on_resolve] && event[:action] == :resolve
+                  @redis.srem("silenced", silenced_key)
+                  @redis.del(silenced_key)
+                end
               end
             end
+            yield(event)
           end
+        else
           yield(event)
         end
       end

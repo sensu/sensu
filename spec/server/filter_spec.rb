@@ -109,9 +109,6 @@ describe "Sensu::Server::Filter" do
     expect(@server.handler_silenced?(@handler, @event)).to be(false)
     @handler[:handle_silenced] = false
     expect(@server.handler_silenced?(@handler, @event)).to be(true)
-    @event[:check][:type] = "metric"
-    @event[:check][:status] = 0
-    expect(@server.handler_silenced?(@handler, @event)).to be(false)
   end
 
   it "can determine if handling is disabled for an event" do

@@ -119,8 +119,7 @@ module Sensu
       # @param event [Hash]
       # @return [TrueClass, FalseClass]
       def handler_silenced?(handler, event)
-        event[:silenced] && !handler[:handle_silenced] &&
-          !(event[:check][:type] == "metric" && event[:check][:status] == 0)
+        event[:silenced] && !handler[:handle_silenced]
       end
 
       # Determine if handling is disabled for an event. Check
