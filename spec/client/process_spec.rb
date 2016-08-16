@@ -286,8 +286,14 @@ describe "Sensu::Client::Process" do
             check.merge(
               :name => "subdued",
               :subdue => {
-                :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-                :end => (Time.now + 3600).strftime("%l:00 %p").strip
+                :days => {
+                  :all => [
+                    {
+                      :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+                      :end => (Time.now + 3600).strftime("%l:00 %p").strip
+                    }
+                  ]
+                }
               }
             ),
             check

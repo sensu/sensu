@@ -107,59 +107,53 @@ describe "Sensu::Utilities" do
   it "can determine if a check is subdued" do
     check = {}
     expect(check_subdued?(check)).to be(false)
-    check[:subdue] = {
-      :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-      :end => (Time.now + 3600).strftime("%l:00 %p").strip
-    }
-    expect(check_subdued?(check)).to be(true)
-    check[:subdue] = {
-      :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
-      :end => (Time.now + 7200).strftime("%l:00 %p").strip
+    check = {
+      :subdue => {
+        :days => {}
+      }
     }
     expect(check_subdued?(check)).to be(false)
-    check[:subdue] = {
-      :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-      :end => (Time.now - 7200).strftime("%l:00 %p").strip
-    }
-    expect(check_subdued?(check)).to be(true)
-    check[:subdue] = {
-      :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
-      :end => (Time.now - 7200).strftime("%l:00 %p").strip
-    }
+    check[:subdue][:days][:all] = []
     expect(check_subdued?(check)).to be(false)
-    check[:subdue] = {
-      :days => [
-        Time.now.strftime("%A"),
-        "wednesday"
-      ]
-    }
-    expect(check_subdued?(check)).to be(true)
-    check[:subdue] = {
-      :days => [
-        (Time.now + 86400).strftime("%A"),
-        (Time.now + 172800).strftime("%A")
-      ]
-    }
+    check[:subdue][:days][:all] = [
+      {
+        :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 4200).strftime("%l:00 %p").strip
+      }
+    ]
     expect(check_subdued?(check)).to be(false)
-    check[:subdue] = {
-      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
-      :exceptions => [
-        {
-          :begin => (Time.now + 3600).rfc2822,
-          :end => (Time.now + 7200)
-        }
-      ]
-    }
+    check[:subdue][:days][:all] = [
+      {
+        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 3600).strftime("%l:00 %p").strip
+      }
+    ]
     expect(check_subdued?(check)).to be(true)
-    check[:subdue] = {
-      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
-      :exceptions => [
-        {
-          :begin => (Time.now - 3600).rfc2822,
-          :end => (Time.now + 3600).rfc2822
-        }
-      ]
-    }
+    check[:subdue][:days].delete(:all)
+    expect(check_subdued?(check)).to be(false)
+    current_day = Time.now.strftime("%A").downcase.to_sym
+    check[:subdue][:days][current_day] = [
+      {
+        :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 4200).strftime("%l:00 %p").strip
+      }
+    ]
+    expect(check_subdued?(check)).to be(false)
+    check[:subdue][:days][current_day] = [
+      {
+        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 3600).strftime("%l:00 %p").strip
+      }
+    ]
+    expect(check_subdued?(check)).to be(true)
+    check[:subdue][:days].delete(current_day)
+    tomorrow = (Time.now + 86400).strftime("%A").downcase.to_sym
+    check[:subdue][:days][tomorrow] = [
+      {
+        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 3600).strftime("%l:00 %p").strip
+      }
+    ]
     expect(check_subdued?(check)).to be(false)
   end
 end
