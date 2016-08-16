@@ -103,4 +103,63 @@ describe "Sensu::Utilities" do
     expect(result).to eq("true default   true:true localhost localhost:8080")
     expect(unmatched_tokens).to eq(["missing"])
   end
+
+  it "can determine if a check is subdued" do
+    check = {}
+    expect(check_subdued?(check)).to be(false)
+    check[:subdue] = {
+      :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+      :end => (Time.now + 3600).strftime("%l:00 %p").strip
+    }
+    expect(check_subdued?(check)).to be(true)
+    check[:subdue] = {
+      :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
+      :end => (Time.now + 7200).strftime("%l:00 %p").strip
+    }
+    expect(check_subdued?(check)).to be(false)
+    check[:subdue] = {
+      :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+      :end => (Time.now - 7200).strftime("%l:00 %p").strip
+    }
+    expect(check_subdued?(check)).to be(true)
+    check[:subdue] = {
+      :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
+      :end => (Time.now - 7200).strftime("%l:00 %p").strip
+    }
+    expect(check_subdued?(check)).to be(false)
+    check[:subdue] = {
+      :days => [
+        Time.now.strftime("%A"),
+        "wednesday"
+      ]
+    }
+    expect(check_subdued?(check)).to be(true)
+    check[:subdue] = {
+      :days => [
+        (Time.now + 86400).strftime("%A"),
+        (Time.now + 172800).strftime("%A")
+      ]
+    }
+    expect(check_subdued?(check)).to be(false)
+    check[:subdue] = {
+      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
+      :exceptions => [
+        {
+          :begin => (Time.now + 3600).rfc2822,
+          :end => (Time.now + 7200)
+        }
+      ]
+    }
+    expect(check_subdued?(check)).to be(true)
+    check[:subdue] = {
+      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
+      :exceptions => [
+        {
+          :begin => (Time.now - 3600).rfc2822,
+          :end => (Time.now + 3600).rfc2822
+        }
+      ]
+    }
+    expect(check_subdued?(check)).to be(false)
+  end
 end

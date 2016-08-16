@@ -751,7 +751,7 @@ module Sensu
       def schedule_check_executions(checks)
         checks.each do |check|
           create_check_request = Proc.new do
-            unless check_request_subdued?(check)
+            unless check_subdued?(check)
               publish_check_request(check)
             else
               @logger.info("check request was subdued", :check => check)

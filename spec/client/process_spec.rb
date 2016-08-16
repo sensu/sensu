@@ -272,6 +272,32 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can subdue standalone check execution" do
+    async_wrapper do
+      result_queue do |payload|
+        result = Sensu::JSON.load(payload)
+        expect(result[:check][:name]).to eq("test")
+        async_done
+      end
+      timer(0.5) do
+        @client.setup_transport do
+          check = check_template
+          checks = [
+            check.merge(
+              :name => "subdued",
+              :subdue => {
+                :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+                :end => (Time.now + 3600).strftime("%l:00 %p").strip
+              }
+            ),
+            check
+          ]
+          @client.schedule_checks(checks)
+        end
+      end
+    end
+  end
+
   it "can calculate a check execution splay interval" do
     allow(Time).to receive(:now).and_return("1414213569.032")
     check = check_template
