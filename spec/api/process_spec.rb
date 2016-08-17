@@ -237,6 +237,26 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can provide a specific check" do
+    api_test do
+      api_request("/checks/merger") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Hash)
+        expect(body).to eq({:command=>"echo -n merger", :interval=>60, :subscribers=>["test"], :name=>"merger"})
+        async_done
+      end
+    end
+  end
+
+  it "cannot provide a specific standalone check" do
+    api_test do
+      api_request("/checks/standalone") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        async_done
+      end
+    end
+  end
+
   it "can provide a specific event" do
     api_test do
       api_request("/events/i-424242/test") do |http, body|
