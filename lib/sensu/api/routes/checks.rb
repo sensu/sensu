@@ -7,14 +7,14 @@ module Sensu
 
         # GET /checks
         def get_checks
-          @response_content = @settings.checks
+          @response_content = @settings.checks.reject { |c| c[:standalone] }
           respond
         end
 
         # GET /checks/:check_name
         def get_check
           check_name = parse_uri(CHECK_URI).first
-          if @settings[:checks][check_name]
+          if @settings[:checks][check_name] && !@settings[:checks][check_name][:standalone]
             @response_content = @settings[:checks][check_name].merge(:name => check_name)
             respond
           else

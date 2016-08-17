@@ -223,6 +223,20 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can provide defined checks without standalone checks" do
+    api_test do
+      api_request("/checks") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        test_check = Proc.new do |check|
+          check[:name] == "standalone"
+        end
+        expect(body).to_not contain(test_check)
+        async_done
+      end
+    end
+  end
+
   it "can provide a specific event" do
     api_test do
       api_request("/events/i-424242/test") do |http, body|
