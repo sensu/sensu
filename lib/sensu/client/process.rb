@@ -358,19 +358,22 @@ module Sensu
       # elsewhere, eg. `close_sockets()`.
       def setup_sockets
         options = @settings[:client][:socket] || Hash.new
-        options[:bind] ||= "127.0.0.1"
+        options[:bind] ||= ["127.0.0.1", "::1"]
         options[:port] ||= 3030
         @logger.debug("binding client tcp and udp sockets", :options => options)
-        @sockets << EM::start_server(options[:bind], options[:port], Socket) do |socket|
-          socket.logger = @logger
-          socket.settings = @settings
-          socket.transport = @transport
-        end
-        @sockets << EM::open_datagram_socket(options[:bind], options[:port], Socket) do |socket|
-          socket.logger = @logger
-          socket.settings = @settings
-          socket.transport = @transport
-          socket.protocol = :udp
+        options[:bind] = [options[:bind]] if options[:bind].is_a?(String)
+        options[:bind].each do |bind|
+          @sockets << EM::start_server(bind, options[:port], Socket) do |socket|
+            socket.logger = @logger
+            socket.settings = @settings
+            socket.transport = @transport
+          end
+          @sockets << EM::open_datagram_socket(bind, options[:port], Socket) do |socket|
+            socket.logger = @logger
+            socket.settings = @settings
+            socket.transport = @transport
+            socket.protocol = :udp
+          end
         end
       end
 
