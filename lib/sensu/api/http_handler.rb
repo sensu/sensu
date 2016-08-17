@@ -248,11 +248,11 @@ module Sensu
         respond
       end
 
-      # Respond to the HTTP request with a `204` (No Response)
+      # Respond to the HTTP request with a `204` (No Content)
       # response.
       def no_content!
         @response_status = 204
-        @response_status_string = "No Response"
+        @response_status_string = "No Content"
         respond
       end
 

@@ -58,7 +58,7 @@ module Sensu
                       result_count = results.length
                       timestamp = Time.now.to_i - max_age
                       results.reject! do |result|
-                        result[:executed] < timestamp
+                        result[:executed] && result[:executed] < timestamp
                       end
                       @response_content[:results][:stale] = result_count - results.length
                     end
@@ -160,7 +160,7 @@ module Sensu
                     unless result_json.nil?
                       result = Sensu::JSON.load(result_json)
                       if SEVERITIES[result[:status]] == severity &&
-                          (max_age.nil? || result[:executed] >= (current_timestamp - max_age))
+                          (max_age.nil? || result[:executed].nil? || result[:executed] >= (current_timestamp - max_age))
                         summaries[check_name] ||= {}
                         summaries[check_name][result[:output]] ||= {:total => 0, :clients => []}
                         summaries[check_name][result[:output]][:total] += 1

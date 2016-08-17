@@ -145,9 +145,9 @@ module Sensu
           @checks_in_progress << check[:name]
           substituted, unmatched_tokens = object_substitute_tokens(check.dup)
           check = substituted.merge(:command => check[:command])
+          started = Time.now.to_f
+          check[:executed] = started.to_i
           if unmatched_tokens.empty?
-            started = Time.now.to_f
-            check[:executed] = started.to_i
             Spawn.process(substituted[:command], :timeout => check[:timeout]) do |output, status|
               check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               check[:output] = output

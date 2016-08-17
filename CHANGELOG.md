@@ -1,3 +1,19 @@
+## 0.25.7 - 2016-08-09
+
+### Fixes
+
+Fixed the Sensu API 204 status response string, changing "No Response" to
+the correct string "No Content".
+
+## 0.25.6 - 2016-07-28
+
+### Fixes
+
+Check results for unmatched tokens now include an executed timestamp.
+
+API aggregates max_age now guards against check results with a `nil`
+executed timestamp.
+
 ## 0.25.5 - 2016-07-12
 
 ### Fixes

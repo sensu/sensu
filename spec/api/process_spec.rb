@@ -64,6 +64,7 @@ describe "Sensu::API::Process" do
     api_test do
       api_request("/health?consumers=0&messages=1000") do |http, body|
         expect(http.response_header.status).to eq(204)
+        expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
         api_request("/health?consumers=1000") do |http, body|
           expect(http.response_header.status).to eq(412)
@@ -217,6 +218,40 @@ describe "Sensu::API::Process" do
           check[:name] == "tokens"
         end
         expect(body).to contain(test_check)
+        async_done
+      end
+    end
+  end
+
+  it "can provide defined checks without standalone checks" do
+    api_test do
+      api_request("/checks") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        test_check = Proc.new do |check|
+          check[:name] == "standalone"
+        end
+        expect(body).to_not contain(test_check)
+        async_done
+      end
+    end
+  end
+
+  it "can provide a specific check" do
+    api_test do
+      api_request("/checks/merger") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Hash)
+        expect(body).to eq({:command=>"echo -n merger", :interval=>60, :subscribers=>["test"], :name=>"merger"})
+        async_done
+      end
+    end
+  end
+
+  it "cannot provide a specific standalone check" do
+    api_test do
+      api_request("/checks/standalone") do |http, body|
+        expect(http.response_header.status).to eq(404)
         async_done
       end
     end
@@ -723,6 +758,7 @@ describe "Sensu::API::Process" do
     api_test do
       api_request("/stash/test/test", :delete) do |http, body|
         expect(http.response_header.status).to eq(204)
+        expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
         redis.exists("stash:test/test") do |exists|
           expect(exists).to be(false)
@@ -766,6 +802,7 @@ describe "Sensu::API::Process" do
         timer(1) do
           api_request("/aggregates/test", :delete) do |http, body|
             expect(http.response_header.status).to eq(204)
+            expect(http.response_header.http_reason).to eq('No Content')
             expect(body).to be_empty
             redis.sismember("aggregates", "test") do |exists|
               expect(exists).to be(false)
@@ -787,6 +824,7 @@ describe "Sensu::API::Process" do
         timer(1) do
           api_request("/aggregates/TEST", :delete) do |http, body|
             expect(http.response_header.status).to eq(204)
+            expect(http.response_header.http_reason).to eq('No Content')
             expect(body).to be_empty
             redis.sismember("aggregates", "TEST") do |exists|
               expect(exists).to be(false)
@@ -1154,6 +1192,7 @@ describe "Sensu::API::Process" do
     api_test do
       api_request("/results/i-424242/test", :delete) do |http, body|
         expect(http.response_header.status).to eq(204)
+        expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
         async_done
       end
