@@ -7,7 +7,7 @@ module Sensu
 
         # GET /checks
         def get_checks
-          @response_content = @settings.checks.reject { |c| c[:standalone] }
+          @response_content = @settings.checks.reject { |check| check[:standalone] }
           respond
         end
 
