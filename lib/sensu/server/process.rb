@@ -525,6 +525,7 @@ module Sensu
               :client => client,
               :check => check,
               :occurrences => 1,
+              :occurrences_watermark => 1,
               :action => (flapping ? :flapping : :create),
               :timestamp => Time.now.to_i
             }
@@ -533,12 +534,17 @@ module Sensu
               event[:last_state_change] = stored_event[:last_state_change]
               event[:last_ok] = stored_event[:last_ok]
               event[:occurrences] = stored_event[:occurrences]
+              event[:occurrences_watermark] = stored_event[:occurrences_watermark] || event[:occurrences]
             else
               event[:id] = random_uuid
+              event[:last_ok] = event[:timestamp]
             end
             if check[:status] != 0 || flapping
               if history[-1] == history[-2]
                 event[:occurrences] += 1
+                if event[:occurrences] > event[:occurrences_watermark]
+                  event[:occurrences_watermark] = event[:occurrences]
+                end
               else
                 event[:occurrences] = 1
                 event[:last_state_change] = event[:timestamp]

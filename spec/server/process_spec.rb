@@ -262,25 +262,29 @@ describe "Sensu::Server::Process" do
     end
   end
 
-  it "can have event ids persist until the event is resolved" do
+  it "can have event id and occurrence watermark persist until the event is resolved" do
     async_wrapper do
       @server.setup_redis do
         redis.flushdb do
           client = client_template
           redis.set("client:i-424242", Sensu::JSON.dump(client)) do
-            result = result_template
-            @server.process_check_result(result)
-            timer(1) do
+            @server.process_check_result(result_template)
+            @server.process_check_result(result_template)
+            timer(2) do
               redis.hget("events:i-424242", "test") do |event_json|
                 event = Sensu::JSON.load(event_json)
                 event_id = event[:id]
-                expect(event[:occurrences]).to eq(1)
+                expect(event[:occurrences]).to eq(2)
+                expect(event[:occurrences_watermark]).to eq(2)
+                result = result_template
+                result[:check][:status] = 2
                 @server.process_check_result(result)
-                timer(1) do
+                timer(2) do
                   redis.hget("events:i-424242", "test") do |event_json|
                     event = Sensu::JSON.load(event_json)
                     expect(event[:id]).to eq(event_id)
-                    expect(event[:occurrences]).to eq(2)
+                    expect(event[:occurrences]).to eq(1)
+                    expect(event[:occurrences_watermark]).to eq(2)
                     async_done
                   end
                 end
@@ -349,6 +353,8 @@ describe "Sensu::Server::Process" do
                           expect(event[:id]).to be_kind_of(String)
                           expect(event[:check][:status]).to eq(1)
                           expect(event[:occurrences]).to eq(2)
+                          expect(event[:occurrences_watermark]).to eq(2)
+                          expect(event[:last_ok]).to be_within(30).of(epoch)
                           expect(event[:silenced]).to eq(false)
                           expect(event[:silenced_by]).to be_empty
                           expect(event[:action]).to eq("create")
