@@ -119,15 +119,15 @@ module Sensu
       [substituted, unmatched_tokens]
     end
 
-    # Determine if a period of time (window) is subdued. The
-    # provided condition must have a `:begin` and `:end` time, eg.
-    # "11:30:00 PM", or `false` will be returned.
+    # Determine if the current time falls within a time window
+    # condition. The provided condition must have a `:begin` and
+    # `:end` time, eg. "11:30:00 PM", or `false` will be returned.
     #
     # @param condition [Hash]
     # @option condition [String] :begin time.
     # @option condition [String] :end time.
     # @return [TrueClass, FalseClass]
-    def subdue_time?(condition)
+    def time_match?(condition)
       if condition.has_key?(:begin) && condition.has_key?(:end)
         begin_time = Time.parse(condition[:begin])
         end_time = Time.parse(condition[:end])
@@ -144,29 +144,29 @@ module Sensu
       end
     end
 
-    # Determine if subdue conditions for one or more days of the week
-    # are met. If a day of the week is provided, it can provide one or
-    # more conditions, each with a `:begin` and `:end` time, eg.
-    # "11:30:00 PM", or `false` will be returned.
+    # Determine if time window conditions for one or more days of the
+    # week are met. If a day of the week is provided, it can provide
+    # one or more conditions, each with a `:begin` and `:end` time,
+    # eg. "11:30:00 PM", or `false` will be returned.
     #
     # @param conditions [Hash]
     # @option conditions [String] :days of the week.
     # @return [TrueClass, FalseClass]
-    def subdued?(conditions)
-      subdued = false
-      subdued_days = conditions[:days]
-      if subdued_days[:all]
-        subdued = subdued_days[:all].any? do |condition|
-          subdue_time?(condition)
+    def in_time_window?(conditions)
+      in_window = false
+      window_days = conditions[:days]
+      if window_days[:all]
+        in_window = window_days[:all].any? do |condition|
+          time_match?(condition)
         end
       end
       current_day = Time.now.strftime("%A").downcase.to_sym
-      if !subdued && subdued_days[current_day]
-        subdued = subdued_days[current_day].any? do |condition|
-          subdue_time?(condition)
+      if !in_window && window_days[current_day]
+        in_window = window_days[current_day].any? do |condition|
+          time_match?(condition)
         end
       end
-      subdued
+      in_window
     end
 
     # Determine if a check is subdued, by conditions set in the check
@@ -177,7 +177,7 @@ module Sensu
     # @return [TrueClass, FalseClass]
     def check_subdued?(check)
       if check[:subdue]
-        subdued?(check[:subdue])
+        in_time_window?(check[:subdue])
       else
         false
       end
