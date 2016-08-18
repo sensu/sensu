@@ -7,8 +7,6 @@ describe "Sensu::Server::Filter" do
 
   before do
     @server = Sensu::Server::Process.new(options)
-    settings = Sensu::Settings.get(options)
-    @filters = settings[:filters]
     @handler = {}
     @event = event_template
   end
@@ -114,6 +112,24 @@ describe "Sensu::Server::Filter" do
               end
             end
           end
+        end
+      end
+    end
+  end
+
+  it "can filter events for a specific time window" do
+    async_wrapper do
+      @server.event_filter("time", @event) do |filtered|
+        expect(filtered).to be(true)
+        @server.settings[:filters][:time][:when][:days][:all] = [
+          {
+            :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+            :end => (Time.now + 3600).strftime("%l:00 %p").strip
+          }
+        ]
+        @server.event_filter("time", @event) do |filtered|
+          expect(filtered).to be(false)
+          async_done
         end
       end
     end

@@ -158,13 +158,64 @@ module Sensu
         end
       end
 
-      # Determine if an event is filtered by an event filter, standard
+      # Determine if a filter is to be evoked for the current time. A
+      # filter can be configured with a time window defining when it
+      # is to be evoked, e.g. Monday through Friday, 9-5.
+      #
+      # @param filter [Hash] definition.
+      # @return [TrueClass, FalseClass]
+      def in_filter_time_window?(filter)
+        if filter[:when]
+          in_time_window?(filter[:when])
+        else
+          true
+        end
+      end
+
+      # Determine if an event is filtered by a native filter.
+      #
+      # @param filter_name [String]
+      # @param event [Hash]
+      # @yield [filtered] callback/block called with a single
+      #   parameter to indicate if the event was filtered.
+      # @yieldparam filtered [TrueClass,FalseClass] indicating if the
+      #   event was filtered.
+      def native_filter(filter_name, event)
+        filter = @settings[:filters][filter_name]
+        if in_filter_time_window?(filter)
+          matched = filter_attributes_match?(event, filter[:attributes])
+          yield(filter[:negate] ? matched : !matched)
+        else
+          yield(false)
+        end
+      end
+
+      # Determine if an event is filtered by a filter extension.
+      #
+      # @param filter_name [String]
+      # @param event [Hash]
+      # @yield [filtered] callback/block called with a single
+      #   parameter to indicate if the event was filtered.
+      # @yieldparam filtered [TrueClass,FalseClass] indicating if the
+      #   event was filtered.
+      def extension_filter(filter_name, event)
+        extension = @extensions[:filters][filter_name]
+        if in_filter_time_window?(extension.definition)
+          extension.safe_run(event) do |output, status|
+            yield(status == 0)
+          end
+        else
+          yield(false)
+        end
+      end
+
+      # Determine if an event is filtered by an event filter, native
       # or extension. This method first checks for the existence of a
-      # standard filter, then checks for an extension if a standard
-      # filter is not defined. The provided callback is called with a
-      # single parameter, indicating if the event was filtered by a
-      # filter. If a filter does not exist for the provided name, the
-      # event is not filtered.
+      # native filter, then checks for an extension if a native filter
+      # is not defined. The provided callback is called with a single
+      # parameter, indicating if the event was filtered by a filter.
+      # If a filter does not exist for the provided name, the event is
+      # not filtered.
       #
       # @param filter_name [String]
       # @param event [Hash]
@@ -175,13 +226,12 @@ module Sensu
       def event_filter(filter_name, event)
         case
         when @settings.filter_exists?(filter_name)
-          filter = @settings[:filters][filter_name]
-          matched = filter_attributes_match?(event, filter[:attributes])
-          yield(filter[:negate] ? matched : !matched)
+          native_filter(filter_name, event) do |filtered|
+            yield(filtered)
+          end
         when @extensions.filter_exists?(filter_name)
-          extension = @extensions[:filters][filter_name]
-          extension.safe_run(event) do |output, status|
-            yield(status == 0)
+          extension_filter(filter_name, event) do |filtered|
+            yield(filtered)
           end
         else
           @logger.error("unknown filter", :filter_name => filter_name)

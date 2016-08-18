@@ -34,7 +34,7 @@ module Sensu
   module Daemon
     include Utilities
 
-    attr_reader :start_time
+    attr_reader :start_time, :settings
 
     # Initialize the Sensu process. Set the start time, initial
     # service state, double the maximum number of EventMachine timers,
