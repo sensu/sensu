@@ -119,15 +119,15 @@ module Sensu
       [substituted, unmatched_tokens]
     end
 
-    # Determine if the current time falls within a time window
-    # condition. The provided condition must have a `:begin` and
-    # `:end` time, eg. "11:30:00 PM", or `false` will be returned.
+    # Determine if the current time falls within a time window. The
+    # provided condition must have a `:begin` and `:end` time, eg.
+    # "11:30:00 PM", or `false` will be returned.
     #
     # @param condition [Hash]
     # @option condition [String] :begin time.
     # @option condition [String] :end time.
     # @return [TrueClass, FalseClass]
-    def time_match?(condition)
+    def in_time_window?(condition)
       if condition.has_key?(:begin) && condition.has_key?(:end)
         begin_time = Time.parse(condition[:begin])
         end_time = Time.parse(condition[:end])
@@ -152,18 +152,18 @@ module Sensu
     # @param conditions [Hash]
     # @option conditions [String] :days of the week.
     # @return [TrueClass, FalseClass]
-    def in_time_window?(conditions)
+    def in_time_windows?(conditions)
       in_window = false
-      window_days = conditions[:days]
+      window_days = conditions[:days] || {}
       if window_days[:all]
         in_window = window_days[:all].any? do |condition|
-          time_match?(condition)
+          in_time_window?(condition)
         end
       end
       current_day = Time.now.strftime("%A").downcase.to_sym
       if !in_window && window_days[current_day]
         in_window = window_days[current_day].any? do |condition|
-          time_match?(condition)
+          in_time_window?(condition)
         end
       end
       in_window
@@ -177,7 +177,7 @@ module Sensu
     # @return [TrueClass, FalseClass]
     def check_subdued?(check)
       if check[:subdue]
-        in_time_window?(check[:subdue])
+        in_time_windows?(check[:subdue])
       else
         false
       end

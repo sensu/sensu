@@ -121,12 +121,18 @@ describe "Sensu::Server::Filter" do
     async_wrapper do
       @server.event_filter("time", @event) do |filtered|
         expect(filtered).to be(true)
-        @server.settings[:filters][:time][:when][:days][:all] = [
-          {
-            :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-            :end => (Time.now + 3600).strftime("%l:00 %p").strip
+        @server.settings[:filters][:time] = {
+          :when => {
+            :days => {
+              :all => [
+                {
+                  :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
+                  :end => (Time.now + 5400).strftime("%l:00 %p").strip
+                }
+              ]
+            }
           }
-        ]
+        }
         @server.event_filter("time", @event) do |filtered|
           expect(filtered).to be(false)
           async_done

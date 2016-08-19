@@ -164,9 +164,9 @@ module Sensu
       #
       # @param filter [Hash] definition.
       # @return [TrueClass, FalseClass]
-      def in_filter_time_window?(filter)
+      def in_filter_time_windows?(filter)
         if filter[:when]
-          in_time_window?(filter[:when])
+          in_time_windows?(filter[:when])
         else
           true
         end
@@ -182,7 +182,7 @@ module Sensu
       #   event was filtered.
       def native_filter(filter_name, event)
         filter = @settings[:filters][filter_name]
-        if in_filter_time_window?(filter)
+        if in_filter_time_windows?(filter)
           matched = filter_attributes_match?(event, filter[:attributes])
           yield(filter[:negate] ? matched : !matched)
         else
@@ -200,7 +200,7 @@ module Sensu
       #   event was filtered.
       def extension_filter(filter_name, event)
         extension = @extensions[:filters][filter_name]
-        if in_filter_time_window?(extension.definition)
+        if in_filter_time_windows?(extension.definition)
           extension.safe_run(event) do |output, status|
             yield(status == 0)
           end

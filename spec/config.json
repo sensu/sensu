@@ -38,10 +38,7 @@
     },
     "time": {
       "attributes": {
-        "action": "create"
-      },
-      "when": {
-        "days": {}
+        "action": "resolve"
       }
     }
   },
