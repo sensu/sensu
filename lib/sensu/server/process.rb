@@ -879,7 +879,8 @@ module Sensu
                   client_name = result_key.split(":").first
                   check[:output] = "Last check execution was "
                   check[:output] << "#{time_since_last_execution} seconds ago"
-                  check[:status] = 1
+                  check[:output] << ". (Threshold: #{check[:ttl]} seconds)"
+                  check[:status] = @settings[:ttl_status] || 1
                   publish_check_result(client_name, check)
                 end
               else

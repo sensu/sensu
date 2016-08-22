@@ -612,7 +612,7 @@ describe "Sensu::Server::Process" do
                       expect(events.size).to eq(1)
                       event = Sensu::JSON.load(events["foo"])
                       expect(event[:check][:output]).to match(/Last check execution was 3[0-9] seconds ago/)
-                      expect(event[:check][:status]).to eq(1)
+                      expect(event[:check][:status]).to eq(2)
                       async_done
                     end
                   end
