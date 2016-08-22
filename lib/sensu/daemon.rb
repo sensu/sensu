@@ -4,7 +4,7 @@ gem "eventmachine", "1.2.0.1"
 
 gem "sensu-json", "2.0.0"
 gem "sensu-logger", "1.2.0"
-gem "sensu-settings", "8.0.0"
+gem "sensu-settings", "9.1.0"
 gem "sensu-extension", "1.5.0"
 gem "sensu-extensions", "1.6.0"
 gem "sensu-transport", "6.0.0"
@@ -34,7 +34,7 @@ module Sensu
   module Daemon
     include Utilities
 
-    attr_reader :start_time
+    attr_reader :start_time, :settings
 
     # Initialize the Sensu process. Set the start time, initial
     # service state, double the maximum number of EventMachine timers,

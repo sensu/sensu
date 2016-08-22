@@ -297,15 +297,20 @@ module Sensu
       # using a calculated execution splay. The timers are stored in
       # the timers hash under `:run`, so they can be cancelled etc.
       # Check definitions are duplicated before processing them, in
-      # case they are mutated. The check `:issued` timestamp is set
-      # here, to mimic check requests issued by a Sensu server.
+      # case they are mutated. A check will not be executed if it is
+      # subdued. The check `:issued` timestamp is set here, to mimic
+      # check requests issued by a Sensu server.
       #
       # @param checks [Array] of definitions.
       def schedule_checks(checks)
         checks.each do |check|
           execute_check = Proc.new do
-            check[:issued] = Time.now.to_i
-            process_check_request(check.dup)
+            unless check_subdued?(check)
+              check[:issued] = Time.now.to_i
+              process_check_request(check.dup)
+            else
+              @logger.info("check execution was subdued", :check => check)
+            end
           end
           execution_splay = testing? ? 0 : calculate_execution_splay(check)
           interval = testing? ? 0.5 : check[:interval]

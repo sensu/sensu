@@ -103,4 +103,57 @@ describe "Sensu::Utilities" do
     expect(result).to eq("true default   true:true localhost localhost:8080")
     expect(unmatched_tokens).to eq(["missing"])
   end
+
+  it "can determine if a check is subdued" do
+    check = {}
+    expect(check_subdued?(check)).to be(false)
+    check = {
+      :subdue => {
+        :days => {}
+      }
+    }
+    expect(check_subdued?(check)).to be(false)
+    check[:subdue][:days][:all] = []
+    expect(check_subdued?(check)).to be(false)
+    check[:subdue][:days][:all] = [
+      {
+        :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 4200).strftime("%l:00 %p").strip
+      }
+    ]
+    expect(check_subdued?(check)).to be(false)
+    check[:subdue][:days][:all] = [
+      {
+        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 3600).strftime("%l:00 %p").strip
+      }
+    ]
+    expect(check_subdued?(check)).to be(true)
+    check[:subdue][:days].delete(:all)
+    expect(check_subdued?(check)).to be(false)
+    current_day = Time.now.strftime("%A").downcase.to_sym
+    check[:subdue][:days][current_day] = [
+      {
+        :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 4200).strftime("%l:00 %p").strip
+      }
+    ]
+    expect(check_subdued?(check)).to be(false)
+    check[:subdue][:days][current_day] = [
+      {
+        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 3600).strftime("%l:00 %p").strip
+      }
+    ]
+    expect(check_subdued?(check)).to be(true)
+    check[:subdue][:days].delete(current_day)
+    tomorrow = (Time.now + 86400).strftime("%A").downcase.to_sym
+    check[:subdue][:days][tomorrow] = [
+      {
+        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
+        :end => (Time.now + 3600).strftime("%l:00 %p").strip
+      }
+    ]
+    expect(check_subdued?(check)).to be(false)
+  end
 end

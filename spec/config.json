@@ -18,6 +18,28 @@
           "environment": "production"
         }
       }
+    },
+    "offhours": {
+      "attributes": {
+        "client": {
+          "environment": "production"
+        }
+      },
+      "when": {
+        "days": {
+          "all": [
+            {
+              "begin": "5:00 PM",
+              "end": "8:00 AM"
+            }
+          ]
+        }
+      }
+    },
+    "time": {
+      "attributes": {
+        "action": "resolve"
+      }
     }
   },
   "mutators": {
