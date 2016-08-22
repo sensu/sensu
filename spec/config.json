@@ -178,5 +178,6 @@
     },
     "empty": {},
     "localhost": "fail"
-  }
+  },
+  "ttl_status": 2
 }
