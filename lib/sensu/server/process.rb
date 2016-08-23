@@ -619,7 +619,7 @@ module Sensu
         end
       end
 
-      # Determine if a keepalive incident exists in the event registry.
+      # Determine if a keepalive event exists for a client.
       #
       # @param client_name [String] name of client to look up in event registry.
       # @return [TrueClass, FalseClass]

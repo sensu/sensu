@@ -730,7 +730,6 @@ describe "Sensu::Server::Process" do
     end
   end
 
-
   it "can be the leader and resign" do
     async_wrapper do
       @server.setup_connections do
