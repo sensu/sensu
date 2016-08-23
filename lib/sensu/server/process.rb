@@ -624,7 +624,7 @@ module Sensu
       # @param client_name [String] name of client to look up in event registry.
       # @return [TrueClass, FalseClass]
       def keepalive_event_exists?(client_name)
-        @redis.hexists("event:#{client_name}", "keepalive") do |event_exists|
+        @redis.hexists("events:#{client_name}", "keepalive") do |event_exists|
           yield(event_exists)
         end
       end
