@@ -3,8 +3,7 @@
 ### Non-backwards compatible changes
 
 Subdue now ONLY applies to check scheduling via check definitions, it has
-been removed from handlers (no more `"at": "handler"`). The Sensu client
-standalone check execution scheduler now supports subdue. The subdue
+been removed from handlers (no more `"at": "handler"`). The subdue
 configuration syntax has changed, please refer to the 0.26 documentation.
 
 ### Fixes
@@ -14,7 +13,7 @@ accommodate very large Sensu installations that execute over 100k checks.
 
 Only attempt to schedule standalone checks that have an interval.
 
-Standalone checks are now long provided by the Sensu API /checks endpoint.
+Standalone checks are no longer provided by the Sensu API /checks endpoint.
 
 Check TTL events are no longer created if the associated Sensu client has
 a current keepalive event.
