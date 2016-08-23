@@ -619,6 +619,16 @@ module Sensu
         end
       end
 
+      # Determine if a keepalive incident exists in the event registry.
+      #
+      # @param client_name [String] name of client to look up in event registry.
+      # @return [TrueClass, FalseClass]
+      def keepalive_event_exists?(client_name)
+        @redis.hexists("events:#{client_name}", "keepalive") do |event_exists|
+          yield(event_exists)
+        end
+      end
+
       # Process a check result, storing its data, inspecting its
       # contents, and taking the appropriate actions (eg. update the
       # event registry). The `@in_progress[:check_results]` counter is
@@ -941,10 +951,14 @@ module Sensu
                 time_since_last_execution = Time.now.to_i - check[:executed]
                 if time_since_last_execution >= check[:ttl]
                   client_name = result_key.split(":").first
-                  check[:output] = "Last check execution was "
-                  check[:output] << "#{time_since_last_execution} seconds ago"
-                  check[:status] = 1
-                  publish_check_result(client_name, check)
+                  keepalive_event_exists?(client_name) do |event_exists|
+                    unless event_exists
+                      check[:output] = "Last check execution was "
+                      check[:output] << "#{time_since_last_execution} seconds ago"
+                      check[:status] = 1
+                      publish_check_result(client_name, check)
+                    end
+                  end
                 end
               else
                 @redis.srem("ttl", result_key)

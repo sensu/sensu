@@ -694,6 +694,43 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can skip creating stale check results when client has a keepalive event" do
+    async_wrapper do
+      redis.flushdb do
+        @server.setup_connections do
+          @server.setup_results
+          client = client_template
+          client[:timestamp] = epoch - 120
+          redis.set("client:i-424242", Sensu::JSON.dump(client)) do
+            redis.sadd("clients", "i-424242") do
+              @server.determine_stale_clients
+              timer(1) do
+                redis.hget("events:i-424242", "keepalive") do |event_json|
+                  event = Sensu::JSON.load(event_json)
+                  expect(event[:check][:status]).to eq(2)
+                  stale_result = result_template
+                  stale_result[:check][:status] = 0
+                  stale_result[:check][:ttl] = 60
+                  stale_result[:check][:executed] = epoch - 1200
+                  transport.publish(:direct, "results", Sensu::JSON.dump(stale_result)) do
+                    @server.determine_stale_check_results
+                    timer(1) do
+                      redis.hexists("events:i-424242", "test") do |ttl_event_exists|
+                        expect(ttl_event_exists).to eq(false)
+                        async_done
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+
   it "can be the leader and resign" do
     async_wrapper do
       @server.setup_connections do
