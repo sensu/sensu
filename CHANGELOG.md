@@ -1,5 +1,12 @@
 ## 0.26.0 - TBD
 
+### Non-backwards compatible changes
+
+Subdue now ONLY applies to check scheduling via check definitions, it has
+been removed from handlers (no more `"at": "handler"`). The Sensu client
+standalone check execution scheduler now supports subdue. The subdue
+configuration syntax has changed, please refer to the 0.26 documentation.
+
 ### Fixes
 
 Increased the maximum number of EventMachine timers from 100k to 200k, to
