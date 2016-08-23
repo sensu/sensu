@@ -24,7 +24,7 @@ response content.
 ### Features
 
 Event silencing is now built into Sensu Core! The Sensu API now provides a
-set of /silencing endpoints, for silencing one or more subscriptions
+set of /silenced endpoints, for silencing one or more subscriptions
 and/or checks. Silencing applies to all event handlers by default, the new
 handler definition attribute `handle_silenced` can be used to disable it
 for a handler. Metric check events (OK) bypass event silencing.
