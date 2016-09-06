@@ -173,4 +173,11 @@ describe "Sensu::Server::Filter" do
       end
     end
   end
+
+  it "can catch SyntaxErrors in eval filters" do
+    attributes = {
+      :occurrences => "eval: raise SyntaxError"
+    }
+    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
+  end
 end
