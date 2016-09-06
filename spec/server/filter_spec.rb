@@ -7,98 +7,18 @@ describe "Sensu::Server::Filter" do
 
   before do
     @server = Sensu::Server::Process.new(options)
-    settings = Sensu::Settings.get(options)
-    @filters = settings[:filters]
     @handler = {}
     @event = event_template
   end
 
-  it "can determine if an action is subdued" do
-    expect(@server.action_subdued?(Hash.new)).to be(false)
-    condition = {
-      :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-      :end => (Time.now + 3600).strftime("%l:00 %p").strip
-    }
-    expect(@server.action_subdued?(condition)).to be(true)
-    condition = {
-      :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
-      :end => (Time.now + 7200).strftime("%l:00 %p").strip
-    }
-    expect(@server.action_subdued?(condition)).to be(false)
-    condition = {
-      :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-      :end => (Time.now - 7200).strftime("%l:00 %p").strip
-    }
-    expect(@server.action_subdued?(condition)).to be(true)
-    condition = {
-      :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
-      :end => (Time.now - 7200).strftime("%l:00 %p").strip
-    }
-    expect(@server.action_subdued?(condition)).to be(false)
-    condition = {
-      :days => [
-        Time.now.strftime("%A"),
-        "wednesday"
-      ]
-    }
-    expect(@server.action_subdued?(condition)).to be(true)
-    condition = {
-      :days => [
-        (Time.now + 86400).strftime("%A"),
-        (Time.now + 172800).strftime("%A")
-      ]
-    }
-    expect(@server.action_subdued?(condition)).to be(false)
-    condition = {
-      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
-      :exceptions => [
-        {
-          :begin => (Time.now + 3600).rfc2822,
-          :end => (Time.now + 7200)
-        }
-      ]
-    }
-    expect(@server.action_subdued?(condition)).to be(true)
-    condition = {
-      :days => %w[sunday monday tuesday wednesday thursday friday saturday],
-      :exceptions => [
-        {
-          :begin => (Time.now - 3600).rfc2822,
-          :end => (Time.now + 3600).rfc2822
-        }
-      ]
-    }
-    expect(@server.action_subdued?(condition)).to be(false)
-  end
-
-  it "can determine if a handler is subdued" do
-    expect(@server.handler_subdued?(@handler, @event)).to be(false)
-    @event[:check] = {
-      :subdue => {
-        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-        :end => (Time.now + 3600).strftime("%l:00 %p").strip
-      }
-    }
-    expect(@server.handler_subdued?(@handler, @event)).to be(true)
-    @event[:check][:subdue][:at] = "publisher"
-    expect(@server.handler_subdued?(@handler, @event)).to be(false)
-    @handler[:subdue] = {
-      :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-      :end => (Time.now + 3600).strftime("%l:00 %p").strip
-    }
-    expect(@server.handler_subdued?(@handler, @event)).to be(true)
-  end
-
-  it "can determine if a check request is subdued" do
-    check = {
-      :subdue => {
-        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-        :end => (Time.now + 3600).strftime("%l:00 %p").strip
-      }
-    }
-    expect(@server.check_request_subdued?(check)).to be(false)
-    check[:subdue][:at] = "publisher"
-    expect(@server.check_request_subdued?(check)).to be(true)
+  it "can determine if handler handles a silenced event" do
+    expect(@server.handler_silenced?(@handler, @event)).to be(false)
+    @event[:silenced] = true
+    expect(@server.handler_silenced?(@handler, @event)).to be(true)
+    @handler[:handle_silenced] = true
+    expect(@server.handler_silenced?(@handler, @event)).to be(false)
+    @handler[:handle_silenced] = false
+    expect(@server.handler_silenced?(@handler, @event)).to be(true)
   end
 
   it "can determine if handling is disabled for an event" do
@@ -197,6 +117,30 @@ describe "Sensu::Server::Filter" do
     end
   end
 
+  it "can filter events for a specific time window" do
+    async_wrapper do
+      @server.event_filter("time", @event) do |filtered|
+        expect(filtered).to be(true)
+        @server.settings[:filters][:time] = {
+          :when => {
+            :days => {
+              :all => [
+                {
+                  :begin => (Time.now + 3600).strftime("%l:00 %p").strip,
+                  :end => (Time.now + 5400).strftime("%l:00 %p").strip
+                }
+              ]
+            }
+          }
+        }
+        @server.event_filter("time", @event) do |filtered|
+          expect(filtered).to be(false)
+          async_done
+        end
+      end
+    end
+  end
+
   it "can filter events" do
     async_wrapper do
       handler = {
@@ -218,18 +162,22 @@ describe "Sensu::Server::Filter" do
         raise "not filtered"
       end
       handler.delete(:severities)
-      handler[:subdue] = {
-        :begin => (Time.now - 3600).strftime("%l:00 %p").strip,
-        :end => (Time.now + 3600).strftime("%l:00 %p").strip
-      }
+      @event[:silenced] = true
       @server.filter_event(handler, @event) do
         raise "not filtered"
       end
-      handler.delete(:subdue)
+      @event[:silenced] = false
       @server.filter_event(handler, @event) do |event|
         expect(event).to be(@event)
         async_done
       end
     end
+  end
+
+  it "can catch SyntaxErrors in eval filters" do
+    attributes = {
+      :occurrences => "eval: raise SyntaxError"
+    }
+    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
   end
 end

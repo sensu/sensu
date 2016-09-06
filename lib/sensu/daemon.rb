@@ -4,12 +4,12 @@ gem "eventmachine", "1.2.0.1"
 
 gem "sensu-json", "2.0.0"
 gem "sensu-logger", "1.2.0"
-gem "sensu-settings", "5.2.0"
+gem "sensu-settings", "9.1.0"
 gem "sensu-extension", "1.5.0"
-gem "sensu-extensions", "1.5.0"
+gem "sensu-extensions", "1.7.0"
 gem "sensu-transport", "6.0.0"
 gem "sensu-spawn", "2.2.0"
-gem "sensu-redis", "1.4.0"
+gem "sensu-redis", "1.6.0"
 
 require "time"
 require "uri"
@@ -34,19 +34,21 @@ module Sensu
   module Daemon
     include Utilities
 
-    attr_reader :start_time
+    attr_reader :start_time, :settings
 
     # Initialize the Sensu process. Set the start time, initial
-    # service state, set up the logger, and load settings. This method
-    # will load extensions and setup Sensu Spawn if the Sensu process
-    # is not the Sensu API. This method can and optionally daemonize
-    # the process and/or create a PID file.
+    # service state, double the maximum number of EventMachine timers,
+    # set up the logger, and load settings. This method will load
+    # extensions and setup Sensu Spawn if the Sensu process is not the
+    # Sensu API. This method can and optionally daemonize the process
+    # and/or create a PID file.
     #
     # @param options [Hash]
     def initialize(options={})
       @start_time = Time.now.to_i
       @state = :initializing
       @timers = {:run => []}
+      EM::set_max_timers(200000) unless EM::reactor_running?
       setup_logger(options)
       load_settings(options)
       unless sensu_service_name == "api"
@@ -148,7 +150,8 @@ module Sensu
     #
     # @param options [Hash]
     def load_extensions(options={})
-      @extensions = Extensions.get(options)
+      extensions_options = options.merge(:extensions => @settings[:extensions])
+      @extensions = Extensions.get(extensions_options)
       log_notices(@extensions.warnings)
       extension_settings = @settings.to_hash.dup
       @extensions.all.each do |extension|

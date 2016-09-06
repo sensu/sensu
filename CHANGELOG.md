@@ -1,3 +1,59 @@
+## 0.26.0 - 2016-09-06
+
+### Non-backwards compatible changes
+
+Subdue now ONLY applies to check scheduling via check definitions, it has
+been removed from handlers (no more `"at": "handler"`). The subdue
+configuration syntax has changed, please refer to the [0.26 subdue
+documentation](https://sensuapp.org/docs/0.26/reference/checks.html#subdue-attributes).
+
+### Fixes
+
+Increased the maximum number of EventMachine timers from 100k to 200k, to
+accommodate very large Sensu installations that execute over 100k checks.
+
+Only attempt to schedule standalone checks that have an interval.
+
+Standalone checks are no longer provided by the Sensu API /checks endpoint.
+
+Check TTL events are no longer created if the associated Sensu client has
+a current keepalive event.
+
+Fixed a Sensu API /results endpoint race condition that caused incomplete
+response content.
+
+### Features
+
+Event silencing is now built into Sensu Core! The Sensu API now provides a
+set of /silenced endpoints, for silencing one or more subscriptions
+and/or checks. Silencing applies to all event handlers by default, the new
+handler definition attribute `handle_silenced` can be used to disable it
+for a handler. Metric check events (OK) bypass event silencing.
+
+Subdue now ONLY applies to check scheduling via check definitions, it has
+been removed from handlers (no more `"at": "handler"`). The Sensu client
+standalone check execution scheduler now supports subdue. The subdue
+configuration syntax has changed, please refer to the [0.26 subdue
+documentation](https://sensuapp.org/docs/0.26/reference/checks.html#subdue-attributes).
+
+Event filters now support time windows, via the filter definition
+attribute `"when": {}`. The configuration syntax is the same as check
+subdue.
+
+Sensu Extensions are now loaded from Rubygems! The Sensu installer,
+`sensu-install`, can now be used to install Sensu Extensions, e.g.
+`sensu-install -e system-profile`. Extensions gems must be enabled via
+Sensu configuration, please refer to the [0.26 extensions
+documentation](https://sensuapp.org/docs/0.26/reference/extensions.html#configuring-sensu-to-load-extensions).
+
+A check can now be a member of more than one aggregate, via the check
+definition attribute `"aggregates": []`.
+
+Every Sensu client now creates/subscribes to its own unique client
+subscription named after it, e.g. `client:i-424242`. This unique client
+subscription allows Sensu checks to target a single client (host) and
+enables silencing events for a single client.
+
 ## 0.25.7 - 2016-08-09
 
 ### Fixes

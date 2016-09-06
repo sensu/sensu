@@ -95,8 +95,8 @@ module Sensu
           data = Sensu::JSON.load(@http_content)
           valid = data.is_a?(Hash) && rules.all? do |key, rule|
             value = data[key]
-            (value.is_a?(rule[:type]) || (rule[:nil_ok] && value.nil?)) &&
-              (value.nil? || rule[:regex].nil?) ||
+            (Array(rule[:type]).any? {|type| value.is_a?(type)} ||
+              (rule[:nil_ok] && value.nil?)) && (value.nil? || rule[:regex].nil?) ||
               (rule[:regex] && (value =~ rule[:regex]) == 0)
           end
           if valid

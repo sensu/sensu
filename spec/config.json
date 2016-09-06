@@ -18,6 +18,28 @@
           "environment": "production"
         }
       }
+    },
+    "offhours": {
+      "attributes": {
+        "client": {
+          "environment": "production"
+        }
+      },
+      "when": {
+        "days": {
+          "all": [
+            {
+              "begin": "5:00 PM",
+              "end": "8:00 AM"
+            }
+          ]
+        }
+      }
+    },
+    "time": {
+      "attributes": {
+        "action": "resolve"
+      }
     }
   },
   "mutators": {
@@ -70,14 +92,14 @@
     "tcp": {
       "type": "tcp",
       "socket": {
-        "host": "localhost",
+        "host": "127.0.0.1",
         "port": 1234
       }
     },
     "udp": {
       "type": "udp",
       "socket": {
-        "host": "localhost",
+        "host": "127.0.0.1",
         "port": 1234
       }
     },

@@ -159,6 +159,36 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can aggregate check results across multiple named aggregates" do
+    async_wrapper do
+      aggregates = ["foo", "bar"]
+      redis.flushdb do
+        client = client_template
+        client[:name] = "aggro"
+        check = check_template
+        check[:aggregates] = aggregates
+        @server.setup_redis do
+          @server.aggregate_check_result(client, check)
+          timer(2) do
+            redis.sismember("aggregates", "foo") do |exists|
+              expect(exists).to be(true)
+              redis.smembers("aggregates:foo") do |aggregate_members|
+                expect(aggregate_members).to include("aggro:test")
+                redis.sismember("aggregates", "bar") do |exists|
+                  expect(exists).to be(true)
+                  redis.smembers("aggregates:bar") do |aggregate_members|
+                    expect(aggregate_members).to include("aggro:test")
+                    async_done
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can process results with flap detection" do
     async_wrapper do
       @server.setup_redis do
@@ -201,25 +231,60 @@ describe "Sensu::Server::Process" do
     end
   end
 
-  it "can have event ids persist until the event is resolved" do
+  it "can process results with silencing" do
+    async_wrapper do
+      @server.setup_redis do
+        redis.flushdb do
+          redis.set("client:i-424242", Sensu::JSON.dump(client_template)) do
+            silenced_info = {
+              :id => "test:*"
+            }
+            redis.set("silence:test:*", Sensu::JSON.dump(silenced_info)) do
+              silenced_info[:id] = "*:test"
+              redis.set("silence:*:test", Sensu::JSON.dump(silenced_info)) do
+                silenced_info[:id] = "test:test"
+                redis.set("silence:test:test", Sensu::JSON.dump(silenced_info)) do
+                  @server.process_check_result(result_template)
+                  timer(1) do
+                    redis.hget("events:i-424242", "test") do |event_json|
+                      event = Sensu::JSON.load(event_json)
+                      expect(event[:silenced]).to eq(true)
+                      expect(event[:silenced_by]).to eq(["test:*", "test:test", "*:test"])
+                      async_done
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can have event id and occurrence watermark persist until the event is resolved" do
     async_wrapper do
       @server.setup_redis do
         redis.flushdb do
           client = client_template
           redis.set("client:i-424242", Sensu::JSON.dump(client)) do
-            result = result_template
-            @server.process_check_result(result)
-            timer(1) do
+            @server.process_check_result(result_template)
+            @server.process_check_result(result_template)
+            timer(2) do
               redis.hget("events:i-424242", "test") do |event_json|
                 event = Sensu::JSON.load(event_json)
                 event_id = event[:id]
-                expect(event[:occurrences]).to eq(1)
+                expect(event[:occurrences]).to eq(2)
+                expect(event[:occurrences_watermark]).to eq(2)
+                result = result_template
+                result[:check][:status] = 2
                 @server.process_check_result(result)
-                timer(1) do
+                timer(2) do
                   redis.hget("events:i-424242", "test") do |event_json|
                     event = Sensu::JSON.load(event_json)
                     expect(event[:id]).to eq(event_id)
-                    expect(event[:occurrences]).to eq(2)
+                    expect(event[:occurrences]).to eq(1)
+                    expect(event[:occurrences_watermark]).to eq(2)
                     async_done
                   end
                 end
@@ -288,6 +353,10 @@ describe "Sensu::Server::Process" do
                           expect(event[:id]).to be_kind_of(String)
                           expect(event[:check][:status]).to eq(1)
                           expect(event[:occurrences]).to eq(2)
+                          expect(event[:occurrences_watermark]).to eq(2)
+                          expect(event[:last_ok]).to be_within(30).of(epoch)
+                          expect(event[:silenced]).to eq(false)
+                          expect(event[:silenced_by]).to be_empty
                           expect(event[:action]).to eq("create")
                           expect(event[:timestamp]).to be_within(10).of(epoch)
                           read_event_file = Proc.new do
@@ -614,6 +683,42 @@ describe "Sensu::Server::Process" do
                       expect(event[:check][:output]).to match(/Last check execution was 3[0-9] seconds ago/)
                       expect(event[:check][:status]).to eq(1)
                       async_done
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can skip creating stale check results when client has a keepalive event" do
+    async_wrapper do
+      redis.flushdb do
+        @server.setup_connections do
+          @server.setup_results
+          client = client_template
+          client[:timestamp] = epoch - 120
+          redis.set("client:i-424242", Sensu::JSON.dump(client)) do
+            redis.sadd("clients", "i-424242") do
+              @server.determine_stale_clients
+              timer(1) do
+                redis.hget("events:i-424242", "keepalive") do |event_json|
+                  event = Sensu::JSON.load(event_json)
+                  expect(event[:check][:status]).to eq(2)
+                  stale_result = result_template
+                  stale_result[:check][:status] = 0
+                  stale_result[:check][:ttl] = 60
+                  stale_result[:check][:executed] = epoch - 1200
+                  transport.publish(:direct, "results", Sensu::JSON.dump(stale_result)) do
+                    @server.determine_stale_check_results
+                    timer(1) do
+                      redis.hexists("events:i-424242", "test") do |ttl_event_exists|
+                        expect(ttl_event_exists).to eq(false)
+                        async_done
+                      end
                     end
                   end
                 end

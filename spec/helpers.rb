@@ -132,6 +132,8 @@ module Helpers
       :client => client,
       :check => check,
       :occurrences => 1,
+      :silenced => false,
+      :silenced_by => [],
       :action => :create
     }
   end
@@ -149,7 +151,7 @@ module Helpers
     if request_options[:body].is_a?(Hash) || request_options[:body].is_a?(Array)
       request_options[:body] = Sensu::JSON.dump(request_options[:body])
     end
-    http = EM::HttpRequest.new("http://localhost:4567#{uri}").send(method, request_options)
+    http = EM::HttpRequest.new("http://127.0.0.1:4567#{uri}").send(method, request_options)
     http.callback do
       body = case
       when http.response.empty?

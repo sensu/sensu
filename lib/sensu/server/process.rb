@@ -275,26 +275,37 @@ module Sensu
         end
       end
 
-      # Add a check result to an aggregate. The aggregate name is
-      # determined by the value of check `:aggregate`. If check
-      # `:aggregate` is `true` (legacy), the check `:name` is used as
-      # the aggregate name. If check `:aggregate` is a string, it is
-      # used as the aggregate name. This method will add the client
-      # name to the aggregate, all other processing (e.g. counters) is
-      # done by the Sensu API on request.
+      # Add a check result to one or more aggregates. The aggregate name is
+      # determined by the value of check `:aggregates` array, if present,
+      # and falling back to `:aggregate` otherwise.
+      #
+      # When one or more aggregates are specified as `:aggregates`, the
+      # client name and check are updated on each aggregate.
+      #
+      # When no aggregates are specified as `:aggregates`, and `:aggregate`
+      # is `true` (legacy), the check `:name` is used as the aggregate name.
+      #
+      # When no aggregates are specified as `:aggregates` and check `:aggregate`
+      # is a string, it used as the aggregate name.
+      #
+      # This method will add the client name to configured aggregates, all
+      # other processing (e.g. counters) is done by the Sensu API on request.
       #
       # @param client [Hash]
       # @param check [Hash]
       def aggregate_check_result(client, check)
-        aggregate = (check[:aggregate].is_a?(String) ? check[:aggregate] : check[:name])
-        @logger.debug("adding check result to aggregate", {
-          :aggregate => aggregate,
-          :client => client,
-          :check => check
-        })
-        aggregate_member = "#{client[:name]}:#{check[:name]}"
-        @redis.sadd("aggregates:#{aggregate}", aggregate_member) do
-          @redis.sadd("aggregates", aggregate)
+        check_aggregate = (check[:aggregate].is_a?(String) ? check[:aggregate] : check[:name])
+        aggregate_list = Array(check[:aggregates] || check_aggregate)
+        aggregate_list.each do |aggregate|
+          @logger.debug("adding check result to aggregate", {
+            :aggregate => aggregate,
+            :client => client,
+            :check => check
+          })
+          aggregate_member = "#{client[:name]}:#{check[:name]}"
+          @redis.sadd("aggregates:#{aggregate}", aggregate_member) do
+            @redis.sadd("aggregates", aggregate)
+          end
         end
       end
 
@@ -414,6 +425,50 @@ module Sensu
         end
       end
 
+      # Determine if an event has been silenced. This method compiles
+      # an array of possible silenced registry entry keys for the
+      # event. An attempt is made to fetch one or more of the silenced
+      # registry entries to determine if the event has been silenced.
+      # The event data is updated to indicate if the event has been
+      # silenced. If the event is silenced and the event action is
+      # `:resolve`, silenced registry entries with
+      # `:expire_on_resolve` set to true will be deleted. Silencing is
+      # disabled for events with a check status of `0` (OK), unless
+      # the event action is `:resolve` or `:flapping`.
+      #
+      # @param event [Hash]
+      # @yield callback [event] callback/block called after the event
+      #   data has been updated to indicate if it has been silenced.
+      def event_silenced?(event)
+        event[:silenced] = false
+        event[:silenced_by] = []
+        if event[:check][:status] != 0 || event[:action] != :create
+          check_name = event[:check][:name]
+          silenced_keys = event[:client][:subscriptions].map { |subscription|
+            ["silence:#{subscription}:*", "silence:#{subscription}:#{check_name}"]
+          }.flatten
+          silenced_keys << "silence:*:#{check_name}"
+          @redis.mget(*silenced_keys) do |silenced|
+            silenced.compact!
+            event[:silenced] = !silenced.empty?
+            if event[:silenced]
+              silenced.each do |silenced_json|
+                silenced_info = Sensu::JSON.load(silenced_json)
+                event[:silenced_by] << silenced_info[:id]
+                silenced_key = "silence:#{silenced_info[:id]}"
+                if silenced_info[:expire_on_resolve] && event[:action] == :resolve
+                  @redis.srem("silenced", silenced_key)
+                  @redis.del(silenced_key)
+                end
+              end
+            end
+            yield(event)
+          end
+        else
+          yield(event)
+        end
+      end
+
       # Update the event registry, stored in Redis. This method
       # determines if event data warrants in the creation or update of
       # event data in the registry. If a check `:status` is not
@@ -451,7 +506,8 @@ module Sensu
       # Create an event, using the provided client and check result
       # data. Existing event data for the client/check pair is fetched
       # from the event registry to be used in the composition of the
-      # new event.
+      # new event. The silenced registry is used to determine if the
+      # event has been silenced.
       #
       # @param client [Hash]
       # @param check [Hash]
@@ -469,6 +525,7 @@ module Sensu
               :client => client,
               :check => check,
               :occurrences => 1,
+              :occurrences_watermark => 1,
               :action => (flapping ? :flapping : :create),
               :timestamp => Time.now.to_i
             }
@@ -477,12 +534,17 @@ module Sensu
               event[:last_state_change] = stored_event[:last_state_change]
               event[:last_ok] = stored_event[:last_ok]
               event[:occurrences] = stored_event[:occurrences]
+              event[:occurrences_watermark] = stored_event[:occurrences_watermark] || event[:occurrences]
             else
               event[:id] = random_uuid
+              event[:last_ok] = event[:timestamp]
             end
             if check[:status] != 0 || flapping
               if history[-1] == history[-2]
                 event[:occurrences] += 1
+                if event[:occurrences] > event[:occurrences_watermark]
+                  event[:occurrences_watermark] = event[:occurrences]
+                end
               else
                 event[:occurrences] = 1
                 event[:last_state_change] = event[:timestamp]
@@ -494,7 +556,9 @@ module Sensu
             if check[:status] == 0
               event[:last_ok] = event[:timestamp]
             end
-            yield(event)
+            event_silenced?(event) do |event|
+              yield(event)
+            end
           end
         end
       end
@@ -555,6 +619,16 @@ module Sensu
         end
       end
 
+      # Determine if a keepalive event exists for a client.
+      #
+      # @param client_name [String] name of client to look up in event registry.
+      # @return [TrueClass, FalseClass]
+      def keepalive_event_exists?(client_name)
+        @redis.hexists("events:#{client_name}", "keepalive") do |event_exists|
+          yield(event_exists)
+        end
+      end
+
       # Process a check result, storing its data, inspecting its
       # contents, and taking the appropriate actions (eg. update the
       # event registry). The `@in_progress[:check_results]` counter is
@@ -579,7 +653,7 @@ module Sensu
           end
           check[:type] ||= STANDARD_CHECK_TYPE
           check[:origin] = result[:client] if check[:source]
-          aggregate_check_result(client, check) if check[:aggregate]
+          aggregate_check_result(client, check) if check[:aggregates] || check[:aggregate]
           store_check_result(client, check) do
             create_event(client, check) do |event|
               event_bridges(event)
@@ -693,7 +767,7 @@ module Sensu
       def schedule_check_executions(checks)
         checks.each do |check|
           create_check_request = Proc.new do
-            unless check_request_subdued?(check)
+            unless check_subdued?(check)
               publish_check_request(check)
             else
               @logger.info("check request was subdued", :check => check)
@@ -877,10 +951,14 @@ module Sensu
                 time_since_last_execution = Time.now.to_i - check[:executed]
                 if time_since_last_execution >= check[:ttl]
                   client_name = result_key.split(":").first
-                  check[:output] = "Last check execution was "
-                  check[:output] << "#{time_since_last_execution} seconds ago"
-                  check[:status] = 1
-                  publish_check_result(client_name, check)
+                  keepalive_event_exists?(client_name) do |event_exists|
+                    unless event_exists
+                      check[:output] = "Last check execution was "
+                      check[:output] << "#{time_since_last_execution} seconds ago"
+                      check[:status] = 1
+                      publish_check_result(client_name, check)
+                    end
+                  end
                 end
               else
                 @redis.srem("ttl", result_key)
