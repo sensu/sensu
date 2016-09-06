@@ -115,7 +115,7 @@ module Sensu
           begin
             value = Marshal.load(Marshal.dump(raw_value))
             !!Sandbox.eval(eval_string, value)
-          rescue => error
+          rescue StandardError, SyntaxError => error
             @logger.error("filter attribute eval error", {
               :event => event,
               :raw_eval_string => raw_eval_string,
