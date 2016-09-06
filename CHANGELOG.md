@@ -4,7 +4,8 @@
 
 Subdue now ONLY applies to check scheduling via check definitions, it has
 been removed from handlers (no more `"at": "handler"`). The subdue
-configuration syntax has changed, please refer to the 0.26 documentation.
+configuration syntax has changed, please refer to the [0.26 subdue
+documentation](https://sensuapp.org/docs/0.26/reference/checks.html#subdue-attributes).
 
 ### Fixes
 
@@ -32,7 +33,8 @@ for a handler. Metric check events (OK) bypass event silencing.
 Subdue now ONLY applies to check scheduling via check definitions, it has
 been removed from handlers (no more `"at": "handler"`). The Sensu client
 standalone check execution scheduler now supports subdue. The subdue
-configuration syntax has changed, please refer to the 0.26 documentation.
+configuration syntax has changed, please refer to the [0.26 subdue
+documentation](https://sensuapp.org/docs/0.26/reference/checks.html#subdue-attributes).
 
 Event filters now support time windows, via the filter definition
 attribute `"when": {}`. The configuration syntax is the same as check
@@ -41,7 +43,8 @@ subdue.
 Sensu Extensions are now loaded from Rubygems! The Sensu installer,
 `sensu-install`, can now be used to install Sensu Extensions, e.g.
 `sensu-install -e system-profile`. Extensions gems must be enabled via
-Sensu configuration, please refer to the 0.26 documentation.
+Sensu configuration, please refer to the [0.26 extensions
+documentation](https://sensuapp.org/docs/0.26/reference/extensions.html#configuring-sensu-to-load-extensions).
 
 A check can now be a member of more than one aggregate, via the check
 definition attribute `"aggregates": []`.
