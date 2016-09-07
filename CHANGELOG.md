@@ -1,3 +1,10 @@
+## 0.26.1 - 2016-09-07
+
+### Fixes
+
+Fixed a Sensu server settings bug that cause sensu-server to required a
+client definition in order to start.
+
 ## 0.26.0 - 2016-09-06
 
 ### Non-backwards compatible changes
