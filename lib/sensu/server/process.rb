@@ -575,7 +575,7 @@ module Sensu
         {
           :name => name,
           :address => "unknown",
-          :subscriptions => [],
+          :subscriptions => ["client:#{name}"],
           :keepalives => false,
           :version => VERSION
         }

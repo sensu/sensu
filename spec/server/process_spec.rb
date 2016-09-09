@@ -488,6 +488,7 @@ describe "Sensu::Server::Process" do
                   redis.hget("events:i-888888", "test") do |event_json|
                     event = Sensu::JSON.load(event_json)
                     expect(event[:client][:address]).to eq("unknown")
+                    expect(event[:client][:subscriptions]).to include("client:i-888888")
                     async_done
                   end
                 end
