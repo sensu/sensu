@@ -20,13 +20,16 @@ module Sensu
             :client => client_name,
             :check => check
           }
-          @logger.info("publishing check result", :payload => payload)
-          @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
-            if info[:error]
-              @logger.error("failed to publish check result", {
-                :payload => payload,
-                :error => info[:error].to_s
-              })
+          @redis.get("client:#{client_name}:signature") do |signature|
+            payload[:signature] = signature unless signature.nil?
+            @logger.info("publishing check result", :payload => payload)
+            @transport.publish(:direct, "results", Sensu::JSON.dump(payload)) do |info|
+              if info[:error]
+                @logger.error("failed to publish check result", {
+                  :payload => payload,
+                  :error => info[:error].to_s
+                })
+              end
             end
           end
         end
