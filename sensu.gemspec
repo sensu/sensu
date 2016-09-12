@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.has_rdoc    = false
 
   s.add_dependency "eventmachine", "1.2.0.1"
-  s.add_dependency "sensu-json", "2.0.0"
+  s.add_dependency "sensu-json", "2.0.1"
   s.add_dependency "sensu-logger", "1.2.1"
   s.add_dependency "sensu-settings", "9.2.1"
   s.add_dependency "sensu-extension", "1.5.1"
