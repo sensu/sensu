@@ -606,6 +606,7 @@ module Sensu
                   :client => client
                 })
                 @logger.warn("not retrieving client from the registry", :result => result)
+                yield(nil)
               end
             else
               yield(client)
@@ -645,23 +646,28 @@ module Sensu
         @in_progress[:check_results] += 1
         @logger.debug("processing result", :result => result)
         retrieve_client(result) do |client|
-          check = case
-          when @settings.check_exists?(result[:check][:name]) && !result[:check][:standalone]
-            @settings[:checks][result[:check][:name]].merge(result[:check])
-          else
-            result[:check]
-          end
-          check[:type] ||= STANDARD_CHECK_TYPE
-          check[:origin] = result[:client] if check[:source]
-          aggregate_check_result(client, check) if check[:aggregates] || check[:aggregate]
-          store_check_result(client, check) do
-            create_event(client, check) do |event|
-              event_bridges(event)
-              update_event_registry(event) do |process|
-                process_event(event) if process
-                @in_progress[:check_results] -= 1
+          unless client.nil?
+            check = case
+            when @settings.check_exists?(result[:check][:name]) && !result[:check][:standalone]
+              @settings[:checks][result[:check][:name]].merge(result[:check])
+            else
+              result[:check]
+            end
+            check[:type] ||= STANDARD_CHECK_TYPE
+            check[:origin] = result[:client] if check[:source]
+            aggregate_check_result(client, check) if check[:aggregates] || check[:aggregate]
+            store_check_result(client, check) do
+              create_event(client, check) do |event|
+                event_bridges(event)
+                update_event_registry(event) do |process|
+                  process_event(event) if process
+                  @in_progress[:check_results] -= 1
+                end
               end
             end
+          else
+            @logger.warn("halting result processing", :result => result)
+            @in_progress[:check_results] -= 1
           end
         end
       end
