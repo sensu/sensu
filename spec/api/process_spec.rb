@@ -1328,11 +1328,11 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can create and retrieve silenced registry entry with a subscription containing a colon" do
+  it "can create and retrieve silenced registry entry with a subscription containing both a colon and a hyphen" do
     api_test do
       options = {
         :body => {
-          :subscription => "client:test",
+          :subscription => "client:my-test-client",
           :check => "test",
           :expire => 3600,
           :reason => "testing",
@@ -1342,20 +1342,20 @@ describe "Sensu::API::Process" do
       }
       api_request("/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
-        redis.get("silence:client:test:test") do |silenced_info_json|
+        redis.get("silence:client:my-test-client:test") do |silenced_info_json|
           silenced_info = Sensu::JSON.load(silenced_info_json)
-          expect(silenced_info[:id]).to eq("client:test:test")
-          expect(silenced_info[:subscription]).to eq("client:test")
+          expect(silenced_info[:id]).to eq("client:my-test-client:test")
+          expect(silenced_info[:subscription]).to eq("client:my-test-client")
           expect(silenced_info[:check]).to eq("test")
           expect(silenced_info[:reason]).to eq("testing")
           expect(silenced_info[:creator]).to eq("rspec")
           expect(silenced_info[:expire_on_resolve]).to eq(true)
-          redis.ttl("silence:client:test:test") do |ttl|
+          redis.ttl("silence:client:my-test-client:test") do |ttl|
             expect(ttl).to be_within(10).of(3600)
             async_done
           end
         end
-        api_request("/silenced/subscriptions/client:test") do |http, body|
+        api_request("/silenced/subscriptions/client:my-test-client") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body).to be_kind_of(Hash)
           expect(body).to eq(result_template(@check))

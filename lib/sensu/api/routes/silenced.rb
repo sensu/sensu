@@ -3,7 +3,7 @@ module Sensu
     module Routes
       module Silenced
         SILENCED_URI = /^\/silenced$/
-        SILENCED_SUBSCRIPTION_URI = /^\/silenced\/subscriptions\/([\w\.-:]+)$/
+        SILENCED_SUBSCRIPTION_URI = /^\/silenced\/subscriptions\/([\w\.:-]+)$/
         SILENCED_CHECK_URI = /^\/silenced\/checks\/([\w\.-]+)$/
         SILENCED_CLEAR_URI = /^\/silenced\/clear$/
 
