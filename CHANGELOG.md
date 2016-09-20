@@ -1,3 +1,26 @@
+## 0.26.2 - 2016-09-20
+
+### Fixes
+
+Added logic to ensure proxy clients receive a per-client subscription upon
+creation so that they can be silenced via /silenced API.
+
+Updated API publish_check_result helper to address a condition where
+events could not be successfully deleted for clients configured with a
+signature.
+
+Fixed regexp in API which prevented retrieval of silence entries when
+requesting subscriptions containing a colon (e.g. `client:foo`,
+`roundrobin:bar`) on the `/silenced/subscriptions/:subscription` endpoint.
+
+Fixed a condition where processing check results with an invalid signature
+failed to complete. This often manifest as timeouts when waiting for
+sensu-server processes to terminate.
+
+### Changes
+
+Default value for `client` settings has changed from `nil` to `{}`.
+
 ## 0.26.1 - 2016-09-07
 
 ### Fixes

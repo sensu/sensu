@@ -1,7 +1,7 @@
 module Sensu
   unless defined?(Sensu::VERSION)
     # Sensu release version.
-    VERSION = "0.26.1".freeze
+    VERSION = "0.26.2".freeze
 
     # Sensu check severities.
     SEVERITIES = %w[ok warning critical unknown].freeze
