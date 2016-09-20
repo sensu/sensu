@@ -301,9 +301,9 @@ describe "Sensu::API::Process" do
         api_request("/events/i-424242/test", :delete) do |http, body|
           expect(http.response_header.status).to eq(202)
           expect(body).to include(:issued)
-          timer(0.5) do
+          timer(1) do
             redis.hget("events:i-424242", "test") do |event_json|
-              expect(event_json.nil?).to be_true
+              expect(event_json).to be_nil
             end
           end
         end
