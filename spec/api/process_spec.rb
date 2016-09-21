@@ -1335,24 +1335,24 @@ describe "Sensu::API::Process" do
     "load-balancer",
     "load_balancer",
     "loadbalancer"
-  ].each do |sub|
-    it "can create and retrieve silenced registry entry with a subscription e.g. #{sub}" do
+  ].each do |subscription|
+    it "can create and retrieve silenced registry entry with a subscription e.g. #{subscription}" do
       api_test do
         options = {
           :body => {
-            :subscription => sub,
+            :subscription => subscription,
             :check => "test"
           }
         }
         api_request("/silenced", :post, options) do |http, body|
           expect(http.response_header.status).to eq(201)
-          redis.get("silence:#{sub}:test") do |silenced_info_json|
+          redis.get("silence:#{subscription}:test") do |silenced_info_json|
             timer(1) do
-              api_request("/silenced/subscriptions/#{sub}") do |http, body|
+              api_request("/silenced/subscriptions/#{subscription}") do |http, body|
                 expect(http.response_header.status).to eq(200)
                 expect(body).to be_kind_of(Array)
                 silence = body.last
-                expect(silence[:id]).to eq("#{sub}:test")
+                expect(silence[:id]).to eq("#{subscription}:test")
                 async_done
               end
             end
