@@ -1328,38 +1328,35 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can create and retrieve silenced registry entry with a subscription containing a colon" do
-    api_test do
-      options = {
-        :body => {
-          :subscription => "client:test",
-          :check => "test",
-          :expire => 3600,
-          :reason => "testing",
-          :creator => "rspec",
-          :expire_on_resolve => true
+  [
+    "client:my-test-client",
+    "roundrobin:load_balancer",
+    "roundrobin:foo_bar-baz",
+    "load-balancer",
+    "load_balancer",
+    "loadbalancer"
+  ].each do |subscription|
+    it "can create and retrieve silenced registry entry with a subscription e.g. #{subscription}" do
+      api_test do
+        options = {
+          :body => {
+            :subscription => subscription,
+            :check => "test"
+          }
         }
-      }
-      api_request("/silenced", :post, options) do |http, body|
-        expect(http.response_header.status).to eq(201)
-        redis.get("silence:client:test:test") do |silenced_info_json|
-          silenced_info = Sensu::JSON.load(silenced_info_json)
-          expect(silenced_info[:id]).to eq("client:test:test")
-          expect(silenced_info[:subscription]).to eq("client:test")
-          expect(silenced_info[:check]).to eq("test")
-          expect(silenced_info[:reason]).to eq("testing")
-          expect(silenced_info[:creator]).to eq("rspec")
-          expect(silenced_info[:expire_on_resolve]).to eq(true)
-          redis.ttl("silence:client:test:test") do |ttl|
-            expect(ttl).to be_within(10).of(3600)
-            async_done
+        api_request("/silenced", :post, options) do |http, body|
+          expect(http.response_header.status).to eq(201)
+          redis.get("silence:#{subscription}:test") do |silenced_info_json|
+            timer(1) do
+              api_request("/silenced/subscriptions/#{subscription}") do |http, body|
+                expect(http.response_header.status).to eq(200)
+                expect(body).to be_kind_of(Array)
+                silence = body.last
+                expect(silence[:id]).to eq("#{subscription}:test")
+                async_done
+              end
+            end
           end
-        end
-        api_request("/silenced/subscriptions/client:test") do |http, body|
-          expect(http.response_header.status).to eq(200)
-          expect(body).to be_kind_of(Hash)
-          expect(body).to eq(result_template(@check))
-          async_done
         end
       end
     end
