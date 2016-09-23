@@ -196,7 +196,7 @@ module Sensu
             @checks_in_progress.delete(check[:name])
           end
         else
-          @logger.warn("previous check command execution in progress", :check => check)
+          @logger.warn("previous check extension execution in progress", :check => check)
         end
       end
 
