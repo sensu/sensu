@@ -173,20 +173,30 @@ module Sensu
       # API. If a check definition includes `:extension`, use it's
       # value for the extension name, otherwise use the check name.
       # The check definition is passed to the extension `safe_run()`
-      # method as a parameter, the extension may utilize it.
+      # method as a parameter, the extension may utilize it. This
+      # method guards against multiple executions for the same check
+      # extension.
       #
       # https://github.com/sensu/sensu-extension
       #
       # @param check [Hash]
       def run_check_extension(check)
         @logger.debug("attempting to run check extension", :check => check)
-        check[:executed] = Time.now.to_i
-        extension_name = check[:extension] || check[:name]
-        extension = @extensions[:checks][extension_name]
-        extension.safe_run(check) do |output, status|
-          check[:output] = output
-          check[:status] = status
-          publish_check_result(check)
+        unless @checks_in_progress.include?(check[:name])
+          @checks_in_progress << check[:name]
+          started = Time.now.to_f
+          check[:executed] = started.to_i
+          extension_name = check[:extension] || check[:name]
+          extension = @extensions[:checks][extension_name]
+          extension.safe_run(check) do |output, status|
+            check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
+            check[:output] = output
+            check[:status] = status
+            publish_check_result(check)
+            @checks_in_progress.delete(check[:name])
+          end
+        else
+          @logger.warn("previous check extension execution in progress", :check => check)
         end
       end
 
