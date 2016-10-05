@@ -1,3 +1,20 @@
+## 0.26.4 - 2016-10-05
+
+### Fixes
+
+Sensu check extension executions are now properly tracked and the Sensu
+client now guards against multiple concurrent executions of the same
+extension.
+
+## 0.26.3 - 2016-09-21
+
+### Fixes
+
+Adjusted regular expression pattern to completely address scenarios where
+valid subscription names were not allowed via API
+`/silenced/subscriptions/:subscription` endpoint, e.g.
+`client:foo-bar-baz`.
+
 ## 0.26.2 - 2016-09-20
 
 ### Fixes
