@@ -1,3 +1,11 @@
+## 0.26.4 - 2016-10-12
+
+### Fixes
+
+Sensu client no longer fails to validate the client configuration when the
+automatic per-client subscription is the client's only
+subscription.
+
 ## 0.26.4 - 2016-10-05
 
 ### Fixes
