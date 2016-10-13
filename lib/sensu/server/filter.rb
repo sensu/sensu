@@ -180,13 +180,14 @@ module Sensu
       #   parameter to indicate if the event was filtered.
       # @yieldparam filtered [TrueClass,FalseClass] indicating if the
       #   event was filtered.
+      # @yieldparam filter_name [String] name of the filter being evaluated
       def native_filter(filter_name, event)
         filter = @settings[:filters][filter_name]
         if in_filter_time_windows?(filter)
           matched = filter_attributes_match?(event, filter[:attributes])
-          yield(filter[:negate] ? matched : !matched)
+          yield(filter[:negate] ? matched : !matched, filter_name)
         else
-          yield(false)
+          yield(false, filter_name)
         end
       end
 
@@ -198,14 +199,15 @@ module Sensu
       #   parameter to indicate if the event was filtered.
       # @yieldparam filtered [TrueClass,FalseClass] indicating if the
       #   event was filtered.
+      # @yieldparam filter_name [String] name of the filter being evaluated
       def extension_filter(filter_name, event)
         extension = @extensions[:filters][filter_name]
         if in_filter_time_windows?(extension.definition)
           extension.safe_run(event) do |output, status|
-            yield(status == 0)
+            yield(status == 0, filter_name)
           end
         else
-          yield(false)
+          yield(false, filter_name)
         end
       end
 
@@ -223,19 +225,20 @@ module Sensu
       #   parameter to indicate if the event was filtered.
       # @yieldparam filtered [TrueClass,FalseClass] indicating if the
       #   event was filtered.
+      # @yieldparam filter_name [String] name of the filter being evaluated
       def event_filter(filter_name, event)
         case
         when @settings.filter_exists?(filter_name)
           native_filter(filter_name, event) do |filtered|
-            yield(filtered)
+            yield(filtered, filter_name)
           end
         when @extensions.filter_exists?(filter_name)
           extension_filter(filter_name, event) do |filtered|
-            yield(filtered)
+            yield(filtered, filter_name)
           end
         else
           @logger.error("unknown filter", :filter_name => filter_name)
-          yield(false)
+          yield(false, filter_name)
         end
       end
 
@@ -298,10 +301,11 @@ module Sensu
           @logger.info(filter_message, details)
           @in_progress[:events] -= 1 if @in_progress
         else
-          event_filtered?(handler, event) do |filtered|
+          event_filtered?(handler, event) do |filtered, filter_name|
             unless filtered
               yield(event)
             else
+              details[:filter] = filter_name
               @logger.info("event was filtered", details)
               @in_progress[:events] -= 1 if @in_progress
             end

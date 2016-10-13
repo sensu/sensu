@@ -88,10 +88,12 @@ describe "Sensu::Server::Filter" do
   it "can filter an event using a filter" do
     async_wrapper do
       @event[:client][:environment] = "production"
-      @server.event_filter("production", @event) do |filtered|
+      @server.event_filter("production", @event) do |filtered, filter_name|
         expect(filtered).to be(false)
-        @server.event_filter("development", @event) do |filtered|
+        expect(filter_name).to eq("production")
+        @server.event_filter("development", @event) do |filtered, filter_name|
           expect(filtered).to be(true)
+          expect(filter_name).to eq("development")
           @server.event_filter("nonexistent", @event) do |filtered|
             expect(filtered).to be(false)
             handler = {
