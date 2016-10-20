@@ -1528,6 +1528,78 @@ describe "Sensu::API::Process" do
     end
   end
 
+  context "when retrieving a silenced registry entry by it's id" do
+    it "can retrieve entry for silencing a specific check on all clients" do
+      api_test do
+        options = { :body => { :check => "test" } }
+        api_request("/silenced", :post, options) do |http, body|
+          api_request("/silenced/ids/*:test") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Hash)
+            expect(body[:id]).to eq("*:test")
+            async_done
+          end
+        end
+      end
+    end
+
+    it "can retrieve entry for silencing all checks on a specific subscription" do
+      api_test do
+        options = { :body => { :subscription => "test" } }
+        api_request("/silenced", :post, options) do |http, body|
+          api_request("/silenced/ids/test:*") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Hash)
+            expect(body[:id]).to eq("test:*")
+            async_done
+          end
+        end
+      end
+    end
+
+    it "can retrieve entry for silencing all checks on all subscriptions" do
+      api_test do
+        options = { :body => { :subscription => '*' } }
+        api_request("/silenced", :post, options) do |http, body|
+          api_request("/silenced/ids/*:*") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Hash)
+            expect(body[:id]).to eq("*:*")
+            async_done
+          end
+        end
+      end
+    end
+
+    it "handles requests for nonexistant ids" do
+      api_test do
+        api_request("/silenced/ids/nonexistant:nonexistant") do |http, body|
+          expect(http.response_header.status).to eq(404)
+          expect(body).to be_empty
+          async_done
+        end
+      end
+    end
+
+    it "handles requests for invalid ids" do
+      api_test do
+        api_request("/silenced/ids/invalid") do |http, body|
+          expect(http.response_header.status).to eq(404)
+          expect(body).to be_empty
+          api_request("/silenced/ids/:invalid") do |http, body|
+            expect(http.response_header.status).to eq(404)
+            expect(body).to be_empty
+            api_request("/silenced/ids/inv@(!alid") do |http, body|
+              expect(http.response_header.status).to eq(404)
+              expect(body).to be_empty
+              async_done
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can clear a silenced registry entry with a subscription and check" do
     api_test do
       options = {

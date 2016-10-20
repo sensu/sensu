@@ -3,6 +3,7 @@ module Sensu
     module Routes
       module Silenced
         SILENCED_URI = /^\/silenced$/
+        SILENCED_ID_URI = /^\/silenced\/ids\/([\w\.\-\*]+:[\w\.\-\*]+)$/
         SILENCED_SUBSCRIPTION_URI = /^\/silenced\/subscriptions\/([\w\.\-:]+)$/
         SILENCED_CHECK_URI = /^\/silenced\/checks\/([\w\.\-]+)$/
         SILENCED_CLEAR_URI = /^\/silenced\/clear$/
@@ -105,6 +106,25 @@ module Sensu
             fetch_silenced(silenced_keys) do |silenced|
               @response_content = silenced
               respond
+            end
+          end
+        end
+
+        # GET /silenced/ids/:id
+        def get_silenced_id
+          id = parse_uri(SILENCED_ID_URI).first
+          @redis.smembers("silenced") do |silenced_keys|
+            silenced_keys.select! do |key|
+              key =~ /.#{id.gsub('*', '\*')}$/
+            end
+            silenced_keys = pagination(silenced_keys)
+            fetch_silenced(silenced_keys) do |silenced|
+              if silenced.empty?
+                not_found!
+              else
+                @response_content = silenced.last
+                respond
+              end
             end
           end
         end
