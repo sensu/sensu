@@ -1557,16 +1557,12 @@ describe "Sensu::API::Process" do
       end
     end
 
-    it "can retrieve entry for silencing all checks on all subscriptions" do
+    it "cannot create an entry for silencing all checks on all subscriptions" do
       api_test do
         options = { :body => { :subscription => '*' } }
         api_request("/silenced", :post, options) do |http, body|
-          api_request("/silenced/ids/*:*") do |http, body|
-            expect(http.response_header.status).to eq(200)
-            expect(body).to be_kind_of(Hash)
-            expect(body[:id]).to eq("*:*")
-            async_done
-          end
+          expect(http.response_header.status).to eq(400)
+          async_done
         end
       end
     end

@@ -46,7 +46,7 @@ module Sensu
         # POST /silenced
         def post_silenced
           rules = {
-            :subscription => {:type => String, :nil_ok => true},
+            :subscription => {:type => String, :nil_ok => true, :regex => /\A[\w\.\-\:]+\z/},
             :check => {:type => String, :nil_ok => true, :regex => /\A[\w\.-]+\z/},
             :expire => {:type => Integer, :nil_ok => true},
             :reason => {:type => String, :nil_ok => true},
