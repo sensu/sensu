@@ -202,7 +202,9 @@ describe "Sensu::Client::Process" do
         @client.setup_transport do
           @client.setup_subscriptions
           timer(1) do
-            transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
+            setup_transport do |transport|
+              transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
+            end
           end
         end
       end
@@ -222,7 +224,9 @@ describe "Sensu::Client::Process" do
         @client.setup_transport do
           @client.setup_subscriptions
           timer(1) do
-            transport.publish(:direct, "roundrobin:test", Sensu::JSON.dump(check_template))
+            setup_transport do |transport|
+              transport.publish(:direct, "roundrobin:test", Sensu::JSON.dump(check_template))
+            end
           end
         end
       end
@@ -243,7 +247,9 @@ describe "Sensu::Client::Process" do
         @client.setup_transport do
           @client.setup_subscriptions
           timer(1) do
-            transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
+            setup_transport do |transport|
+              transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
+            end
           end
         end
       end
