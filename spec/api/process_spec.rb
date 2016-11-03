@@ -320,7 +320,9 @@ describe "Sensu::API::Process" do
         keepalive = client_template
         keepalive[:timestamp] = epoch
         keepalive[:signature] = "foo"
-        transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+        setup_transport do |transport|
+          transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+        end
         timer(1) do
           redis.get("client:i-424242:signature") do |signature|
             expect(signature).to eq("foo")

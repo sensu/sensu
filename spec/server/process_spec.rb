@@ -39,7 +39,9 @@ describe "Sensu::Server::Process" do
         keepalive[:timestamp] = epoch
         redis.flushdb do
           timer(1) do
-            transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+            setup_transport do |transport|
+              transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+            end
             timer(1) do
               redis.sismember("clients", "i-424242") do |exists|
                 expect(exists).to be(true)
@@ -78,24 +80,26 @@ describe "Sensu::Server::Process" do
         keepalive[:signature] = "foo"
         redis.flushdb do
           timer(1) do
-            transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
-            timer(1) do
-              redis.get("client:i-424242") do |client_json|
-                client = Sensu::JSON.load(client_json)
-                expect(client).to eq(keepalive)
-                redis.get("client:i-424242:signature") do |signature|
-                  expect(signature).to eq("foo")
-                  malicious = keepalive.dup
-                  malicious[:timestamp] = epoch
-                  malicious[:signature] = "bar"
-                  transport.publish(:direct, "keepalives", Sensu::JSON.dump(malicious))
-                  timer(1) do
-                    redis.get("client:i-424242") do |client_json|
-                      client = Sensu::JSON.load(client_json)
-                      expect(client).to eq(keepalive)
-                      redis.get("client:i-424242:signature") do |signature|
-                        expect(signature).to eq("foo")
-                        async_done
+            setup_transport do |transport|
+              transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+              timer(1) do
+                redis.get("client:i-424242") do |client_json|
+                  client = Sensu::JSON.load(client_json)
+                  expect(client).to eq(keepalive)
+                  redis.get("client:i-424242:signature") do |signature|
+                    expect(signature).to eq("foo")
+                    malicious = keepalive.dup
+                    malicious[:timestamp] = epoch
+                    malicious[:signature] = "bar"
+                    transport.publish(:direct, "keepalives", Sensu::JSON.dump(malicious))
+                    timer(1) do
+                      redis.get("client:i-424242") do |client_json|
+                        client = Sensu::JSON.load(client_json)
+                        expect(client).to eq(keepalive)
+                        redis.get("client:i-424242:signature") do |signature|
+                          expect(signature).to eq("foo")
+                          async_done
+                        end
                       end
                     end
                   end
@@ -338,41 +342,43 @@ describe "Sensu::Server::Process" do
             client = client_template
             redis.set("client:i-424242", Sensu::JSON.dump(client)) do
               result = result_template
-              transport.publish(:direct, "results", Sensu::JSON.dump(result))
-              timer(1) do
+              setup_transport do |transport|
                 transport.publish(:direct, "results", Sensu::JSON.dump(result))
-                timer(2) do
-                  redis.sismember("result:i-424242", "test") do |is_member|
-                    expect(is_member).to be(true)
-                    redis.get("result:i-424242:test") do |result_json|
-                      result = Sensu::JSON.load(result_json)
-                      expect(result[:output]).to eq("WARNING")
-                      timer(7) do
-                        redis.hget("events:i-424242", "test") do |event_json|
-                          event = Sensu::JSON.load(event_json)
-                          expect(event[:id]).to be_kind_of(String)
-                          expect(event[:check][:status]).to eq(1)
-                          expect(event[:occurrences]).to eq(2)
-                          expect(event[:occurrences_watermark]).to eq(2)
-                          expect(event[:last_ok]).to be_within(30).of(epoch)
-                          expect(event[:silenced]).to eq(false)
-                          expect(event[:silenced_by]).to be_empty
-                          expect(event[:action]).to eq("create")
-                          expect(event[:timestamp]).to be_within(10).of(epoch)
-                          read_event_file = Proc.new do
-                            begin
-                              event_file = IO.read("/tmp/sensu_event_bridge.json")
-                              Sensu::JSON.load(event_file)
-                            rescue
-                              retry
+                timer(1) do
+                  transport.publish(:direct, "results", Sensu::JSON.dump(result))
+                  timer(2) do
+                    redis.sismember("result:i-424242", "test") do |is_member|
+                      expect(is_member).to be(true)
+                      redis.get("result:i-424242:test") do |result_json|
+                        result = Sensu::JSON.load(result_json)
+                        expect(result[:output]).to eq("WARNING")
+                        timer(7) do
+                          redis.hget("events:i-424242", "test") do |event_json|
+                            event = Sensu::JSON.load(event_json)
+                            expect(event[:id]).to be_kind_of(String)
+                            expect(event[:check][:status]).to eq(1)
+                            expect(event[:occurrences]).to eq(2)
+                            expect(event[:occurrences_watermark]).to eq(2)
+                            expect(event[:last_ok]).to be_within(30).of(epoch)
+                            expect(event[:silenced]).to eq(false)
+                            expect(event[:silenced_by]).to be_empty
+                            expect(event[:action]).to eq("create")
+                            expect(event[:timestamp]).to be_within(10).of(epoch)
+                            read_event_file = Proc.new do
+                              begin
+                                event_file = IO.read("/tmp/sensu_event_bridge.json")
+                                Sensu::JSON.load(event_file)
+                              rescue
+                                retry
+                              end
                             end
+                            compare_event_file = Proc.new do |event_file|
+                              expect(event_file[:check]).to eq(event[:check])
+                              expect(event_file[:client]).to eq(event[:client])
+                              async_done
+                            end
+                            EM.defer(read_event_file, compare_event_file)
                           end
-                          compare_event_file = Proc.new do |event_file|
-                            expect(event_file[:check]).to eq(event[:check])
-                            expect(event_file[:client]).to eq(event[:client])
-                            async_done
-                          end
-                          EM.defer(read_event_file, compare_event_file)
                         end
                       end
                     end
@@ -396,16 +402,18 @@ describe "Sensu::Server::Process" do
             client[:signature] = "foo"
             redis.set("client:i-424242", Sensu::JSON.dump(client)) do
               result = result_template
-              transport.publish(:direct, "results", Sensu::JSON.dump(result))
-              timer(1) do
-                redis.sismember("result:i-424242", "test") do |is_member|
-                  expect(is_member).to be(false)
-                  result[:signature] = "foo"
-                  transport.publish(:direct, "results", Sensu::JSON.dump(result))
-                  timer(1) do
-                    redis.sismember("result:i-424242", "test") do |is_member|
-                      expect(is_member).to be(true)
-                      async_done
+              setup_transport do |transport|
+                transport.publish(:direct, "results", Sensu::JSON.dump(result))
+                timer(1) do
+                  redis.sismember("result:i-424242", "test") do |is_member|
+                    expect(is_member).to be(false)
+                    result[:signature] = "foo"
+                    transport.publish(:direct, "results", Sensu::JSON.dump(result))
+                    timer(1) do
+                      redis.sismember("result:i-424242", "test") do |is_member|
+                        expect(is_member).to be(true)
+                        async_done
+                      end
                     end
                   end
                 end
@@ -450,7 +458,9 @@ describe "Sensu::Server::Process" do
               result = result_template
               result[:check][:type] = "metric"
               result[:check][:output] = "foo\nbar\nbaz"
-              transport.publish(:direct, "results", Sensu::JSON.dump(result))
+              setup_transport do |transport|
+                transport.publish(:direct, "results", Sensu::JSON.dump(result))
+              end
               timer(2) do
                 redis.sismember("result:i-424242", "test") do |is_member|
                   expect(is_member).to be(true)
@@ -477,7 +487,9 @@ describe "Sensu::Server::Process" do
             result = result_template
             result[:check][:source] = "i-888888"
             result[:check][:handler] = "debug"
-            transport.publish(:direct, "results", Sensu::JSON.dump(result))
+            setup_transport do |transport|
+              transport.publish(:direct, "results", Sensu::JSON.dump(result))
+            end
             timer(3) do
               redis.sismember("clients", "i-888888") do |exists|
                 expect(exists).to be(true)
@@ -502,13 +514,15 @@ describe "Sensu::Server::Process" do
 
   it "can publish check requests" do
     async_wrapper do
-      transport.subscribe(:fanout, "test") do |_, payload|
-        check_request = Sensu::JSON.load(payload)
-        expect(check_request[:name]).to eq("test")
-        expect(check_request[:command]).to eq("echo WARNING && exit 1")
-        expect(check_request[:source]).to eq("switch-x")
-        expect(check_request[:issued]).to be_within(10).of(epoch)
-        async_done
+      setup_transport do |transport|
+        transport.subscribe(:fanout, "test") do |_, payload|
+          check_request = Sensu::JSON.load(payload)
+          expect(check_request[:name]).to eq("test")
+          expect(check_request[:command]).to eq("echo WARNING && exit 1")
+          expect(check_request[:source]).to eq("switch-x")
+          expect(check_request[:issued]).to be_within(10).of(epoch)
+          async_done
+        end
       end
       timer(0.5) do
         @server.setup_transport do
@@ -523,12 +537,14 @@ describe "Sensu::Server::Process" do
 
   it "can publish check requests to round-robin subscriptions" do
     async_wrapper do
-      transport.subscribe(:direct, "roundrobin:test") do |_, payload|
-        check_request = Sensu::JSON.load(payload)
-        expect(check_request[:name]).to eq("test")
-        expect(check_request[:command]).to eq("echo WARNING && exit 1")
-        expect(check_request[:issued]).to be_within(10).of(epoch)
-        async_done
+      setup_transport do |transport|
+        transport.subscribe(:direct, "roundrobin:test") do |_, payload|
+          check_request = Sensu::JSON.load(payload)
+          expect(check_request[:name]).to eq("test")
+          expect(check_request[:command]).to eq("echo WARNING && exit 1")
+          expect(check_request[:issued]).to be_within(10).of(epoch)
+          async_done
+        end
       end
       timer(0.5) do
         @server.setup_transport do
@@ -542,14 +558,16 @@ describe "Sensu::Server::Process" do
 
   it "can publish extension check requests" do
     async_wrapper do
-      transport.subscribe(:fanout, "test") do |_, payload|
-        check_request = Sensu::JSON.load(payload)
-        expect(check_request[:name]).to eq("test")
-        expect(check_request[:source]).to eq("switch-x")
-        expect(check_request[:extension]).to eq("rspec")
-        expect(check_request[:issued]).to be_within(10).of(epoch)
-        expect(check_request).not_to include(:command)
-        async_done
+      setup_transport do |transport|
+        transport.subscribe(:fanout, "test") do |_, payload|
+          check_request = Sensu::JSON.load(payload)
+          expect(check_request[:name]).to eq("test")
+          expect(check_request[:source]).to eq("switch-x")
+          expect(check_request[:extension]).to eq("rspec")
+          expect(check_request[:issued]).to be_within(10).of(epoch)
+          expect(check_request).not_to include(:command)
+          async_done
+        end
       end
       timer(0.5) do
         @server.setup_transport do
@@ -576,11 +594,13 @@ describe "Sensu::Server::Process" do
   it "can schedule check request publishing" do
     async_wrapper do
       expected = ["tokens", "merger", "sensu_cpu_time", "source"]
-      transport.subscribe(:fanout, "test") do |_, payload|
-        check_request = Sensu::JSON.load(payload)
-        expect(check_request[:issued]).to be_within(10).of(epoch)
-        expect(expected.delete(check_request[:name])).not_to be_nil
-        async_done if expected.empty?
+      setup_transport do |transport|
+        transport.subscribe(:fanout, "test") do |_, payload|
+          check_request = Sensu::JSON.load(payload)
+          expect(check_request[:issued]).to be_within(10).of(epoch)
+          expect(expected.delete(check_request[:name])).not_to be_nil
+          async_done if expected.empty?
+        end
       end
       timer(0.5) do
         @server.setup_transport do
@@ -668,22 +688,24 @@ describe "Sensu::Server::Process" do
                 result = result_template
                 result[:check][:status] = 0
                 result[:check][:executed] = epoch - 30
-                transport.publish(:direct, "results", Sensu::JSON.dump(result))
-                result[:check][:name] = "foo"
-                result[:check][:ttl] = 30
-                transport.publish(:direct, "results", Sensu::JSON.dump(result))
-                result[:check][:name] = "bar"
-                result[:check][:ttl] = 60
-                transport.publish(:direct, "results", Sensu::JSON.dump(result))
-                timer(2) do
-                  @server.determine_stale_check_results
+                setup_transport do |transport|
+                  transport.publish(:direct, "results", Sensu::JSON.dump(result))
+                  result[:check][:name] = "foo"
+                  result[:check][:ttl] = 30
+                  transport.publish(:direct, "results", Sensu::JSON.dump(result))
+                  result[:check][:name] = "bar"
+                  result[:check][:ttl] = 60
+                  transport.publish(:direct, "results", Sensu::JSON.dump(result))
                   timer(2) do
-                    redis.hgetall("events:i-424242") do |events|
-                      expect(events.size).to eq(1)
-                      event = Sensu::JSON.load(events["foo"])
-                      expect(event[:check][:output]).to match(/Last check execution was 3[0-9] seconds ago/)
-                      expect(event[:check][:status]).to eq(1)
-                      async_done
+                    @server.determine_stale_check_results
+                    timer(2) do
+                      redis.hgetall("events:i-424242") do |events|
+                        expect(events.size).to eq(1)
+                        event = Sensu::JSON.load(events["foo"])
+                        expect(event[:check][:output]).to match(/Last check execution was 3[0-9] seconds ago/)
+                        expect(event[:check][:status]).to eq(1)
+                        async_done
+                      end
                     end
                   end
                 end
@@ -713,12 +735,14 @@ describe "Sensu::Server::Process" do
                   stale_result[:check][:status] = 0
                   stale_result[:check][:ttl] = 60
                   stale_result[:check][:executed] = epoch - 1200
-                  transport.publish(:direct, "results", Sensu::JSON.dump(stale_result)) do
-                    @server.determine_stale_check_results
-                    timer(1) do
-                      redis.hexists("events:i-424242", "test") do |ttl_event_exists|
-                        expect(ttl_event_exists).to eq(false)
-                        async_done
+                  setup_transport do |transport|
+                    transport.publish(:direct, "results", Sensu::JSON.dump(stale_result)) do
+                      @server.determine_stale_check_results
+                      timer(1) do
+                        redis.hexists("events:i-424242", "test") do |ttl_event_exists|
+                          expect(ttl_event_exists).to eq(false)
+                          async_done
+                        end
                       end
                     end
                   end

@@ -27,24 +27,30 @@ module Helpers
   end
 
   def setup_transport
-    @transport = Sensu::Transport::RabbitMQ.new
-    @transport.connect
-    @transport
-  end
-
-  def transport
-    @transport ? @transport : setup_transport
-  end
-
-  def keepalive_queue(&callback)
-    transport.subscribe(:direct, "keepalives", "keepalives") do |_, payload|
-      callback.call(payload)
+    if @transport
+      yield @transport if block_given?
+    else
+      Sensu::Transport.connect("rabbitmq") do |transport|
+        transport.logger = Sensu::Logger.get
+        @transport = transport
+        yield transport if block_given?
+      end
     end
   end
 
-  def result_queue(&callback)
-    transport.subscribe(:direct, "results", "results") do |_, payload|
-      callback.call(payload)
+  def keepalive_queue
+    setup_transport do |transport|
+      transport.subscribe(:direct, "keepalives", "keepalives") do |_, payload|
+        yield payload
+      end
+    end
+  end
+
+  def result_queue
+    setup_transport do |transport|
+      transport.subscribe(:direct, "results", "results") do |_, payload|
+        yield payload
+      end
     end
   end
 
