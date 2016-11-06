@@ -9,7 +9,7 @@ gem "sensu-extension", "1.5.1"
 gem "sensu-extensions", "1.7.1"
 gem "sensu-transport", "7.0.2"
 gem "sensu-spawn", "2.2.1"
-gem "sensu-redis", "1.6.1"
+gem "sensu-redis", "2.0.0"
 
 require "time"
 require "uri"
@@ -286,6 +286,7 @@ module Sensu
     #   connection object to the callback/block.
     def setup_redis
       @logger.debug("connecting to redis", :settings => @settings[:redis])
+      Redis.logger = @logger
       Redis.connect(@settings[:redis]) do |connection|
         @redis = connection
         @redis.on_error do |error|
