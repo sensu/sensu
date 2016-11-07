@@ -20,14 +20,17 @@ module Sensu
     # This socket requires receiving a proper HTTP request to any of
     # the following endpoints:
     #
-    # /ping
-    #  This endpoint will simply return a 200 OK with a pong response
+    # GET /info
+    #  This endpoint returns 200 OK with some basic sensu info
     #
-    # /check
-    #  This endpoint expects application/json body with a check
+    # POST /results
+    #  This endpoint expects application/json body with a check result
     #
-    # /settings
-    #  This endpoint will respond with the sensu configuration
+    # GET /settings
+    #  This endpoint responds with 200 OK and the sensu configuration
+    #
+    # GET /brew
+    #  This endpoint gets you some fresh coffee
     class HTTPSocket < EM::HttpServer::Server
       include Sensu::API::Utilities::TransportInfo
       include Utilities
