@@ -54,6 +54,17 @@ module Sensu
               "GET" => method(:process_request_settings)
             },
             "help" => "Get sensu settings (requires basic auth)"
+          },
+          "/brew" => {
+            "methods" => {
+              "GET" => Proc.new { |response|
+                response.status = 418
+                response.status_string = "I'm a teapot"
+                response.content = Sensu::JSON::dump({:response => "I'm a teapot!"})
+                response.send_response
+              }
+            },
+            "help" => "Ask Sensu to brew a cup of joe (try it!)"
           }
         }
       end
