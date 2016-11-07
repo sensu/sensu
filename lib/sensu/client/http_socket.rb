@@ -29,7 +29,7 @@ module Sensu
       attr_accessor :logger, :settings, :transport
 
       def initialize
-        super()
+        super
         @endpoints = {
           "/info" => {
             "methods" => {
@@ -54,14 +54,30 @@ module Sensu
 
       def process_request_info
         @logger.debug("Processing info request")
+        rdata = {
+          "response" => "ok"
+        }
+        rdata
       end
 
       def process_request_results
         @logger.debug("Processing results request")
+        rdata = {
+          "response" => "ok"
+        }
+        rdata
       end
 
       def process_request_settings
         @logger.debug("Processing settings request")
+        rdata = {
+          "response" => "ok"
+        }
+        rdata
+      end
+
+      def http_request_errback(ex)
+        @logger.error("#{ex.class}: #{ex.message}")
       end
 
       # This method is called to process HTTP requests
@@ -69,27 +85,40 @@ module Sensu
         @logger.debug("http method: #{@http_request_method}")
         @logger.debug("http uri: #{@http_request_uri}")
         @logger.debug("http content-type: #{@http[:content_type]}")
-        @logger.debug("http content: #{@http_content}")
         @logger.debug("http headers: #{@http.inspect}")
+        @logger.debug("http content: #{@http_content}")
+        response = EM::DelegatedHttpResponse.new(self)
+        response.content_type 'application/json'
         if @endpoints[@http_request_uri]
           @logger.debug("handling known uri: #{@http_request_uri}")
-          @endpoints[@http_request_uri].call
-          response = EM::DelegatedHttpResponse.new(self)
-          response.status = 200
-          response.send_response
+          handler = @endpoints[@http_request_uri]["methods"][@http_request_method]
+          if handler
+            rdata = handler.call
+            response.status = 200
+            response.status_string = "OK"
+            response.content = Sensu::JSON::dump(rdata)
+          else
+            response.status = 405
+            response.status_string = "Method Not Allowed"
+            rdata = {
+              "response" => "Valid methods for this endpoint: #{@endpoints[@http_request_uri]["methods"].keys}"
+            }
+            response.content = Sensu::JSON::dump(rdata)
+          end
         else
           @logger.warn("unknown uri: #{@http_request_uri}")
-          response = EM::DelegatedHttpResponse.new(self)
           response.status = 404
-          response.content_type 'application/json'
+          response.status_string = "Not Found"
           rdata = {}
           @endpoints.each do |key, value|
             rdata[key] = value["help"]
           end
-          @logger.debug("responding with 404", data: rdata)
-          response.content = rdata.to_json
-          response.send_response
+          @logger.debug("responding with 404", data: Sensu::JSON.dump(rdata))
+          response.content = Sensu::JSON.dump(rdata)
+          @logger.debug("done")
         end
+        @logger.debug("sending response")
+        response.send_response
       end
     end
   end
