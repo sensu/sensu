@@ -30,6 +30,7 @@ module Sensu
     #  This endpoint will respond with the sensu configuration
     class HTTPSocket < EM::HttpServer::Server
       include Sensu::API::Utilities::TransportInfo
+      include Utilities
       include CheckUtils
 
       attr_accessor :logger, :settings, :transport
