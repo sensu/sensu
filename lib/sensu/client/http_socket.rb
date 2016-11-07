@@ -101,13 +101,23 @@ module Sensu
       def process_request_results(response)
         @logger.debug("Processing results request")
         if @http[:content_type] and @http[:content_type] == 'application/json' and @http_content
-          check = Sensu::JSON::load(@http_content)
-          process_check_result(check)
-          rdata = {
-            :response => "ok"
-          }
-          response.content = Sensu::JSON::dump(rdata)
-          response.send_response
+          begin
+            check = Sensu::JSON::load(@http_content)
+            process_check_result(check)
+            rdata = {
+              :response => "ok"
+            }
+            response.content = Sensu::JSON::dump(rdata)
+            response.send_response
+          rescue Sensu::JSON::ParseError, ArgumentError
+            rdata = {
+              :response => "Failed to parse json body"
+            }
+            response.status = 400
+            response.status_string = "Failed to parse json body"
+            response.content = Sensu::JSON::dump(rdata)
+            response.send_response
+          end
         else
           response.status = 415
           response.status_string = "Only json content type accepted"
