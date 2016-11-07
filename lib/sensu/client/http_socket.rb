@@ -3,6 +3,7 @@ require "em-http-server"
 require "sensu/json"
 require "sensu/utilities"
 require "sensu/api/utilities/transport_info"
+require "sensu/client/utils"
 
 module Sensu
   module Client
@@ -29,7 +30,7 @@ module Sensu
     #  This endpoint will respond with the sensu configuration
     class HTTPSocket < EM::HttpServer::Server
       include Sensu::API::Utilities::TransportInfo
-      include Utilities
+      include CheckUtils
 
       attr_accessor :logger, :settings, :transport
 
@@ -87,11 +88,23 @@ module Sensu
 
       def process_request_results(response)
         @logger.debug("Processing results request")
-        rdata = {
-          :response => "ok"
-        }
-        response.content = Sensu::JSON::dump(rdata)
-        response.send_response
+        if @http[:content_type] and @http[:content_type] == 'application/json' and @http_content
+          check = Sensu::JSON::load(@http_content)
+          process_check_result(check)
+          rdata = {
+            :response => "ok"
+          }
+          response.content = Sensu::JSON::dump(rdata)
+          response.send_response
+        else
+          response.status = 415
+          response.status_string = "Only json content type accepted"
+          rdata = {
+            :response => "Invalid content type"
+          }
+          response.content = Sensu::JSON::dump(rdata)
+          response.send_response
+        end
       end
 
       def process_request_settings(response)
