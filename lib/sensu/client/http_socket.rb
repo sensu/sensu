@@ -7,12 +7,12 @@ require "sensu/client/utils"
 
 module Sensu
   module Client
-    # EventMachine connection handler for the Sensu HTTP client"s socket.
+    # EventMachine connection handler for the Sensu HTTP client's socket.
     #
     # The Sensu client listens on localhost, port 3031 (by default), for
     # TCP HTTP connections. This allows software running on the host to
     # push check results (that may contain metrics) into Sensu, without
-    # needing to know anything about Sensu"s internal implementation.
+    # needing to know anything about Sensu's internal implementation.
     #
     # All requests and responses expect a json-encoded body (if a body
     # is expected at all).
@@ -21,13 +21,13 @@ module Sensu
     # the following endpoints:
     #
     # GET /info
-    #  This endpoint returns 200 OK with some basic sensu info
+    #  This endpoint returns 200 OK with some basic Sensu info
     #
     # POST /results
     #  This endpoint expects application/json body with a check result
     #
     # GET /settings
-    #  This endpoint responds with 200 OK and the sensu configuration
+    #  This endpoint responds with 200 OK and the Sensu configuration
     #
     # GET /brew
     #  This endpoint gets you some fresh coffee
@@ -51,26 +51,26 @@ module Sensu
             "methods" => {
               "POST" => method(:process_request_results)
             },
-            "help" => "Send check json results here"
+            "help" => "Send check JSON results here"
           },
           "/settings" => {
             "methods" => {
               "GET" => method(:process_request_settings)
             },
-            "help" => "Get sensu settings (requires basic auth)"
+            "help" => "Get redacted Sensu settings (requires basic auth). Use ?redacted=false if you want the setting unredacted."
           },
           "/brew" => {
             "methods" => {
               "GET" => Proc.new { |response|
-                response.status = 418
-                response.status_string = "I'm a teapot"
-                response.content = Sensu::JSON::dump({:response => "I'm a teapot!"})
-                response.send_response
+                send_response(418, "I'm a teapot", {
+                  :response => "I'm a teapot!"
+                })
               }
             },
             "help" => "Ask Sensu to brew a cup of joe (try it!)"
           }
         }
+        @response = nil
       end
 
       def authorized?
@@ -87,120 +87,95 @@ module Sensu
         false
       end
 
-      def process_request_info(response)
-        @logger.debug("Processing info request")
+      def send_response(status, status_string, content)
+        @logger.debug("sending HTTP response #{status} #{status_string}", :content => content)
+        @response.status = status
+        @response.status_string = status_string
+        @response.content = Sensu::JSON::dump(content)
+        @response.send_response
+      end
+
+      def process_request_info
         transport_info do |info|
-          rdata = {
+          send_response(200, "OK", {
             :sensu => {
               :version => VERSION
             },
             :transport => info
-          }
-          response.content = Sensu::JSON::dump(rdata)
-          response.send_response
+          })
         end
       end
 
-      def process_request_results(response)
-        @logger.debug("Processing results request")
-        if @http[:content_type] and @http[:content_type] == 'application/json' and @http_content
+      def process_request_results
+        if @http[:content_type] and @http[:content_type] == "application/json" and @http_content
           begin
             check = Sensu::JSON::load(@http_content)
             process_check_result(check)
-            rdata = {
-              :response => "ok"
-            }
-            response.content = Sensu::JSON::dump(rdata)
-            response.send_response
+            send_response(200, "OK", {:response => "ok"})
           rescue Sensu::JSON::ParseError, ArgumentError
-            rdata = {
-              :response => "Failed to parse json body"
-            }
-            response.status = 400
-            response.status_string = "Failed to parse json body"
-            response.content = Sensu::JSON::dump(rdata)
-            response.send_response
+            send_response(400, "Failed to parse JSON body", {:response => "Failed to parse JSON body"})
           end
         else
-          response.status = 415
-          response.status_string = "Only json content type accepted"
-          rdata = {
-            :response => "Invalid content type"
-          }
-          response.content = Sensu::JSON::dump(rdata)
-          response.send_response
+          send_response(415, "Only application/json content type accepted", {:response => "Invalid content type"})
         end
       end
 
-      def process_request_settings(response)
+      def process_request_settings
         if authorized?
-          @logger.debug("Processing settings request")
-          if @http_query_string and @http_query_string.downcase.include?('redacted=false')
-            response.content = Sensu::JSON::dump(@settings.to_hash)
+          @logger.info("responding to HTTP request for configuration settings")
+          if @http_query_string and @http_query_string.downcase.include?("redacted=false")
+            send_response(200, "OK", @settings.to_hash)
           else
-            response.content = Sensu::JSON::dump(redact_sensitive(@settings.to_hash))
+            send_response(200, "OK", redact_sensitive(@settings.to_hash))
           end
-          response.send_response
         else
-          @logger.warn("Refusing to serve unauthorized settings request")
-          rdata = {:response => "You must be authenticated using your http_options user and password settings"}
-          response.headers["WWW-Authenticate"] = 'Basic realm="Sensu Client Restricted Area"'
-          response.status = 401
-          response.status_string = "Unauthorized"
-          response.content = Sensu::JSON::dump(rdata)
-          response.send_response
+          @logger.warn("refusing to serve unauthorized settings request")
+          @response.headers["WWW-Authenticate"] = 'Basic realm="Sensu Client Restricted Area"'
+          send_response(401, "Unauthorized", {
+            :response => "You must be authenticated using your http_options user and password settings"
+          })
         end
       end
 
       def http_request_errback(ex)
-        @logger.error("Exception while processing HTTP request: #{ex.class}: #{ex.message}", backtrace: ex.backtrace)
-        response = EM::DelegatedHttpResponse.new(self)
-        response.content_type 'application/json'
-        response.status = 500
-        response.status_string = "Internal Server Error"
-        rdata = {
-          "response" => "Internal Server Error: Check your sensu logs for error details"
-        }
-        response.content = Sensu::JSON::dump(rdata)
-        response.send_response
+        @logger.error("exception while processing HTTP request: #{ex.class}: #{ex.message}", backtrace: ex.backtrace)
+        @response = EM::DelegatedHttpResponse.new(self)
+        @response.content_type "application/json"
+        send_response(500, "Internal Server Error", {
+          "response" => "Internal Server Error: Check your Sensu logs for error details"
+        })
       end
 
       # This method is called to process HTTP requests
       def process_http_request
-        @logger.debug("Processing #{@http_request_method} #{@http_request_uri}")
-        response = EM::DelegatedHttpResponse.new(self)
-        response.content_type 'application/json'
-        reqdef = @endpoints[@http_request_uri]
-        if reqdef
-          handler = reqdef["methods"][@http_request_method.upcase]
-          if handler
-            response.status = 200
-            response.status_string = "OK"
-            handler.call(response)
+        @logger.debug("processing #{@http_request_method} #{@http_request_uri}")
+        @response = EM::DelegatedHttpResponse.new(self)
+        @response.content_type "application/json"
+        endpoint = @endpoints[@http_request_uri]
+        if endpoint
+          @logger.debug("endpoint #{@http_request_uri} found", :accepted_methods => endpoint["methods"].keys)
+          method_name = @http_request_method.upcase
+          method_handler = endpoint["methods"][method_name]
+          if method_handler
+            @logger.debug("executing #{method_name} #{@http_request_uri} handler")
+            method_handler.call
           else
-            response.status = 405
-            response.status_string = "Method Not Allowed"
-            rdata = {
+            @logger.debug("method #{method_name} is not allowed for endpoint #{@http_request_uri}")
+            send_response(405, "Method Not Allowed", {
               :response => "Valid methods for this endpoint: #{reqdef['methods'].keys}"
-            }
-            response.content = Sensu::JSON::dump(rdata)
-            response.send_response
+            })
           end
         else
-          @logger.warn("Unknown uri requested: #{@http_request_uri}")
-          response.status = 404
-          response.status_string = "Not Found"
-          rdata = {
+          @logger.warn("unknown endpoint requested: #{@http_request_uri}")
+          help_response = {
             :endpoints => {}
           }
           @endpoints.each do |key, value|
-            rdata[:endpoints][key] ||= Hash.new
-            rdata[:endpoints][key]["help"] = value["help"]
-            rdata[:endpoints][key]["methods"] = value["methods"].keys
+            help_response[:endpoints][key] ||= Hash.new
+            help_response[:endpoints][key]["help"] = value["help"]
+            help_response[:endpoints][key]["methods"] = value["methods"].keys
           end
-          @logger.debug("Responding with 404", response: Sensu::JSON.dump(rdata))
-          response.content = Sensu::JSON.dump(rdata)
-          response.send_response
+          send_response(404, "Not Found", help_response)
         end
       end
     end
