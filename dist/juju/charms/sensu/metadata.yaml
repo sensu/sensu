@@ -1,0 +1,6 @@
+ensemble: formula
+name: sensu
+revision: 1
+summary: Sensu monitoring service.
+description: |
+  Installs and configures Sensu, a monitoring framework that aims to be simple, malleable, and scalable.
