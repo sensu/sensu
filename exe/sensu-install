@@ -9,7 +9,8 @@ module Sensu
         options = {
           :verbose => false,
           :plugins => [],
-          :extensions => []
+          :extensions => [],
+          :clean => false
         }
         optparse = OptionParser.new do |opts|
           opts.on("-h", "--help", "Display this message") do
@@ -31,8 +32,11 @@ module Sensu
           opts.on("-E", "--extensions EXTENSION[,EXT]", "EXTENSION or comma-delimited list of Sensu extensions to install") do |extensions|
             options[:extensions].concat(extensions.split(","))
           end
-          opts.on("-s", "--source SOURCE", "Install Sensu plugins from a custom SOURCE") do |source|
+          opts.on("-s", "--source SOURCE", "Install Sensu plugins and extensions from a custom SOURCE") do |source|
             options[:source] = source
+          end
+          opts.on("-c", "--clean", "Clean up (remove) other installed versions of the plugin(s) and/or extension(s)") do
+            options[:clean] = true
           end
         end
         optparse.parse!(arguments)
@@ -78,6 +82,39 @@ module Sensu
         end
       end
 
+      def gem_installed_versions(raw_gem, options={})
+        gem_name, gem_version = raw_gem.split(":")
+        log "determining installed versions of Sensu gem '#{gem_name}' ..."
+        gem_command = "gem list #{gem_name}"
+        log gem_command if options[:verbose]
+        gem_command_output = `#{gem_command}`
+        last_line = gem_command_output.split("\n").last
+        if last_line == "false"
+          []
+        else
+          /\((.*)\)/.match(last_line)[1].split(", ")
+        end
+      end
+
+      def clean_gem(raw_gem, options={})
+        log "cleaning Sensu gem '#{raw_gem}'"
+        gem_name, gem_version = raw_gem.split(":")
+        gem_command = "gem clean #{gem_name}"
+        if gem_version
+          if gem_installed_versions(raw_gem, options) == [gem_version]
+            log "Sensu gem '#{gem_name}' version '#{gem_version}' is the only version installed"
+          else
+            gem_command = "gem uninstall #{gem_name} --version '!= #{gem_version}' -a"
+          end
+        end
+        log gem_command if options[:verbose]
+        if system(gem_command)
+          log "successfully cleaned Sensu gem '#{gem_name}'"
+        else
+          log "failed to clean Sensu gem '#{gem_name}'"
+        end
+      end
+
       def install_plugins(plugins, options={})
         log "installing Sensu plugins ..."
         log "provided Sensu plugins: #{plugins}" if options[:verbose]
@@ -89,14 +126,20 @@ module Sensu
           end
         end
         log "compiled Sensu plugin gems: #{plugin_gems}" if options[:verbose]
-        plugin_gems.reject! do |raw_gem|
+        to_be_installed = plugin_gems.reject do |raw_gem|
           gem_installed?(raw_gem, options)
         end
-        log "Sensu plugin gems to be installed: #{plugin_gems}"
-        plugin_gems.each do |raw_gem|
+        log "Sensu plugin gems to be installed: #{to_be_installed}"
+        to_be_installed.each do |raw_gem|
           install_gem(raw_gem, options)
         end
-        log "successfully installed Sensu plugins: #{plugins}"
+        log "successfully installed Sensu plugins: #{to_be_installed}"
+        if options[:clean]
+          log "cleaning Sensu plugin gems: #{plugin_gems}" if options[:verbose]
+          plugin_gems.each do |raw_gem|
+            clean_gem(raw_gem, options)
+          end
+        end
       end
 
       def install_extensions(extensions, options={})
@@ -110,14 +153,20 @@ module Sensu
           end
         end
         log "compiled Sensu extension gems: #{extension_gems}" if options[:verbose]
-        extension_gems.reject! do |raw_gem|
+        to_be_installed = extension_gems.reject do |raw_gem|
           gem_installed?(raw_gem, options)
         end
-        log "Sensu extension gems to be installed: #{extension_gems}"
-        extension_gems.each do |raw_gem|
+        log "Sensu extension gems to be installed: #{to_be_installed}"
+        to_be_installed.each do |raw_gem|
           install_gem(raw_gem, options)
         end
-        log "successfully installed Sensu extensions: #{extensions}"
+        log "successfully installed Sensu extensions: #{to_be_installed}"
+        if options[:clean]
+          log "cleaning Sensu extension gems: #{extension_gems}" if options[:verbose]
+          extension_gems.each do |raw_gem|
+            clean_gem(raw_gem, options)
+          end
+        end
       end
 
       def run
