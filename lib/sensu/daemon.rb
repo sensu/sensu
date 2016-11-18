@@ -1,6 +1,6 @@
 require "rubygems"
 
-gem "eventmachine", "1.2.0.1"
+gem "eventmachine", "1.2.1"
 
 gem "sensu-json", "2.0.1"
 gem "sensu-logger", "1.2.1"
