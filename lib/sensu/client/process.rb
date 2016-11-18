@@ -1,5 +1,6 @@
 require "sensu/daemon"
 require "sensu/client/socket"
+require "sensu/client/http_socket"
 
 module Sensu
   module Client
@@ -372,6 +373,16 @@ module Sensu
           socket.transport = @transport
           socket.protocol = :udp
         end
+        # Setup the HTTP socket
+        http_options = @settings[:client][:http_socket] || Hash.new
+        http_options[:bind] ||= "127.0.0.1"
+        http_options[:port] ||= 3031
+        @logger.debug("binding client http socket", :http_options => http_options)
+        @sockets << EM::start_server(http_options[:bind], http_options[:port], HTTPSocket) do |socket|
+          socket.logger = @logger
+          socket.settings = @settings
+          socket.transport = @transport
+        end
       end
 
       # Call a callback (Ruby block) when there are no longer check
@@ -424,7 +435,7 @@ module Sensu
       # connection object indicates a socket connection that needs to
       # be closed, eg. a UDP datagram socket.
       def close_sockets
-        @logger.info("closing client tcp and udp sockets")
+        @logger.info("closing client sockets")
         @sockets.each do |socket|
           if socket.is_a?(Numeric)
             EM.stop_server(socket)
