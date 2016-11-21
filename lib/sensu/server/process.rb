@@ -961,7 +961,7 @@ module Sensu
                     unless event_exists
                       check[:output] = "Last check execution was "
                       check[:output] << "#{time_since_last_execution} seconds ago"
-                      check[:status] = 1
+                      check[:status] = check[:ttl_status] || 1
                       publish_check_result(client_name, check)
                     end
                   end
