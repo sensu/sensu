@@ -145,7 +145,8 @@
       "command": "echo -n foobar && exit 1",
       "standalone": true,
       "interval": 1,
-      "ttl": 10
+      "ttl": 10,
+      "ttl_status": 2
     },
     "merger": {
       "command": "this will be overwritten",
