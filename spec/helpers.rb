@@ -144,9 +144,10 @@ module Helpers
     }
   end
 
-  def api_request(uri, method=:get, options={}, &callback)
+  def http_request(port, uri, method=:get, options={}, &callback)
     default_options = {
       :head => {
+        :content_type  => "application/json",
         :authorization => [
           "foo",
           "bar"
@@ -157,7 +158,7 @@ module Helpers
     if request_options[:body].is_a?(Hash) || request_options[:body].is_a?(Array)
       request_options[:body] = Sensu::JSON.dump(request_options[:body])
     end
-    http = EM::HttpRequest.new("http://127.0.0.1:4567#{uri}").send(method, request_options)
+    http = EM::HttpRequest.new("http://127.0.0.1:#{port}#{uri}").send(method, request_options)
     http.callback do
       body = case
       when http.response.empty?
@@ -167,6 +168,10 @@ module Helpers
       end
       callback.call(http, body)
     end
+  end
+
+  def api_request(uri, method=:get, options={}, &callback)
+    http_request(4567, uri, method, options, &callback)
   end
 
   class TestServer < EM::Connection

@@ -111,7 +111,7 @@ module Sensu
           begin
             check = Sensu::JSON::load(@http_content)
             process_check_result(check)
-            send_response(200, "OK", {:response => "ok"})
+            send_response(202, "OK", {:response => "ok"})
           rescue Sensu::JSON::ParseError, ArgumentError
             send_response(400, "Failed to parse JSON body", {:response => "Failed to parse JSON body"})
           end

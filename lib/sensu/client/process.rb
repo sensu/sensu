@@ -348,7 +348,7 @@ module Sensu
         schedule_checks(standard_checks + extension_checks)
       end
 
-      # Setup the Sensu client socket, for external check result
+      # Setup the Sensu client JSON socket, for external check result
       # input. By default, the client socket is bound to localhost on
       # TCP & UDP port 3030. The socket can be configured via the
       # client definition, `:socket` with `:bind` and `:port`. The
@@ -357,7 +357,7 @@ module Sensu
       # TCP socket server signature (Fixnum) and UDP connection object
       # are stored in `@sockets`, so that they can be managed
       # elsewhere, eg. `close_sockets()`.
-      def setup_sockets
+      def setup_json_socket
         options = @settings[:client][:socket] || Hash.new
         options[:bind] ||= "127.0.0.1"
         options[:port] ||= 3030
@@ -373,7 +373,18 @@ module Sensu
           socket.transport = @transport
           socket.protocol = :udp
         end
-        # Setup the HTTP socket
+      end
+
+      # Setup the Sensu client HTTP socket, for external check result
+      # input and informational queries. By default, the client HTTP
+      # socket is bound to localhost on TCP port 3031. The socket can
+      # be configured via the client definition, `:http_socket` with
+      # `:bind` and `:port`. The current instance of the Sensu logger,
+      # settings, and transport are passed to the HTTP socket handler,
+      # `Sensu::Client::HTTPSocket`. The HTTP socket server signature
+      # (Fixnum) is stored in `@sockets`, so that it can be managed
+      # elsewhere, eg. `close_sockets()`.
+      def setup_http_socket
         http_options = @settings[:client][:http_socket] || Hash.new
         http_options[:bind] ||= "127.0.0.1"
         http_options[:port] ||= 3031
@@ -383,6 +394,12 @@ module Sensu
           socket.settings = @settings
           socket.transport = @transport
         end
+      end
+
+      # Setup the Sensu client sockets, JSON TCP & UDP, and HTTP.
+      def setup_sockets
+        setup_json_socket
+        setup_http_socket
       end
 
       # Call a callback (Ruby block) when there are no longer check
