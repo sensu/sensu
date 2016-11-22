@@ -147,7 +147,7 @@ module Helpers
   def http_request(port, uri, method=:get, options={}, &callback)
     default_options = {
       :head => {
-        :content_type  => "application/json",
+        :content_type => "application/json",
         :authorization => [
           "foo",
           "bar"
@@ -168,10 +168,6 @@ module Helpers
       end
       callback.call(http, body)
     end
-  end
-
-  def api_request(uri, method=:get, options={}, &callback)
-    http_request(4567, uri, method, options, &callback)
   end
 
   class TestServer < EM::Connection

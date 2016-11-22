@@ -344,7 +344,7 @@ describe "Sensu::Client::Process" do
           options = {:body => {:name => "http", :output => "http", :status => 1}}
           http_request(3031, "/results", :post, options)do |http, body|
             expect(http.response_header.status).to eq(202)
-            expect(body).to eq(:response => "ok")
+            expect(body).to eq({:response => "ok"})
           end
         end
       end
