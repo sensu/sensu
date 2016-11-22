@@ -46,7 +46,7 @@ describe "Sensu::API::Process" do
 
   it "can provide basic version and health information" do
     api_test do
-      api_request("/info") do |http, body|
+      http_request(4567, "/info") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body[:sensu][:version]).to eq(Sensu::VERSION)
         expect(body[:redis][:connected]).to be(true)
@@ -62,14 +62,14 @@ describe "Sensu::API::Process" do
 
   it "can provide connection and queue monitoring" do
     api_test do
-      api_request("/health?consumers=0&messages=1000") do |http, body|
+      http_request(4567, "/health?consumers=0&messages=1000") do |http, body|
         expect(http.response_header.status).to eq(204)
         expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
-        api_request("/health?consumers=1000") do |http, body|
+        http_request(4567, "/health?consumers=1000") do |http, body|
           expect(http.response_header.status).to eq(412)
           expect(body).to be_empty
-          api_request("/health?consumers=1000&messages=1000") do |http, body|
+          http_request(4567, "/health?consumers=1000&messages=1000") do |http, body|
             expect(http.response_header.status).to eq(412)
             async_done
           end
@@ -80,7 +80,7 @@ describe "Sensu::API::Process" do
 
   it "can provide current events" do
     api_test do
-      api_request("/events") do |http, body|
+      http_request(4567, "/events") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_event = Proc.new do |event|
@@ -94,7 +94,7 @@ describe "Sensu::API::Process" do
 
   it "can provide current events for a specific client" do
     api_test do
-      api_request("/events/i-424242") do |http, body|
+      http_request(4567, "/events/i-424242") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_event = Proc.new do |event|
@@ -117,7 +117,7 @@ describe "Sensu::API::Process" do
           ]
         }
       }
-      api_request("/clients", :post, options) do |http, body|
+      http_request(4567, "/clients", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
         expect(body).to be_kind_of(Hash)
         expect(body[:name]).to eq("i-888888")
@@ -137,7 +137,7 @@ describe "Sensu::API::Process" do
           ]
         }
       }
-      api_request("/clients", :post, options) do |http, body|
+      http_request(4567, "/clients", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -155,7 +155,7 @@ describe "Sensu::API::Process" do
           ]
         }
       }
-      api_request("/clients", :post, options) do |http, body|
+      http_request(4567, "/clients", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -172,7 +172,7 @@ describe "Sensu::API::Process" do
           ]
         }
       }
-      api_request("/clients", :post, options) do |http, body|
+      http_request(4567, "/clients", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -188,7 +188,7 @@ describe "Sensu::API::Process" do
           :subscriptions => "invalid"
         }
       }
-      api_request("/clients", :post, options) do |http, body|
+      http_request(4567, "/clients", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -197,7 +197,7 @@ describe "Sensu::API::Process" do
 
   it "can provide current clients" do
     api_test do
-      api_request("/clients") do |http, body|
+      http_request(4567, "/clients") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_client = Proc.new do |client|
@@ -211,7 +211,7 @@ describe "Sensu::API::Process" do
 
   it "can provide defined checks" do
     api_test do
-      api_request("/checks") do |http, body|
+      http_request(4567, "/checks") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_check = Proc.new do |check|
@@ -225,7 +225,7 @@ describe "Sensu::API::Process" do
 
   it "can provide defined checks without standalone checks" do
     api_test do
-      api_request("/checks") do |http, body|
+      http_request(4567, "/checks") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_check = Proc.new do |check|
@@ -239,7 +239,7 @@ describe "Sensu::API::Process" do
 
   it "can provide a specific check" do
     api_test do
-      api_request("/checks/merger") do |http, body|
+      http_request(4567, "/checks/merger") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
         expect(body).to eq({:command=>"echo -n merger", :interval=>60, :subscribers=>["test"], :name=>"merger"})
@@ -250,7 +250,7 @@ describe "Sensu::API::Process" do
 
   it "cannot provide a specific standalone check" do
     api_test do
-      api_request("/checks/standalone") do |http, body|
+      http_request(4567, "/checks/standalone") do |http, body|
         expect(http.response_header.status).to eq(404)
         async_done
       end
@@ -259,7 +259,7 @@ describe "Sensu::API::Process" do
 
   it "can provide a specific event" do
     api_test do
-      api_request("/events/i-424242/test") do |http, body|
+      http_request(4567, "/events/i-424242/test") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
         expect(body[:client]).to be_kind_of(Hash)
@@ -278,7 +278,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent event" do
     api_test do
-      api_request("/events/i-424242/nonexistent") do |http, body|
+      http_request(4567, "/events/i-424242/nonexistent") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -298,7 +298,7 @@ describe "Sensu::API::Process" do
         end
       end
       timer(0.5) do
-        api_request("/events/i-424242/test", :delete) do |http, body|
+        http_request(4567, "/events/i-424242/test", :delete) do |http, body|
           expect(http.response_header.status).to eq(202)
           expect(body).to include(:issued)
           timer(1) do
@@ -332,7 +332,7 @@ describe "Sensu::API::Process" do
             @server.process_check_result(check_result)
             timer(1) do
               api_test do
-                api_request("/events/i-424242/signature_test", :delete) do |http, body|
+                http_request(4567, "/events/i-424242/signature_test", :delete) do |http, body|
                   expect(http.response_header.status).to eq(202)
                   expect(body).to include(:issued)
                   timer(2) do
@@ -352,7 +352,7 @@ describe "Sensu::API::Process" do
 
   it "can not delete a nonexistent event" do
     api_test do
-      api_request("/events/i-424242/nonexistent", :delete) do |http, body|
+      http_request(4567, "/events/i-424242/nonexistent", :delete) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -378,7 +378,7 @@ describe "Sensu::API::Process" do
             :check => "test"
           }
         }
-        api_request("/resolve", :post, options) do |http, body|
+        http_request(4567, "/resolve", :post, options) do |http, body|
           expect(http.response_header.status).to eq(202)
           expect(body).to include(:issued)
         end
@@ -394,7 +394,7 @@ describe "Sensu::API::Process" do
           :check => "nonexistent"
         }
       }
-      api_request("/resolve", :post, options) do |http, body|
+      http_request(4567, "/resolve", :post, options) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -407,7 +407,7 @@ describe "Sensu::API::Process" do
       options = {
         :body => "i-424242/test"
       }
-      api_request("/resolve", :post, options) do |http, body|
+      http_request(4567, "/resolve", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         async_done
@@ -422,7 +422,7 @@ describe "Sensu::API::Process" do
           :client => "i-424242"
         }
       }
-      api_request("/resolve", :post, options) do |http, body|
+      http_request(4567, "/resolve", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         async_done
@@ -432,7 +432,7 @@ describe "Sensu::API::Process" do
 
   it "can provide a specific client" do
     api_test do
-      api_request("/clients/i-424242") do |http, body|
+      http_request(4567, "/clients/i-424242") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
         expect(body[:name]).to eq("i-424242")
@@ -446,7 +446,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent client" do
     api_test do
-      api_request("/clients/nonexistent") do |http, body|
+      http_request(4567, "/clients/nonexistent") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -465,11 +465,11 @@ describe "Sensu::API::Process" do
           ]
         }
       }
-      api_request("/clients", :post, options) do |http, body|
+      http_request(4567, "/clients", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
         expect(body).to be_kind_of(Hash)
         expect(body[:name]).to eq("i-888888")
-        api_request("/clients/i-888888") do |http, body|
+        http_request(4567, "/clients/i-888888") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body).to be_kind_of(Hash)
           expect(body[:name]).to eq("i-888888")
@@ -495,9 +495,9 @@ describe "Sensu::API::Process" do
           :keepalives => true
         }
       }
-      api_request("/clients", :post, options) do |http, body|
+      http_request(4567, "/clients", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
-        api_request("/clients/i-888888") do |http, body|
+        http_request(4567, "/clients/i-888888") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body[:keepalives]).to be(true)
           async_done
@@ -508,7 +508,7 @@ describe "Sensu::API::Process" do
 
   it "can request check history for a client" do
     api_test do
-      api_request("/clients/i-424242/history") do |http, body|
+      http_request(4567, "/clients/i-424242/history") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         expect(body.size).to eq(1)
@@ -525,7 +525,7 @@ describe "Sensu::API::Process" do
 
   it "can delete a client" do
     api_test do
-      api_request("/clients/i-424242", :delete) do |http, body|
+      http_request(4567, "/clients/i-424242", :delete) do |http, body|
         expect(http.response_header.status).to eq(202)
         expect(body).to include(:issued)
         async_done
@@ -535,7 +535,7 @@ describe "Sensu::API::Process" do
 
   it "can not delete a noexistent client" do
     api_test do
-      api_request("/clients/nonexistent", :delete) do |http, body|
+      http_request(4567, "/clients/nonexistent", :delete) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -545,7 +545,7 @@ describe "Sensu::API::Process" do
 
   it "can provide a specific defined check" do
     api_test do
-      api_request("/checks/tokens") do |http, body|
+      http_request(4567, "/checks/tokens") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
         expect(body[:name]).to eq("tokens")
@@ -557,7 +557,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent defined check" do
     api_test do
-      api_request("/checks/nonexistent") do |http, body|
+      http_request(4567, "/checks/nonexistent") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -577,7 +577,7 @@ describe "Sensu::API::Process" do
           ]
         }
       }
-      api_request("/request", :post, options) do |http, body|
+      http_request(4567, "/request", :post, options) do |http, body|
         expect(http.response_header.status).to eq(202)
         expect(body).to include(:issued)
         async_done
@@ -593,7 +593,7 @@ describe "Sensu::API::Process" do
           :subscribers => "invalid"
         }
       }
-      api_request("/request", :post, options) do |http, body|
+      http_request(4567, "/request", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         async_done
@@ -610,7 +610,7 @@ describe "Sensu::API::Process" do
           ]
         }
       }
-      api_request("/request", :post, options) do |http, body|
+      http_request(4567, "/request", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         async_done
@@ -628,7 +628,7 @@ describe "Sensu::API::Process" do
           ]
         }
       }
-      api_request("/request", :post, options) do |http, body|
+      http_request(4567, "/request", :post, options) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -646,7 +646,7 @@ describe "Sensu::API::Process" do
           }
         }
       }
-      api_request("/stashes", :post, options) do |http, body|
+      http_request(4567, "/stashes", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
         expect(body).to include(:path)
         expect(body[:path]).to eq("tester")
@@ -669,7 +669,7 @@ describe "Sensu::API::Process" do
           :path => "tester"
         }
       }
-      api_request("/stashes", :post, options) do |http, body|
+      http_request(4567, "/stashes", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         redis.exists("stash:tester") do |exists|
@@ -688,7 +688,7 @@ describe "Sensu::API::Process" do
           :content => "value"
         }
       }
-      api_request("/stashes", :post, options) do |http, body|
+      http_request(4567, "/stashes", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         redis.exists("stash:tester") do |exists|
@@ -706,7 +706,7 @@ describe "Sensu::API::Process" do
           :key => "value"
         }
       }
-      api_request("/stash/tester", :post, options) do |http, body|
+      http_request(4567, "/stash/tester", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
         expect(body).to include(:path)
         redis.get("stash:tester") do |stash_json|
@@ -725,7 +725,7 @@ describe "Sensu::API::Process" do
           :key => "value"
         }
       }
-      api_request("/stash/foo%20bar", :post, options) do |http, body|
+      http_request(4567, "/stash/foo%20bar", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
         expect(body).to include(:path)
         redis.get("stash:foo bar") do |stash_json|
@@ -742,7 +742,7 @@ describe "Sensu::API::Process" do
       options = {
         :body => "should fail"
       }
-      api_request("/stash/tester", :post, options) do |http, body|
+      http_request(4567, "/stash/tester", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         redis.exists("stash:tester") do |exists|
@@ -755,7 +755,7 @@ describe "Sensu::API::Process" do
 
   it "can provide a stash" do
     api_test do
-      api_request("/stash/test/test") do |http, body|
+      http_request(4567, "/stash/test/test") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
         expect(body[:key]).to eq("value")
@@ -766,7 +766,7 @@ describe "Sensu::API::Process" do
 
   it "can indicate if a stash exists" do
     api_test do
-      api_request("/stash/test/test", :head) do |http, body|
+      http_request(4567, "/stash/test/test", :head) do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_empty
         async_done
@@ -776,7 +776,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent stash" do
     api_test do
-      api_request("/stash/nonexistent") do |http, body|
+      http_request(4567, "/stash/nonexistent") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -786,7 +786,7 @@ describe "Sensu::API::Process" do
 
   it "can provide multiple stashes" do
     api_test do
-      api_request("/stashes") do |http, body|
+      http_request(4567, "/stashes") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         expect(body[0]).to be_kind_of(Hash)
@@ -800,7 +800,7 @@ describe "Sensu::API::Process" do
 
   it "can delete a stash" do
     api_test do
-      api_request("/stash/test/test", :delete) do |http, body|
+      http_request(4567, "/stash/test/test", :delete) do |http, body|
         expect(http.response_header.status).to eq(204)
         expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
@@ -814,7 +814,7 @@ describe "Sensu::API::Process" do
 
   it "can not delete a nonexistent stash" do
     api_test do
-      api_request("/stash/nonexistent", :delete) do |http, body|
+      http_request(4567, "/stash/nonexistent", :delete) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -828,7 +828,7 @@ describe "Sensu::API::Process" do
       server.setup_redis do
         server.aggregate_check_result(client_template, check_template)
         timer(1) do
-          api_request("/aggregates") do |http, body|
+          http_request(4567, "/aggregates") do |http, body|
             expect(body).to be_kind_of(Array)
             expect(body).to include({:name => "test"})
             async_done
@@ -844,7 +844,7 @@ describe "Sensu::API::Process" do
       server.setup_redis do
         server.aggregate_check_result(client_template, check_template)
         timer(1) do
-          api_request("/aggregates/test", :delete) do |http, body|
+          http_request(4567, "/aggregates/test", :delete) do |http, body|
             expect(http.response_header.status).to eq(204)
             expect(http.response_header.http_reason).to eq('No Content')
             expect(body).to be_empty
@@ -866,7 +866,7 @@ describe "Sensu::API::Process" do
         check[:name] = "TEST"
         server.aggregate_check_result(client_template, check)
         timer(1) do
-          api_request("/aggregates/TEST", :delete) do |http, body|
+          http_request(4567, "/aggregates/TEST", :delete) do |http, body|
             expect(http.response_header.status).to eq(204)
             expect(http.response_header.http_reason).to eq('No Content')
             expect(body).to be_empty
@@ -882,7 +882,7 @@ describe "Sensu::API::Process" do
 
   it "can not delete a nonexistent aggregate" do
     api_test do
-      api_request("/aggregates/nonexistent", :delete) do |http, body|
+      http_request(4567, "/aggregates/nonexistent", :delete) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -896,7 +896,7 @@ describe "Sensu::API::Process" do
       server.setup_redis do
         server.aggregate_check_result(client_template, check_template)
         timer(1) do
-          api_request("/aggregates/test") do |http, body|
+          http_request(4567, "/aggregates/test") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Hash)
             expect(body[:clients]).to eq(1)
@@ -922,7 +922,7 @@ describe "Sensu::API::Process" do
         check[:executed] = epoch - 128
         server.aggregate_check_result(client_template, check)
         timer(1) do
-          api_request("/aggregates/test?max_age=120") do |http, body|
+          http_request(4567, "/aggregates/test?max_age=120") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Hash)
             expect(body[:clients]).to eq(1)
@@ -942,7 +942,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a nonexistent aggregate" do
     api_test do
-      api_request("/aggregates/nonexistent") do |http, body|
+      http_request(4567, "/aggregates/nonexistent") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -956,7 +956,7 @@ describe "Sensu::API::Process" do
       server.setup_redis do
         server.aggregate_check_result(client_template, check_template)
         timer(1) do
-          api_request("/aggregates/test/clients") do |http, body|
+          http_request(4567, "/aggregates/test/clients") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Array)
             expect(body[0]).to be_kind_of(Hash)
@@ -971,7 +971,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide aggregate client information for a nonexistent aggregate" do
     api_test do
-      api_request("/aggregates/nonexistent/clients") do |http, body|
+      http_request(4567, "/aggregates/nonexistent/clients") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -985,7 +985,7 @@ describe "Sensu::API::Process" do
       server.setup_redis do
         server.aggregate_check_result(client_template, check_template)
         timer(1) do
-          api_request("/aggregates/test/checks") do |http, body|
+          http_request(4567, "/aggregates/test/checks") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Array)
             expect(body[0]).to be_kind_of(Hash)
@@ -1000,7 +1000,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide aggregate check information for a nonexistent aggregate" do
     api_test do
-      api_request("/aggregates/nonexistent/checks") do |http, body|
+      http_request(4567, "/aggregates/nonexistent/checks") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -1014,7 +1014,7 @@ describe "Sensu::API::Process" do
       server.setup_redis do
         server.aggregate_check_result(client_template, check_template)
         timer(1) do
-          api_request("/aggregates/test/results/warning") do |http, body|
+          http_request(4567, "/aggregates/test/results/warning") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Array)
             expect(body[0]).to be_kind_of(Hash)
@@ -1039,7 +1039,7 @@ describe "Sensu::API::Process" do
         check[:executed] = epoch - 128
         server.aggregate_check_result(client_template, check)
         timer(1) do
-          api_request("/aggregates/test/results/warning?max_age=120") do |http, body|
+          http_request(4567, "/aggregates/test/results/warning?max_age=120") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Array)
             expect(body).to be_empty
@@ -1052,7 +1052,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a aggregate result summary for an invalid severity" do
     api_test do
-      api_request("/aggregates/test/results/invalid") do |http, body|
+      http_request(4567, "/aggregates/test/results/invalid") do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         async_done
@@ -1062,7 +1062,7 @@ describe "Sensu::API::Process" do
 
   it "can not provide a aggregate result summary for a nonexistent aggregate" do
     api_test do
-      api_request("/aggregates/nonexistent/results/warning") do |http, body|
+      http_request(4567, "/aggregates/nonexistent/results/warning") do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -1077,7 +1077,7 @@ describe "Sensu::API::Process" do
           :authorization => nil
         }
       }
-      api_request("/events", :options, options) do |http, body|
+      http_request(4567, "/events", :options, options) do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_empty
         async_done
@@ -1087,7 +1087,7 @@ describe "Sensu::API::Process" do
 
   it "can provide cors headers" do
     api_test do
-      api_request("/events") do |http, body|
+      http_request(4567, "/events") do |http, body|
         cors_headers = {
           :origin => http.response_header["ACCESS_CONTROL_ALLOW_ORIGIN"],
           :methods => http.response_header["ACCESS_CONTROL_ALLOW_METHODS"],
@@ -1111,7 +1111,7 @@ describe "Sensu::API::Process" do
           :authorization => nil
         }
       }
-      api_request("/events", :put, options) do |http, body|
+      http_request(4567, "/events", :put, options) do |http, body|
         expect(http.response_header.status).to eq(401)
         expect(body).to be_empty
         async_done
@@ -1132,7 +1132,7 @@ describe "Sensu::API::Process" do
           }
         }
       }
-      api_request("/stashes", :post, options) do |http, body|
+      http_request(4567, "/stashes", :post, options) do |http, body|
         expect(http.response_header.status).to eq(401)
         expect(body).to be_empty
         redis.exists("stash:not_authorized") do |exists|
@@ -1152,7 +1152,7 @@ describe "Sensu::API::Process" do
           :status => 1
         }
       }
-      api_request("/results", :post, options) do |http, body|
+      http_request(4567, "/results", :post, options) do |http, body|
         expect(http.response_header.status).to eq(202)
         expect(body).to include(:issued)
         async_done
@@ -1170,7 +1170,7 @@ describe "Sensu::API::Process" do
           :source => "$invalid$"
         }
       }
-      api_request("/results", :post, options) do |http, body|
+      http_request(4567, "/results", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         async_done
@@ -1185,7 +1185,7 @@ describe "Sensu::API::Process" do
           :name => "missing_output"
         }
       }
-      api_request("/results", :post, options) do |http, body|
+      http_request(4567, "/results", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         expect(body).to be_empty
         async_done
@@ -1195,7 +1195,7 @@ describe "Sensu::API::Process" do
 
   it "can provide current results" do
     api_test do
-      api_request("/results") do |http, body|
+      http_request(4567, "/results") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_result = Proc.new do |result|
@@ -1209,7 +1209,7 @@ describe "Sensu::API::Process" do
 
   it "can provide current results for a specific client" do
     api_test do
-      api_request("/results/i-424242") do |http, body|
+      http_request(4567, "/results/i-424242") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_result = Proc.new do |result|
@@ -1223,7 +1223,7 @@ describe "Sensu::API::Process" do
 
   it "can provide a specific result" do
     api_test do
-      api_request("/results/i-424242/test") do |http, body|
+      http_request(4567, "/results/i-424242/test") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
         expect(body).to eq(result_template(@check))
@@ -1234,7 +1234,7 @@ describe "Sensu::API::Process" do
 
   it "can delete a result" do
     api_test do
-      api_request("/results/i-424242/test", :delete) do |http, body|
+      http_request(4567, "/results/i-424242/test", :delete) do |http, body|
         expect(http.response_header.status).to eq(204)
         expect(http.response_header.http_reason).to eq('No Content')
         expect(body).to be_empty
@@ -1245,7 +1245,7 @@ describe "Sensu::API::Process" do
 
   it "can not delete a nonexistent result" do
     api_test do
-      api_request("/results/i-424242/nonexistent", :delete) do |http, body|
+      http_request(4567, "/results/i-424242/nonexistent", :delete) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
@@ -1260,7 +1260,7 @@ describe "Sensu::API::Process" do
           :subscription => "test"
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
         redis.get("silence:test:*") do |silenced_info_json|
           silenced_info = Sensu::JSON.load(silenced_info_json)
@@ -1283,7 +1283,7 @@ describe "Sensu::API::Process" do
           :check => "test"
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
         redis.get("silence:*:test") do |silenced_info_json|
           silenced_info = Sensu::JSON.load(silenced_info_json)
@@ -1311,7 +1311,7 @@ describe "Sensu::API::Process" do
           :expire_on_resolve => true
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
         redis.get("silence:test:test") do |silenced_info_json|
           silenced_info = Sensu::JSON.load(silenced_info_json)
@@ -1346,11 +1346,11 @@ describe "Sensu::API::Process" do
             :check => "test"
           }
         }
-        api_request("/silenced", :post, options) do |http, body|
+        http_request(4567, "/silenced", :post, options) do |http, body|
           expect(http.response_header.status).to eq(201)
           redis.get("silence:#{subscription}:test") do |silenced_info_json|
             timer(1) do
-              api_request("/silenced/subscriptions/#{subscription}") do |http, body|
+              http_request(4567, "/silenced/subscriptions/#{subscription}") do |http, body|
                 expect(http.response_header.status).to eq(200)
                 expect(body).to be_kind_of(Array)
                 silence = body.last
@@ -1374,7 +1374,7 @@ describe "Sensu::API::Process" do
           :expire_on_resolve => true
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -1389,7 +1389,7 @@ describe "Sensu::API::Process" do
           :check => "test"
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -1404,7 +1404,7 @@ describe "Sensu::API::Process" do
           :check => 1
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -1420,7 +1420,7 @@ describe "Sensu::API::Process" do
           :expire => "3600"
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -1436,7 +1436,7 @@ describe "Sensu::API::Process" do
           :reason => 1
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -1452,7 +1452,7 @@ describe "Sensu::API::Process" do
           :creator => 1
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -1468,7 +1468,7 @@ describe "Sensu::API::Process" do
           :expire_on_resolve => "true"
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(400)
         async_done
       end
@@ -1484,9 +1484,9 @@ describe "Sensu::API::Process" do
           :expire => 3600
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
-        api_request("/silenced") do |http, body|
+        http_request(4567, "/silenced") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body).to be_kind_of(Array)
           expect(body.length).to eq(1)
@@ -1496,7 +1496,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
           expect(silenced_info[:expire]).to be_within(10).of(3600)
-          api_request("/silenced/subscriptions/test") do |http, body|
+          http_request(4567, "/silenced/subscriptions/test") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Array)
             expect(body.length).to eq(1)
@@ -1504,11 +1504,11 @@ describe "Sensu::API::Process" do
             expect(silenced_info).to be_kind_of(Hash)
             expect(silenced_info[:subscription]).to eq("test")
             expect(silenced_info[:expire]).to be_within(10).of(3600)
-            api_request("/silenced/subscriptions/nonexistent") do |http, body|
+            http_request(4567, "/silenced/subscriptions/nonexistent") do |http, body|
               expect(http.response_header.status).to eq(200)
               expect(body).to be_kind_of(Array)
               expect(body).to be_empty
-              api_request("/silenced/checks/test") do |http, body|
+              http_request(4567, "/silenced/checks/test") do |http, body|
                 expect(http.response_header.status).to eq(200)
                 expect(body).to be_kind_of(Array)
                 expect(body.length).to eq(1)
@@ -1516,7 +1516,7 @@ describe "Sensu::API::Process" do
                 expect(silenced_info).to be_kind_of(Hash)
                 expect(silenced_info[:check]).to eq("test")
                 expect(silenced_info[:expire]).to be_within(10).of(3600)
-                api_request("/silenced/checks/nonexistent") do |http, body|
+                http_request(4567, "/silenced/checks/nonexistent") do |http, body|
                   expect(http.response_header.status).to eq(200)
                   expect(body).to be_kind_of(Array)
                   expect(body).to be_empty
@@ -1534,8 +1534,8 @@ describe "Sensu::API::Process" do
     it "can retrieve entry for silencing a specific check on all clients" do
       api_test do
         options = { :body => { :check => "test" } }
-        api_request("/silenced", :post, options) do |http, body|
-          api_request("/silenced/ids/*:test") do |http, body|
+        http_request(4567, "/silenced", :post, options) do |http, body|
+          http_request(4567, "/silenced/ids/*:test") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Hash)
             expect(body[:id]).to eq("*:test")
@@ -1548,8 +1548,8 @@ describe "Sensu::API::Process" do
     it "can retrieve entry for silencing all checks on a specific subscription" do
       api_test do
         options = { :body => { :subscription => "test" } }
-        api_request("/silenced", :post, options) do |http, body|
-          api_request("/silenced/ids/test:*") do |http, body|
+        http_request(4567, "/silenced", :post, options) do |http, body|
+          http_request(4567, "/silenced/ids/test:*") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Hash)
             expect(body[:id]).to eq("test:*")
@@ -1562,7 +1562,7 @@ describe "Sensu::API::Process" do
     it "cannot create an entry for silencing all checks on all subscriptions" do
       api_test do
         options = { :body => { :subscription => '*' } }
-        api_request("/silenced", :post, options) do |http, body|
+        http_request(4567, "/silenced", :post, options) do |http, body|
           expect(http.response_header.status).to eq(400)
           async_done
         end
@@ -1571,7 +1571,7 @@ describe "Sensu::API::Process" do
 
     it "handles requests for nonexistant ids" do
       api_test do
-        api_request("/silenced/ids/nonexistant:nonexistant") do |http, body|
+        http_request(4567, "/silenced/ids/nonexistant:nonexistant") do |http, body|
           expect(http.response_header.status).to eq(404)
           expect(body).to be_empty
           async_done
@@ -1581,13 +1581,13 @@ describe "Sensu::API::Process" do
 
     it "handles requests for invalid ids" do
       api_test do
-        api_request("/silenced/ids/invalid") do |http, body|
+        http_request(4567, "/silenced/ids/invalid") do |http, body|
           expect(http.response_header.status).to eq(404)
           expect(body).to be_empty
-          api_request("/silenced/ids/:invalid") do |http, body|
+          http_request(4567, "/silenced/ids/:invalid") do |http, body|
             expect(http.response_header.status).to eq(404)
             expect(body).to be_empty
-            api_request("/silenced/ids/inv@(!alid") do |http, body|
+            http_request(4567, "/silenced/ids/inv@(!alid") do |http, body|
               expect(http.response_header.status).to eq(404)
               expect(body).to be_empty
               async_done
@@ -1606,9 +1606,9 @@ describe "Sensu::API::Process" do
           :check => "test"
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
-        api_request("/silenced") do |http, body|
+        http_request(4567, "/silenced") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body).to be_kind_of(Array)
           expect(body.length).to eq(1)
@@ -1616,11 +1616,11 @@ describe "Sensu::API::Process" do
           expect(silenced_info).to be_kind_of(Hash)
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
-          api_request("/silenced/clear", :post, options) do |http, body|
+          http_request(4567, "/silenced/clear", :post, options) do |http, body|
             expect(http.response_header.status).to eq(204)
-            api_request("/silenced/clear", :post, options) do |http, body|
+            http_request(4567, "/silenced/clear", :post, options) do |http, body|
               expect(http.response_header.status).to eq(404)
-              api_request("/silenced") do |http, body|
+              http_request(4567, "/silenced") do |http, body|
                 expect(http.response_header.status).to eq(200)
                 expect(body).to be_kind_of(Array)
                 expect(body).to be_empty
@@ -1640,9 +1640,9 @@ describe "Sensu::API::Process" do
           :check => "test"
         }
       }
-      api_request("/silenced", :post, options) do |http, body|
+      http_request(4567, "/silenced", :post, options) do |http, body|
         expect(http.response_header.status).to eq(201)
-        api_request("/silenced") do |http, body|
+        http_request(4567, "/silenced") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body).to be_kind_of(Array)
           expect(body.length).to eq(1)
@@ -1656,11 +1656,11 @@ describe "Sensu::API::Process" do
               :id => "*:test"
             }
           }
-          api_request("/silenced/clear", :post, options) do |http, body|
+          http_request(4567, "/silenced/clear", :post, options) do |http, body|
             expect(http.response_header.status).to eq(204)
-            api_request("/silenced/clear", :post, options) do |http, body|
+            http_request(4567, "/silenced/clear", :post, options) do |http, body|
               expect(http.response_header.status).to eq(404)
-              api_request("/silenced") do |http, body|
+              http_request(4567, "/silenced") do |http, body|
                 expect(http.response_header.status).to eq(200)
                 expect(body).to be_kind_of(Array)
                 expect(body).to be_empty

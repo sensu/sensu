@@ -200,6 +200,10 @@
       "password": "secret"
     },
     "empty": {},
-    "localhost": "fail"
+    "localhost": "fail",
+    "http_socket": {
+      "user": "foo",
+      "password": "bar"
+    }
   }
 }
