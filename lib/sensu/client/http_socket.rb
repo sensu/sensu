@@ -88,7 +88,7 @@ module Sensu
       end
 
       def send_response(status, status_string, content)
-        @logger.debug("sending HTTP response #{status} #{status_string}", :content => content)
+        @logger.debug("http socket sending response #{status} #{status_string}", :content => content)
         @response.status = status
         @response.status_string = status_string
         @response.content = Sensu::JSON::dump(content)
@@ -122,14 +122,14 @@ module Sensu
 
       def process_request_settings
         if authorized?
-          @logger.info("responding to HTTP request for configuration settings")
+          @logger.info("http socket responding to request for configuration settings")
           if @http_query_string and @http_query_string.downcase.include?("redacted=false")
             send_response(200, "OK", @settings.to_hash)
           else
             send_response(200, "OK", redact_sensitive(@settings.to_hash))
           end
         else
-          @logger.warn("refusing to serve unauthorized settings request")
+          @logger.warn("http socket refusing to serve unauthorized settings request")
           @response.headers["WWW-Authenticate"] = 'Basic realm="Sensu Client Restricted Area"'
           send_response(401, "Unauthorized", {
             :response => "You must be authenticated using your http_options user and password settings"
@@ -138,7 +138,7 @@ module Sensu
       end
 
       def http_request_errback(ex)
-        @logger.error("exception while processing HTTP request: #{ex.class}: #{ex.message}", backtrace: ex.backtrace)
+        @logger.error("http socket exception while processing request: #{ex.class}: #{ex.message}", backtrace: ex.backtrace)
         @response = EM::DelegatedHttpResponse.new(self)
         @response.content_type "application/json"
         send_response(500, "Internal Server Error", {
@@ -148,25 +148,25 @@ module Sensu
 
       # This method is called to process HTTP requests
       def process_http_request
-        @logger.debug("processing #{@http_request_method} #{@http_request_uri}")
+        @logger.debug("http socket processing #{@http_request_method} #{@http_request_uri}")
         @response = EM::DelegatedHttpResponse.new(self)
         @response.content_type "application/json"
         endpoint = @endpoints[@http_request_uri]
         if endpoint
-          @logger.debug("endpoint #{@http_request_uri} found", :accepted_methods => endpoint["methods"].keys)
+          @logger.debug("http socket endpoint #{@http_request_uri} found", :accepted_methods => endpoint["methods"].keys)
           method_name = @http_request_method.upcase
           method_handler = endpoint["methods"][method_name]
           if method_handler
-            @logger.debug("executing #{method_name} #{@http_request_uri} handler")
+            @logger.debug("http socket executing #{method_name} #{@http_request_uri} handler")
             method_handler.call
           else
-            @logger.debug("method #{method_name} is not allowed for endpoint #{@http_request_uri}")
+            @logger.debug("http socket method #{method_name} is not allowed for endpoint #{@http_request_uri}")
             send_response(405, "Method Not Allowed", {
               :response => "Valid methods for this endpoint: #{reqdef['methods'].keys}"
             })
           end
         else
-          @logger.warn("unknown endpoint requested: #{@http_request_uri}")
+          @logger.warn("http socket unknown endpoint requested: #{@http_request_uri}")
           help_response = {
             :endpoints => {}
           }
