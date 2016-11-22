@@ -68,7 +68,13 @@ describe "Sensu::Client::HTTPSocket" do
             http_request(3031, "/settings", :get) do |http, body|
               expect(http.response_header.status).to eq(200)
               expect(body).to be_kind_of(Hash)
-              async_done
+              expect(body[:api][:password]).to eq("REDACTED")
+              http_request(3031, "/settings?redacted=false", :get) do |http, body|
+                expect(http.response_header.status).to eq(200)
+                expect(body).to be_kind_of(Hash)
+                expect(body[:api][:password]).to eq("bar")
+                async_done
+              end
             end
           end
         end
