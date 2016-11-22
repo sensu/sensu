@@ -379,24 +379,28 @@ module Sensu
       # input and informational queries. By default, the client HTTP
       # socket is bound to localhost on TCP port 3031. The socket can
       # be configured via the client definition, `:http_socket` with
-      # `:bind` and `:port`. The current instance of the Sensu logger,
-      # settings, and transport are passed to the HTTP socket handler,
-      # `Sensu::Client::HTTPSocket`. The HTTP socket server signature
-      # (Fixnum) is stored in `@sockets`, so that it can be managed
-      # elsewhere, eg. `close_sockets()`.
+      # `:bind` and `:port`. Users can opt-out of using the HTTP
+      # socket by setting `:enabled` to `false. The current instance
+      # of the Sensu logger, settings, and transport are passed to the
+      # HTTP socket handler, `Sensu::Client::HTTPSocket`. The HTTP
+      # socket server signature (Fixnum) is stored in `@sockets`, so
+      # that it can be managed elsewhere, eg. `close_sockets()`.
       def setup_http_socket
-        http_options = @settings[:client][:http_socket] || Hash.new
-        http_options[:bind] ||= "127.0.0.1"
-        http_options[:port] ||= 3031
-        @logger.debug("binding client http socket", :http_options => http_options)
-        @sockets << EM::start_server(http_options[:bind], http_options[:port], HTTPSocket) do |socket|
-          socket.logger = @logger
-          socket.settings = @settings
-          socket.transport = @transport
+        options = @settings[:client][:http_socket] || Hash.new
+        options[:bind] ||= "127.0.0.1"
+        options[:port] ||= 3031
+        unless options[:enabled] == false
+          @logger.debug("binding client http socket", :options => options)
+          @sockets << EM::start_server(options[:bind], options[:port], HTTPSocket) do |socket|
+            socket.logger = @logger
+            socket.settings = @settings
+            socket.transport = @transport
+          end
         end
       end
 
       # Setup the Sensu client sockets, JSON TCP & UDP, and HTTP.
+      # Users can opt-out of using the HTTP socket via configuration.
       def setup_sockets
         setup_json_socket
         setup_http_socket
