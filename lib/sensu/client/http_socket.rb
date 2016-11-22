@@ -88,7 +88,11 @@ module Sensu
       end
 
       def send_response(status, status_string, content)
-        @logger.debug("http socket sending response #{status} #{status_string}", :content => content)
+        @logger.debug("http socket sending response", {
+          :status => status,
+          :status_string => status_string,
+          :content => content
+        })
         @response.status = status
         @response.status_string = status_string
         @response.content = Sensu::JSON::dump(content)
@@ -137,8 +141,11 @@ module Sensu
         end
       end
 
-      def http_request_errback(ex)
-        @logger.error("http socket exception while processing request: #{ex.class}: #{ex.message}", backtrace: ex.backtrace)
+      def http_request_errback(error)
+        @logger.error("http socket error while processing request", {
+          :error => error.to_s,
+          :backtrace => error.backtrace
+        })
         @response = EM::DelegatedHttpResponse.new(self)
         @response.content_type "application/json"
         send_response(500, "Internal Server Error", {
@@ -148,25 +155,37 @@ module Sensu
 
       # This method is called to process HTTP requests
       def process_http_request
-        @logger.debug("http socket processing #{@http_request_method} #{@http_request_uri}")
+        @logger.debug("http socket processing", {
+          :http_request_method => @http_request_method,
+          :http_request_uri => @http_request_uri
+        })
         @response = EM::DelegatedHttpResponse.new(self)
         @response.content_type "application/json"
         endpoint = @endpoints[@http_request_uri]
         if endpoint
-          @logger.debug("http socket endpoint #{@http_request_uri} found", :accepted_methods => endpoint["methods"].keys)
+          @logger.debug("http socket endpoint found", {
+            :http_request_uri => @http_request_uri,
+            :accepted_methods => endpoint["methods"].keys
+          })
           method_name = @http_request_method.upcase
           method_handler = endpoint["methods"][method_name]
           if method_handler
-            @logger.debug("http socket executing #{method_name} #{@http_request_uri} handler")
+            @logger.debug("http socket executing handler", {
+              :method_name => method_name,
+              :http_request_uri => @http_request_uri
+            })
             method_handler.call
           else
-            @logger.debug("http socket method #{method_name} is not allowed for endpoint #{@http_request_uri}")
+            @logger.debug("http socket method is not allowed for endpoint", {
+              :method_name => method_name,
+              :http_request_uri => @http_request_uri
+            })
             send_response(405, "Method Not Allowed", {
               :response => "Valid methods for this endpoint: #{reqdef['methods'].keys}"
             })
           end
         else
-          @logger.warn("http socket unknown endpoint requested: #{@http_request_uri}")
+          @logger.warn("http socket unknown endpoint requested", :http_request_uri => @http_request_uri)
           help_response = {
             :endpoints => {}
           }
