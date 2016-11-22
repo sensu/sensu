@@ -409,11 +409,10 @@ module Sensu
       # default, the deregistration check result sets the `:handler` to
       # `deregistration`. If the client provides its own `:deregistration`
       # configuration, it's deep merged with the defaults. The
-      # check `:name`, `:output`, `:status`, `:issued`, and
-      # `:executed` values are always overridden to guard against
-      # an invalid definition.
+      # check `:name`, `:output`, `:issued`, and `:executed` values
+      # are always overridden to guard against an invalid definition.
       def deregister
-        check = {:handler => "deregistration", :interval => 1}
+        check = {:handler => "deregistration", :status => 1}
         if @settings[:client].has_key?(:deregistration)
           check = deep_merge(check, @settings[:client][:deregistration])
         end
@@ -421,7 +420,6 @@ module Sensu
         overrides = {
           :name => "deregistration",
           :output => "client initiated deregistration",
-          :status => 1,
           :issued => timestamp,
           :executed => timestamp
         }

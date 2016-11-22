@@ -71,11 +71,11 @@ module Sensu
       # default, the registration check definition sets the `:handler`
       # to `registration`. If the client provides its own
       # `:registration` configuration, it's deep merged with the
-      # defaults. The check `:name`, `:output`, `:status`, `:issued`,
-      # and `:executed` values are always overridden to guard against
-      # an invalid definition.
+      # defaults. The check `:name`, `:output`, `:issued`, and
+      # `:executed` values are always overridden to guard against an
+      # invalid definition.
       def create_registration_check(client)
-        check = {:handler => "registration"}
+        check = {:handler => "registration", :status => 1}
         if client.has_key?(:registration)
           check = deep_merge(check, client[:registration])
         end
@@ -83,7 +83,6 @@ module Sensu
         overrides = {
           :name => "registration",
           :output => "new client registration",
-          :status => 1,
           :issued => timestamp,
           :executed => timestamp
         }
