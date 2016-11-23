@@ -318,7 +318,7 @@ module Sensu
       def truncate_check_output(check)
         case check[:type]
         when METRIC_CHECK_TYPE
-          output_lines = check[:output].split("\n")
+          output_lines = check[:output].force_encoding("UTF-8").split("\n")
           output = output_lines.first || check[:output]
           if output_lines.length > 1 || output.length > 255
             output = output[0..255] + "\n..."
