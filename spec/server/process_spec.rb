@@ -447,6 +447,9 @@ describe "Sensu::Server::Process" do
             check[:output] = "foo"
             truncated = @server.truncate_check_output(check)
             expect(truncated[:output]).to eq("foo")
+            check[:output] = "foo\255"
+            truncated = @server.truncate_check_output(check)
+            expect(truncated[:output]).to eq("foo")
             check[:output] = ""
             truncated = @server.truncate_check_output(check)
             expect(truncated[:output]).to eq("")
