@@ -676,13 +676,14 @@ describe "Sensu::Server::Process" do
                 result[:check][:ttl] = 60
                 transport.publish(:direct, "results", Sensu::JSON.dump(result))
                 timer(2) do
-                  @server.determine_stale_check_results
+                  @server.determine_stale_check_results(45) # 45: Magic non-default number checked below
                   timer(2) do
                     redis.hgetall("events:i-424242") do |events|
                       expect(events.size).to eq(1)
                       event = Sensu::JSON.load(events["foo"])
                       expect(event[:check][:output]).to match(/Last check execution was 3[0-9] seconds ago/)
                       expect(event[:check][:status]).to eq(1)
+                      expect(event[:check][:interval]).to eq(45)
                       async_done
                     end
                   end
