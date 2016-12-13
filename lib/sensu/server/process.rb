@@ -954,7 +954,7 @@ module Sensu
       # calculated for each check result. If the time since last
       # execution is equal to or greater than the check TTL, a warning
       # check result is published with the appropriate check output.
-      def determine_stale_check_results
+      def determine_stale_check_results(interval = 30)
         @logger.info("determining stale check results")
         @redis.smembers("ttl") do |result_keys|
           result_keys.each do |result_key|
@@ -970,6 +970,7 @@ module Sensu
                       check[:output] = "Last check execution was "
                       check[:output] << "#{time_since_last_execution} seconds ago"
                       check[:status] = check[:ttl_status] || 1
+                      check[:interval] = interval
                       publish_check_result(client_name, check)
                     end
                   end
@@ -985,10 +986,10 @@ module Sensu
       # Set up the check result monitor, a periodic timer to run
       # `determine_stale_check_results()` every 30 seconds. The timer
       # is stored in the timers hash under `:leader`.
-      def setup_check_result_monitor
+      def setup_check_result_monitor(interval = 30)
         @logger.debug("monitoring check results")
-        @timers[:leader] << EM::PeriodicTimer.new(30) do
-          determine_stale_check_results
+        @timers[:leader] << EM::PeriodicTimer.new(interval) do
+          determine_stale_check_results(interval)
         end
       end
 
