@@ -28,5 +28,6 @@
 ## Your Environment
 <!--- Include as many relevant details about the environment you experienced the bug in -->
 * Sensu version used:
+* Active Sensu extensions (e.g. WizardVan 0.1.0):
 * Operating System and version (e.g. Ubuntu 14.04):
 * Transport and runtime versions (e.g. RabbitMQ 3.6.2 on Erlang 18.2):

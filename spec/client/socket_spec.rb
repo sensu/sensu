@@ -137,6 +137,7 @@ describe Sensu::Client::Socket do
       json_check_data = Sensu::JSON.dump(check)
       expect(subject).to receive(:cancel_watchdog)
       expect(subject).to receive(:process_check_result).with(check)
+      expect(subject).to receive(:respond).with("ok")
       subject.parse_check_result(json_check_data)
     end
 
@@ -145,6 +146,7 @@ describe Sensu::Client::Socket do
       check = {:name => "test", :output => "\u3042\u4e9c\u5a40"}
       expect(subject).to receive(:cancel_watchdog)
       expect(subject).to receive(:process_check_result).with(check)
+      expect(subject).to receive(:respond).with("ok")
       subject.parse_check_result(json_check_data)
     end
   end
