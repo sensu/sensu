@@ -467,6 +467,7 @@ module Sensu
                 if silenced_info[:expire_on_resolve] && event[:action] == :resolve
                   @redis.srem("silenced", silenced_key)
                   @redis.del(silenced_key)
+                  event[:silenced] = false
                 end
               end
             end

@@ -266,6 +266,37 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can expire silenced entries on event resolution" do
+    async_wrapper do
+      @server.setup_redis do
+        FileUtils.rm_rf("/tmp/sensu_event")
+        expect(File.exists?("/tmp/sensu_event")).to eq(false)
+        redis.flushdb do
+          redis.set("client:i-424242", Sensu::JSON.dump(client_template)) do
+            silenced_info = {
+              :id => "test:*",
+              :expire_on_resolve => true
+            }
+            redis.set("silence:test:*", Sensu::JSON.dump(silenced_info)) do
+              result = result_template
+              result[:check][:handler] = "file"
+              @server.process_check_result(result)
+              timer(1) do
+                expect(File.exists?("/tmp/sensu_event")).to eq(false)
+                result[:check][:status] = 0
+                @server.process_check_result(result)
+                timer(1) do
+                  expect(File.exists?("/tmp/sensu_event")).to eq(true)
+                  async_done
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can have event id and occurrence watermark persist until the event is resolved" do
     async_wrapper do
       @server.setup_redis do
