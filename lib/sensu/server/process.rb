@@ -458,19 +458,17 @@ module Sensu
           silenced_keys << "silence:*:#{check_name}"
           @redis.mget(*silenced_keys) do |silenced|
             silenced.compact!
-            event[:silenced] = !silenced.empty?
-            if event[:silenced]
-              silenced.each do |silenced_json|
-                silenced_info = Sensu::JSON.load(silenced_json)
-                event[:silenced_by] << silenced_info[:id]
+            silenced.each do |silenced_json|
+              silenced_info = Sensu::JSON.load(silenced_json)
+              if silenced_info[:expire_on_resolve] && event[:action] == :resolve
                 silenced_key = "silence:#{silenced_info[:id]}"
-                if silenced_info[:expire_on_resolve] && event[:action] == :resolve
-                  @redis.srem("silenced", silenced_key)
-                  @redis.del(silenced_key)
-                  event[:silenced] = false
-                end
+                @redis.srem("silenced", silenced_key)
+                @redis.del(silenced_key)
+              else
+                event[:silenced_by] << silenced_info[:id]
               end
             end
+            event[:silenced] = !event[:silenced_by].empty?
             yield(event)
           end
         else
