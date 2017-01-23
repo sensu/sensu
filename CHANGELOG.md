@@ -33,6 +33,15 @@ versions except the latest will be removed.
 
 Added the filter name to event filtered log events.
 
+Check TTL events now have the check interval overridden to the TTL
+monitoring interval, this change allows event occurrence filtering to
+work as expected.
+
+### Fixes
+
+Silenced resolution events with silencing `"expire_on_resolve": true` are
+now handled.
+
 ## 0.26.5 - 2016-10-12
 
 ### Fixes
