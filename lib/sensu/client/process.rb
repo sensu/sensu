@@ -1,5 +1,6 @@
 require "sensu/daemon"
 require "sensu/client/socket"
+require "sensu/client/http_socket"
 
 module Sensu
   module Client
@@ -347,7 +348,7 @@ module Sensu
         schedule_checks(standard_checks + extension_checks)
       end
 
-      # Setup the Sensu client socket, for external check result
+      # Setup the Sensu client JSON socket, for external check result
       # input. By default, the client socket is bound to localhost on
       # TCP & UDP port 3030. The socket can be configured via the
       # client definition, `:socket` with `:bind` and `:port`. The
@@ -356,7 +357,7 @@ module Sensu
       # TCP socket server signature (Fixnum) and UDP connection object
       # are stored in `@sockets`, so that they can be managed
       # elsewhere, eg. `close_sockets()`.
-      def setup_sockets
+      def setup_json_socket
         options = @settings[:client][:socket] || Hash.new
         options[:bind] ||= "127.0.0.1"
         options[:port] ||= 3030
@@ -372,6 +373,37 @@ module Sensu
           socket.transport = @transport
           socket.protocol = :udp
         end
+      end
+
+      # Setup the Sensu client HTTP socket, for external check result
+      # input and informational queries. By default, the client HTTP
+      # socket is bound to localhost on TCP port 3031. The socket can
+      # be configured via the client definition, `:http_socket` with
+      # `:bind` and `:port`. Users can opt-out of using the HTTP
+      # socket by setting `:enabled` to `false. The current instance
+      # of the Sensu logger, settings, and transport are passed to the
+      # HTTP socket handler, `Sensu::Client::HTTPSocket`. The HTTP
+      # socket server signature (Fixnum) is stored in `@sockets`, so
+      # that it can be managed elsewhere, eg. `close_sockets()`.
+      def setup_http_socket
+        options = @settings[:client][:http_socket] || Hash.new
+        options[:bind] ||= "127.0.0.1"
+        options[:port] ||= 3031
+        unless options[:enabled] == false
+          @logger.debug("binding client http socket", :options => options)
+          @sockets << EM::start_server(options[:bind], options[:port], HTTPSocket) do |socket|
+            socket.logger = @logger
+            socket.settings = @settings
+            socket.transport = @transport
+          end
+        end
+      end
+
+      # Setup the Sensu client sockets, JSON TCP & UDP, and HTTP.
+      # Users can opt-out of using the HTTP socket via configuration.
+      def setup_sockets
+        setup_json_socket
+        setup_http_socket
       end
 
       # Call a callback (Ruby block) when there are no longer check
@@ -398,11 +430,10 @@ module Sensu
       # default, the deregistration check result sets the `:handler` to
       # `deregistration`. If the client provides its own `:deregistration`
       # configuration, it's deep merged with the defaults. The
-      # check `:name`, `:output`, `:status`, `:issued`, and
-      # `:executed` values are always overridden to guard against
-      # an invalid definition.
+      # check `:name`, `:output`, `:issued`, and `:executed` values
+      # are always overridden to guard against an invalid definition.
       def deregister
-        check = {:handler => "deregistration", :interval => 1}
+        check = {:handler => "deregistration", :status => 1}
         if @settings[:client].has_key?(:deregistration)
           check = deep_merge(check, @settings[:client][:deregistration])
         end
@@ -410,7 +441,6 @@ module Sensu
         overrides = {
           :name => "deregistration",
           :output => "client initiated deregistration",
-          :status => 1,
           :issued => timestamp,
           :executed => timestamp
         }
@@ -424,7 +454,7 @@ module Sensu
       # connection object indicates a socket connection that needs to
       # be closed, eg. a UDP datagram socket.
       def close_sockets
-        @logger.info("closing client tcp and udp sockets")
+        @logger.info("closing client sockets")
         @sockets.each do |socket|
           if socket.is_a?(Numeric)
             EM.stop_server(socket)
@@ -496,8 +526,11 @@ module Sensu
       # deregistration check result if configured to do so.
       def stop
         @logger.warn("stopping")
+        last_state = @state
         pause
-        deregister if @settings[:client][:deregister] == true
+        if @settings[:client][:deregister] == true && last_state != :initializing
+          deregister
+        end
         @state = :stopping
         complete_checks_in_progress do
           close_sockets

@@ -53,6 +53,7 @@ module Sensu
         [RESULTS_CLIENT_URI, :get_results_client],
         [RESULT_URI, :get_result],
         [SILENCED_URI, :get_silenced],
+        [SILENCED_ID_URI, :get_silenced_id],
         [SILENCED_SUBSCRIPTION_URI, :get_silenced_subscription],
         [SILENCED_CHECK_URI, :get_silenced_check]
       ]

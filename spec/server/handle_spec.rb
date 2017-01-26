@@ -49,9 +49,11 @@ describe "Sensu::Server::Handle" do
 
   it "can handle an event with a transport handler" do
     async_wrapper do
-      transport.subscribe(:direct, "events") do |_, payload|
-        expect(Sensu::JSON.load(payload)).to eq(Sensu::JSON.load(@event_data))
-        async_done
+      setup_transport do |transport|
+        transport.subscribe(:direct, "events") do |_, payload|
+          expect(Sensu::JSON.load(payload)).to eq(Sensu::JSON.load(@event_data))
+          async_done
+        end
       end
       timer(0.5) do
         @server.setup_transport do

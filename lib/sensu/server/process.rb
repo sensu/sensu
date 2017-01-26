@@ -71,11 +71,11 @@ module Sensu
       # default, the registration check definition sets the `:handler`
       # to `registration`. If the client provides its own
       # `:registration` configuration, it's deep merged with the
-      # defaults. The check `:name`, `:output`, `:status`, `:issued`,
-      # and `:executed` values are always overridden to guard against
-      # an invalid definition.
+      # defaults. The check `:name`, `:output`, `:issued`, and
+      # `:executed` values are always overridden to guard against an
+      # invalid definition.
       def create_registration_check(client)
-        check = {:handler => "registration"}
+        check = {:handler => "registration", :status => 1}
         if client.has_key?(:registration)
           check = deep_merge(check, client[:registration])
         end
@@ -83,7 +83,6 @@ module Sensu
         overrides = {
           :name => "registration",
           :output => "new client registration",
-          :status => 1,
           :issued => timestamp,
           :executed => timestamp
         }
@@ -319,7 +318,16 @@ module Sensu
       def truncate_check_output(check)
         case check[:type]
         when METRIC_CHECK_TYPE
-          output_lines = check[:output].split("\n")
+          begin
+            output_lines = check[:output].split("\n")
+          rescue ArgumentError
+            utf8_output = check[:output].encode("UTF-8", "binary", {
+              :invalid => :replace,
+              :undef => :replace,
+              :replace => ""
+            })
+            output_lines = utf8_output.split("\n")
+          end
           output = output_lines.first || check[:output]
           if output_lines.length > 1 || output.length > 255
             output = output[0..255] + "\n..."
@@ -450,18 +458,17 @@ module Sensu
           silenced_keys << "silence:*:#{check_name}"
           @redis.mget(*silenced_keys) do |silenced|
             silenced.compact!
-            event[:silenced] = !silenced.empty?
-            if event[:silenced]
-              silenced.each do |silenced_json|
-                silenced_info = Sensu::JSON.load(silenced_json)
-                event[:silenced_by] << silenced_info[:id]
+            silenced.each do |silenced_json|
+              silenced_info = Sensu::JSON.load(silenced_json)
+              if silenced_info[:expire_on_resolve] && event[:action] == :resolve
                 silenced_key = "silence:#{silenced_info[:id]}"
-                if silenced_info[:expire_on_resolve] && event[:action] == :resolve
-                  @redis.srem("silenced", silenced_key)
-                  @redis.del(silenced_key)
-                end
+                @redis.srem("silenced", silenced_key)
+                @redis.del(silenced_key)
+              else
+                event[:silenced_by] << silenced_info[:id]
               end
             end
+            event[:silenced] = !event[:silenced_by].empty?
             yield(event)
           end
         else
@@ -946,7 +953,7 @@ module Sensu
       # calculated for each check result. If the time since last
       # execution is equal to or greater than the check TTL, a warning
       # check result is published with the appropriate check output.
-      def determine_stale_check_results
+      def determine_stale_check_results(interval = 30)
         @logger.info("determining stale check results")
         @redis.smembers("ttl") do |result_keys|
           result_keys.each do |result_key|
@@ -961,7 +968,8 @@ module Sensu
                     unless event_exists
                       check[:output] = "Last check execution was "
                       check[:output] << "#{time_since_last_execution} seconds ago"
-                      check[:status] = 1
+                      check[:status] = check[:ttl_status] || 1
+                      check[:interval] = interval
                       publish_check_result(client_name, check)
                     end
                   end
@@ -977,10 +985,10 @@ module Sensu
       # Set up the check result monitor, a periodic timer to run
       # `determine_stale_check_results()` every 30 seconds. The timer
       # is stored in the timers hash under `:leader`.
-      def setup_check_result_monitor
+      def setup_check_result_monitor(interval = 30)
         @logger.debug("monitoring check results")
-        @timers[:leader] << EM::PeriodicTimer.new(30) do
-          determine_stale_check_results
+        @timers[:leader] << EM::PeriodicTimer.new(interval) do
+          determine_stale_check_results(interval)
         end
       end
 

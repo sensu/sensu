@@ -76,7 +76,6 @@ describe "Sensu::Client::Process" do
         expect(result[:check][:name]).to eq("deregistration")
         expect(result[:check][:status]).to eq(1)
         expect(result[:check][:handler]).to eq("DEREGISTER_HANDLER")
-        expect(result[:check][:interval]).to eq(1)
         async_done
       end
       timer(0.5) do
@@ -202,7 +201,9 @@ describe "Sensu::Client::Process" do
         @client.setup_transport do
           @client.setup_subscriptions
           timer(1) do
-            transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
+            setup_transport do |transport|
+              transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
+            end
           end
         end
       end
@@ -222,7 +223,9 @@ describe "Sensu::Client::Process" do
         @client.setup_transport do
           @client.setup_subscriptions
           timer(1) do
-            transport.publish(:direct, "roundrobin:test", Sensu::JSON.dump(check_template))
+            setup_transport do |transport|
+              transport.publish(:direct, "roundrobin:test", Sensu::JSON.dump(check_template))
+            end
           end
         end
       end
@@ -243,7 +246,9 @@ describe "Sensu::Client::Process" do
         @client.setup_transport do
           @client.setup_subscriptions
           timer(1) do
-            transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
+            setup_transport do |transport|
+              transport.publish(:fanout, "test", Sensu::JSON.dump(check_template))
+            end
           end
         end
       end
@@ -317,7 +322,7 @@ describe "Sensu::Client::Process" do
     async_wrapper do
       @client.setup_transport do
         @client.setup_sockets
-        expected = ["tcp", "udp"]
+        expected = ["tcp", "udp", "http"]
         result_queue do |payload|
           result = Sensu::JSON.load(payload)
           expect(result[:client]).to eq("i-424242")
@@ -335,6 +340,11 @@ describe "Sensu::Client::Process" do
             data = '{"name": "udp", "output": "udp", "status": 1}'
             socket.send_datagram(data, "127.0.0.1", 3030)
             socket.close_connection_after_writing
+          end
+          options = {:body => {:name => "http", :output => "http", :status => 1}}
+          http_request(3031, "/results", :post, options)do |http, body|
+            expect(http.response_header.status).to eq(202)
+            expect(body).to eq({:response => "ok"})
           end
         end
       end
