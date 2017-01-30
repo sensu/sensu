@@ -535,6 +535,7 @@ describe "Sensu::Server::Process" do
                     event = Sensu::JSON.load(event_json)
                     expect(event[:client][:address]).to eq("unknown")
                     expect(event[:client][:subscriptions]).to include("client:i-888888")
+                    expect(event[:client][:type]).to eq("proxy")
                     async_done
                   end
                 end

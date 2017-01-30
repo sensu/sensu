@@ -620,6 +620,7 @@ module Sensu
             end
           else
             client = create_client(client_key)
+            client[:type] = "proxy" if result[:check][:source]
             update_client_registry(client) do
               yield(client)
             end
