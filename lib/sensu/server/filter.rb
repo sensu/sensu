@@ -264,7 +264,7 @@ module Sensu
               yield(false)
             else
               event_filter(filter_name, event) do |filtered|
-                filtered ? yield(true) : EM.next_tick { filter.call(filter_list) }
+                filtered ? yield(true, filter_name) : EM.next_tick { filter.call(filter_list) }
               end
             end
           end

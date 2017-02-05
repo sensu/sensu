@@ -99,8 +99,9 @@ describe "Sensu::Server::Filter" do
             handler = {
               :filter => "development"
             }
-            @server.event_filtered?(handler, @event) do |filtered|
+            @server.event_filtered?(handler, @event) do |filtered, filter_name|
               expect(filtered).to be(true)
+              expect(filter_name).to eq("development")
               handler = {
                 :filters => ["production"]
               }
