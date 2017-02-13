@@ -780,6 +780,7 @@ module Sensu
                   })
                   substituted, unmatched_tokens = object_substitute_tokens(check.dup, client)
                   if unmatched_tokens.empty?
+                    substituted[:name] = "#{client[:name]}-#{substituted[:name]}"
                     publish_check_request(substituted)
                   else
                     @logger.warn("failed to create proxy check request", {
