@@ -766,6 +766,35 @@ module Sensu
         end
       end
 
+      def proxy_check_request(check)
+        @redis.smembers("clients") do |clients|
+          clients.each do |client_name|
+            @redis.get("client:#{client_name}") do |client_json|
+              unless client_json.nil?
+                client = Sensu::JSON.load(client_json)
+                if attributes_match?(client, check[:proxy_attributes])
+                  @logger.debug("creating proxy check request", {
+                    :client => client,
+                    :check => check
+                  })
+                  substituted, unmatched_tokens = object_substitute_tokens(check.dup, client)
+                  if unmatched_tokens.empty?
+                    publish_check_request(substituted)
+                  else
+                    @logger.warn("failed to create proxy check request", {
+                      :reason => "unmatched client tokens",
+                      :unmatched_tokens => unmatched_tokens,
+                      :client => client,
+                      :check => check
+                    })
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+
       # Calculate a check execution splay, taking into account the
       # current time and the execution interval to ensure it's
       # consistent between process restarts.

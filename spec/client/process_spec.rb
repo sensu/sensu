@@ -117,7 +117,7 @@ describe "Sensu::Client::Process" do
         :waldo => ":::name:::"
       }
     }
-    substituted, unmatched_tokens = @client.object_substitute_tokens(check)
+    substituted, unmatched_tokens = @client.object_substitute_tokens(check, @client.settings[:client])
     expect(substituted[:name]).to eq("test")
     expect(substituted[:command]).to eq("echo true")
     expect(substituted[:foo].first).to eq("foo")
