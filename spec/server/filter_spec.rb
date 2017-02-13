@@ -56,33 +56,33 @@ describe "Sensu::Server::Filter" do
       :occurrences => 1,
       :action => "resolve"
     }
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
+    expect(@server.attributes_match?(@event, attributes)).to be(false)
     attributes[:action] = "create"
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(true)
+    expect(@server.attributes_match?(@event, attributes)).to be(true)
     @event[:occurrences] = 2
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
+    expect(@server.attributes_match?(@event, attributes)).to be(false)
   end
 
   it "can determine if filter eval attributes match an event" do
     attributes = {
       :occurrences => "eval: value == 3 || value % 60 == 0"
     }
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
+    expect(@server.attributes_match?(@event, attributes)).to be(false)
     @event[:occurrences] = 3
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(true)
+    expect(@server.attributes_match?(@event, attributes)).to be(true)
     @event[:occurrences] = 4
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
+    expect(@server.attributes_match?(@event, attributes)).to be(false)
     @event[:occurrences] = 120
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(true)
+    expect(@server.attributes_match?(@event, attributes)).to be(true)
     @event[:occurrences] = 3
     attributes[:occurrences] = "eval: value == :::check.occurrences:::"
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
+    expect(@server.attributes_match?(@event, attributes)).to be(false)
     attributes[:occurrences] = "eval: value == :::check.occurrences|3:::"
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(true)
+    expect(@server.attributes_match?(@event, attributes)).to be(true)
     @event[:check][:occurrences] = 2
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
+    expect(@server.attributes_match?(@event, attributes)).to be(false)
     @event[:occurrences] = 2
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(true)
+    expect(@server.attributes_match?(@event, attributes)).to be(true)
   end
 
   it "can filter an event using a filter" do
@@ -181,6 +181,6 @@ describe "Sensu::Server::Filter" do
     attributes = {
       :occurrences => "eval: raise SyntaxError"
     }
-    expect(@server.filter_attributes_match?(@event, attributes)).to be(false)
+    expect(@server.attributes_match?(@event, attributes)).to be(false)
   end
 end
