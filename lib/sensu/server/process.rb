@@ -767,28 +767,31 @@ module Sensu
         end
       end
 
-      def proxy_check_request(check)
-        @redis.smembers("clients") do |clients|
-          clients.each do |client_name|
-            @redis.get("client:#{client_name}") do |client_json|
-              unless client_json.nil?
-                client = Sensu::JSON.load(client_json)
-                if attributes_match?(client, check[:proxy_attributes])
-                  @logger.debug("creating proxy check request", {
-                    :client => client,
-                    :check => check
-                  })
-                  substituted, unmatched_tokens = object_substitute_tokens(check.dup, client)
-                  if unmatched_tokens.empty?
-                    substituted[:name] = "#{client[:name]}-#{substituted[:name]}"
-                    publish_check_request(substituted)
-                  else
-                    @logger.warn("failed to create proxy check request", {
-                      :reason => "unmatched client tokens",
-                      :unmatched_tokens => unmatched_tokens,
+      def generate_check_requests(check)
+        client_attributes = check[:request_generator][:client_attributes]
+        unless client_attributes.nil? || client_attributes.empty?
+          @redis.smembers("clients") do |clients|
+            clients.each do |client_name|
+              @redis.get("client:#{client_name}") do |client_json|
+                unless client_json.nil?
+                  client = Sensu::JSON.load(client_json)
+                  if attributes_match?(client, client_attributes)
+                    @logger.debug("generating check request", {
                       :client => client,
                       :check => check
                     })
+                    generated, unmatched_tokens = object_substitute_tokens(check.dup, client)
+                    if unmatched_tokens.empty?
+                      generated[:name] = "#{client[:name]}-#{generated[:name]}"
+                      publish_check_request(generated)
+                    else
+                      @logger.warn("failed to create proxy check request", {
+                        :reason => "unmatched client tokens",
+                        :unmatched_tokens => unmatched_tokens,
+                        :client => client,
+                        :check => check
+                      })
+                    end
                   end
                 end
               end
@@ -819,7 +822,11 @@ module Sensu
         checks.each do |check|
           create_check_request = Proc.new do
             unless check_subdued?(check)
-              publish_check_request(check)
+              if check[:request_generator]
+                generate_check_requests(check)
+              else
+                publish_check_request(check)
+              end
             else
               @logger.info("check request was subdued", :check => check)
             end
