@@ -38,8 +38,8 @@ module Sensu
         Spawn.process(handler[:command], options) do |output, status|
           log_level = status == 0 ? :info : :error
           @logger.send(log_level, "handler output", {
-              :handler => handler,
-              :output => output.split("\n+")
+             :handler => handler,
+             :output => output.split("\n+")
             })
           @in_progress[:events] -= 1 if @in_progress
         end
