@@ -767,8 +767,12 @@ module Sensu
         end
       end
 
+      # Generate one or more check requests for a check and publish
+      # them to the Transport via `publish_check_request()`.
+      #
+      # @param check [Hash] definition.
       def generate_check_requests(check)
-        client_attributes = check[:request_generator][:client_attributes]
+        client_attributes = check[:request_generator][:attributes][:client]
         unless client_attributes.nil? || client_attributes.empty?
           @redis.smembers("clients") do |clients|
             clients.each do |client_name|
@@ -785,7 +789,7 @@ module Sensu
                       generated[:name] = "#{client[:name]}-#{generated[:name]}"
                       publish_check_request(generated)
                     else
-                      @logger.warn("failed to create proxy check request", {
+                      @logger.warn("failed to generate a check request", {
                         :reason => "unmatched client tokens",
                         :unmatched_tokens => unmatched_tokens,
                         :client => client,
