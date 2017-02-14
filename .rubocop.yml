@@ -1,0 +1,38 @@
+AllCops:
+  Exclude:
+    - 'spec/extensions/mutators/syntax.rb'
+Metrics/AbcSize:
+  Max: 30
+Metrics/BlockLength:
+  Max: 55
+Metrics/ClassLength:
+  Max: 300
+Metrics/LineLength:
+  Max: 120
+Metrics/MethodLength:
+  Max: 55
+Metrics/ModuleLength:
+  Max: 300
+Metrics/CyclomaticComplexity:
+  Max: 12
+Style/StringLiterals:
+  Enabled: false
+Style/HashSyntax:
+  EnforcedStyle: hash_rockets
+Style/RegexpLiteral:
+  EnforcedStyle: slashes
+  AllowInnerSlashes: true
+Style/Proc:
+  Enabled: false
+Style/BracesAroundHashParameters:
+  Enabled: false
+Style/SpaceInsideHashLiteralBraces:
+  Enabled: false
+Style/SpaceAroundEqualsInParameterDefault:
+  Enabled: false
+Style/IndentHash:
+  Enabled: false
+Style/AccessorMethodName:
+  Enabled: false
+Style/UnlessElse:
+  Enabled: false
