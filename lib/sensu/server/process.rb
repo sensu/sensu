@@ -142,9 +142,7 @@ module Sensu
       def update_client_registry(client)
         @logger.debug("updating client registry", :client => client)
         client_key = "client:#{client[:name]}"
-        client[:subscriptions] = [
-          client[:subscriptions], [client_key]
-        ].compact.flatten.uniq
+        client[:subscriptions] = (client[:subscriptions] + [client_key]).uniq
         signature_key = "#{client_key}:signature"
         @redis.setnx(signature_key, client[:signature]) do |created|
           process_client_registration(client) if created

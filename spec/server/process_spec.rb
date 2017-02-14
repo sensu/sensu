@@ -49,9 +49,9 @@ describe "Sensu::Server::Process" do
                   client = Sensu::JSON.load(client_json)
                   # keepalive processing adds a per-client subscription
                   processed_keepalive = keepalive.dup
-                  processed_keepalive[:subscriptions] = [
-                    keepalive[:subscriptions], ["client:#{keepalive[:name]}"]
-                  ].compact.flatten.uniq
+                  processed_keepalive[:subscriptions] = (
+                    keepalive[:subscriptions] + ["client:#{keepalive[:name]}"]
+                  ).uniq
                   expect(client).to eq(processed_keepalive)
                   read_event_file = Proc.new do
                     begin
@@ -85,9 +85,9 @@ describe "Sensu::Server::Process" do
         keepalive[:signature] = "foo"
         # keepalive processing adds a per-client subscription
         processed_keepalive = keepalive.dup
-        processed_keepalive[:subscriptions] = [
-          keepalive[:subscriptions], ["client:#{keepalive[:name]}"]
-        ].compact.flatten.uniq
+        processed_keepalive[:subscriptions] = (
+          keepalive[:subscriptions] + ["client:#{keepalive[:name]}"]
+        ).uniq
         redis.flushdb do
           timer(1) do
             setup_transport do |transport|
