@@ -47,7 +47,12 @@ describe "Sensu::Server::Process" do
                 expect(exists).to be(true)
                 redis.get("client:i-424242") do |client_json|
                   client = Sensu::JSON.load(client_json)
-                  expect(client).to eq(keepalive)
+                  # keepalive processing adds a per-client subscription
+                  processed_keepalive = keepalive.dup
+                  processed_keepalive[:subscriptions] = (
+                    keepalive[:subscriptions] + ["client:#{keepalive[:name]}"]
+                  ).uniq
+                  expect(client).to eq(processed_keepalive)
                   read_event_file = Proc.new do
                     begin
                       event_file = IO.read("/tmp/sensu_client_registration.json")
@@ -58,7 +63,7 @@ describe "Sensu::Server::Process" do
                   end
                   compare_event_file = Proc.new do |event_file|
                     expect(event_file[:check][:name]).to eq("registration")
-                    expect(event_file[:client]).to eq(keepalive)
+                    expect(event_file[:client]).to eq(processed_keepalive)
                     async_done
                   end
                   EM.defer(read_event_file, compare_event_file)
@@ -78,6 +83,11 @@ describe "Sensu::Server::Process" do
         keepalive = client_template
         keepalive[:timestamp] = epoch
         keepalive[:signature] = "foo"
+        # keepalive processing adds a per-client subscription
+        processed_keepalive = keepalive.dup
+        processed_keepalive[:subscriptions] = (
+          keepalive[:subscriptions] + ["client:#{keepalive[:name]}"]
+        ).uniq
         redis.flushdb do
           timer(1) do
             setup_transport do |transport|
@@ -85,7 +95,7 @@ describe "Sensu::Server::Process" do
               timer(1) do
                 redis.get("client:i-424242") do |client_json|
                   client = Sensu::JSON.load(client_json)
-                  expect(client).to eq(keepalive)
+                  expect(client).to eq(processed_keepalive)
                   redis.get("client:i-424242:signature") do |signature|
                     expect(signature).to eq("foo")
                     malicious = keepalive.dup
@@ -95,7 +105,7 @@ describe "Sensu::Server::Process" do
                     timer(1) do
                       redis.get("client:i-424242") do |client_json|
                         client = Sensu::JSON.load(client_json)
-                        expect(client).to eq(keepalive)
+                        expect(client).to eq(processed_keepalive)
                         redis.get("client:i-424242:signature") do |signature|
                           expect(signature).to eq("foo")
                           async_done
