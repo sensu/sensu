@@ -26,13 +26,18 @@ module Sensu
       # `@in_progress[:events]` by `1` when the handler executes
       # successfully.
       #
+      # When the spawned process exits with status 0, its output is
+      # logged at :info level. Otherwise, its output is logged at
+      # :error level.
+      #
       # @param handler [Hash] definition.
       # @param event_data [Object] provided to the spawned handler
       #   process via STDIN.
       def pipe_handler(handler, event_data)
         options = {:data => event_data, :timeout => handler[:timeout]}
         Spawn.process(handler[:command], options) do |output, status|
-          @logger.info("handler output", {
+          log_level = status == 0 ? :info : :error
+          @logger.send(log_level, "handler output", {
             :handler => handler,
             :output => output.split("\n+")
           })

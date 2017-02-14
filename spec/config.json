@@ -71,6 +71,10 @@
       "type": "pipe",
       "command": "cat > /tmp/sensu_event"
     },
+    "error": {
+      "type": "pipe",
+      "command": "cat && exit 2"
+    },
     "filtered": {
       "type": "pipe",
       "command": "cat > /tmp/sensu_event",

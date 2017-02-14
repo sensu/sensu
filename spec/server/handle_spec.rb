@@ -29,6 +29,15 @@ describe "Sensu::Server::Handle" do
     File.delete("/tmp/sensu_event")
   end
 
+  it "can handle an event with a pipe handler error" do
+    async_wrapper do
+      @server.handle_event(@handlers[:error], @event_data)
+      timer(1) do
+        async_done
+      end
+    end
+  end
+
   it "can handle an event with a tcp handler" do
     async_wrapper do
       EM::start_server("127.0.0.1", 1234, Helpers::TestServer) do |server|
