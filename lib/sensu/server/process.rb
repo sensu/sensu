@@ -767,12 +767,18 @@ module Sensu
         end
       end
 
-      # Generate one or more check requests for a check and publish
-      # them to the Transport via `publish_check_request()`.
+      # Create and publish one or more proxy check requests. This
+      # method iterates through the Sensu client registry for clients
+      # that matched provided proxy request client attributes. A proxy
+      # check request is created for each client in the registry that
+      # matches the proxy request client attributes. Proxy check
+      # requests have their client tokens subsituted by the associated
+      # client attributes values. The check requests are published to
+      # the Transport via `publish_check_request()`.
       #
       # @param check [Hash] definition.
-      def generate_check_requests(check)
-        client_attributes = check[:request_generator][:attributes][:client]
+      def publish_proxy_check_requests(check)
+        client_attributes = check[:proxy_requests][:attributes][:client]
         unless client_attributes.nil? || client_attributes.empty?
           @redis.smembers("clients") do |clients|
             clients.each do |client_name|
@@ -780,7 +786,7 @@ module Sensu
                 unless client_json.nil?
                   client = Sensu::JSON.load(client_json)
                   if attributes_match?(client, client_attributes)
-                    @logger.debug("generating check request", {
+                    @logger.debug("creating a proxy check request", {
                       :client => client,
                       :check => check
                     })
@@ -789,7 +795,7 @@ module Sensu
                       generated[:source] ||= client[:name]
                       publish_check_request(generated)
                     else
-                      @logger.warn("failed to generate a check request", {
+                      @logger.warn("failed to publish a proxy check request", {
                         :reason => "unmatched client tokens",
                         :unmatched_tokens => unmatched_tokens,
                         :client => client,
@@ -826,8 +832,8 @@ module Sensu
         checks.each do |check|
           create_check_request = Proc.new do
             unless check_subdued?(check)
-              if check[:request_generator]
-                generate_check_requests(check)
+              if check[:proxy_requests]
+                publish_proxy_check_requests(check)
               else
                 publish_check_request(check)
               end
