@@ -616,7 +616,7 @@ describe "Sensu::Server::Process" do
     end
   end
 
-  it "can generate check requests" do
+  it "can publish proxy check requests" do
     async_wrapper do
       setup_transport do |transport|
         transport.subscribe(:fanout, "test") do |_, payload|
@@ -639,7 +639,7 @@ describe "Sensu::Server::Process" do
                   check = check_template
                   check[:command] = "echo :::address::: && exit 1"
                   check[:subscribers] = ["test"]
-                  check[:request_generator] = {
+                  check[:proxy_requests] = {
                     :attributes => {
                       :client => {
                         :name => "i-424242",
@@ -647,7 +647,7 @@ describe "Sensu::Server::Process" do
                       }
                     }
                   }
-                  @server.generate_check_requests(check)
+                  @server.publish_proxy_check_requests(check)
                 end
               end
             end
