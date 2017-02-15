@@ -786,7 +786,7 @@ module Sensu
                     })
                     generated, unmatched_tokens = object_substitute_tokens(check.dup, client)
                     if unmatched_tokens.empty?
-                      generated[:name] = "#{client[:name]}-#{generated[:name]}"
+                      generated[:source] ||= client[:name]
                       publish_check_request(generated)
                     else
                       @logger.warn("failed to generate a check request", {

@@ -627,6 +627,46 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can generate check requests" do
+    async_wrapper do
+      setup_transport do |transport|
+        transport.subscribe(:fanout, "test") do |_, payload|
+          check_request = Sensu::JSON.load(payload)
+          expect(check_request[:name]).to eq("test")
+          expect(check_request[:command]).to eq("echo 127.0.0.1 && exit 1")
+          expect(check_request[:source]).to eq("i-424242")
+          expect(check_request[:issued]).to be_within(10).of(epoch)
+          async_done
+        end
+        redis.flushdb do
+          @server.setup_redis do
+            @server.setup_transport do
+              @server.setup_keepalives
+              timer(1) do
+                keepalive = client_template
+                keepalive[:timestamp] = epoch
+                transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+                timer(1) do
+                  check = check_template
+                  check[:command] = "echo :::address::: && exit 1"
+                  check[:subscribers] = ["test"]
+                  check[:request_generator] = {
+                    :attributes => {
+                      :client => {
+                        :name => "i-424242"
+                      }
+                    }
+                  }
+                  @server.generate_check_requests(check)
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can calculate a check execution splay interval" do
     allow(Time).to receive(:now).and_return("1414213569.032")
     check = check_template
