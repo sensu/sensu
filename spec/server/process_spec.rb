@@ -653,7 +653,8 @@ describe "Sensu::Server::Process" do
                   check[:request_generator] = {
                     :attributes => {
                       :client => {
-                        :name => "i-424242"
+                        :name => "i-424242",
+                        :subscriptions => "eval: value.include?('test')"
                       }
                     }
                   }
