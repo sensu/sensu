@@ -1,11 +1,13 @@
 ![sensu](https://raw.github.com/sensu/sensu/master/sensu-logo.png)
 
-[![Build Status](https://secure.travis-ci.org/sensu/sensu.png)](https://travis-ci.org/sensu/sensu)
+[![Build Status](https://img.shields.io/travis/sensu/sensu.png)](https://travis-ci.org/sensu/sensu)
+[![Gem Version](https://img.shields.io/gem/v/sensu.svg)](https://github.com/sensu/sensu/blob/master/CHANGELOG.md)
+![MIT Licensed](https://img.shields.io/github/license/sensu/sensu.svg)
 
 # Sensu
 
 A simple, malleable, and scalable framework for composing
-the monitoring and alerting system your organization requires.
+the monitoring you need.
 
 Sensu is offered in two flavors:
 
@@ -19,21 +21,21 @@ Please see the [list of supported platforms][2] for installation instructions.
 
 ## Documentation
 
-Please refer to our [online documentation][3] for details
+Please refer to the [online documentation][3] for details
 on configuring and operating Sensu.
 
 ## Getting Help
 
-If you have questions not covered by the documentation, our community
+If you have questions not covered by the documentation, the Sensu community
 is here to help. Please check out our [chat][4] on Freenode IRC, or the
 [sensu-users][5] discussion list.
 
-Commercial support is also available through our Sensu Enterprise
-offering. See the [support section of our website][6] for more detail.
+Commercial support is also available. See the [support section of our website][6] for more detail.
 
 ## Contributing
 
-Please see our [notes on contributing][7].
+Please observe these [guidelines on contributing][7].
+
 
 ## License
 
