@@ -1,6 +1,6 @@
 require "rubygems"
 
-gem "eventmachine", "1.2.1"
+gem "eventmachine", "1.2.2"
 
 gem "sensu-json", "2.0.1"
 gem "sensu-logger", "1.2.1"
@@ -48,7 +48,10 @@ module Sensu
       @start_time = Time.now.to_i
       @state = :initializing
       @timers = {:run => []}
-      EM::set_max_timers(200000) unless EM::reactor_running?
+      unless EM::reactor_running?
+        EM::epoll
+        EM::set_max_timers(200000)
+      end
       setup_logger(options)
       load_settings(options)
       unless sensu_service_name == "api"
