@@ -778,8 +778,8 @@ module Sensu
       #
       # @param check [Hash] definition.
       def publish_proxy_check_requests(check)
-        client_attributes = check[:proxy_requests][:attributes][:client]
-        unless client_attributes.nil? || client_attributes.empty?
+        client_attributes = check[:proxy_requests][:client_attributes]
+        unless client_attributes.empty?
           @redis.smembers("clients") do |clients|
             clients.each do |client_name|
               @redis.get("client:#{client_name}") do |client_json|
@@ -790,10 +790,10 @@ module Sensu
                       :client => client,
                       :check => check
                     })
-                    generated, unmatched_tokens = object_substitute_tokens(check.dup, client)
+                    proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
                     if unmatched_tokens.empty?
-                      generated[:source] ||= client[:name]
-                      publish_check_request(generated)
+                      proxy_check[:source] ||= client[:name]
+                      publish_check_request(proxy_check)
                     else
                       @logger.warn("failed to publish a proxy check request", {
                         :reason => "unmatched client tokens",

@@ -651,11 +651,9 @@ describe "Sensu::Server::Process" do
                   check[:command] = "echo :::address::: && exit 1"
                   check[:subscribers] = ["test"]
                   check[:proxy_requests] = {
-                    :attributes => {
-                      :client => {
-                        :name => "i-424242",
-                        :subscriptions => "eval: value.include?('test')"
-                      }
+                    :client_attributes => {
+                      :name => "i-424242",
+                      :subscriptions => "eval: value.include?('test')"
                     }
                   }
                   @server.publish_proxy_check_requests(check)
