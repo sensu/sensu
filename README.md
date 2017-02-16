@@ -7,7 +7,7 @@
 # Sensu
 
 A simple, malleable, and scalable framework for composing
-the monitoring you need.
+the monitoring system you need.
 
 Sensu is offered in two flavors:
 
