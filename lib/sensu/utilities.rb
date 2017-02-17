@@ -107,7 +107,12 @@ module Sensu
     #   and an array of unmatched tokens.
     def substitute_tokens(tokens, attributes)
       unmatched_tokens = []
-      substituted = tokens.gsub(/:::([^:].*?):::/) do
+      encoded_tokens = tokens.encode("UTF-8", "binary", {
+        :invalid => :replace,
+        :undef => :replace,
+        :replace => ""
+      })
+      substituted = encoded_tokens.gsub(/:::([^:].*?):::/) do
         token, default = $1.to_s.split("|", -1)
         path = token.split(".").map(&:to_sym)
         matched = find_attribute_value(attributes, path, default)

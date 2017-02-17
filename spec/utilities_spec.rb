@@ -93,14 +93,16 @@ describe "Sensu::Utilities" do
     string = ":::nested.attribute|default::: :::missing|default:::"
     string << " :::missing|::: :::missing::: :::nested.attribute:::::::nested.attribute:::"
     string << " :::empty|localhost::: :::empty.hash|localhost:8080:::"
+    string << " :::foo\255|default:::"
     attributes = {
       :nested => {
         :attribute => true
       },
-      :empty => {}
+      :empty => {},
+      :foo => true
     }
     result, unmatched_tokens = substitute_tokens(string, attributes)
-    expect(result).to eq("true default   true:true localhost localhost:8080")
+    expect(result).to eq("true default   true:true localhost localhost:8080 true")
     expect(unmatched_tokens).to eq(["missing"])
   end
 
