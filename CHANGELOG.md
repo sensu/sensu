@@ -1,3 +1,21 @@
+## 0.27.1 - 2017-02-17
+
+### Other
+
+Failed pipe handler executions are now logged with the error log level.
+
+Sensu server now adds a unique per-client subscription to client
+keepalives when missing. This is to enable built-in event silencing for
+older Sensu clients (< 0.26).
+
+### Fixes
+
+Check subdue and filter when time windows now account for GMT offsets.
+
+Non UTF-8 characters in check tokens are now removed.
+
+Fixed filter name logging when an event is filtered.
+
 ## 0.27.0 - 2017-01-26
 
 ### Features
