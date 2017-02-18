@@ -1173,10 +1173,12 @@ module Sensu
       end
 
       # Start the Sensu server process, connecting to Redis, the
-      # Transport, and calling the `bootstrap()` method.
+      # Transport, and calling the `bootstrap()` method. Yield if a
+      # block is provided.
       def start
         setup_connections do
           bootstrap
+          yield if block_given?
         end
       end
 
