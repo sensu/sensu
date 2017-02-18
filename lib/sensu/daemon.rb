@@ -187,9 +187,11 @@ module Sensu
     end
 
     # Start the Sensu service and set the service state to `:running`.
-    # This method will likely be overridden by a subclass.
+    # This method will likely be overridden by a subclass. Yield if a
+    # block is provided.
     def start
       @state = :running
+      yield if block_given?
     end
 
     # Pause the Sensu service and set the service state to `:paused`.
