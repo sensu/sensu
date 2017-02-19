@@ -313,5 +313,12 @@ module Sensu
         false
       end
     end
+
+    def determine_check_cron_timer(check)
+      cron_parser = CronParser.new(check[:cron])
+      current_time = Time.now
+      next_cron_time = cron_parser.next(current_time)
+      next_cron_time - current_time
+    end
   end
 end

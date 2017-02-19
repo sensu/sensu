@@ -265,16 +265,46 @@ module Sensu
         end
       end
 
+      def create_check_execution_proc(check)
+        Proc.new do
+          unless check_subdued?(check)
+            check[:issued] = Time.now.to_i
+            process_check_request(check.dup)
+          else
+            @logger.info("check execution was subdued", :check => check)
+          end
+        end
+      end
+
+      def create_check_cron_execution(check)
+        cron_timer = determine_check_cron_timer(check)
+        @timers[:run] << EM::Timer.new(cron_timer) do |timer|
+          create_check_execution_proc(check).call
+          @timers[:run].delete(timer)
+          create_check_cron_execution(check)
+        end
+      end
+
       # Calculate a check execution splay, taking into account the
       # current time and the execution interval to ensure it's
       # consistent between process restarts.
       #
       # @param check [Hash] definition.
-      def calculate_execution_splay(check)
+      def calculate_check_execution_splay(check)
         key = [@settings[:client][:name], check[:name]].join(":")
         splay_hash = Digest::MD5.digest(key).unpack("Q<").first
         current_time = (Time.now.to_f * 1000).to_i
         (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
+      end
+
+      def create_check_executions(check)
+        execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
+        interval = testing? ? 0.5 : check[:interval]
+        @timers[:run] << EM::Timer.new(execution_splay) do
+          execute_check = create_check_execution_proc(check)
+          execute_check.call
+          @timers[:run] << EM::PeriodicTimer.new(interval, &execute_check)
+        end
       end
 
       # Schedule check executions, using EventMachine periodic timers,
@@ -288,19 +318,10 @@ module Sensu
       # @param checks [Array] of definitions.
       def schedule_checks(checks)
         checks.each do |check|
-          execute_check = Proc.new do
-            unless check_subdued?(check)
-              check[:issued] = Time.now.to_i
-              process_check_request(check.dup)
-            else
-              @logger.info("check execution was subdued", :check => check)
-            end
-          end
-          execution_splay = testing? ? 0 : calculate_execution_splay(check)
-          interval = testing? ? 0.5 : check[:interval]
-          @timers[:run] << EM::Timer.new(execution_splay) do
-            execute_check.call
-            @timers[:run] << EM::PeriodicTimer.new(interval, &execute_check)
+          if check[:cron]
+            create_check_cron_execution(check)
+          else
+            create_check_executions(check)
           end
         end
       end

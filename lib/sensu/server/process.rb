@@ -810,6 +810,29 @@ module Sensu
         end
       end
 
+      def create_check_request_proc(check)
+        Proc.new do
+          unless check_subdued?(check)
+            if check[:proxy_requests]
+              publish_proxy_check_requests(check)
+            else
+              publish_check_request(check)
+            end
+          else
+            @logger.info("check request was subdued", :check => check)
+          end
+        end
+      end
+
+      def create_check_cron_execution(check)
+        cron_timer = determine_check_cron_timer(check)
+        @timers[:leader] << EM::Timer.new(cron_timer) do |timer|
+          create_check_request_proc(check).call
+          @timers[:leader].delete(timer)
+          create_check_cron_execution(check)
+        end
+      end
+
       # Calculate a check execution splay, taking into account the
       # current time and the execution interval to ensure it's
       # consistent between process restarts.
@@ -821,6 +844,16 @@ module Sensu
         (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
       end
 
+      def create_check_executions(check)
+        execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
+        interval = testing? ? 0.5 : check[:interval]
+        @timers[:leader] << EM::Timer.new(execution_splay) do
+          create_check_request = create_check_request_proc(check)
+          create_check_request.call
+          @timers[:leader] << EM::PeriodicTimer.new(interval, &create_check_request)
+        end
+      end
+
       # Schedule check executions, using EventMachine periodic timers,
       # using a calculated execution splay. The timers are stored in
       # the timers hash under `:leader`, as check request publishing
@@ -830,22 +863,10 @@ module Sensu
       # @param checks [Array] of definitions.
       def schedule_check_executions(checks)
         checks.each do |check|
-          create_check_request = Proc.new do
-            unless check_subdued?(check)
-              if check[:proxy_requests]
-                publish_proxy_check_requests(check)
-              else
-                publish_check_request(check)
-              end
-            else
-              @logger.info("check request was subdued", :check => check)
-            end
-          end
-          execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
-          interval = testing? ? 0.5 : check[:interval]
-          @timers[:leader] << EM::Timer.new(execution_splay) do
-            create_check_request.call
-            @timers[:leader] << EM::PeriodicTimer.new(interval, &create_check_request)
+          if check[:cron]
+            create_check_cron_execution(check)
+          else
+            create_check_executions(check)
           end
         end
       end
