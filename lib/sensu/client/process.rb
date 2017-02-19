@@ -100,33 +100,6 @@ module Sensu
         end
       end
 
-      # Perform token substitution for an object. String values are
-      # passed to `substitute_tokens()`, arrays and sub-hashes are
-      # processed recursively. Numeric values are ignored.
-      #
-      # @param object [Object]
-      # @return	[Array] containing the updated object with substituted
-      #   values and an array of unmatched tokens.
-      def object_substitute_tokens(object)
-        unmatched_tokens = []
-        case object
-        when Hash
-          object.each do |key, value|
-            object[key], unmatched = object_substitute_tokens(value)
-            unmatched_tokens.push(*unmatched)
-          end
-        when Array
-          object.map! do |value|
-            value, unmatched = object_substitute_tokens(value)
-            unmatched_tokens.push(*unmatched)
-            value
-          end
-        when String
-          object, unmatched_tokens = substitute_tokens(object, @settings[:client])
-        end
-        [object, unmatched_tokens.uniq]
-      end
-
       # Execute a check command, capturing its output (STDOUT/ERR),
       # exit status code, execution duration, timestamp, and publish
       # the result. This method guards against multiple executions for
@@ -144,7 +117,7 @@ module Sensu
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          substituted, unmatched_tokens = object_substitute_tokens(check.dup)
+          substituted, unmatched_tokens = object_substitute_tokens(check.dup, @settings[:client])
           check = substituted.merge(:command => check[:command])
           started = Time.now.to_f
           check[:executed] = started.to_i

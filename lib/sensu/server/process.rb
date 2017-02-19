@@ -760,6 +760,49 @@ module Sensu
         end
       end
 
+      # Create and publish one or more proxy check requests. This
+      # method iterates through the Sensu client registry for clients
+      # that matched provided proxy request client attributes. A proxy
+      # check request is created for each client in the registry that
+      # matches the proxy request client attributes. Proxy check
+      # requests have their client tokens subsituted by the associated
+      # client attributes values. The check requests are published to
+      # the Transport via `publish_check_request()`.
+      #
+      # @param check [Hash] definition.
+      def publish_proxy_check_requests(check)
+        client_attributes = check[:proxy_requests][:client_attributes]
+        unless client_attributes.empty?
+          @redis.smembers("clients") do |clients|
+            clients.each do |client_name|
+              @redis.get("client:#{client_name}") do |client_json|
+                unless client_json.nil?
+                  client = Sensu::JSON.load(client_json)
+                  if attributes_match?(client, client_attributes)
+                    @logger.debug("creating a proxy check request", {
+                      :client => client,
+                      :check => check
+                    })
+                    proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
+                    if unmatched_tokens.empty?
+                      proxy_check[:source] ||= client[:name]
+                      publish_check_request(proxy_check)
+                    else
+                      @logger.warn("failed to publish a proxy check request", {
+                        :reason => "unmatched client tokens",
+                        :unmatched_tokens => unmatched_tokens,
+                        :client => client,
+                        :check => check
+                      })
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+
       # Calculate a check execution splay, taking into account the
       # current time and the execution interval to ensure it's
       # consistent between process restarts.
@@ -782,7 +825,11 @@ module Sensu
         checks.each do |check|
           create_check_request = Proc.new do
             unless check_subdued?(check)
-              publish_check_request(check)
+              if check[:proxy_requests]
+                publish_proxy_check_requests(check)
+              else
+                publish_check_request(check)
+              end
             else
               @logger.info("check request was subdued", :check => check)
             end
