@@ -173,6 +173,14 @@
       "subscribers": [
         "test"
       ]
+    },
+    "cron": {
+      "command": "/bin/true",
+      "subscribers": [
+        "test"
+      ],
+      "cron": "* * * * *",
+      "interval": 1
     }
   },
   "client": {

@@ -313,9 +313,9 @@ describe "Sensu::Client::Process" do
     allow(Time).to receive(:now).and_return("1414213569.032")
     check = check_template
     check[:interval] = 60
-    expect(@client.calculate_execution_splay(check)).to eq(3.321)
+    expect(@client.calculate_check_execution_splay(check)).to eq(3.321)
     check[:interval] = 3600
-    expect(@client.calculate_execution_splay(check)).to eq(783.321)
+    expect(@client.calculate_check_execution_splay(check)).to eq(783.321)
   end
 
   it "can accept external result input via sockets" do
