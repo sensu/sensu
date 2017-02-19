@@ -861,7 +861,7 @@ module Sensu
       # cancelled etc. Check requests are not published if subdued.
       #
       # @param checks [Array] of definitions.
-      def schedule_check_executions(checks)
+      def schedule_checks(checks)
         checks.each do |check|
           if check[:cron]
             create_check_cron_execution(check)
@@ -885,7 +885,7 @@ module Sensu
         extension_checks = @extensions.checks.reject do |check|
           check[:standalone] || check[:publish] == false || !check[:interval].is_a?(Integer)
         end
-        schedule_check_executions(standard_checks + extension_checks)
+        schedule_checks(standard_checks + extension_checks)
       end
 
       # Publish a check result to the Transport for processing. A
