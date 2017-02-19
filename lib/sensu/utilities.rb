@@ -1,5 +1,8 @@
+gem "parse-cron", "0.1.4"
+
 require "securerandom"
 require "sensu/sandbox"
+require "parse-cron"
 
 module Sensu
   module Utilities
