@@ -3,6 +3,7 @@ gem "parse-cron", "0.1.4"
 require "securerandom"
 require "sensu/sandbox"
 require "parse-cron"
+require "socket"
 
 module Sensu
   module Utilities
@@ -48,6 +49,25 @@ module Sensu
         end
       end
       merged
+    end
+
+    # Retrieve the system hostname. If the hostname cannot be
+    # determined and an error is thrown, `nil` will be returned.
+    #
+    # @return [String] system hostname.
+    def system_hostname
+      ::Socket.gethostname rescue nil
+    end
+
+    # Retrieve the system IP address. If a valid non-loopback
+    # IPv4 address cannot be found and an error is thrown,
+    # `nil` will be returned.
+    #
+    # @return [String] system ip address
+    def system_address
+      ::Socket.ip_address_list.find { |address|
+        address.ipv4? && !address.ipv4_loopback?
+      }.ip_address rescue nil
     end
 
     # Generate a random universally unique identifier.
