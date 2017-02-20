@@ -810,6 +810,13 @@ module Sensu
         end
       end
 
+      # Create a check request proc, used to publish check requests to
+      # for a check to the Sensu transport. Check requests are not
+      # published if subdued. This method determines if a check uses
+      # proxy check requests and calls the appropriate check request
+      # publish method.
+      #
+      # @param check [Hash] definition.
       def create_check_request_proc(check)
         Proc.new do
           unless check_subdued?(check)
@@ -824,49 +831,66 @@ module Sensu
         end
       end
 
-      def create_check_cron_execution(check)
+      # Schedule a check request, using the check cron. This method
+      # determines the time until the next cron time (in seconds) and
+      # creats an EventMachine timer for the request. This method will
+      # be called after every check cron request for subsequent
+      # requests. The timer is stored in the timer hash under
+      # `:leader`, as check request publishing is a task for only the
+      # Sensu server leader, so they can be cancelled etc. The check
+      # cron request timer object in the timer hash under `:leader` is
+      # deleted after publishing the check request.
+      #
+      # @param check [Hash] definition.
+      def schedule_check_cron_request(check)
         cron_timer = determine_check_cron_timer(check)
         @timers[:leader] << EM::Timer.new(cron_timer) do |timer|
           create_check_request_proc(check).call
           @timers[:leader].delete(timer)
-          create_check_cron_execution(check)
+          schedule_check_cron_request(check)
         end
       end
 
-      # Calculate a check execution splay, taking into account the
-      # current time and the execution interval to ensure it's
+      # Calculate a check request splay, taking into account the
+      # current time and the request interval to ensure it's
       # consistent between process restarts.
       #
       # @param check [Hash] definition.
-      def calculate_check_execution_splay(check)
+      def calculate_check_request_splay(check)
         splay_hash = Digest::MD5.digest(check[:name]).unpack('Q<').first
         current_time = (Time.now.to_f * 1000).to_i
         (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
       end
 
-      def create_check_executions(check)
-        execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
+      # Schedule check requests, using the check interval. This method
+      # using an intial calculated request splay EventMachine timer
+      # and an EventMachine periodic timer for subsequent check
+      # requests. The timers are stored in the timers hash under
+      # `:leader`, as check request publishing is a task for only the
+      # Sensu server leader, so they can be cancelled etc.
+      #
+      # @param check [Hash] definition.
+      def schedule_check_interval_requests(check)
+        request_splay = testing? ? 0 : calculate_check_request_splay(check)
         interval = testing? ? 0.5 : check[:interval]
-        @timers[:leader] << EM::Timer.new(execution_splay) do
+        @timers[:leader] << EM::Timer.new(request_splay) do
           create_check_request = create_check_request_proc(check)
           create_check_request.call
           @timers[:leader] << EM::PeriodicTimer.new(interval, &create_check_request)
         end
       end
 
-      # Schedule check executions, using EventMachine periodic timers,
-      # using a calculated execution splay. The timers are stored in
-      # the timers hash under `:leader`, as check request publishing
-      # is a task for only the Sensu server leader, so they can be
-      # cancelled etc. Check requests are not published if subdued.
+      # Schedule check requests. This method iterates through defined
+      # checks and uses the appropriate method of check request
+      # scheduling, either with the cron syntax or numeric interval.
       #
       # @param checks [Array] of definitions.
       def schedule_checks(checks)
         checks.each do |check|
           if check[:cron]
-            create_check_cron_execution(check)
+            schedule_check_cron_request(check)
           else
-            create_check_executions(check)
+            schedule_check_interval_requests(check)
           end
         end
       end
