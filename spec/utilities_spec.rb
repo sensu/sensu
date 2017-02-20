@@ -76,10 +76,14 @@ describe "Sensu::Utilities" do
   end
 
   it "can provide the process cpu times" do
-    cpu_times = process_cpu_times
-    expect(cpu_times).to be_kind_of(Array)
-    expect(cpu_times.size).to eq(4)
-    expect(cpu_times.compact).not_to be_empty
+    async_wrapper do
+      process_cpu_times do |cpu_times|
+        expect(cpu_times).to be_kind_of(Array)
+        expect(cpu_times.size).to eq(4)
+        expect(cpu_times.compact).not_to be_empty
+        async_done
+      end
+    end
   end
 
   it "can generate a random uuid" do
