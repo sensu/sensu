@@ -1107,24 +1107,24 @@ module Sensu
         (Time.now.to_f * 1000).to_i
       end
 
-      # Create/return the unique Sensu server leader ID for the
-      # current process.
+      # Create/return the unique Sensu server ID for the current
+      # process.
       #
       # @return [String]
-      def leader_id
-        @leader_id ||= random_uuid
+      def server_id
+        @server_id ||= random_uuid
       end
 
       # Become the Sensu server leader, responsible for specific
       # duties (`leader_duties()`). Unless the current process is
       # already the leader, this method sets the leader ID stored in
-      # Redis to the unique random leader ID for the process. If the
+      # Redis to the unique random server ID for the process. If the
       # leader ID in Redis is successfully updated, `@is_leader` is
       # set to true and `leader_duties()` is called to begin the
       # tasks/duties of the Sensu server leader.
       def become_the_leader
         unless @is_leader
-          @redis.set("leader", leader_id) do
+          @redis.set("leader", server_id) do
             @logger.info("i am now the leader")
             @is_leader = true
             leader_duties
@@ -1155,7 +1155,7 @@ module Sensu
       end
 
       # Updates the Sensu server leader lock timestamp. The current
-      # leader ID is retrieved from Redis and compared with the leader
+      # leader ID is retrieved from Redis and compared with the server
       # ID of the current process to determine if it is still the
       # Sensu server leader. If the current process is still the
       # leader, the leader lock timestamp is updated. If the current
@@ -1164,7 +1164,7 @@ module Sensu
       # more than one leader.
       def update_leader_lock
         @redis.get("leader") do |current_leader_id|
-          if current_leader_id == leader_id
+          if current_leader_id == server_id
             @redis.set("lock:leader", create_lock_timestamp) do
               @logger.debug("updated leader lock timestamp")
             end
@@ -1226,6 +1226,27 @@ module Sensu
         end
       end
 
+      # Set up the server info populator. A periodic timer is
+      # used to update the Sensu server info stored in Redis. The
+      # timer is stored in the timers hash under `:run`.
+      def setup_server_info_populator
+        @timers[:run] << EM::PeriodicTimer.new(10) do
+          cpu_user, cpu_system, _, _ = process_cpu_times
+          info = {
+            :id => server_id,
+            :hostname => system_hostname,
+            :address => system_address,
+            :cpu => {
+              :user => cpu_user,
+              :system => cpu_system
+            },
+            :is_leader => @is_leader
+          }
+          @redis.sadd("servers", server_id)
+          @redis.set("server:#{server_id}:info", Sensu::JSON.dump(info))
+        end
+      end
+
       # Unsubscribe from transport subscriptions (all of them). This
       # method is called when there are issues with connectivity, or
       # the process is stopping.
@@ -1258,6 +1279,7 @@ module Sensu
         setup_keepalives
         setup_results
         setup_leader_monitor
+        setup_server_info_populator
         @state = :running
       end
 
