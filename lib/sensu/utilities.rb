@@ -75,8 +75,11 @@ module Sensu
     # be returned.
     #
     # @return [Array] CPU times: utime, stime, cutime, cstime
-    def process_cpu_times
-      ::Process.times.to_a rescue [nil, nil, nil, nil]
+    def process_cpu_times(&callback)
+      determine_cpu_times = Proc.new do
+        ::Process.times.to_a rescue [nil, nil, nil, nil]
+      end
+      EM::defer(determine_cpu_times, callback)
     end
 
     # Generate a random universally unique identifier.

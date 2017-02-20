@@ -1226,24 +1226,25 @@ module Sensu
         end
       end
 
-      # Set up the server info populator. A periodic timer is
+      # Set up the server registry updater. A periodic timer is
       # used to update the Sensu server info stored in Redis. The
       # timer is stored in the timers hash under `:run`.
-      def setup_server_info_populator
+      def setup_server_registry_updater
         @timers[:run] << EM::PeriodicTimer.new(10) do
-          cpu_user, cpu_system, _, _ = process_cpu_times
-          info = {
-            :id => server_id,
-            :hostname => system_hostname,
-            :address => system_address,
-            :cpu => {
-              :user => cpu_user,
-              :system => cpu_system
-            },
-            :is_leader => @is_leader
-          }
-          @redis.sadd("servers", server_id)
-          @redis.set("server:#{server_id}", Sensu::JSON.dump(info))
+          process_cpu_times do |cpu_user, cpu_system, _, _|
+            info = {
+              :id => server_id,
+              :hostname => system_hostname,
+              :address => system_address,
+              :cpu => {
+                :user => cpu_user,
+                :system => cpu_system
+              },
+              :is_leader => @is_leader
+            }
+            @redis.sadd("servers", server_id)
+            @redis.set("server:#{server_id}", Sensu::JSON.dump(info))
+          end
         end
       end
 
@@ -1279,7 +1280,7 @@ module Sensu
         setup_keepalives
         setup_results
         setup_leader_monitor
-        setup_server_info_populator
+        setup_server_registry_updater
         @state = :running
       end
 
