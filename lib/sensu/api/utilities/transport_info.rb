@@ -9,6 +9,7 @@ module Sensu
         # @yield [Hash] passes Transport info to the callback/block.
         def transport_info
           info = {
+            :name => @settings[:transport][:name],
             :keepalives => {
               :messages => nil,
               :consumers => nil

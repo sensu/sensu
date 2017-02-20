@@ -1236,9 +1236,11 @@ module Sensu
               :id => server_id,
               :hostname => system_hostname,
               :address => system_address,
-              :cpu => {
-                :user => cpu_user,
-                :system => cpu_system
+              :metrics => {
+                :cpu => {
+                  :user => cpu_user,
+                  :system => cpu_system
+                }
               },
               :is_leader => @is_leader
             }
