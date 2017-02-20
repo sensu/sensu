@@ -183,8 +183,7 @@
       "subscribers": [
         "test"
       ],
-      "cron": "* * * * *",
-      "interval": 1
+      "cron": "* * * * *"
     }
   },
   "client": {
