@@ -1243,7 +1243,7 @@ module Sensu
             :is_leader => @is_leader
           }
           @redis.sadd("servers", server_id)
-          @redis.set("server:#{server_id}:info", Sensu::JSON.dump(info))
+          @redis.set("server:#{server_id}", Sensu::JSON.dump(info))
         end
       end
 
