@@ -837,9 +837,10 @@ module Sensu
       # be called after every check cron request for subsequent
       # requests. The timer is stored in the timer hash under
       # `:leader`, as check request publishing is a task for only the
-      # Sensu server leader, so they can be cancelled etc. The check
-      # cron request timer object in the timer hash under `:leader` is
-      # deleted after publishing the check request.
+      # Sensu server leader, so it can be cancelled etc. The check
+      # cron request timer object is removed from the timer hash after
+      # the request is published, to stop the timer hash from growing
+      # infinitely.
       #
       # @param check [Hash] definition.
       def schedule_check_cron_request(check)
@@ -882,7 +883,7 @@ module Sensu
 
       # Schedule check requests. This method iterates through defined
       # checks and uses the appropriate method of check request
-      # scheduling, either with the cron syntax or numeric interval.
+      # scheduling, either with the cron syntax or a numeric interval.
       #
       # @param checks [Array] of definitions.
       def schedule_checks(checks)
@@ -897,19 +898,14 @@ module Sensu
 
       # Set up the check request publisher. This method creates an
       # array of check definitions, that are not standalone checks,
-      # and do not have `:publish` set to `false`. The array of check
-      # definitions includes those from standard checks and extensions
-      # (with a defined execution `:interval`). The array is provided
-      # to the `schedule_check_executions()` method.
+      # and do not have `:publish` set to `false`. The array is
+      # provided to the `schedule_checks()` method.
       def setup_check_request_publisher
         @logger.debug("scheduling check requests")
-        standard_checks = @settings.checks.reject do |check|
+        checks = @settings.checks.reject do |check|
           check[:standalone] || check[:publish] == false
         end
-        extension_checks = @extensions.checks.reject do |check|
-          check[:standalone] || check[:publish] == false || !check[:interval].is_a?(Integer)
-        end
-        schedule_checks(standard_checks + extension_checks)
+        schedule_checks(checks)
       end
 
       # Publish a check result to the Transport for processing. A

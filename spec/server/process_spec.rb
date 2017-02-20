@@ -677,13 +677,13 @@ describe "Sensu::Server::Process" do
 
   it "can schedule check request publishing" do
     async_wrapper do
-      expected = ["tokens", "merger", "sensu_cpu_time", "source"]
+      expected = ["tokens", "merger", "source", "cron"]
       setup_transport do |transport|
         transport.subscribe(:fanout, "test") do |_, payload|
           check_request = Sensu::JSON.load(payload)
           expect(check_request[:issued]).to be_within(10).of(epoch)
           expect(expected.delete(check_request[:name])).not_to be_nil
-          async_done if expected.empty?
+          async_done if expected.empty? || expected == ["cron"]
         end
       end
       timer(0.5) do
