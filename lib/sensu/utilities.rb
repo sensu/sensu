@@ -70,6 +70,15 @@ module Sensu
       }.ip_address rescue nil
     end
 
+    # Retrieve the process CPU times. If the cpu times cannot be
+    # determined and an error is thrown, `[nil, nil, nil, nil]` will
+    # be returned.
+    #
+    # @return [Array] CPU times: utime, stime, cutime, cstime
+    def process_cpu_times
+      ::Process.times.to_a rescue [nil, nil, nil, nil]
+    end
+
     # Generate a random universally unique identifier.
     #
     # @return [String] random UUID.

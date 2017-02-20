@@ -75,6 +75,13 @@ describe "Sensu::Utilities" do
     expect(address).not_to be_empty
   end
 
+  it "can provide the process cpu times" do
+    cpu_times = process_cpu_times
+    expect(cpu_times).to be_kind_of(Array)
+    expect(cpu_times.size).to eq(4)
+    expect(cpu_times.compact).not_to be_empty
+  end
+
   it "can generate a random uuid" do
     uuid = random_uuid
     expect(uuid).to be_kind_of(String)
