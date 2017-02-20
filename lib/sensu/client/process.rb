@@ -265,6 +265,13 @@ module Sensu
         end
       end
 
+      # Create a check execution proc, used to execute standalone
+      # checks. Checks are not executed if subdued. The check
+      # `:issued` timestamp is set here, to mimic check requests
+      # issued by a Sensu server. Check definitions are duplicated
+      # before processing them, in case they are mutated.
+      #
+      # @param check [Hash] definition.
       def create_check_execution_proc(check)
         Proc.new do
           unless check_subdued?(check)
@@ -276,12 +283,22 @@ module Sensu
         end
       end
 
-      def create_check_cron_execution(check)
+      # Schedule a check execution, using the check cron. This method
+      # determines the time until the next cron time (in seconds) and
+      # creats an EventMachine timer for the execution. This method
+      # will be called after every check cron execution for subsequent
+      # executions. The timer is stored in the timers hash under
+      # `:run`, so it can be cancelled etc. The check cron execution
+      # timer object is removed from the timer hash after the
+      # execution, to stop the timer hash from growing infinitely.
+      #
+      # @param check [Hash] definition.
+      def schedule_check_cron_execution(check)
         cron_timer = determine_check_cron_timer(check)
         @timers[:run] << EM::Timer.new(cron_timer) do |timer|
           create_check_execution_proc(check).call
           @timers[:run].delete(timer)
-          create_check_cron_execution(check)
+          schedule_check_cron_execution(check)
         end
       end
 
@@ -297,7 +314,14 @@ module Sensu
         (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
       end
 
-      def create_check_executions(check)
+      # Schedule check executions, using the check interval. This
+      # method using an intial calculated execution splay EventMachine
+      # timer and an EventMachine periodic timer for subsequent check
+      # executions. The timers are stored in the timers hash under
+      # `:run`, so they can be cancelled etc.
+      #
+      # @param check [Hash] definition.
+      def schedule_check_interval_executions(check)
         execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
         interval = testing? ? 0.5 : check[:interval]
         @timers[:run] << EM::Timer.new(execution_splay) do
@@ -307,37 +331,36 @@ module Sensu
         end
       end
 
-      # Schedule check executions, using EventMachine periodic timers,
-      # using a calculated execution splay. The timers are stored in
-      # the timers hash under `:run`, so they can be cancelled etc.
-      # Check definitions are duplicated before processing them, in
-      # case they are mutated. A check will not be executed if it is
-      # subdued. The check `:issued` timestamp is set here, to mimic
-      # check requests issued by a Sensu server.
+      # Schedule check executions. This method iterates through defined
+      # checks and uses the appropriate method of check execution
+      # scheduling, either with the cron syntax or a numeric interval.
       #
       # @param checks [Array] of definitions.
       def schedule_checks(checks)
         checks.each do |check|
           if check[:cron]
-            create_check_cron_execution(check)
+            schedule_check_cron_execution(check)
           else
-            create_check_executions(check)
+            schedule_check_interval_executions(check)
           end
         end
       end
 
       # Setup standalone check executions, scheduling standard check
       # definition and check extension executions. Check definitions
-      # and extensions with `:standalone` set to `true`, have a
-      # integer `:interval`, and do not have `:publish` set to `false`
-      # will be scheduled by the Sensu client for execution.
+      # and extensions with `:standalone` set to `true`, do not have
+      # `:publish` set to `false`, and have a integer `:interval` or a
+      # string `cron` will be scheduled by the Sensu client for
+      # execution.
       def setup_standalone
         @logger.debug("scheduling standalone checks")
         standard_checks = @settings.checks.select do |check|
-          check[:standalone] && check[:interval].is_a?(Integer) && check[:publish] != false
+          check[:standalone] && check[:publish] != false &&
+            (check[:interval].is_a?(Integer) || check[:cron].is_a?(String))
         end
         extension_checks = @extensions.checks.select do |check|
-          check[:standalone] && check[:interval].is_a?(Integer) && check[:publish] != false
+          check[:standalone] && check[:publish] != false &&
+            (check[:interval].is_a?(Integer) || check[:cron].is_a?(String))
         end
         schedule_checks(standard_checks + extension_checks)
       end
