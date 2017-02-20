@@ -656,24 +656,24 @@ describe "Sensu::Server::Process" do
     end
   end
 
-  it "can calculate a check execution splay interval" do
+  it "can calculate a check request splay interval" do
     allow(Time).to receive(:now).and_return("1414213569.032")
     check = check_template
     check[:interval] = 60
-    expect(@server.calculate_check_execution_splay(check)).to eq(17.601)
+    expect(@server.calculate_check_request_splay(check)).to eq(17.601)
     check[:interval] = 3600
-    expect(@server.calculate_check_execution_splay(check)).to eq(3497.601)
+    expect(@server.calculate_check_request_splay(check)).to eq(3497.601)
   end
 
   it "can schedule check request publishing" do
     async_wrapper do
-      expected = ["tokens", "merger", "sensu_cpu_time", "source"]
+      expected = ["tokens", "merger", "source", "cron"]
       setup_transport do |transport|
         transport.subscribe(:fanout, "test") do |_, payload|
           check_request = Sensu::JSON.load(payload)
           expect(check_request[:issued]).to be_within(10).of(epoch)
           expect(expected.delete(check_request[:name])).not_to be_nil
-          async_done if expected.empty?
+          async_done if expected.empty? || expected == ["cron"]
         end
       end
       timer(0.5) do
@@ -681,6 +681,16 @@ describe "Sensu::Server::Process" do
           @server.setup_check_request_publisher
         end
       end
+    end
+  end
+
+  it "can schedule check request publishing using the cron syntax" do
+    async_wrapper do
+      check = check_template
+      check[:cron] = "* * * * *"
+      @server.schedule_checks([check])
+      expect(@server.instance_variable_get(:@timers)[:leader].size).to eq(1)
+      async_done
     end
   end
 

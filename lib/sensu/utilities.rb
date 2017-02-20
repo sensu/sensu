@@ -1,5 +1,8 @@
+gem "parse-cron", "0.1.4"
+
 require "securerandom"
 require "sensu/sandbox"
+require "parse-cron"
 
 module Sensu
   module Utilities
@@ -302,6 +305,16 @@ module Sensu
       else
         false
       end
+    end
+
+    # Determine the next check cron time.
+    #
+    # @param check [Hash] definition.
+    def determine_check_cron_time(check)
+      cron_parser = CronParser.new(check[:cron])
+      current_time = Time.now
+      next_cron_time = cron_parser.next(current_time)
+      next_cron_time - current_time
     end
   end
 end
