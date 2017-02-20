@@ -294,8 +294,8 @@ module Sensu
       #
       # @param check [Hash] definition.
       def schedule_check_cron_execution(check)
-        cron_timer = determine_check_cron_timer(check)
-        @timers[:run] << EM::Timer.new(cron_timer) do |timer|
+        cron_time = determine_check_cron_time(check)
+        @timers[:run] << EM::Timer.new(cron_time) do |timer|
           create_check_execution_proc(check).call
           @timers[:run].delete(timer)
           schedule_check_cron_execution(check)

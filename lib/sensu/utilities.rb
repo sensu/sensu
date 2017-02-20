@@ -314,7 +314,10 @@ module Sensu
       end
     end
 
-    def determine_check_cron_timer(check)
+    # Determine the next check cron time.
+    #
+    # @param check [Hash] definition.
+    def determine_check_cron_time(check)
       cron_parser = CronParser.new(check[:cron])
       current_time = Time.now
       next_cron_time = cron_parser.next(current_time)
