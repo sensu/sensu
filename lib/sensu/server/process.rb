@@ -1242,10 +1242,14 @@ module Sensu
                   :system => cpu_system
                 }
               },
-              :is_leader => @is_leader
+              :is_leader => @is_leader,
+              :timestamp => Time.now.to_i
             }
             @redis.sadd("servers", server_id)
-            @redis.set("server:#{server_id}", Sensu::JSON.dump(info))
+            server_key = "server:#{server_id}"
+            @redis.set(server_key, Sensu::JSON.dump(info)) do
+              @redis.expire(server_key, 30)
+            end
           end
         end
       end
