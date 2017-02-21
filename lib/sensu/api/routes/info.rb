@@ -12,17 +12,17 @@ module Sensu
 
         # GET /info
         def get_info
-          transport_info do |transport_info|
-            servers_info do |servers_info|
+          transport_info do |transport|
+            servers_info do |servers|
               @response_content = {
                 :sensu => {
                   :version => VERSION
                 },
-                :transport => transport_info,
+                :transport => transport,
                 :redis => {
                   :connected => @redis.connected?
                 },
-                :servers => servers_info
+                :servers => servers
               }
               respond
             end
