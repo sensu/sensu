@@ -50,11 +50,13 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(200)
         expect(body[:sensu][:version]).to eq(Sensu::VERSION)
         expect(body[:redis][:connected]).to be(true)
+        expect(body[:transport][:name]).to eq("rabbitmq")
         expect(body[:transport][:connected]).to be(true)
         expect(body[:transport][:keepalives][:messages]).to be_kind_of(Integer)
         expect(body[:transport][:keepalives][:consumers]).to be_kind_of(Integer)
         expect(body[:transport][:results][:messages]).to be_kind_of(Integer)
         expect(body[:transport][:results][:consumers]).to be_kind_of(Integer)
+        expect(body[:servers]).to be_kind_of(Array)
         async_done
       end
     end
