@@ -894,4 +894,25 @@ describe "Sensu::Server::Process" do
       end
     end
   end
+
+  it "can update the server registry" do
+    async_wrapper do
+      redis.flushdb do
+        @server.setup_connections do
+          @server.update_server_registry do
+            redis.smembers("servers") do |servers|
+              expect(servers).to include(@server.server_id)
+              redis.get("server:#{@server.server_id}") do |server_json|
+                expect(server_json).to be_kind_of(String)
+                server = Sensu::JSON.load(server_json)
+                expect(server[:id]).to eq(@server.server_id)
+                expect(server[:timestamp]).to be_within(5).of(Time.now.to_i)
+                async_done
+              end
+            end
+          end
+        end
+      end
+    end
+  end
 end

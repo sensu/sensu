@@ -1226,31 +1226,46 @@ module Sensu
         end
       end
 
+      # Update the Sensu server registry, stored in Redis. This method
+      # adds the local/current Sensu server info to the registry,
+      # including its id, hostname, address, if its the current
+      # leader, and some metrics. Sensu server registry entries expire
+      # in 30 seconds unless updated.
+      #
+      # @yield [success] passes success status to optional
+      #   callback/block.
+      # @yieldparam success [TrueClass,FalseClass] indicating if the
+      #   server registry update was a success.
+      def update_server_registry
+        process_cpu_times do |cpu_user, cpu_system, _, _|
+          info = {
+            :id => server_id,
+            :hostname => system_hostname,
+            :address => system_address,
+            :is_leader => @is_leader,
+            :metrics => {
+              :cpu => {
+                :user => cpu_user,
+                :system => cpu_system
+              }
+            },
+            :timestamp => Time.now.to_i
+          }
+          @redis.sadd("servers", server_id)
+          server_key = "server:#{server_id}"
+          @redis.set(server_key, Sensu::JSON.dump(info)) do
+            @redis.expire(server_key, 30)
+            yield(true) if block_given?
+          end
+        end
+      end
+
       # Set up the server registry updater. A periodic timer is
       # used to update the Sensu server info stored in Redis. The
       # timer is stored in the timers hash under `:run`.
       def setup_server_registry_updater
         @timers[:run] << EM::PeriodicTimer.new(10) do
-          process_cpu_times do |cpu_user, cpu_system, _, _|
-            info = {
-              :id => server_id,
-              :hostname => system_hostname,
-              :address => system_address,
-              :metrics => {
-                :cpu => {
-                  :user => cpu_user,
-                  :system => cpu_system
-                }
-              },
-              :is_leader => @is_leader,
-              :timestamp => Time.now.to_i
-            }
-            @redis.sadd("servers", server_id)
-            server_key = "server:#{server_id}"
-            @redis.set(server_key, Sensu::JSON.dump(info)) do
-              @redis.expire(server_key, 30)
-            end
-          end
+          update_server_registry
         end
       end
 
