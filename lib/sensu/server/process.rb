@@ -1237,6 +1237,7 @@ module Sensu
       # @yieldparam success [TrueClass,FalseClass] indicating if the
       #   server registry update was a success.
       def update_server_registry
+        @logger.debug("updating the server registry")
         process_cpu_times do |cpu_user, cpu_system, _, _|
           info = {
             :id => server_id,
@@ -1255,6 +1256,7 @@ module Sensu
           server_key = "server:#{server_id}"
           @redis.set(server_key, Sensu::JSON.dump(info)) do
             @redis.expire(server_key, 30)
+            @logger.info("updated server registry", :server => info)
             yield(true) if block_given?
           end
         end
@@ -1264,6 +1266,7 @@ module Sensu
       # used to update the Sensu server info stored in Redis. The
       # timer is stored in the timers hash under `:run`.
       def setup_server_registry_updater
+        update_server_registry
         @timers[:run] << EM::PeriodicTimer.new(10) do
           update_server_registry
         end
