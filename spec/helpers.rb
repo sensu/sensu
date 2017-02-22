@@ -56,7 +56,7 @@ module Helpers
   end
 
   def timer(delay, &callback)
-    periodic_timer = PeriodicTimer.new(delay) do
+    periodic_timer = Sensu::PeriodicTimer.new(delay) do
       callback.call
       periodic_timer.cancel
     end
