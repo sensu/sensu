@@ -845,7 +845,7 @@ module Sensu
       # @param check [Hash] definition.
       def schedule_check_cron_request(check)
         cron_time = determine_check_cron_time(check)
-        @timers[:leader] << EM::Timer.new(cron_time) do |timer|
+        @timers[:leader] << Timer.new(cron_time) do |timer|
           create_check_request_proc(check).call
           @timers[:leader].delete(timer)
           schedule_check_cron_request(check)
@@ -874,10 +874,10 @@ module Sensu
       def schedule_check_interval_requests(check)
         request_splay = testing? ? 0 : calculate_check_request_splay(check)
         interval = testing? ? 0.5 : check[:interval]
-        @timers[:leader] << EM::Timer.new(request_splay) do
+        @timers[:leader] << Timer.new(request_splay) do
           create_check_request = create_check_request_proc(check)
           create_check_request.call
-          @timers[:leader] << EM::PeriodicTimer.new(interval, &create_check_request)
+          @timers[:leader] << PeriodicTimer.new(interval, &create_check_request)
         end
       end
 
@@ -1037,7 +1037,7 @@ module Sensu
       # stored in the timers hash under `:leader`.
       def setup_client_monitor
         @logger.debug("monitoring client keepalives")
-        @timers[:leader] << EM::PeriodicTimer.new(30) do
+        @timers[:leader] << PeriodicTimer.new(30) do
           determine_stale_clients
         end
       end
@@ -1083,7 +1083,7 @@ module Sensu
       # is stored in the timers hash under `:leader`.
       def setup_check_result_monitor(interval = 30)
         @logger.debug("monitoring check results")
-        @timers[:leader] << EM::PeriodicTimer.new(interval) do
+        @timers[:leader] << PeriodicTimer.new(interval) do
           determine_stale_check_results(interval)
         end
       end
@@ -1214,10 +1214,10 @@ module Sensu
       # every 10 seconds. The timers are stored in the timers hash
       # under `:run`.
       def setup_leader_monitor
-        @timers[:run] << EM::Timer.new(2) do
+        @timers[:run] << Timer.new(2) do
           request_leader_election
         end
-        @timers[:run] << EM::PeriodicTimer.new(10) do
+        @timers[:run] << PeriodicTimer.new(10) do
           if @is_leader
             update_leader_lock
           else
@@ -1267,7 +1267,7 @@ module Sensu
       # timer is stored in the timers hash under `:run`.
       def setup_server_registry_updater
         update_server_registry
-        @timers[:run] << EM::PeriodicTimer.new(10) do
+        @timers[:run] << PeriodicTimer.new(10) do
           update_server_registry
         end
       end

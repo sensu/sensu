@@ -23,7 +23,7 @@ module Sensu
     # @param wait [Numeric] time to delay block calls.
     # @param block [Proc] to call that needs to return true.
     def retry_until_true(wait=0.5, &block)
-      EM::Timer.new(wait) do
+      Timer.new(wait) do
         unless block.call
           retry_until_true(wait, &block)
         end

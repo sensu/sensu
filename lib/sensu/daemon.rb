@@ -18,6 +18,7 @@ if RUBY_PLATFORM =~ /aix/ || RUBY_PLATFORM =~ /solaris/
   require "em/pure_ruby"
 end
 
+require "sensu/timers"
 require "sensu/json"
 require "sensu/logger"
 require "sensu/settings"
@@ -227,7 +228,7 @@ module Sensu
           @signals << signal
         end
       end
-      EM::PeriodicTimer.new(1) do
+      PeriodicTimer.new(1) do
         signal = @signals.shift
         if STOP_SIGNALS.include?(signal)
           @logger.warn("received signal", :signal => signal)
