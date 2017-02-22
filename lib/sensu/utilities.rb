@@ -43,7 +43,7 @@ module Sensu
         when hash_one[key].is_a?(Hash) && value.is_a?(Hash)
           deep_merge(hash_one[key], value)
         when hash_one[key].is_a?(Array) && value.is_a?(Array)
-          hash_one[key].concat(value).uniq
+          (hash_one[key] + value).uniq
         else
           value
         end
