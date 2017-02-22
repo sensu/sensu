@@ -69,7 +69,7 @@ module Sensu
       def setup_keepalives
         @logger.debug("scheduling keepalives")
         publish_keepalive
-        @timers[:run] << EM::PeriodicTimer.new(20) do
+        @timers[:run] << PeriodicTimer.new(20) do
           publish_keepalive
         end
       end
@@ -295,7 +295,7 @@ module Sensu
       # @param check [Hash] definition.
       def schedule_check_cron_execution(check)
         cron_time = determine_check_cron_time(check)
-        @timers[:run] << EM::Timer.new(cron_time) do |timer|
+        @timers[:run] << Timer.new(cron_time) do |timer|
           create_check_execution_proc(check).call
           @timers[:run].delete(timer)
           schedule_check_cron_execution(check)
@@ -324,10 +324,10 @@ module Sensu
       def schedule_check_interval_executions(check)
         execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
         interval = testing? ? 0.5 : check[:interval]
-        @timers[:run] << EM::Timer.new(execution_splay) do
+        @timers[:run] << Timer.new(execution_splay) do
           execute_check = create_check_execution_proc(check)
           execute_check.call
-          @timers[:run] << EM::PeriodicTimer.new(interval, &execute_check)
+          @timers[:run] << PeriodicTimer.new(interval, &execute_check)
         end
       end
 
