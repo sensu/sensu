@@ -32,7 +32,7 @@ describe "Sensu::Server::Handle" do
 
   it "can handle an event with a pipe handler error" do
     async_wrapper do
-      @server.handle_event(@handlers[:error], @event_data)
+      @server.handle_event(@handlers[:error], @event_data, @event_id)
       timer(1) do
         async_done
       end
