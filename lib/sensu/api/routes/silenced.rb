@@ -64,7 +64,8 @@ module Sensu
                 :check => data[:check],
                 :reason => data[:reason],
                 :creator => data[:creator],
-                :expire_on_resolve => data.fetch(:expire_on_resolve, false)
+                :expire_on_resolve => data.fetch(:expire_on_resolve, false),
+                :timestamp => Time.now.to_i
               }
               silenced_key = "silence:#{silenced_id}"
               @redis.set(silenced_key, Sensu::JSON.dump(silenced_info)) do
