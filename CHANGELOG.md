@@ -1,3 +1,40 @@
+## 0.28.0 - 2017-02-23
+
+### Features
+
+Added proxy check requests to improve Sensu's ability to monitor external
+resources that have an associated Sensu proxy client. Publish a check
+request to the configured `subscribers` (e.g.
+`["round-robin:snmp_pollers"]`) for every Sensu client in the registry
+that matches the configured client attributes in `client_attributes` on
+the configured `interval` (e.g. `60`). Client tokens in the check
+definition (e.g. `"check-snmp-if.rb -h :::address::: -i eth0"`) are
+substituted prior to publishing the check request. The check request check
+`source` is set to the client `name`.
+
+Schedule check requests and standalone executions with the Cron syntax.
+
+Added the Sensu server registry, containing information about the running
+Sensu servers. Information about the Sensu servers is now accessible via
+the Sensu API `/info` endpoint.
+
+Added two optional attributes to Sensu API POST `/request`, `"reason"` and
+`"creator"`, for additional context. The check request reason and creator
+are added to the check request payload under `"api_requested"` and become
+part of the check result.
+
+Added event IDs to event handler log events for additional context, making
+it easier to trace an event through the Sensu pipeline.
+
+### Fixes
+
+The Sensu interval timers, used for scheduling tasks, now account for
+drift. The check request and standalone execution scheduler timers are now
+more accurate.
+
+Fixed a bug in the Sensu `deep_merge()` method that was responsible for
+mutating arrays of the original provided objects.
+
 ## 0.27.1 - 2017-02-17
 
 ### Other
