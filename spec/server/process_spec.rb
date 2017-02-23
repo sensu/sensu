@@ -545,6 +545,7 @@ describe "Sensu::Server::Process" do
                     event = Sensu::JSON.load(event_json)
                     expect(event[:client][:address]).to eq("unknown")
                     expect(event[:client][:subscriptions]).to include("client:i-888888")
+                    expect(event[:client][:type]).to eq("proxy")
                     async_done
                   end
                 end
@@ -626,24 +627,63 @@ describe "Sensu::Server::Process" do
     end
   end
 
-  it "can calculate a check execution splay interval" do
+  it "can publish proxy check requests" do
+    async_wrapper do
+      setup_transport do |transport|
+        transport.subscribe(:fanout, "test") do |_, payload|
+          check_request = Sensu::JSON.load(payload)
+          expect(check_request[:name]).to eq("test")
+          expect(check_request[:command]).to eq("echo 127.0.0.1 && exit 1")
+          expect(check_request[:source]).to eq("i-424242")
+          expect(check_request[:issued]).to be_within(10).of(epoch)
+          async_done
+        end
+        redis.flushdb do
+          @server.setup_redis do
+            @server.setup_transport do
+              @server.setup_keepalives
+              timer(1) do
+                keepalive = client_template
+                keepalive[:timestamp] = epoch
+                transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+                timer(1) do
+                  check = check_template
+                  check[:command] = "echo :::address::: && exit 1"
+                  check[:subscribers] = ["test"]
+                  check[:proxy_requests] = {
+                    :client_attributes => {
+                      :name => "i-424242",
+                      :subscriptions => "eval: value.include?('test')"
+                    }
+                  }
+                  @server.publish_proxy_check_requests(check)
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can calculate a check request splay interval" do
     allow(Time).to receive(:now).and_return("1414213569.032")
     check = check_template
     check[:interval] = 60
-    expect(@server.calculate_check_execution_splay(check)).to eq(17.601)
+    expect(@server.calculate_check_request_splay(check)).to eq(17.601)
     check[:interval] = 3600
-    expect(@server.calculate_check_execution_splay(check)).to eq(3497.601)
+    expect(@server.calculate_check_request_splay(check)).to eq(3497.601)
   end
 
   it "can schedule check request publishing" do
     async_wrapper do
-      expected = ["tokens", "merger", "sensu_cpu_time", "source"]
+      expected = ["tokens", "merger", "source", "cron"]
       setup_transport do |transport|
         transport.subscribe(:fanout, "test") do |_, payload|
           check_request = Sensu::JSON.load(payload)
           expect(check_request[:issued]).to be_within(10).of(epoch)
           expect(expected.delete(check_request[:name])).not_to be_nil
-          async_done if expected.empty?
+          async_done if expected.empty? || expected == ["cron"]
         end
       end
       timer(0.5) do
@@ -651,6 +691,16 @@ describe "Sensu::Server::Process" do
           @server.setup_check_request_publisher
         end
       end
+    end
+  end
+
+  it "can schedule check request publishing using the cron syntax" do
+    async_wrapper do
+      check = check_template
+      check[:cron] = "* * * * *"
+      @server.schedule_checks([check])
+      expect(@server.instance_variable_get(:@timers)[:leader].size).to eq(1)
+      async_done
     end
   end
 
@@ -836,6 +886,27 @@ describe "Sensu::Server::Process" do
               server2.setup_leader_monitor
               timer(3) do
                 expect([server1.is_leader, server2.is_leader].uniq.size).to eq(2)
+                async_done
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can update the server registry" do
+    async_wrapper do
+      redis.flushdb do
+        @server.setup_connections do
+          @server.update_server_registry do
+            redis.smembers("servers") do |servers|
+              expect(servers).to include(@server.server_id)
+              redis.get("server:#{@server.server_id}") do |server_json|
+                expect(server_json).to be_kind_of(String)
+                server = Sensu::JSON.load(server_json)
+                expect(server[:id]).to eq(@server.server_id)
+                expect(server[:timestamp]).to be_within(5).of(Time.now.to_i)
                 async_done
               end
             end

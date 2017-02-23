@@ -4,7 +4,7 @@ gem "eventmachine", "1.2.2"
 
 gem "sensu-json", "2.0.1"
 gem "sensu-logger", "1.2.1"
-gem "sensu-settings", "9.8.0"
+gem "sensu-settings", "9.9.0"
 gem "sensu-extension", "1.5.1"
 gem "sensu-extensions", "1.7.1"
 gem "sensu-transport", "7.0.2"
@@ -18,6 +18,7 @@ if RUBY_PLATFORM =~ /aix/ || RUBY_PLATFORM =~ /solaris/
   require "em/pure_ruby"
 end
 
+require "sensu/timers"
 require "sensu/json"
 require "sensu/logger"
 require "sensu/settings"
@@ -227,7 +228,7 @@ module Sensu
           @signals << signal
         end
       end
-      EM::PeriodicTimer.new(1) do
+      PeriodicTimer.new(1) do
         signal = @signals.shift
         if STOP_SIGNALS.include?(signal)
           @logger.warn("received signal", :signal => signal)

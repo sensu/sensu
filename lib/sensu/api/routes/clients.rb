@@ -137,7 +137,7 @@ module Sensu
                         end
                       end
                     else
-                      EM::Timer.new(1) do
+                      Timer.new(1) do
                         delete_client.call(attempts)
                       end
                     end

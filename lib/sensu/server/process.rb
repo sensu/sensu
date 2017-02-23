@@ -258,7 +258,7 @@ module Sensu
           @in_progress[:events] += 1
           filter_event(handler, event) do |event|
             mutate_event(handler, event) do |event_data|
-              handle_event(handler, event_data)
+              handle_event(handler, event_data, event[:id])
             end
           end
         end
@@ -627,6 +627,7 @@ module Sensu
             end
           else
             client = create_client(client_key)
+            client[:type] = "proxy" if result[:check][:source]
             update_client_registry(client) do
               yield(client)
             end
@@ -766,57 +767,145 @@ module Sensu
         end
       end
 
-      # Calculate a check execution splay, taking into account the
-      # current time and the execution interval to ensure it's
+      # Create and publish one or more proxy check requests. This
+      # method iterates through the Sensu client registry for clients
+      # that matched provided proxy request client attributes. A proxy
+      # check request is created for each client in the registry that
+      # matches the proxy request client attributes. Proxy check
+      # requests have their client tokens subsituted by the associated
+      # client attributes values. The check requests are published to
+      # the Transport via `publish_check_request()`.
+      #
+      # @param check [Hash] definition.
+      def publish_proxy_check_requests(check)
+        client_attributes = check[:proxy_requests][:client_attributes]
+        unless client_attributes.empty?
+          @redis.smembers("clients") do |clients|
+            clients.each do |client_name|
+              @redis.get("client:#{client_name}") do |client_json|
+                unless client_json.nil?
+                  client = Sensu::JSON.load(client_json)
+                  if attributes_match?(client, client_attributes)
+                    @logger.debug("creating a proxy check request", {
+                      :client => client,
+                      :check => check
+                    })
+                    proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
+                    if unmatched_tokens.empty?
+                      proxy_check[:source] ||= client[:name]
+                      publish_check_request(proxy_check)
+                    else
+                      @logger.warn("failed to publish a proxy check request", {
+                        :reason => "unmatched client tokens",
+                        :unmatched_tokens => unmatched_tokens,
+                        :client => client,
+                        :check => check
+                      })
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+
+      # Create a check request proc, used to publish check requests to
+      # for a check to the Sensu transport. Check requests are not
+      # published if subdued. This method determines if a check uses
+      # proxy check requests and calls the appropriate check request
+      # publish method.
+      #
+      # @param check [Hash] definition.
+      def create_check_request_proc(check)
+        Proc.new do
+          unless check_subdued?(check)
+            if check[:proxy_requests]
+              publish_proxy_check_requests(check)
+            else
+              publish_check_request(check)
+            end
+          else
+            @logger.info("check request was subdued", :check => check)
+          end
+        end
+      end
+
+      # Schedule a check request, using the check cron. This method
+      # determines the time until the next cron time (in seconds) and
+      # creats an EventMachine timer for the request. This method will
+      # be called after every check cron request for subsequent
+      # requests. The timer is stored in the timer hash under
+      # `:leader`, as check request publishing is a task for only the
+      # Sensu server leader, so it can be cancelled etc. The check
+      # cron request timer object is removed from the timer hash after
+      # the request is published, to stop the timer hash from growing
+      # infinitely.
+      #
+      # @param check [Hash] definition.
+      def schedule_check_cron_request(check)
+        cron_time = determine_check_cron_time(check)
+        @timers[:leader] << Timer.new(cron_time) do |timer|
+          create_check_request_proc(check).call
+          @timers[:leader].delete(timer)
+          schedule_check_cron_request(check)
+        end
+      end
+
+      # Calculate a check request splay, taking into account the
+      # current time and the request interval to ensure it's
       # consistent between process restarts.
       #
       # @param check [Hash] definition.
-      def calculate_check_execution_splay(check)
+      def calculate_check_request_splay(check)
         splay_hash = Digest::MD5.digest(check[:name]).unpack('Q<').first
         current_time = (Time.now.to_f * 1000).to_i
         (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
       end
 
-      # Schedule check executions, using EventMachine periodic timers,
-      # using a calculated execution splay. The timers are stored in
-      # the timers hash under `:leader`, as check request publishing
-      # is a task for only the Sensu server leader, so they can be
-      # cancelled etc. Check requests are not published if subdued.
+      # Schedule check requests, using the check interval. This method
+      # using an intial calculated request splay EventMachine timer
+      # and an EventMachine periodic timer for subsequent check
+      # requests. The timers are stored in the timers hash under
+      # `:leader`, as check request publishing is a task for only the
+      # Sensu server leader, so they can be cancelled etc.
+      #
+      # @param check [Hash] definition.
+      def schedule_check_interval_requests(check)
+        request_splay = testing? ? 0 : calculate_check_request_splay(check)
+        interval = testing? ? 0.5 : check[:interval]
+        @timers[:leader] << Timer.new(request_splay) do
+          create_check_request = create_check_request_proc(check)
+          create_check_request.call
+          @timers[:leader] << PeriodicTimer.new(interval, &create_check_request)
+        end
+      end
+
+      # Schedule check requests. This method iterates through defined
+      # checks and uses the appropriate method of check request
+      # scheduling, either with the cron syntax or a numeric interval.
       #
       # @param checks [Array] of definitions.
-      def schedule_check_executions(checks)
+      def schedule_checks(checks)
         checks.each do |check|
-          create_check_request = Proc.new do
-            unless check_subdued?(check)
-              publish_check_request(check)
-            else
-              @logger.info("check request was subdued", :check => check)
-            end
-          end
-          execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
-          interval = testing? ? 0.5 : check[:interval]
-          @timers[:leader] << EM::Timer.new(execution_splay) do
-            create_check_request.call
-            @timers[:leader] << EM::PeriodicTimer.new(interval, &create_check_request)
+          if check[:cron]
+            schedule_check_cron_request(check)
+          else
+            schedule_check_interval_requests(check)
           end
         end
       end
 
       # Set up the check request publisher. This method creates an
       # array of check definitions, that are not standalone checks,
-      # and do not have `:publish` set to `false`. The array of check
-      # definitions includes those from standard checks and extensions
-      # (with a defined execution `:interval`). The array is provided
-      # to the `schedule_check_executions()` method.
+      # and do not have `:publish` set to `false`. The array is
+      # provided to the `schedule_checks()` method.
       def setup_check_request_publisher
         @logger.debug("scheduling check requests")
-        standard_checks = @settings.checks.reject do |check|
+        checks = @settings.checks.reject do |check|
           check[:standalone] || check[:publish] == false
         end
-        extension_checks = @extensions.checks.reject do |check|
-          check[:standalone] || check[:publish] == false || !check[:interval].is_a?(Integer)
-        end
-        schedule_check_executions(standard_checks + extension_checks)
+        schedule_checks(checks)
       end
 
       # Publish a check result to the Transport for processing. A
@@ -948,7 +1037,7 @@ module Sensu
       # stored in the timers hash under `:leader`.
       def setup_client_monitor
         @logger.debug("monitoring client keepalives")
-        @timers[:leader] << EM::PeriodicTimer.new(30) do
+        @timers[:leader] << PeriodicTimer.new(30) do
           determine_stale_clients
         end
       end
@@ -994,7 +1083,7 @@ module Sensu
       # is stored in the timers hash under `:leader`.
       def setup_check_result_monitor(interval = 30)
         @logger.debug("monitoring check results")
-        @timers[:leader] << EM::PeriodicTimer.new(interval) do
+        @timers[:leader] << PeriodicTimer.new(interval) do
           determine_stale_check_results(interval)
         end
       end
@@ -1018,24 +1107,24 @@ module Sensu
         (Time.now.to_f * 1000).to_i
       end
 
-      # Create/return the unique Sensu server leader ID for the
-      # current process.
+      # Create/return the unique Sensu server ID for the current
+      # process.
       #
       # @return [String]
-      def leader_id
-        @leader_id ||= random_uuid
+      def server_id
+        @server_id ||= random_uuid
       end
 
       # Become the Sensu server leader, responsible for specific
       # duties (`leader_duties()`). Unless the current process is
       # already the leader, this method sets the leader ID stored in
-      # Redis to the unique random leader ID for the process. If the
+      # Redis to the unique random server ID for the process. If the
       # leader ID in Redis is successfully updated, `@is_leader` is
       # set to true and `leader_duties()` is called to begin the
       # tasks/duties of the Sensu server leader.
       def become_the_leader
         unless @is_leader
-          @redis.set("leader", leader_id) do
+          @redis.set("leader", server_id) do
             @logger.info("i am now the leader")
             @is_leader = true
             leader_duties
@@ -1066,7 +1155,7 @@ module Sensu
       end
 
       # Updates the Sensu server leader lock timestamp. The current
-      # leader ID is retrieved from Redis and compared with the leader
+      # leader ID is retrieved from Redis and compared with the server
       # ID of the current process to determine if it is still the
       # Sensu server leader. If the current process is still the
       # leader, the leader lock timestamp is updated. If the current
@@ -1075,7 +1164,7 @@ module Sensu
       # more than one leader.
       def update_leader_lock
         @redis.get("leader") do |current_leader_id|
-          if current_leader_id == leader_id
+          if current_leader_id == server_id
             @redis.set("lock:leader", create_lock_timestamp) do
               @logger.debug("updated leader lock timestamp")
             end
@@ -1125,15 +1214,61 @@ module Sensu
       # every 10 seconds. The timers are stored in the timers hash
       # under `:run`.
       def setup_leader_monitor
-        @timers[:run] << EM::Timer.new(2) do
+        @timers[:run] << Timer.new(2) do
           request_leader_election
         end
-        @timers[:run] << EM::PeriodicTimer.new(10) do
+        @timers[:run] << PeriodicTimer.new(10) do
           if @is_leader
             update_leader_lock
           else
             request_leader_election
           end
+        end
+      end
+
+      # Update the Sensu server registry, stored in Redis. This method
+      # adds the local/current Sensu server info to the registry,
+      # including its id, hostname, address, if its the current
+      # leader, and some metrics. Sensu server registry entries expire
+      # in 30 seconds unless updated.
+      #
+      # @yield [success] passes success status to optional
+      #   callback/block.
+      # @yieldparam success [TrueClass,FalseClass] indicating if the
+      #   server registry update was a success.
+      def update_server_registry
+        @logger.debug("updating the server registry")
+        process_cpu_times do |cpu_user, cpu_system, _, _|
+          info = {
+            :id => server_id,
+            :hostname => system_hostname,
+            :address => system_address,
+            :is_leader => @is_leader,
+            :metrics => {
+              :cpu => {
+                :user => cpu_user,
+                :system => cpu_system
+              }
+            },
+            :timestamp => Time.now.to_i
+          }
+          @redis.sadd("servers", server_id)
+          server_key = "server:#{server_id}"
+          @redis.set(server_key, Sensu::JSON.dump(info)) do
+            @redis.expire(server_key, 30)
+            @logger.info("updated server registry", :server => info)
+            yield(true) if block_given?
+          end
+        end
+      end
+
+      # Set up the server registry updater. A periodic timer is
+      # used to update the Sensu server info stored in Redis. The
+      # timer is stored in the timers hash under `:run`.
+      def setup_server_registry_updater
+        update_server_registry
+        @timers[:run] << PeriodicTimer.new(10) do
+          update_server_registry
         end
       end
 
@@ -1169,6 +1304,7 @@ module Sensu
         setup_keepalives
         setup_results
         setup_leader_monitor
+        setup_server_registry_updater
         @state = :running
       end
 

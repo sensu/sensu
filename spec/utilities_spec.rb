@@ -63,6 +63,29 @@ describe "Sensu::Utilities" do
     expect(deep_merge(hash_one, hash_two)).to eq(expected)
   end
 
+  it "can determine the system hostname" do
+    hostname = system_hostname
+    expect(hostname).to be_kind_of(String)
+    expect(hostname).not_to be_empty
+  end
+
+  it "can determine the system address" do
+    address = system_address
+    expect(address).to be_kind_of(String)
+    expect(address).not_to be_empty
+  end
+
+  it "can provide the process cpu times" do
+    async_wrapper do
+      process_cpu_times do |cpu_times|
+        expect(cpu_times).to be_kind_of(Array)
+        expect(cpu_times.size).to eq(4)
+        expect(cpu_times.compact).not_to be_empty
+        async_done
+      end
+    end
+  end
+
   it "can generate a random uuid" do
     uuid = random_uuid
     expect(uuid).to be_kind_of(String)

@@ -18,7 +18,7 @@ module Sensu
       #
       # @param timeout [Numeric] in seconds.
       def set_timeout(timeout)
-        @timeout_timer = EM::Timer.new(timeout) do
+        @timeout_timer = Timer.new(timeout) do
           @timed_out = true
           close_connection
         end

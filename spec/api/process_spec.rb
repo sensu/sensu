@@ -50,11 +50,13 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(200)
         expect(body[:sensu][:version]).to eq(Sensu::VERSION)
         expect(body[:redis][:connected]).to be(true)
+        expect(body[:transport][:name]).to eq("rabbitmq")
         expect(body[:transport][:connected]).to be(true)
         expect(body[:transport][:keepalives][:messages]).to be_kind_of(Integer)
         expect(body[:transport][:keepalives][:consumers]).to be_kind_of(Integer)
         expect(body[:transport][:results][:messages]).to be_kind_of(Integer)
         expect(body[:transport][:results][:consumers]).to be_kind_of(Integer)
+        expect(body[:servers]).to be_kind_of(Array)
         async_done
       end
     end
@@ -575,6 +577,28 @@ describe "Sensu::API::Process" do
             "roundrobin:rspec",
             1
           ]
+        }
+      }
+      http_request(4567, "/request", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        async_done
+      end
+    end
+  end
+
+  it "can issue a check request with a reason and creator" do
+    api_test do
+      options = {
+        :body => {
+          :check => "tokens",
+          :subscribers => [
+            "test",
+            "roundrobin:rspec",
+            1
+          ],
+          :reason => "post deploy validation",
+          :creator => "rspec"
         }
       }
       http_request(4567, "/request", :post, options) do |http, body|
@@ -1270,6 +1294,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:reason]).to be_nil
           expect(silenced_info[:creator]).to be_nil
           expect(silenced_info[:expire_on_resolve]).to eq(false)
+          expect(silenced_info[:timestamp]).to be_within(10).of(Time.now.to_i)
           async_done
         end
       end
@@ -1293,6 +1318,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:reason]).to be_nil
           expect(silenced_info[:creator]).to be_nil
           expect(silenced_info[:expire_on_resolve]).to eq(false)
+          expect(silenced_info[:timestamp]).to be_within(10).of(Time.now.to_i)
           async_done
         end
       end
@@ -1321,6 +1347,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:reason]).to eq("testing")
           expect(silenced_info[:creator]).to eq("rspec")
           expect(silenced_info[:expire_on_resolve]).to eq(true)
+          expect(silenced_info[:timestamp]).to be_within(10).of(Time.now.to_i)
           redis.ttl("silence:test:test") do |ttl|
             expect(ttl).to be_within(10).of(3600)
             async_done
@@ -1496,6 +1523,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
           expect(silenced_info[:expire]).to be_within(10).of(3600)
+          expect(silenced_info[:timestamp]).to be_within(10).of(Time.now.to_i)
           http_request(4567, "/silenced/subscriptions/test") do |http, body|
             expect(http.response_header.status).to eq(200)
             expect(body).to be_kind_of(Array)

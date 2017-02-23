@@ -117,7 +117,7 @@ describe "Sensu::Client::Process" do
         :waldo => ":::name:::"
       }
     }
-    substituted, unmatched_tokens = @client.object_substitute_tokens(check)
+    substituted, unmatched_tokens = @client.object_substitute_tokens(check, @client.settings[:client])
     expect(substituted[:name]).to eq("test")
     expect(substituted[:command]).to eq("echo true")
     expect(substituted[:foo].first).to eq("foo")
@@ -277,6 +277,16 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can schedule standalone check execution using the cron syntax" do
+    async_wrapper do
+      check = check_template
+      check[:cron] = "* * * * *"
+      @client.schedule_checks([check])
+      expect(@client.instance_variable_get(:@timers)[:run].size).to eq(1)
+      async_done
+    end
+  end
+
   it "can subdue standalone check execution" do
     async_wrapper do
       result_queue do |payload|
@@ -313,9 +323,9 @@ describe "Sensu::Client::Process" do
     allow(Time).to receive(:now).and_return("1414213569.032")
     check = check_template
     check[:interval] = 60
-    expect(@client.calculate_execution_splay(check)).to eq(3.321)
+    expect(@client.calculate_check_execution_splay(check)).to eq(3.321)
     check[:interval] = 3600
-    expect(@client.calculate_execution_splay(check)).to eq(783.321)
+    expect(@client.calculate_check_execution_splay(check)).to eq(783.321)
   end
 
   it "can accept external result input via sockets" do

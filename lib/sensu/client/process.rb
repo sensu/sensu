@@ -69,7 +69,7 @@ module Sensu
       def setup_keepalives
         @logger.debug("scheduling keepalives")
         publish_keepalive
-        @timers[:run] << EM::PeriodicTimer.new(20) do
+        @timers[:run] << PeriodicTimer.new(20) do
           publish_keepalive
         end
       end
@@ -100,33 +100,6 @@ module Sensu
         end
       end
 
-      # Perform token substitution for an object. String values are
-      # passed to `substitute_tokens()`, arrays and sub-hashes are
-      # processed recursively. Numeric values are ignored.
-      #
-      # @param object [Object]
-      # @return	[Array] containing the updated object with substituted
-      #   values and an array of unmatched tokens.
-      def object_substitute_tokens(object)
-        unmatched_tokens = []
-        case object
-        when Hash
-          object.each do |key, value|
-            object[key], unmatched = object_substitute_tokens(value)
-            unmatched_tokens.push(*unmatched)
-          end
-        when Array
-          object.map! do |value|
-            value, unmatched = object_substitute_tokens(value)
-            unmatched_tokens.push(*unmatched)
-            value
-          end
-        when String
-          object, unmatched_tokens = substitute_tokens(object, @settings[:client])
-        end
-        [object, unmatched_tokens.uniq]
-      end
-
       # Execute a check command, capturing its output (STDOUT/ERR),
       # exit status code, execution duration, timestamp, and publish
       # the result. This method guards against multiple executions for
@@ -144,7 +117,7 @@ module Sensu
         @logger.debug("attempting to execute check command", :check => check)
         unless @checks_in_progress.include?(check[:name])
           @checks_in_progress << check[:name]
-          substituted, unmatched_tokens = object_substitute_tokens(check.dup)
+          substituted, unmatched_tokens = object_substitute_tokens(check.dup, @settings[:client])
           check = substituted.merge(:command => check[:command])
           started = Time.now.to_f
           check[:executed] = started.to_i
@@ -292,58 +265,102 @@ module Sensu
         end
       end
 
+      # Create a check execution proc, used to execute standalone
+      # checks. Checks are not executed if subdued. The check
+      # `:issued` timestamp is set here, to mimic check requests
+      # issued by a Sensu server. Check definitions are duplicated
+      # before processing them, in case they are mutated.
+      #
+      # @param check [Hash] definition.
+      def create_check_execution_proc(check)
+        Proc.new do
+          unless check_subdued?(check)
+            check[:issued] = Time.now.to_i
+            process_check_request(check.dup)
+          else
+            @logger.info("check execution was subdued", :check => check)
+          end
+        end
+      end
+
+      # Schedule a check execution, using the check cron. This method
+      # determines the time until the next cron time (in seconds) and
+      # creats an EventMachine timer for the execution. This method
+      # will be called after every check cron execution for subsequent
+      # executions. The timer is stored in the timers hash under
+      # `:run`, so it can be cancelled etc. The check cron execution
+      # timer object is removed from the timer hash after the
+      # execution, to stop the timer hash from growing infinitely.
+      #
+      # @param check [Hash] definition.
+      def schedule_check_cron_execution(check)
+        cron_time = determine_check_cron_time(check)
+        @timers[:run] << Timer.new(cron_time) do |timer|
+          create_check_execution_proc(check).call
+          @timers[:run].delete(timer)
+          schedule_check_cron_execution(check)
+        end
+      end
+
       # Calculate a check execution splay, taking into account the
       # current time and the execution interval to ensure it's
       # consistent between process restarts.
       #
       # @param check [Hash] definition.
-      def calculate_execution_splay(check)
+      def calculate_check_execution_splay(check)
         key = [@settings[:client][:name], check[:name]].join(":")
         splay_hash = Digest::MD5.digest(key).unpack("Q<").first
         current_time = (Time.now.to_f * 1000).to_i
         (splay_hash - current_time) % (check[:interval] * 1000) / 1000.0
       end
 
-      # Schedule check executions, using EventMachine periodic timers,
-      # using a calculated execution splay. The timers are stored in
-      # the timers hash under `:run`, so they can be cancelled etc.
-      # Check definitions are duplicated before processing them, in
-      # case they are mutated. A check will not be executed if it is
-      # subdued. The check `:issued` timestamp is set here, to mimic
-      # check requests issued by a Sensu server.
+      # Schedule check executions, using the check interval. This
+      # method using an intial calculated execution splay EventMachine
+      # timer and an EventMachine periodic timer for subsequent check
+      # executions. The timers are stored in the timers hash under
+      # `:run`, so they can be cancelled etc.
+      #
+      # @param check [Hash] definition.
+      def schedule_check_interval_executions(check)
+        execution_splay = testing? ? 0 : calculate_check_execution_splay(check)
+        interval = testing? ? 0.5 : check[:interval]
+        @timers[:run] << Timer.new(execution_splay) do
+          execute_check = create_check_execution_proc(check)
+          execute_check.call
+          @timers[:run] << PeriodicTimer.new(interval, &execute_check)
+        end
+      end
+
+      # Schedule check executions. This method iterates through defined
+      # checks and uses the appropriate method of check execution
+      # scheduling, either with the cron syntax or a numeric interval.
       #
       # @param checks [Array] of definitions.
       def schedule_checks(checks)
         checks.each do |check|
-          execute_check = Proc.new do
-            unless check_subdued?(check)
-              check[:issued] = Time.now.to_i
-              process_check_request(check.dup)
-            else
-              @logger.info("check execution was subdued", :check => check)
-            end
-          end
-          execution_splay = testing? ? 0 : calculate_execution_splay(check)
-          interval = testing? ? 0.5 : check[:interval]
-          @timers[:run] << EM::Timer.new(execution_splay) do
-            execute_check.call
-            @timers[:run] << EM::PeriodicTimer.new(interval, &execute_check)
+          if check[:cron]
+            schedule_check_cron_execution(check)
+          else
+            schedule_check_interval_executions(check)
           end
         end
       end
 
       # Setup standalone check executions, scheduling standard check
       # definition and check extension executions. Check definitions
-      # and extensions with `:standalone` set to `true`, have a
-      # integer `:interval`, and do not have `:publish` set to `false`
-      # will be scheduled by the Sensu client for execution.
+      # and extensions with `:standalone` set to `true`, do not have
+      # `:publish` set to `false`, and have a integer `:interval` or a
+      # string `cron` will be scheduled by the Sensu client for
+      # execution.
       def setup_standalone
         @logger.debug("scheduling standalone checks")
         standard_checks = @settings.checks.select do |check|
-          check[:standalone] && check[:interval].is_a?(Integer) && check[:publish] != false
+          check[:standalone] && check[:publish] != false &&
+            (check[:interval].is_a?(Integer) || check[:cron].is_a?(String))
         end
         extension_checks = @extensions.checks.select do |check|
-          check[:standalone] && check[:interval].is_a?(Integer) && check[:publish] != false
+          check[:standalone] && check[:publish] != false &&
+            (check[:interval].is_a?(Integer) || check[:cron].is_a?(String))
         end
         schedule_checks(standard_checks + extension_checks)
       end

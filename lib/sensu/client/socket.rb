@@ -106,7 +106,7 @@ module Sensu
       # Reset (or start) the connection watchdog.
       def reset_watchdog
         cancel_watchdog
-        @watchdog = EM::Timer.new(WATCHDOG_DELAY) do
+        @watchdog = Timer.new(WATCHDOG_DELAY) do
           @mode = MODE_REJECT
           @logger.warn("discarding data buffer for sender and closing connection", {
             :data => @data_buffer,

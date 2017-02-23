@@ -1,7 +1,14 @@
+gem "parse-cron", "0.1.4"
+
 require "securerandom"
+require "sensu/sandbox"
+require "parse-cron"
+require "socket"
 
 module Sensu
   module Utilities
+    EVAL_PREFIX = "eval:".freeze
+
     # Determine if Sensu is being tested, using the process name.
     # Sensu is being test if the process name is "rspec",
     #
@@ -16,7 +23,7 @@ module Sensu
     # @param wait [Numeric] time to delay block calls.
     # @param block [Proc] to call that needs to return true.
     def retry_until_true(wait=0.5, &block)
-      EM::Timer.new(wait) do
+      Timer.new(wait) do
         unless block.call
           retry_until_true(wait, &block)
         end
@@ -36,12 +43,43 @@ module Sensu
         when hash_one[key].is_a?(Hash) && value.is_a?(Hash)
           deep_merge(hash_one[key], value)
         when hash_one[key].is_a?(Array) && value.is_a?(Array)
-          hash_one[key].concat(value).uniq
+          (hash_one[key] + value).uniq
         else
           value
         end
       end
       merged
+    end
+
+    # Retrieve the system hostname. If the hostname cannot be
+    # determined and an error is thrown, `nil` will be returned.
+    #
+    # @return [String] system hostname.
+    def system_hostname
+      ::Socket.gethostname rescue nil
+    end
+
+    # Retrieve the system IP address. If a valid non-loopback
+    # IPv4 address cannot be found and an error is thrown,
+    # `nil` will be returned.
+    #
+    # @return [String] system ip address
+    def system_address
+      ::Socket.ip_address_list.find { |address|
+        address.ipv4? && !address.ipv4_loopback?
+      }.ip_address rescue nil
+    end
+
+    # Retrieve the process CPU times. If the cpu times cannot be
+    # determined and an error is thrown, `[nil, nil, nil, nil]` will
+    # be returned.
+    #
+    # @return [Array] CPU times: utime, stime, cutime, cstime
+    def process_cpu_times(&callback)
+      determine_cpu_times = Proc.new do
+        ::Process.times.to_a rescue [nil, nil, nil, nil]
+      end
+      EM::defer(determine_cpu_times, callback)
     end
 
     # Generate a random universally unique identifier.
@@ -124,6 +162,124 @@ module Sensu
       [substituted, unmatched_tokens]
     end
 
+    # Perform token substitution for an object. String values are
+    # passed to `substitute_tokens()`, arrays and sub-hashes are
+    # processed recursively. Numeric values are ignored.
+    #
+    # @param object [Object]
+    # @param attributes [Hash]
+    # @return	[Array] containing the updated object with substituted
+    #   values and an array of unmatched tokens.
+    def object_substitute_tokens(object, attributes)
+      unmatched_tokens = []
+      case object
+      when Hash
+        object.each do |key, value|
+          object[key], unmatched = object_substitute_tokens(value, attributes)
+          unmatched_tokens.push(*unmatched)
+        end
+      when Array
+        object.map! do |value|
+          value, unmatched = object_substitute_tokens(value, attributes)
+          unmatched_tokens.push(*unmatched)
+          value
+        end
+      when String
+        object, unmatched_tokens = substitute_tokens(object, attributes)
+      end
+      [object, unmatched_tokens.uniq]
+    end
+
+    # Process an eval attribute value, a Ruby `eval()` string
+    # containing an expression to be evaluated within the
+    # scope/context of a sandbox. This methods strips away the
+    # expression prefix, `eval:`, and substitues any dot notation
+    # tokens with the corresponding event data values. If there are
+    # unmatched tokens, this method will return `nil`.
+    #
+    # @object [Hash]
+    # @raw_eval_string [String]
+    # @return [String] processed eval string.
+    def process_eval_string(object, raw_eval_string)
+      eval_string = raw_eval_string.slice(5..-1)
+      eval_string, unmatched_tokens = substitute_tokens(eval_string, object)
+      if unmatched_tokens.empty?
+        eval_string
+      else
+        @logger.error("attribute value eval unmatched tokens", {
+          :object => object,
+          :raw_eval_string => raw_eval_string,
+          :unmatched_tokens => unmatched_tokens
+        })
+        nil
+      end
+    end
+
+    # Ruby `eval()` a string containing an expression, within the
+    # scope/context of a sandbox. This method is for attribute values
+    # starting with "eval:", with the Ruby expression following the
+    # colon. A single variable is provided to the expression, `value`,
+    # equal to the corresponding object attribute value. Dot notation
+    # tokens in the expression, e.g. `:::mysql.user:::`, are
+    # substituted with the corresponding object attribute values prior
+    # to evaluation. The expression is expected to return a boolean
+    # value.
+    #
+    # @param object [Hash]
+    # @param raw_eval_string [String] containing the Ruby
+    #   expression to be evaluated.
+    # @param raw_value [Object] of the corresponding object
+    #   attribute value.
+    # @return [TrueClass, FalseClass]
+    def eval_attribute_value(object, raw_eval_string, raw_value)
+      eval_string = process_eval_string(object, raw_eval_string)
+      unless eval_string.nil?
+        begin
+          value = Marshal.load(Marshal.dump(raw_value))
+          !!Sandbox.eval(eval_string, value)
+        rescue StandardError, SyntaxError => error
+          @logger.error("attribute value eval error", {
+            :object => object,
+            :raw_eval_string => raw_eval_string,
+            :raw_value => raw_value,
+            :error => error.to_s
+          })
+          false
+        end
+      else
+        false
+      end
+    end
+
+    # Determine if all attribute values match those of the
+    # corresponding object attributes. Attributes match if the value
+    # objects are equivalent, are both hashes with matching key/value
+    # pairs (recursive), have equal string values, or evaluate to true
+    # (Ruby eval).
+    #
+    # @param object [Hash]
+    # @param match_attributes [Object]
+    # @param object_attributes [Object]
+    # @return [TrueClass, FalseClass]
+    def attributes_match?(object, match_attributes, object_attributes=nil)
+      object_attributes ||= object
+      match_attributes.all? do |key, value_one|
+        value_two = object_attributes[key]
+        case
+        when value_one == value_two
+          true
+        when value_one.is_a?(Hash) && value_two.is_a?(Hash)
+          attributes_match?(object, value_one, value_two)
+        when value_one.to_s == value_two.to_s
+          true
+        when value_one.is_a?(String) && value_one.start_with?(EVAL_PREFIX)
+          eval_attribute_value(object, value_one, value_two)
+        else
+          false
+        end
+      end
+    end
+
     # Determine if the current time falls within a time window. The
     # provided condition must have a `:begin` and `:end` time, eg.
     # "11:30:00 PM", or `false` will be returned.
@@ -188,6 +344,16 @@ module Sensu
       else
         false
       end
+    end
+
+    # Determine the next check cron time.
+    #
+    # @param check [Hash] definition.
+    def determine_check_cron_time(check)
+      cron_parser = CronParser.new(check[:cron])
+      current_time = Time.now
+      next_cron_time = cron_parser.next(current_time)
+      next_cron_time - current_time
     end
   end
 end
