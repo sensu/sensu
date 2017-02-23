@@ -12,7 +12,9 @@ module Sensu
         def post_request
           rules = {
             :check => {:type => String, :nil_ok => false},
-            :subscribers => {:type => Array, :nil_ok => true}
+            :subscribers => {:type => Array, :nil_ok => true},
+            :reason => {:type => String, :nil_ok => true},
+            :creator => {:type => String, :nil_ok => true}
           }
           read_data(rules) do |data|
             if @settings[:checks][data[:check]]
@@ -20,6 +22,10 @@ module Sensu
               check[:name] = data[:check]
               check[:subscribers] ||= Array.new
               check[:subscribers] = data[:subscribers] if data[:subscribers]
+              check[:api_requested] = {
+                :reason => data[:reason],
+                :creator => data[:creator]
+              }
               publish_check_request(check)
               @response_content = {:issued => Time.now.to_i}
               accepted!

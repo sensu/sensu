@@ -587,6 +587,28 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can issue a check request with a reason and creator" do
+    api_test do
+      options = {
+        :body => {
+          :check => "tokens",
+          :subscribers => [
+            "test",
+            "roundrobin:rspec",
+            1
+          ],
+          :reason => "post deploy validation",
+          :creator => "rspec"
+        }
+      }
+      http_request(4567, "/request", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        async_done
+      end
+    end
+  end
+
   it "can not issue a check request with an invalid post body" do
     api_test do
       options = {
