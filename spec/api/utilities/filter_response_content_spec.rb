@@ -29,7 +29,6 @@ describe "Sensu::API::Utilities::FilterResponseContent" do
         }
       }
     }
-    merged_hash = deep_merge(hash_one, hash_two)
     expected = {
       :foo => "foo",
       :bar => 2,
@@ -40,6 +39,7 @@ describe "Sensu::API::Utilities::FilterResponseContent" do
         }
       }
     }
+    merged_hash = deep_merge(hash_one, hash_two)
     expect(merged_hash).to eq(expected)
   end
 
