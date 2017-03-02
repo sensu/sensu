@@ -67,7 +67,9 @@ module Sensu
         end
 
         # Filter the response content if filter parameters have been
-        # provided. This method mutates `@response_content`.
+        # provided. This method mutates `@response_content`, only
+        # retaining array items that match the attributes provided via
+        # filter parameters.
         def filter_response_content!
           if @response_content.is_a?(Array) && !@filter_params.empty?
             attributes = {}
