@@ -192,7 +192,7 @@ module Sensu
       # @param check [Hash]
       def process_check_request(check)
         @logger.debug("processing check", :check => check)
-        if @settings.check_exists?(check[:name])
+        if @settings.check_exists?(check[:name]) && !check.has_key?(:proxy_requests)
           check.merge!(@settings[:checks][check[:name]])
         end
         if check.has_key?(:command)

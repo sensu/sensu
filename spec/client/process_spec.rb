@@ -210,6 +210,60 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can receive a check request, apply local definition overrides, and execute the check" do
+    async_wrapper do
+      result_queue do |payload|
+        result = Sensu::JSON.load(payload)
+        expect(result[:client]).to eq("i-424242")
+        expect(result[:check][:output]).to eq("i-424242 true")
+        expect(result[:check][:status]).to eq(2)
+        async_done
+      end
+      timer(0.5) do
+        @client.setup_transport do
+          @client.setup_subscriptions
+          timer(1) do
+            setup_transport do |transport|
+              check = check_template
+              check[:name] = "tokens"
+              transport.publish(:fanout, "test", Sensu::JSON.dump(check))
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can receive a proxy check request, ignore local definition overrides, and execute the check" do
+    async_wrapper do
+      result_queue do |payload|
+        result = Sensu::JSON.load(payload)
+        expect(result[:client]).to eq("i-424242")
+        expect(result[:check][:output]).to eq("WARNING\n")
+        expect(result[:check][:status]).to eq(1)
+        async_done
+      end
+      timer(0.5) do
+        @client.setup_transport do
+          @client.setup_subscriptions
+          timer(1) do
+            setup_transport do |transport|
+              check = check_template
+              check[:name] = "tokens"
+              check[:proxy_requests] = {
+                :client_attributes => {
+                  :name => "i-424242"
+                }
+              }
+              check[:source] = "i-424242"
+              transport.publish(:fanout, "test", Sensu::JSON.dump(check))
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can receive a check request on a round-robin subscription" do
     async_wrapper do
       result_queue do |payload|
