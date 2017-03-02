@@ -1,7 +1,11 @@
+require "sensu/utilities"
+
 module Sensu
   module API
     module Utilities
       module FilterResponseContent
+        include Sensu::Utilities
+
         # Create a nested hash from a dot notation key and value.
         #
         # @param dot_notation [String]
@@ -19,53 +23,6 @@ module Sensu
           hash
         end
 
-        # Deep merge two hashes. Nested hashes are deep merged, arrays
-        # are concatenated and duplicate array items are removed.
-        #
-        # @param hash_one [Hash]
-        # @param hash_two [Hash]
-        # @return [Hash] deep merged hash.
-        def deep_merge(hash_one, hash_two)
-          merged = hash_one.dup
-          hash_two.each do |key, value|
-            merged[key] = case
-            when hash_one[key].is_a?(Hash) && value.is_a?(Hash)
-              deep_merge(hash_one[key], value)
-            when hash_one[key].is_a?(Array) && value.is_a?(Array)
-              (hash_one[key] + value).uniq
-            else
-              value
-            end
-          end
-          merged
-        end
-
-        # Determine if all attribute values match those of the
-        # corresponding object attributes. Attributes match if the
-        # value objects are equivalent, are both hashes with matching
-        # key/value pairs (recursive), or have equal string values.
-        #
-        # @param object [Hash]
-        # @param match_attributes [Object]
-        # @param object_attributes [Object]
-        # @return [TrueClass, FalseClass]
-        def attributes_match?(object, match_attributes, object_attributes=nil)
-          object_attributes ||= object
-          match_attributes.all? do |key, value_one|
-            value_two = object_attributes[key]
-            case
-            when value_one == value_two
-              true
-            when value_one.is_a?(Hash) && value_two.is_a?(Hash)
-              attributes_match?(object, value_one, value_two)
-            when value_one.to_s == value_two.to_s
-              true
-            else
-              false
-            end
-          end
-        end
-
         # Filter the response content if filter parameters have been
         # provided. This method mutates `@response_content`, only
         # retaining array items that match the attributes provided via
@@ -77,7 +34,7 @@ module Sensu
               attributes = deep_merge(attributes, dot_notation_to_hash(key, value))
             end
             @response_content.select! do |object|
-              attributes_match?(object, attributes)
+              attributes_match?(object, attributes, false)
             end
           end
         end
