@@ -1,4 +1,5 @@
 require "sensu/api/routes"
+require "sensu/api/utilities/filter_response_content"
 
 gem "em-http-server", "0.1.8"
 
@@ -9,6 +10,7 @@ module Sensu
   module API
     class HTTPHandler < EM::HttpServer::Server
       include Routes
+      include Utilities::FilterResponseContent
 
       attr_accessor :logger, :settings, :redis, :transport
 
@@ -61,13 +63,20 @@ module Sensu
 
       # Parse the HTTP request query string for parameters. This
       # method creates `@params`, a hash of parsed query parameters,
-      # used by the API routes.
+      # used by the API routes. This method also creates
+      # `@filter_params`, a hash of parsed response content filter
+      # parameters.
       def parse_parameters
         @params = {}
         if @http_query_string
           @http_query_string.split("&").each do |pair|
             key, value = pair.split("=")
             @params[key.to_sym] = value
+            if key.start_with?("filter.")
+              filter_param = key.sub(/^filter\./, "")
+              @filter_params ||= {}
+              @filter_params[filter_param] = value
+            end
           end
         end
       end
@@ -173,6 +182,9 @@ module Sensu
         @response.status = @response_status || 200
         @response.status_string = @response_status_string || "OK"
         if @response_content && @http_request_method != HEAD_METHOD
+          if @http_request_method == GET_METHOD && @filter_params
+            filter_response_content!
+          end
           @response.content_type "application/json"
           @response.content = Sensu::JSON.dump(@response_content)
         end
