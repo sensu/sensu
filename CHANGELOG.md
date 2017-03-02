@@ -1,3 +1,13 @@
+## 0.28.1 - 2017-03-1
+
+### Fixes
+
+Check requests with `proxy_requests` attributes are no longer
+overridden by local check definitions.
+
+Updated Oj (used by the sensu-json library) to the latest release (2.18.1)
+for Ruby 2.4 compatibility.
+
 ## 0.28.0 - 2017-02-23
 
 ### Features
