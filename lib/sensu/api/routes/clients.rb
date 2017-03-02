@@ -19,6 +19,7 @@ module Sensu
             client[:timestamp] = Time.now.to_i
             validator = Validators::Client.new
             if validator.valid?(client)
+              client[:subscriptions] = (client[:subscriptions] + ["client:#{client[:name]}"]).uniq
               @redis.set("client:#{client[:name]}", Sensu::JSON.dump(client)) do
                 @redis.sadd("clients", client[:name]) do
                   @response_content = {:name => client[:name]}

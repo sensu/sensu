@@ -476,7 +476,8 @@ describe "Sensu::API::Process" do
           expect(body).to be_kind_of(Hash)
           expect(body[:name]).to eq("i-888888")
           expect(body[:address]).to eq("8.8.8.8")
-          expect(body[:subscriptions]).to eq(["test"])
+          expect(body[:subscriptions]).to include("client:i-888888")
+          expect(body[:subscriptions]).to include("test")
           expect(body[:keepalives]).to be(false)
           expect(body[:timestamp]).to be_within(10).of(epoch)
           async_done
