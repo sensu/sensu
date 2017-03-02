@@ -175,9 +175,10 @@ module Sensu
       # Respond to an HTTP request. The routes set `@response_status`,
       # `@response_status_string`, and `@response_content`
       # appropriately. The HTTP response status defaults to `200` with
-      # the status string `OK`. The Sensu API only returns JSON
-      # response content, `@response_content` is assumed to be a Ruby
-      # object that can be serialized as JSON.
+      # the status string `OK`. If filter params were provided,
+      # `@response_content` is filtered (mutated). The Sensu API only
+      # returns JSON response content, `@response_content` is assumed
+      # to be a Ruby object that can be serialized as JSON.
       def respond
         @response.status = @response_status || 200
         @response.status_string = @response_status_string || "OK"
