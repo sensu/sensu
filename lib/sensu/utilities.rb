@@ -259,9 +259,10 @@ module Sensu
     #
     # @param object [Hash]
     # @param match_attributes [Object]
+    # @param support_eval [TrueClass, FalseClass]
     # @param object_attributes [Object]
     # @return [TrueClass, FalseClass]
-    def attributes_match?(object, match_attributes, object_attributes=nil)
+    def attributes_match?(object, match_attributes, support_eval=true, object_attributes=nil)
       object_attributes ||= object
       match_attributes.all? do |key, value_one|
         value_two = object_attributes[key]
@@ -269,10 +270,10 @@ module Sensu
         when value_one == value_two
           true
         when value_one.is_a?(Hash) && value_two.is_a?(Hash)
-          attributes_match?(object, value_one, value_two)
+          attributes_match?(object, value_one, support_eval, value_two)
         when value_one.to_s == value_two.to_s
           true
-        when value_one.is_a?(String) && value_one.start_with?(EVAL_PREFIX)
+        when value_one.is_a?(String) && value_one.start_with?(EVAL_PREFIX) && support_eval
           eval_attribute_value(object, value_one, value_two)
         else
           false
