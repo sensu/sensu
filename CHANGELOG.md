@@ -1,4 +1,11 @@
-## 0.28.1 - 2017-03-1
+## 0.28.2 - 2017-03-03
+
+### Fixes
+
+Clients created via /clients API endpoint now have a per-client
+subscription added automatically, ensuring they can be silenced.
+
+## 0.28.1 - 2017-03-01
 
 ### Fixes
 
