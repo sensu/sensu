@@ -178,6 +178,18 @@
         "test"
       ]
     },
+    "unpublished_proxy": {
+      "command": "/bin/true",
+      "publish": false,
+      "subscribers": [
+        "test"
+      ],
+      "proxy_requests": {
+        "client_attributes": {
+          "name": "i-424242"
+        }
+      }
+    },
     "cron": {
       "command": "/bin/true",
       "subscribers": [

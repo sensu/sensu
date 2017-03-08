@@ -621,6 +621,21 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can issue proxy check requests" do
+    api_test do
+      options = {
+        :body => {
+          :check => "unpublished_proxy"
+        }
+      }
+      http_request(4567, "/request", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        async_done
+      end
+    end
+  end
+
   it "can not issue a check request with an invalid post body" do
     api_test do
       options = {
