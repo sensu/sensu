@@ -26,7 +26,11 @@ module Sensu
                 :reason => data[:reason],
                 :creator => data[:creator]
               }
-              publish_check_request(check)
+              if check[:proxy_requests]
+                publish_proxy_check_requests(check)
+              else
+                publish_check_request(check)
+              end
               @response_content = {:issued => Time.now.to_i}
               accepted!
             else
