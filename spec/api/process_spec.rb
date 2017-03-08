@@ -239,6 +239,18 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can provide defined checks that match filter parameters" do
+    api_test do
+      http_request(4567, "/checks?filter.name=tokens&filter.interval=1") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        expect(body.size).to eq(1)
+        expect(body.first[:name]).to eq("tokens")
+        async_done
+      end
+    end
+  end
+
   it "can provide a specific check" do
     api_test do
       http_request(4567, "/checks/merger") do |http, body|
