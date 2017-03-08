@@ -39,7 +39,7 @@ module Sensu
           opts.on("-c", "--clean", "Clean up (remove) other installed versions of the plugin(s) and/or extension(s)") do
             options[:clean] = true
           end
-          opts.on("-x", "--proxy PROXY", "Install plugins via a PROXY url") do |proxy|
+          opts.on("-x", "--proxy PROXY", "Install Sensu plugins and extensions via a PROXY URL") do |proxy|
             options[:proxy] = proxy
           end
         end
