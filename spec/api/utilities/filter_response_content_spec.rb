@@ -8,57 +8,50 @@ describe "Sensu::API::Utilities::FilterResponseContent" do
     expect(hash).to eq({:rspec => {:foo => {:bar => 42}}})
   end
 
-  it "can deep merge two hashes" do
-    hash_one = {
-      :foo => "foo",
-      :bar => 1,
-      :baz => {
-        :foo => ["foo", "bar"],
-        :bar => {
-          :baz => "baz"
-        }
-      }
+  it "can filter response content" do
+    @filter_params = {
+      "foo.bar.baz" => 42,
+      "qux" => "rspec"
     }
-    hash_two = {
-      :foo => "foo",
-      :bar => 2,
-      :baz => {
-        :foo => ["foo", "baz"],
-        :bar => {
-          :baz => "bar"
-        }
-      }
-    }
-    expected = {
-      :foo => "foo",
-      :bar => 2,
-      :baz => {
-        :foo => ["foo", "bar", "baz"],
-        :bar => {
-          :baz => "bar"
-        }
-      }
-    }
-    merged_hash = deep_merge(hash_one, hash_two)
-    expect(merged_hash).to eq(expected)
-  end
-
-  it "can determine if attributes match an object" do
-    object = {
-      :foo => "foo",
-      :bar => {
-        :baz => "baz"
+    @response_content = [
+      {
+        :foo => {
+          :bar => {
+            :baz => 42
+          }
+        },
+        :qux => "rspec"
       },
-      :qux => 1
-    }
-    attributes = {
-      :foo => "foo",
-      :bar => {
-        :baz => "bar"
+      {
+        :foo => {
+          :bar => {
+            :baz => 42
+          }
+        },
+        :qux => "rspec",
+        :one => 1
+      },
+      {
+        :foo => {
+          :bar => {
+            :baz => 42
+          }
+        }
+      },
+      {
+        :qux => "rspec"
+      },
+      {
+        :foo => {
+          :bar => {
+            :baz => 42
+          }
+        },
+        :qux => "nope"
       }
-    }
-    expect(attributes_match?(object, attributes)).to be(false)
-    attributes[:bar][:baz] = "baz"
-    expect(attributes_match?(object, attributes)).to be(true)
+    ]
+    filter_response_content!
+    expect(@response_content).to be_kind_of(Array)
+    expect(@response_content.size).to eq(2)
   end
 end
