@@ -21,6 +21,7 @@ module Sensu
       # @result [Hash]
       def request_details
         return @request_details if @request_details
+        @request_start_time = Time.now.to_f
         _, remote_address = Socket.unpack_sockaddr_in(get_peername)
         @request_details = {
           :remote_address => remote_address,
@@ -42,12 +43,14 @@ module Sensu
         @logger.debug("api request", request_details)
       end
 
-      # Log the HTTP response.
+      # Log the HTTP response. This method calculates the
+      # request/response time.
       def log_response
         @logger.info("api response", {
           :request => request_details,
           :status => @response.status,
-          :content_length => @response.content.to_s.bytesize
+          :content_length => @response.content.to_s.bytesize,
+          :time => (Time.now.to_f - @request_start_time).round(3)
         })
       end
 
