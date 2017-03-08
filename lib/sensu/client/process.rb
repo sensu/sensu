@@ -115,8 +115,9 @@ module Sensu
       # @param check [Hash]
       def execute_check_command(check)
         @logger.debug("attempting to execute check command", :check => check)
-        unless @checks_in_progress.include?(check[:name])
-          @checks_in_progress << check[:name]
+        in_progress_key = [check[:source], check[:name]].compact.join(":")
+        unless @checks_in_progress.include?(in_progress_key)
+          @checks_in_progress << in_progress_key
           substituted, unmatched_tokens = object_substitute_tokens(check.dup, @settings[:client])
           check = substituted.merge(:command => check[:command])
           started = Time.now.to_f
@@ -127,14 +128,14 @@ module Sensu
               check[:output] = output
               check[:status] = status
               publish_check_result(check)
-              @checks_in_progress.delete(check[:name])
+              @checks_in_progress.delete(in_progress_key)
             end
           else
             check[:output] = "Unmatched client token(s): " + unmatched_tokens.join(", ")
             check[:status] = 3
             check[:handle] = false
             publish_check_result(check)
-            @checks_in_progress.delete(check[:name])
+            @checks_in_progress.delete(in_progress_key)
           end
         else
           @logger.warn("previous check command execution in progress", :check => check)
