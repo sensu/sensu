@@ -86,6 +86,13 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can create an in progress key for a check" do
+    check = check_template
+    expect(@client.check_in_progress_key(check)).to eq("test")
+    check[:source] = "rspec"
+    expect(@client.check_in_progress_key(check)).to eq("rspec:test")
+  end
+
   it "can execute a check command" do
     async_wrapper do
       result_queue do |payload|
