@@ -100,6 +100,16 @@ module Sensu
         end
       end
 
+      # Create an in progress key for a check, used to determine if an
+      # execution is still in progress. The key is composed of check
+      # `source` (if set) and `name`, joined by a colon.
+      #
+      # @param check [Hash]
+      # @return [String]
+      def check_in_progress_key(check)
+        [check[:source], check[:name]].compact.join(":")
+      end
+
       # Execute a check command, capturing its output (STDOUT/ERR),
       # exit status code, execution duration, timestamp, and publish
       # the result. This method guards against multiple executions for
@@ -115,8 +125,9 @@ module Sensu
       # @param check [Hash]
       def execute_check_command(check)
         @logger.debug("attempting to execute check command", :check => check)
-        unless @checks_in_progress.include?(check[:name])
-          @checks_in_progress << check[:name]
+        in_progress_key = check_in_progress_key(check)
+        unless @checks_in_progress.include?(in_progress_key)
+          @checks_in_progress << in_progress_key
           substituted, unmatched_tokens = object_substitute_tokens(check.dup, @settings[:client])
           check = substituted.merge(:command => check[:command])
           started = Time.now.to_f
@@ -127,14 +138,14 @@ module Sensu
               check[:output] = output
               check[:status] = status
               publish_check_result(check)
-              @checks_in_progress.delete(check[:name])
+              @checks_in_progress.delete(in_progress_key)
             end
           else
             check[:output] = "Unmatched client token(s): " + unmatched_tokens.join(", ")
             check[:status] = 3
             check[:handle] = false
             publish_check_result(check)
-            @checks_in_progress.delete(check[:name])
+            @checks_in_progress.delete(in_progress_key)
           end
         else
           @logger.warn("previous check command execution in progress", :check => check)
@@ -156,8 +167,9 @@ module Sensu
       # @param check [Hash]
       def run_check_extension(check)
         @logger.debug("attempting to run check extension", :check => check)
-        unless @checks_in_progress.include?(check[:name])
-          @checks_in_progress << check[:name]
+        in_progress_key = check_in_progress_key(check)
+        unless @checks_in_progress.include?(in_progress_key)
+          @checks_in_progress << in_progress_key
           started = Time.now.to_f
           check[:executed] = started.to_i
           extension_name = check[:extension] || check[:name]
@@ -167,7 +179,7 @@ module Sensu
             check[:output] = output
             check[:status] = status
             publish_check_result(check)
-            @checks_in_progress.delete(check[:name])
+            @checks_in_progress.delete(in_progress_key)
           end
         else
           @logger.warn("previous check extension execution in progress", :check => check)
