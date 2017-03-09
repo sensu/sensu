@@ -1,3 +1,11 @@
+## 0.28.3 - 2017-03-09
+
+### Fixes
+
+The Sensu client now includes check source when tracking in progress check
+executions. These changes are necessary to allow the Sensu client to
+execute on several concurrent proxy check requests.
+
 ## 0.28.2 - 2017-03-03
 
 ### Fixes
