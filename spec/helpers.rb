@@ -2,7 +2,6 @@ require "rspec"
 require "eventmachine"
 require "em-http-request"
 require "securerandom"
-require "sensu/timers"
 require "sensu/json"
 
 module Helpers
@@ -56,7 +55,7 @@ module Helpers
   end
 
   def timer(delay, &callback)
-    periodic_timer = PeriodicTimer.new(delay) do
+    periodic_timer = EM::PeriodicTimer.new(delay) do
       callback.call
       periodic_timer.cancel
     end

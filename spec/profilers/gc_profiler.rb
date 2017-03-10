@@ -12,7 +12,7 @@ module Sensu
       def post_init
         GC::Profiler.enable
         @reported = false
-        @timer = PeriodicTimer.new(60) do
+        @timer = EM::PeriodicTimer.new(60) do
           report
         end
       end
