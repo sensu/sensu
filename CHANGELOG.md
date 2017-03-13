@@ -1,3 +1,11 @@
+## 0.28.4 - 2017-03-10
+
+### Fixes
+
+In the interest of addressing a regression causing duplicate check
+execution requests, code added in 0.28.0 to account for task scheduling
+drift has been removed.
+
 ## 0.28.3 - 2017-03-09
 
 ### Fixes
