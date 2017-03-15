@@ -11,7 +11,9 @@ module Sensu
       include Mutate
       include Handle
 
-      attr_reader :is_leader, :in_progress
+      attr_reader :tasks, :in_progress
+
+      TASKS = ["check_request_publisher", "client_monitor", "check_result_monitor"]
 
       STANDARD_CHECK_TYPE = "standard".freeze
 
@@ -34,14 +36,17 @@ module Sensu
         end
       end
 
-      # Override Daemon initialize() to support Sensu server leader
-      # election and the handling event count.
+      # Override Daemon initialize() to support Sensu server tasks and
+      # the handling event count.
       #
       # @param options [Hash]
       def initialize(options={})
         super
-        @is_leader = false
-        @timers[:tasks] = Array.new
+        @tasks = []
+        @timers[:tasks] = {}
+        TASKS.each do |task|
+          @timers[:tasks][task.to_sym] = []
+        end
         @in_progress = Hash.new(0)
       end
 
@@ -836,18 +841,16 @@ module Sensu
       # creats an EventMachine timer for the request. This method will
       # be called after every check cron request for subsequent
       # requests. The timer is stored in the timer hash under
-      # `:leader`, as check request publishing is a task for only the
-      # Sensu server leader, so it can be cancelled etc. The check
-      # cron request timer object is removed from the timer hash after
-      # the request is published, to stop the timer hash from growing
-      # infinitely.
+      # `:tasks`, so it can be cancelled etc. The check cron request
+      # timer object is removed from the timer hash after the request
+      # is published, to stop the timer hash from growing infinitely.
       #
       # @param check [Hash] definition.
       def schedule_check_cron_request(check)
         cron_time = determine_check_cron_time(check)
-        @timers[:tasks] << EM::Timer.new(cron_time) do |timer|
+        @timers[:tasks][:check_request_publisher] << EM::Timer.new(cron_time) do |timer|
           create_check_request_proc(check).call
-          @timers[:tasks].delete(timer)
+          @timers[:tasks][:check_request_publisher].delete(timer)
           schedule_check_cron_request(check)
         end
       end
@@ -867,17 +870,16 @@ module Sensu
       # using an intial calculated request splay EventMachine timer
       # and an EventMachine periodic timer for subsequent check
       # requests. The timers are stored in the timers hash under
-      # `:leader`, as check request publishing is a task for only the
-      # Sensu server leader, so they can be cancelled etc.
+      # `:tasks`, so they can be cancelled etc.
       #
       # @param check [Hash] definition.
       def schedule_check_interval_requests(check)
         request_splay = testing? ? 0 : calculate_check_request_splay(check)
         interval = testing? ? 0.5 : check[:interval]
-        @timers[:tasks] << EM::Timer.new(request_splay) do
+        @timers[:tasks][:check_request_publisher] << EM::Timer.new(request_splay) do
           create_check_request = create_check_request_proc(check)
           create_check_request.call
-          @timers[:tasks] << EM::PeriodicTimer.new(interval, &create_check_request)
+          @timers[:tasks][:check_request_publisher] << EM::PeriodicTimer.new(interval, &create_check_request)
         end
       end
 
@@ -1034,10 +1036,10 @@ module Sensu
 
       # Set up the client monitor, a periodic timer to run
       # `determine_stale_clients()` every 30 seconds. The timer is
-      # stored in the timers hash under `:leader`.
+      # stored in the timers hash under `:tasks`.
       def setup_client_monitor
         @logger.debug("monitoring client keepalives")
-        @timers[:tasks] << EM::PeriodicTimer.new(30) do
+        @timers[:tasks][:client_monitor] << EM::PeriodicTimer.new(30) do
           determine_stale_clients
         end
       end
@@ -1080,26 +1082,16 @@ module Sensu
 
       # Set up the check result monitor, a periodic timer to run
       # `determine_stale_check_results()` every 30 seconds. The timer
-      # is stored in the timers hash under `:leader`.
+      # is stored in the timers hash under `:tasks`.
       def setup_check_result_monitor(interval = 30)
         @logger.debug("monitoring check results")
-        @timers[:tasks] << EM::PeriodicTimer.new(interval) do
+        @timers[:tasks][:check_result_monitor] << EM::PeriodicTimer.new(interval) do
           determine_stale_check_results(interval)
         end
       end
 
-      # Set up the leader duties, tasks only performed by a single
-      # Sensu server at a time. The duties include publishing check
-      # requests, monitoring for stale clients, and pruning check
-      # result aggregations.
-      def leader_duties
-        setup_check_request_publisher
-        setup_client_monitor
-        setup_check_result_monitor
-      end
-
       # Create a lock timestamp (integer), current time including
-      # milliseconds. This method is used by Sensu server leader
+      # milliseconds. This method is used by Sensu server task
       # election.
       #
       # @return [Integer]
@@ -1115,90 +1107,107 @@ module Sensu
         @server_id ||= random_uuid
       end
 
-      # Become the Sensu server leader, responsible for specific
-      # duties (`leader_duties()`). Unless the current process is
-      # already the leader, this method sets the leader ID stored in
-      # Redis to the unique random server ID for the process. If the
-      # leader ID in Redis is successfully updated, `@is_leader` is
-      # set to true and `leader_duties()` is called to begin the
-      # tasks/duties of the Sensu server leader.
-      def become_the_leader
-        unless @is_leader
-          @redis.set("leader", server_id) do
-            @logger.info("i am now the leader")
-            @is_leader = true
-            leader_duties
+      # Setup a Sensu server task. Unless the current process is
+      # already responsible for the task, this method sets the tasks
+      # server ID stored in Redis to the unique random server ID for
+      # the process. If the tasks server ID is successfully updated,
+      # the task is added to `@tasks` for tracking purposes and the
+      # task setup method is called.
+      #
+      # @param task [String]
+      def setup_task(task)
+        unless @tasks.include?(task)
+          @redis.set("task:#{task}:server", server_id) do
+            @logger.info("i am now responsible for a server task", :task => task)
+            @tasks << task
+            self.send("setup_#{task}".to_sym)
           end
         else
-          @logger.debug("i am already the leader")
+          @logger.debug("i am already responsible for a server task", :task => task)
         end
       end
 
-      # Resign as leader, if the current process is the Sensu server
-      # leader. This method cancels and clears the leader timers,
-      # those with references stored in the timers hash under
-      # `:leader`, and `@is_leader` is set to `false`. The leader ID
-      # and leader lock are not removed from Redis, as they will be
-      # updated when another server is elected to be the leader, this
-      # method does not need to handle Redis connectivity issues.
-      def resign_as_leader
-        if @is_leader
-          @logger.warn("resigning as leader")
-          @timers[:tasks].each do |timer|
+      # Relinquish a Sensu server task. This method cancels and
+      # clears the associated task timers, those with references
+      # stored in the timers hash under `:tasks`, and removes the task
+      # from `@tasks`. The task server ID and lock are not removed
+      # from Redis, as they will be updated when another server takes
+      # reponsibility for the task, this method does not need to
+      # handle Redis connectivity issues.
+      #
+      # @param task [String]
+      def relinquish_task(task)
+        if @tasks.include?(task)
+          @logger.warn("relinquishing server task", :task => task)
+          @timers[:tasks][task.to_sym].each do |timer|
             timer.cancel
           end
-          @timers[:tasks].clear
-          @is_leader = false
+          @timers[:tasks][task.to_sym].clear
+          @tasks.delete(task)
         else
-          @logger.debug("not currently the leader")
+          @logger.debug("not currently responsible for a server task", :task => task)
         end
       end
 
-      # Updates the Sensu server leader lock timestamp. The current
-      # leader ID is retrieved from Redis and compared with the server
-      # ID of the current process to determine if it is still the
-      # Sensu server leader. If the current process is still the
-      # leader, the leader lock timestamp is updated. If the current
-      # process is no longer the leader (regicide),
-      # `resign_as_leader()` is called for cleanup, so there is not
-      # more than one leader.
-      def update_leader_lock
-        @redis.get("leader") do |current_leader_id|
-          if current_leader_id == server_id
-            @redis.set("lock:leader", create_lock_timestamp) do
-              @logger.debug("updated leader lock timestamp")
+      # Relinquish all Sensu server tasks, if any.
+      def relinquish_tasks
+        unless @tasks.empty?
+          @tasks.each do |task|
+            relinquish_task(task)
+          end
+        else
+          @logger.debug("not currently responsible for a server task")
+        end
+      end
+
+      # Updates a Sensu server task lock timestamp. The current task
+      # server ID is retrieved from Redis and compared with the server
+      # ID of the current process to determine if it is still
+      # responsible for the task. If the current process is still
+      # responsible, the task lock timestamp is updated. If the
+      # current process is no longer responsible, `relinquish_task()`
+      # is called for cleanup.
+      #
+      # @param task [String]
+      def update_task_lock(task)
+        @redis.get("task:#{task}:server") do |current_server_id|
+          if current_server_id == server_id
+            @redis.set("lock:task:#{task}", create_lock_timestamp) do
+              @logger.debug("updated task lock timestamp", :task => task)
             end
           else
-            @logger.warn("another sensu server has been elected as leader")
-            resign_as_leader
+            @logger.warn("another sensu server is responsible for the task", :task => task)
+            relinquish_task(task)
           end
         end
       end
 
-      # Request a leader election, a process to determine if the
-      # current process is the Sensu server leader, with its
-      # own/unique duties. A Redis key/value is used as a central
-      # lock, using the "SETNX" Redis command to set the key/value if
-      # it does not exist, using a timestamp for the value. If the
-      # current process was able to create the key/value, it is the
-      # leader, and must do the duties of the leader. If the current
-      # process was not able to create the key/value, but the current
-      # timestamp value is equal to or over 30 seconds ago, the
-      # "GETSET" Redis command is used to set a new timestamp and
-      # fetch the previous value to compare them, to determine if it
-      # was set by the current process. If the current process is able
-      # to set the timestamp value, it becomes the leader.
-      def request_leader_election
-        @redis.setnx("lock:leader", create_lock_timestamp) do |created|
+      # Request a Sensu server task election, a process to determine
+      # if the current process is to be responsible for the task. A
+      # Redis key/value is used as a central lock, using the "SETNX"
+      # Redis command to set the key/value if it does not exist, using
+      # a timestamp for the value. If the current process was able to
+      # create the key/value, it is elected, and is then responsible
+      # for the task. If the current process was not able to create
+      # the key/value, but the current timestamp value is equal to or
+      # over 30 seconds ago, the "GETSET" Redis command is used to set
+      # a new timestamp and fetch the previous value to compare them,
+      # to determine if it was set by the current process. If the
+      # current process is able to set the timestamp value, it is
+      # elected.
+      #
+      # @param task [String]
+      def request_task_election(task)
+        @redis.setnx("lock:task:#{task}", create_lock_timestamp) do |created|
           if created
-            become_the_leader
+            setup_task(task)
           else
-            @redis.get("lock:leader") do |current_lock_timestamp|
+            @redis.get("lock:task:#{task}") do |current_lock_timestamp|
               new_lock_timestamp = create_lock_timestamp
               if new_lock_timestamp - current_lock_timestamp.to_i >= 30000
-                @redis.getset("lock:leader", new_lock_timestamp) do |previous_lock_timestamp|
+                @redis.getset("lock:task:#{task}", new_lock_timestamp) do |previous_lock_timestamp|
                   if previous_lock_timestamp == current_lock_timestamp
-                    become_the_leader
+                    setup_task(task)
                   end
                 end
               end
@@ -1207,30 +1216,42 @@ module Sensu
         end
       end
 
-      # Set up the leader monitor. A one-time timer is used to run
-      # `request_leader_exection()` in 2 seconds. A periodic timer is
-      # used to update the leader lock timestamp if the current
-      # process is the leader, or to run `request_leader_election(),
-      # every 10 seconds. The timers are stored in the timers hash
-      # under `:run`.
-      def setup_leader_monitor
+      # Request Sensu server task elections. This method shuffles the
+      # tasks and introduces some randomized splay timers.
+      def request_task_elections
+        TASKS.shuffle.each do |task|
+          @timers[:run] << EM::Timer.new(rand * 10) do
+            request_task_election(task)
+          end
+        end
+      end
+
+      # Set up the Sensu server task monitor. A one-time timer is used
+      # to run `request_task_elections()` in 2 seconds. A periodic
+      # timer is used to update task locks if the current process is
+      # reponsible for them via `update_task_lock()` or request task
+      # elections when not, every 10 seconds. The timers are stored in
+      # the timers hash under `:run`.
+      def setup_task_monitor
         @timers[:run] << EM::Timer.new(2) do
-          request_leader_election
+          request_task_elections
         end
         @timers[:run] << EM::PeriodicTimer.new(10) do
-          if @is_leader
-            update_leader_lock
-          else
-            request_leader_election
+          TASKS.each do |task|
+            if @tasks.include?(task)
+              update_task_lock(task)
+            else
+              request_task_election(task)
+            end
           end
         end
       end
 
       # Update the Sensu server registry, stored in Redis. This method
       # adds the local/current Sensu server info to the registry,
-      # including its id, hostname, address, if its the current
-      # leader, and some metrics. Sensu server registry entries expire
-      # in 30 seconds unless updated.
+      # including its id, hostname, address, its server tasks, and
+      # some metrics. Sensu server registry entries expire in 30
+      # seconds unless updated.
       #
       # @yield [success] passes success status to optional
       #   callback/block.
@@ -1243,7 +1264,7 @@ module Sensu
             :id => server_id,
             :hostname => system_hostname,
             :address => system_address,
-            :is_leader => @is_leader,
+            :tasks => @tasks,
             :metrics => {
               :cpu => {
                 :user => cpu_user,
@@ -1297,13 +1318,13 @@ module Sensu
       end
 
       # Bootstrap the Sensu server process, setting up the keepalive
-      # and check result consumers, and attemping to become the leader
-      # to carry out its duties. This method sets the process/daemon
-      # `@state` to `:running`.
+      # and check result consumers, and attemping to carry out Sensu
+      # server tasks. This method sets the process/daemon `@state` to
+      # `:running`.
       def bootstrap
         setup_keepalives
         setup_results
-        setup_leader_monitor
+        setup_task_monitor
         setup_server_registry_updater
         @state = :running
       end
@@ -1323,8 +1344,8 @@ module Sensu
       # set to `:pausing`, to indicate that it's in progress. All run
       # timers are cancelled, and the references are cleared. The
       # Sensu server will unsubscribe from all transport
-      # subscriptions, resign as leader (if currently the leader),
-      # then set the process/daemon `@state` to `:paused`.
+      # subscriptions, relinquish any Sensu server tasks, then set the
+      # process/daemon `@state` to `:paused`.
       def pause
         unless @state == :pausing || @state == :paused
           @state = :pausing
@@ -1333,7 +1354,7 @@ module Sensu
           end
           @timers[:run].clear
           unsubscribe
-          resign_as_leader
+          relinquish_tasks
           @state = :paused
         end
       end

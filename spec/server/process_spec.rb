@@ -699,7 +699,7 @@ describe "Sensu::Server::Process" do
       check = check_template
       check[:cron] = "* * * * *"
       @server.schedule_checks([check])
-      expect(@server.instance_variable_get(:@timers)[:leader].size).to eq(1)
+      expect(@server.instance_variable_get(:@timers)[:tasks][:check_request_publisher].size).to eq(1)
       async_done
     end
   end
@@ -857,43 +857,43 @@ describe "Sensu::Server::Process" do
     end
   end
 
-  it "can be the leader and resign" do
-    async_wrapper do
-      @server.setup_connections do
-        redis.flushdb do
-          @server.request_leader_election
-          timer(1) do
-            expect(@server.is_leader).to be(true)
-            @server.resign_as_leader
-            expect(@server.is_leader).to be(false)
-            async_done
-          end
-        end
-      end
-    end
-  end
-
-  it "can be the only leader" do
-    async_wrapper do
-      server1 = @server.clone
-      server2 = @server.clone
-      server1.setup_connections do
-        server2.setup_connections do
-          redis.flushdb do
-            lock_timestamp = (Time.now.to_f * 1000).to_i - 60000
-            redis.set("lock:leader", lock_timestamp) do
-              server1.setup_leader_monitor
-              server2.setup_leader_monitor
-              timer(3) do
-                expect([server1.is_leader, server2.is_leader].uniq.size).to eq(2)
-                async_done
-              end
-            end
-          end
-        end
-      end
-    end
-  end
+#  it "can be the leader and resign" do
+#    async_wrapper do
+#      @server.setup_connections do
+#        redis.flushdb do
+#          @server.request_leader_election
+#          timer(1) do
+#            expect(@server.is_leader).to be(true)
+#            @server.resign_as_leader
+#            expect(@server.is_leader).to be(false)
+#            async_done
+#          end
+#        end
+#      end
+#    end
+#  end
+#
+#  it "can be the only leader" do
+#    async_wrapper do
+#      server1 = @server.clone
+#      server2 = @server.clone
+#      server1.setup_connections do
+#        server2.setup_connections do
+#          redis.flushdb do
+#            lock_timestamp = (Time.now.to_f * 1000).to_i - 60000
+#            redis.set("lock:leader", lock_timestamp) do
+#              server1.setup_leader_monitor
+#              server2.setup_leader_monitor
+#              timer(3) do
+#                expect([server1.is_leader, server2.is_leader].uniq.size).to eq(2)
+#                async_done
+#              end
+#            end
+#          end
+#        end
+#      end
+#    end
+#  end
 
   it "can update the server registry" do
     async_wrapper do
@@ -907,6 +907,7 @@ describe "Sensu::Server::Process" do
                 server = Sensu::JSON.load(server_json)
                 expect(server[:id]).to eq(@server.server_id)
                 expect(server[:timestamp]).to be_within(5).of(Time.now.to_i)
+                expect(server[:tasks]).to be_kind_of(Array)
                 async_done
               end
             end
