@@ -41,7 +41,7 @@ module Sensu
       def initialize(options={})
         super
         @is_leader = false
-        @timers[:leader] = Array.new
+        @timers[:tasks] = Array.new
         @in_progress = Hash.new(0)
       end
 
@@ -845,9 +845,9 @@ module Sensu
       # @param check [Hash] definition.
       def schedule_check_cron_request(check)
         cron_time = determine_check_cron_time(check)
-        @timers[:leader] << EM::Timer.new(cron_time) do |timer|
+        @timers[:tasks] << EM::Timer.new(cron_time) do |timer|
           create_check_request_proc(check).call
-          @timers[:leader].delete(timer)
+          @timers[:tasks].delete(timer)
           schedule_check_cron_request(check)
         end
       end
@@ -874,10 +874,10 @@ module Sensu
       def schedule_check_interval_requests(check)
         request_splay = testing? ? 0 : calculate_check_request_splay(check)
         interval = testing? ? 0.5 : check[:interval]
-        @timers[:leader] << EM::Timer.new(request_splay) do
+        @timers[:tasks] << EM::Timer.new(request_splay) do
           create_check_request = create_check_request_proc(check)
           create_check_request.call
-          @timers[:leader] << EM::PeriodicTimer.new(interval, &create_check_request)
+          @timers[:tasks] << EM::PeriodicTimer.new(interval, &create_check_request)
         end
       end
 
@@ -1037,7 +1037,7 @@ module Sensu
       # stored in the timers hash under `:leader`.
       def setup_client_monitor
         @logger.debug("monitoring client keepalives")
-        @timers[:leader] << EM::PeriodicTimer.new(30) do
+        @timers[:tasks] << EM::PeriodicTimer.new(30) do
           determine_stale_clients
         end
       end
@@ -1083,7 +1083,7 @@ module Sensu
       # is stored in the timers hash under `:leader`.
       def setup_check_result_monitor(interval = 30)
         @logger.debug("monitoring check results")
-        @timers[:leader] << EM::PeriodicTimer.new(interval) do
+        @timers[:tasks] << EM::PeriodicTimer.new(interval) do
           determine_stale_check_results(interval)
         end
       end
@@ -1144,10 +1144,10 @@ module Sensu
       def resign_as_leader
         if @is_leader
           @logger.warn("resigning as leader")
-          @timers[:leader].each do |timer|
+          @timers[:tasks].each do |timer|
             timer.cancel
           end
-          @timers[:leader].clear
+          @timers[:tasks].clear
           @is_leader = false
         else
           @logger.debug("not currently the leader")
