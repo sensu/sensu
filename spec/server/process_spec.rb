@@ -857,43 +857,45 @@ describe "Sensu::Server::Process" do
     end
   end
 
-#  it "can be the leader and resign" do
-#    async_wrapper do
-#      @server.setup_connections do
-#        redis.flushdb do
-#          @server.request_leader_election
-#          timer(1) do
-#            expect(@server.is_leader).to be(true)
-#            @server.resign_as_leader
-#            expect(@server.is_leader).to be(false)
-#            async_done
-#          end
-#        end
-#      end
-#    end
-#  end
-#
-#  it "can be the only leader" do
-#    async_wrapper do
-#      server1 = @server.clone
-#      server2 = @server.clone
-#      server1.setup_connections do
-#        server2.setup_connections do
-#          redis.flushdb do
-#            lock_timestamp = (Time.now.to_f * 1000).to_i - 60000
-#            redis.set("lock:leader", lock_timestamp) do
-#              server1.setup_leader_monitor
-#              server2.setup_leader_monitor
-#              timer(3) do
-#                expect([server1.is_leader, server2.is_leader].uniq.size).to eq(2)
-#                async_done
-#              end
-#            end
-#          end
-#        end
-#      end
-#    end
-#  end
+  it "can be responsible for all tasks and relinquish them" do
+    async_wrapper do
+      @server.setup_connections do
+        redis.flushdb do
+          expect(@server.tasks).to be_empty
+          @server.setup_task_elections(0)
+          timer(2) do
+            expect(@server.tasks).to eq(["check_request_publisher", "client_monitor", "check_result_monitor"])
+            @server.relinquish_tasks
+            expect(@server.tasks).to be_empty
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can be responsible for one or more tasks" do
+    async_wrapper do
+      server1 = Sensu::Server::Process.new(options)
+      server2 = Sensu::Server::Process.new(options)
+      server1.setup_connections do
+        server2.setup_connections do
+          redis.flushdb do
+            expect(server1.tasks).to be_empty
+            expect(server2.tasks).to be_empty
+            server1.setup_task_elections(1)
+            server2.setup_task_elections(1)
+            timer(2) do
+              expect(server1.tasks).not_to be_empty
+              expect(server2.tasks).not_to be_empty
+              expect(server1.tasks - server2.tasks).to eq(server1.tasks)
+              async_done
+            end
+          end
+        end
+      end
+    end
+  end
 
   it "can update the server registry" do
     async_wrapper do
