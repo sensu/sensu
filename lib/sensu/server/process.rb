@@ -1115,12 +1115,14 @@ module Sensu
       # task setup method is called.
       #
       # @param task [String]
+      # @yield callback/block called after setting up the task.
       def setup_task(task)
         unless @tasks.include?(task)
           @redis.set("task:#{task}:server", server_id) do
             @logger.info("i am now responsible for a server task", :task => task)
             @tasks << task
             self.send("setup_#{task}".to_sym)
+            yield if block_given?
           end
         else
           @logger.debug("i am already responsible for a server task", :task => task)
@@ -1182,6 +1184,20 @@ module Sensu
         end
       end
 
+      # Set up a Sensu server task lock updater. This method uses a
+      # periodic timer to update a task lock timestamp in Redis, every
+      # 10 seconds. If the current process fails to keep the lock
+      # timestamp updated for a task that it is responsible for,
+      # another Sensu server will claim responsibility. This method is
+      # called after task setup.
+      #
+      # @param task [String]
+      def setup_task_lock_updater(task)
+        @timers[:run] << EM::PeriodicTimer.new(10) do
+          update_task_lock(task)
+        end
+      end
+
       # Request a Sensu server task election, a process to determine
       # if the current process is to be responsible for the task. A
       # Redis key/value is used as a central lock, using the "SETNX"
@@ -1194,57 +1210,58 @@ module Sensu
       # a new timestamp and fetch the previous value to compare them,
       # to determine if it was set by the current process. If the
       # current process is able to set the timestamp value, it is
-      # elected.
+      # elected. If elected, the current process sets up the task and
+      # the associated task lock updater.
       #
       # @param task [String]
-      def request_task_election(task)
+      # @yield callback/block called either after being elected and
+      #   setting up the task, or after failing to be elected.
+      def request_task_election(task, &callback)
         @redis.setnx("lock:task:#{task}", create_lock_timestamp) do |created|
           if created
-            setup_task(task)
+            setup_task(task, &callback)
+            setup_task_lock_updater(task)
           else
             @redis.get("lock:task:#{task}") do |current_lock_timestamp|
               new_lock_timestamp = create_lock_timestamp
               if new_lock_timestamp - current_lock_timestamp.to_i >= 30000
                 @redis.getset("lock:task:#{task}", new_lock_timestamp) do |previous_lock_timestamp|
                   if previous_lock_timestamp == current_lock_timestamp
-                    setup_task(task)
+                    setup_task(task, &callback)
+                    setup_task_lock_updater(task)
                   end
                 end
+              else
+                yield if block_given?
               end
             end
           end
         end
       end
 
-      # Request Sensu server task elections. This method shuffles the
-      # tasks and introduces some randomized splay timers.
-      def request_task_elections
-        TASKS.shuffle.each do |task|
-          @timers[:run] << EM::Timer.new(rand * 10) do
-            request_task_election(task)
-          end
-        end
-      end
-
-      # Set up the Sensu server task monitor. A one-time timer is used
-      # to run `request_task_elections()` in 2 seconds. A periodic
-      # timer is used to update task locks if the current process is
-      # reponsible for them via `update_task_lock()` or request task
-      # elections when not, every 10 seconds. The timers are stored in
-      # the timers hash under `:run`.
-      def setup_task_monitor
-        @timers[:run] << EM::Timer.new(2) do
-          request_task_elections
-        end
-        @timers[:run] << EM::PeriodicTimer.new(10) do
-          TASKS.each do |task|
-            if @tasks.include?(task)
-              update_task_lock(task)
-            else
-              request_task_election(task)
+      # Request Sensu server task elections. The task list is ordered
+      # by prioity. This method works through the task list serially,
+      # increasing the election request delay as the current process
+      # becomes responsible for one or more tasks, this is to improve
+      # the initial distribution of tasks amongst Sensu servers.
+      #
+      # @param splay [Integer]
+      def setup_task_elections(splay=10)
+        tasks = TASKS.dup - @tasks
+        next_task = Proc.new do
+          task = tasks.shift
+          if task
+            delay = splay * @tasks.size
+            @timers[:run] << EM::Timer.new(delay) do
+              request_task_election(task, &next_task)
+            end
+          else
+            @timers[:run] << EM::Timer.new(10) do
+              setup_task_elections(splay)
             end
           end
         end
+        next_task.call
       end
 
       # Update the Sensu server registry, stored in Redis. This method
@@ -1324,7 +1341,7 @@ module Sensu
       def bootstrap
         setup_keepalives
         setup_results
-        setup_task_monitor
+        setup_task_elections
         setup_server_registry_updater
         @state = :running
       end
