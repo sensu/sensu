@@ -1096,7 +1096,7 @@ module Sensu
       #
       # @return [Integer]
       def create_lock_timestamp
-        (Time.now.to_f * 1000).to_i
+        (Time.now.to_f * 10000000).to_i
       end
 
       # Create/return the unique Sensu server ID for the current
@@ -1154,7 +1154,7 @@ module Sensu
       # Relinquish all Sensu server tasks, if any.
       def relinquish_tasks
         unless @tasks.empty?
-          @tasks.each do |task|
+          @tasks.dup.each do |task|
             relinquish_task(task)
           end
         else
@@ -1224,7 +1224,7 @@ module Sensu
           else
             @redis.get("lock:task:#{task}") do |current_lock_timestamp|
               new_lock_timestamp = create_lock_timestamp
-              if new_lock_timestamp - current_lock_timestamp.to_i >= 30000
+              if new_lock_timestamp - current_lock_timestamp.to_i >= 300000000
                 @redis.getset("lock:task:#{task}", new_lock_timestamp) do |previous_lock_timestamp|
                   if previous_lock_timestamp == current_lock_timestamp
                     setup_task(task, &callback)
