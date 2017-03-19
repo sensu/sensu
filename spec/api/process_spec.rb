@@ -44,6 +44,20 @@ describe "Sensu::API::Process" do
     expect(handler.integer_parameter("42\nabc")).to eq(nil)
   end
 
+  it "can provide the running configuration settings with redaction" do
+    api_test do
+      http_request(4567, "/settings") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body[:client][:name]).to eq("i-424242")
+        expect(body[:client][:service][:password]).to eq("REDACTED")
+        http_request(4567, "/settings?redacted=false") do |http, body|
+          expect(body[:client][:service][:password]).to eq("secret")
+          async_done
+        end
+      end
+    end
+  end
+
   it "can provide basic version and health information" do
     api_test do
       http_request(4567, "/info") do |http, body|
