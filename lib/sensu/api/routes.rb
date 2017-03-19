@@ -1,3 +1,4 @@
+require "sensu/api/routes/settings"
 require "sensu/api/routes/info"
 require "sensu/api/routes/health"
 require "sensu/api/routes/clients"
@@ -13,6 +14,7 @@ require "sensu/api/routes/silenced"
 module Sensu
   module API
     module Routes
+      include Settings
       include Info
       include Health
       include Clients
@@ -32,6 +34,7 @@ module Sensu
       OPTIONS_METHOD = "OPTIONS".freeze
 
       GET_ROUTES = [
+        [SETTINGS_URI, :get_settings],
         [INFO_URI, :get_info],
         [HEALTH_URI, :get_health],
         [CLIENTS_URI, :get_clients],
