@@ -16,7 +16,10 @@ module Sensu
             servers_info do |servers|
               @response_content = {
                 :sensu => {
-                  :version => VERSION
+                  :version => VERSION,
+                  :settings => {
+                    :hexdigest => @settings.hexdigest
+                  }
                 },
                 :transport => transport,
                 :redis => {

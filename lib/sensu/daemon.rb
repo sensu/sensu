@@ -4,7 +4,7 @@ gem "eventmachine", "1.2.2"
 
 gem "sensu-json", "2.1.0"
 gem "sensu-logger", "1.2.1"
-gem "sensu-settings", "9.9.0"
+gem "sensu-settings", "10.0.0"
 gem "sensu-extension", "1.5.1"
 gem "sensu-extensions", "1.7.1"
 gem "sensu-transport", "7.0.2"
@@ -142,6 +142,7 @@ module Sensu
         @logger.fatal("SENSU NOT RUNNING!")
         exit 2
       end
+      @settings.set_env!
     end
 
     # Load Sensu extensions and log any notices. Set the logger and

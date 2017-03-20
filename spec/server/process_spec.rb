@@ -908,8 +908,10 @@ describe "Sensu::Server::Process" do
                 expect(server_json).to be_kind_of(String)
                 server = Sensu::JSON.load(server_json)
                 expect(server[:id]).to eq(@server.server_id)
-                expect(server[:timestamp]).to be_within(5).of(Time.now.to_i)
                 expect(server[:tasks]).to be_kind_of(Array)
+                expect(server[:sensu][:version]).to eq(Sensu::VERSION)
+                expect(server[:sensu][:settings][:hexdigest]).to be_kind_of(String)
+                expect(server[:timestamp]).to be_within(5).of(Time.now.to_i)
                 async_done
               end
             end
