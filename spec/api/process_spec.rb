@@ -63,6 +63,7 @@ describe "Sensu::API::Process" do
       http_request(4567, "/info") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body[:sensu][:version]).to eq(Sensu::VERSION)
+        expect(body[:sensu][:settings][:hexdigest]).to be_kind_of(String)
         expect(body[:redis][:connected]).to be(true)
         expect(body[:transport][:name]).to eq("rabbitmq")
         expect(body[:transport][:connected]).to be(true)

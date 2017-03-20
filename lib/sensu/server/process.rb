@@ -1288,6 +1288,12 @@ module Sensu
                 :system => cpu_system
               }
             },
+            :sensu => {
+              :version => VERSION,
+              :settings => {
+                :hexdigest => @settings.hexdigest
+              }
+            },
             :timestamp => Time.now.to_i
           }
           @redis.sadd("servers", server_id)
