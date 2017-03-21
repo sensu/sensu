@@ -1,21 +1,11 @@
 sudo: false
 language: ruby
 rvm:
-  - 2.0.0
-  - 2.1.0
   - 2.2.0
-  - 2.2.3
   - 2.3.0
   - 2.4.0
-before_install:
-  - gem update --system
-  - gem --version
-  - gem install bundler --version 1.11.2
 services:
   - rabbitmq
   - redis
 env:
   - RACK_ENV=development
-notifications:
-  irc:
-    - "irc.freenode.net#sensu"
