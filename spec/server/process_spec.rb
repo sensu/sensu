@@ -204,6 +204,8 @@ describe "Sensu::Server::Process" do
   end
 
   it "can process results with flap detection" do
+    FileUtils.rm_rf("/tmp/sensu_event")
+    expect(File.exists?("/tmp/sensu_event")).to eq(false)
     async_wrapper do
       @server.setup_redis do
         redis.flushdb do
@@ -228,11 +230,16 @@ describe "Sensu::Server::Process" do
                     result[:check][:low_flap_threshold] = 5
                     result[:check][:high_flap_threshold] = 20
                     result[:check][:status] = 0
+                    result[:check][:handler] = "file"
                     @server.process_check_result(result)
                   end
                   timer(1) do
                     redis.hexists("events:i-424242", "test") do |exists|
                       expect(exists).to be(false)
+                      expect(File.exists?("/tmp/sensu_event")).to eq(true)
+                      event_file_json = IO.read("/tmp/sensu_event")
+                      event = Sensu::JSON.load(event_file_json)
+                      expect(event[:action]).to eq("resolve")
                       async_done
                     end
                   end
@@ -277,10 +284,10 @@ describe "Sensu::Server::Process" do
   end
 
   it "can expire silenced entries on event resolution" do
+    FileUtils.rm_rf("/tmp/sensu_event")
+    expect(File.exists?("/tmp/sensu_event")).to eq(false)
     async_wrapper do
       @server.setup_redis do
-        FileUtils.rm_rf("/tmp/sensu_event")
-        expect(File.exists?("/tmp/sensu_event")).to eq(false)
         redis.flushdb do
           redis.set("client:i-424242", Sensu::JSON.dump(client_template)) do
             silenced_info = {
