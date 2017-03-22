@@ -635,7 +635,7 @@ module Sensu
             end
           else
             @redis.get("client:#{client_key}:signature") do |signature|
-              if (signature.nil? || signature.empty?) || (signature == result[:signature])
+              if (signature.nil? || signature.empty?) || (result[:signature] == signature)
                 client = create_client(client_key)
                 client[:type] = "proxy" if result[:check][:source]
                 update_client_registry(client) do
