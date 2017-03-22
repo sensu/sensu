@@ -573,6 +573,26 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can delete a client and invalidate keepalives and check results until deleted" do
+    api_test do
+      http_request(4567, "/clients/i-424242?invalidate=true", :delete) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        async_done
+      end
+    end
+  end
+
+  it "can delete a client and invalidate keepalives and check results for an hour after deletion" do
+    api_test do
+      http_request(4567, "/clients/i-424242?invalidate=true&invalidate_expire=3600", :delete) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        async_done
+      end
+    end
+  end
+
   it "can provide a specific defined check" do
     api_test do
       http_request(4567, "/checks/tokens") do |http, body|

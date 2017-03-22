@@ -113,8 +113,13 @@ module Sensu
         # DELETE /clients/:client_name
         def delete_client
           client_name = parse_uri(CLIENT_URI).first
-          @redis.get("client:#{client_name}") do |client_json|
+          client_key = "client:#{client_name}"
+          signature_key = "#{client_key}:signature"
+          @redis.get(client_key) do |client_json|
             unless client_json.nil?
+              if @params[:invalidate]
+                @redis.set(signature_key, "invalidated")
+              end
               @redis.hgetall("events:#{client_name}") do |events|
                 events.each do |check_name, event_json|
                   resolve_event(event_json)
@@ -125,8 +130,13 @@ module Sensu
                     if events.empty? || attempts == 5
                       @logger.info("deleting client from registry", :client_name => client_name)
                       @redis.srem("clients", client_name) do
-                        @redis.del("client:#{client_name}")
-                        @redis.del("client:#{client_name}:signature")
+                        @redis.del(client_key)
+                        invalidate_expire = integer_parameter(@params[:invalidate_expire])
+                        if @params[:invalidate] && invalidate_expire
+                          @redis.expire(signature_key, invalidate_expire)
+                        else
+                          @redis.del(signature_key)
+                        end
                         @redis.del("events:#{client_name}")
                         @redis.smembers("result:#{client_name}") do |checks|
                           checks.each do |check_name|
