@@ -294,11 +294,9 @@ module Sensu
         end_time = Time.parse(condition[:end])
         if end_time < begin_time
           if Time.now < end_time
-            offset = begin_time.strftime("%:z")
-            begin_time = Time.new("12:00:00 AM #{offset}")
+            begin_time = Time.new(*begin_time.strftime("%Y %m %d 00 00 00 %:z").split("\s"))
           else
-            offset = end_time.strftime("%:z")
-            end_time = Time.new("11:59:59 PM #{offset}")
+            end_time = Time.new(*end_time.strftime("%Y %m %d 23 59 59 %:z").split("\s"))
           end
         end
         Time.now >= begin_time && Time.now <= end_time
