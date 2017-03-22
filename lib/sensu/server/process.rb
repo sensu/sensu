@@ -155,7 +155,7 @@ module Sensu
             if (signature.nil? || signature.empty?) && client[:signature]
               @redis.set(signature_key, client[:signature])
             end
-            if signature.nil? || signature.empty? || (client[:signature] == signature)
+            if signature.nil? || signature.empty? || client[:signature] == signature
               @redis.multi
               @redis.set(client_key, Sensu::JSON.dump(client))
               @redis.sadd("clients", client[:name])
@@ -635,7 +635,7 @@ module Sensu
             end
           else
             @redis.get("client:#{client_key}:signature") do |signature|
-              if (signature.nil? || signature.empty?) || (result[:signature] == signature)
+              if signature.nil? || signature.empty? || result[:signature] == signature
                 client = create_client(client_key)
                 client[:type] = "proxy" if result[:check][:source]
                 update_client_registry(client) do
