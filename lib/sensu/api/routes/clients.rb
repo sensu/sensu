@@ -117,9 +117,7 @@ module Sensu
           signature_key = "#{client_key}:signature"
           @redis.get(client_key) do |client_json|
             unless client_json.nil?
-              if @params[:invalidate]
-                @redis.set(signature_key, "invalidated")
-              end
+              @redis.set(signature_key, "invalidated") if @params[:invalidate]
               @redis.hgetall("events:#{client_name}") do |events|
                 events.each do |check_name, event_json|
                   resolve_event(event_json)
