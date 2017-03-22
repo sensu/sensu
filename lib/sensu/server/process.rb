@@ -605,7 +605,10 @@ module Sensu
       # `client_key` as the client name. Dynamically create client
       # data can be updated using the API (POST /clients/:client). If
       # a client does exist and it has a client signature, the check
-      # result must have a matching signature or it is discarded.
+      # result must have a matching signature or it is discarded. If
+      # the client does not exist, but a client signature exists, the
+      # check result must have a matching signature or it is
+      # discarded.
       #
       # @param result [Hash] data.
       # @yield [client] callback/block to be called with client data,
@@ -631,10 +634,20 @@ module Sensu
               yield(client)
             end
           else
-            client = create_client(client_key)
-            client[:type] = "proxy" if result[:check][:source]
-            update_client_registry(client) do
-              yield(client)
+            @redis.get("client:#{client_key}:signature") do |signature|
+              if (signature.nil? || signature.empty?) || (signature == result[:signature])
+                client = create_client(client_key)
+                client[:type] = "proxy" if result[:check][:source]
+                update_client_registry(client) do
+                  yield(client)
+                end
+              else
+                @logger.warn("invalid check result signature", {
+                  :result => result,
+                  :signature => signature
+                })
+                yield(nil)
+              end
             end
           end
         end
