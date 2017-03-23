@@ -15,7 +15,7 @@ module Sensu
         options[:config_file] = "/etc/sensu/config.json"
       end
       if Dir.exist?("/etc/sensu/conf.d")
-        options[:config_dirs] = "/etc/sensu/conf.d"
+        options[:config_dirs] = ["/etc/sensu/conf.d"]
       end
       optparse = OptionParser.new do |opts|
         opts.on("-h", "--help", "Display this message") do
