@@ -1,3 +1,10 @@
+## 0.28.5 - 2017-03-23
+
+### Fixes
+
+Fixed check `subdue` and filter `when` features when a time window spans
+over `00:00:00`, crossing the day boundary.
+
 ## 0.28.4 - 2017-03-10
 
 ### Fixes
