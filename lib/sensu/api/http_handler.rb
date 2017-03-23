@@ -357,10 +357,12 @@ module Sensu
       end
 
       # Route the HTTP request. OPTIONS HTTP requests will always
-      # return a `200` with no response content. The route regular
-      # expressions and associated route method calls are provided by
-      # `ROUTES`. If a route match is not found, this method responds
-      # with a `404` (Not Found) HTTP response.
+      # return a `200` with no response content. This method uses
+      # `determine_route_method()` to determine the symbolized route
+      # method to send/call. If a route method does not exist for the
+      # HTTP request method and URI, this method uses
+      # `allowed_http_methods?()` to determine if a 404 (Not Found) or
+      # 405 (Method Not Allowed) HTTP response should be used.
       def route_request
         if @http_request_method == OPTIONS_METHOD
           respond
