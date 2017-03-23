@@ -297,6 +297,14 @@ module Sensu
         respond
       end
 
+      # Respond to the HTTP request with a `405` (Method Not Allowed) response.
+      def method_not_allowed!(allowed_http_methods=[])
+        @response.headers["Allow"] = allowed_http_methods.join(", ")
+        @response_status = 405
+        @response_status_string = "Method Not Allowed"
+        respond
+      end
+
       # Respond to the HTTP request with a `412` (Precondition Failed)
       # response.
       def precondition_failed!
@@ -313,6 +321,41 @@ module Sensu
         respond
       end
 
+      # Determine the allowed HTTP methods for a route. The route
+      # regular expressions and associated route method calls are
+      # provided by `ROUTES`. This method returns an array of HTTP
+      # methods that have a route that matches the HTTP request URI.
+      #
+      # @return [Array]
+      def allowed_http_methods?
+        ROUTES.map { |http_method, routes|
+          match = routes.detect do |route|
+            @http_request_uri =~ route[0]
+          end
+          match ? http_method : nil
+        }.flatten.compact
+      end
+
+      # Determine the route method for the HTTP request method and
+      # URI. The route regular expressions and associated route method
+      # calls are provided by `ROUTES`. This method will return the
+      # first route method name (Ruby symbol) that has matching URI
+      # regular expression. If an HTTP method is not supported, or
+      # there is not a matching regular expression, `nil` will be
+      # returned.
+      #
+      # @return [Symbol]
+      def determine_route_method
+        if ROUTES.has_key?(@http_request_method)
+          route = ROUTES[@http_request_method].detect do |route|
+            @http_request_uri =~ route[0]
+          end
+          route ? route[1] : nil
+        else
+          nil
+        end
+      end
+
       # Route the HTTP request. OPTIONS HTTP requests will always
       # return a `200` with no response content. The route regular
       # expressions and associated route method calls are provided by
@@ -321,17 +364,18 @@ module Sensu
       def route_request
         if @http_request_method == OPTIONS_METHOD
           respond
-        elsif ROUTES.has_key?(@http_request_method)
-          route = ROUTES[@http_request_method].detect do |route|
-            @http_request_uri =~ route[0]
-          end
-          unless route.nil?
-            send(route[1])
-          else
-            not_found!
-          end
         else
-          not_found!
+          route_method = determine_route_method
+          if route_method
+            send(route_method)
+          else
+            allowed_http_methods = allowed_http_methods?
+            if allowed_http_methods.empty?
+              not_found!
+            else
+              method_not_allowed!(allowed_http_methods)
+            end
+          end
         end
       end
 
