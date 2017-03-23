@@ -6,10 +6,10 @@ describe "Sensu::CLI" do
   include Helpers
 
   it "can provide default configuration options" do
-    expect(File).to receive(:exist?) do |value|
+    expect(File).to receive(:exist?) do
       true
     end
-    expect(Dir).to receive(:exist?) do |value|
+    expect(Dir).to receive(:exist?) do
       true
     end
     options = Sensu::CLI.read
