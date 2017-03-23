@@ -58,6 +58,25 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can respond with a 404 when a route could not be found" do
+    api_test do
+      http_request(4567, "/missing") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        async_done
+      end
+    end
+  end
+
+  it "can respond with a 405 when a http method is not supported by a route" do
+    api_test do
+      http_request(4567, "/info", :put) do |http, body|
+        expect(http.response_header.status).to eq(405)
+        expect(http.response_header["Allow"]).to eq("GET, HEAD")
+        async_done
+      end
+    end
+  end
+
   it "can provide basic version and health information" do
     api_test do
       http_request(4567, "/info") do |http, body|
