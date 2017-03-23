@@ -6,12 +6,8 @@ describe "Sensu::CLI" do
   include Helpers
 
   it "can provide default configuration options" do
-    expect(File).to receive(:exist?) do
-      true
-    end
-    expect(Dir).to receive(:exist?) do
-      true
-    end
+    expect(File).to receive(:exist?) { true }
+    expect(Dir).to receive(:exist?) { true }
     options = Sensu::CLI.read
     expected = {
       :config_file => "/etc/sensu/config.json",
