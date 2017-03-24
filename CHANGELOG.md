@@ -4,17 +4,18 @@
 
 Sensu server tasks, replacing the Sensu server leader functionality,
 distributing certain server responsibilities amongst the running Sensu
-servers. Server tasks can only run on one Sensu server at a time. Sensu
-servers partake in an election process for tasks and failover.
+servers. A server task can only run on one Sensu server at a time. Sensu
+servers partake in an election process to become responsible for one or
+more tasks. A task can failover to another Sensu server.
 
 Sensu API response object filtering for any GET request. Filtering is done
 with one or more dot notation query parameters, beginning with `filter.`,
 to specify object attributes to filter by, e.g.
 `/events?filter.client.environment=production&filter.check.contact=ops`.
 
-Added API endpoint `/settings` to provided the APIs running configuration.
-The settings with sensitive values are redacted by default, unless the
-query parameter `redacted` is set to `false`, e.g.
+Added API endpoint GET `/settings` to provided the APIs running
+configuration. Sensitive setting values are redacted by default, unless
+the query parameter `redacted` is set to `false`, e.g.
 `/settings?redacted=false`.
 
 Added support for invalidating a Sensu client when deleting it via the
@@ -45,7 +46,7 @@ The Sensu API now logs response times.
 The Sensu API now returns a 405 (Method Not Allowed) when an API endpoint
 does not support a HTTP request method, e.g. `PUT`, and sets the HTTP
 header "Allow" to indicate which HTTP request methods are supported by the
-endpoint.
+requested endpoint.
 
 Added a built-in filter for check dependencies, `check_dependencies`,
 which implements the check dependency filtering logic in the Sensu Plugin
