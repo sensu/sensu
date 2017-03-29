@@ -11,6 +11,12 @@ module Sensu
     # @return [Hash] options
     def self.read(arguments=ARGV)
       options = {}
+      if File.exist?("/etc/sensu/config.json")
+        options[:config_file] = "/etc/sensu/config.json"
+      end
+      if Dir.exist?("/etc/sensu/conf.d")
+        options[:config_dirs] = ["/etc/sensu/conf.d"]
+      end
       optparse = OptionParser.new do |opts|
         opts.on("-h", "--help", "Display this message") do
           puts opts
@@ -20,10 +26,10 @@ module Sensu
           puts VERSION
           exit
         end
-        opts.on("-c", "--config FILE", "Sensu JSON config FILE") do |file|
+        opts.on("-c", "--config FILE", "Sensu JSON config FILE. Default: /etc/sensu/config.json (if exists)") do |file|
           options[:config_file] = file
         end
-        opts.on("-d", "--config_dir DIR[,DIR]", "DIR or comma-delimited DIR list for Sensu JSON config files") do |dir|
+        opts.on("-d", "--config_dir DIR[,DIR]", "DIR or comma-delimited DIR list for Sensu JSON config files. Default: /etc/sensu/conf.d (if exists)") do |dir|
           options[:config_dirs] = dir.split(",")
         end
         opts.on("--validate_config", "Validate the compiled configuration and exit") do

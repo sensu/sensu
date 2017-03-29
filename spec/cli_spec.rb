@@ -5,8 +5,15 @@ require "sensu/cli"
 describe "Sensu::CLI" do
   include Helpers
 
-  it "does not provide default configuration options" do
-    expect(Sensu::CLI.read).to eq(Hash.new)
+  it "can provide default configuration options" do
+    expect(File).to receive(:exist?) { true }
+    expect(Dir).to receive(:exist?) { true }
+    options = Sensu::CLI.read
+    expected = {
+      :config_file => "/etc/sensu/config.json",
+      :config_dirs => ["/etc/sensu/conf.d"]
+    }
+    expect(options).to eq(expected)
   end
 
   it "can parse command line arguments" do
@@ -36,10 +43,7 @@ describe "Sensu::CLI" do
       "-v",
       "-L", "warn"
     ])
-    expected = {
-      :log_level => :warn
-    }
-    expect(options).to eq(expected)
+    expect(options[:log_level]).to eq(:warn)
   end
 
   it "exits when an invalid log level is provided" do

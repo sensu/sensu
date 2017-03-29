@@ -1,3 +1,74 @@
+## 0.29.0 - TBD
+
+### Features
+
+Sensu server tasks, replacing the Sensu server leader functionality,
+distributing certain server responsibilities amongst the running Sensu
+servers. A server task can only run on one Sensu server at a time. Sensu
+servers partake in an election process to become responsible for one or
+more tasks. A task can failover to another Sensu server.
+
+Sensu API response object filtering for any GET request. Filtering is done
+with one or more dot notation query parameters, beginning with `filter.`,
+to specify object attributes to filter by, e.g.
+`/events?filter.client.environment=production&filter.check.contact=ops`.
+
+Added API endpoint GET `/settings` to provided the APIs running
+configuration. Sensitive setting values are redacted by default, unless
+the query parameter `redacted` is set to `false`, e.g.
+`/settings?redacted=false`.
+
+Added support for invalidating a Sensu client when deleting it via the
+Sensu API DELETE `/clients/:name` endpoint, disallowing further client
+keepalives and check results until the client is either successfully
+removed from the client registry or for a specified duration of time. To
+invalidate a Sensu client until it is deleted, the query parameter
+`invalidate` must be set to `true`, e.g.
+`/clients/app01.example.com?invalidate=true`. To invalidate the client for
+a certain amount of time (in seconds), the query parameter
+`invalidate_expire` must be set as well, e.g.
+`/clients/app01.example.com?invalidate=true&invalidate_expire=300`.
+
+Added a Sensu settings hexdigest, exposed via the Sensu API GET `/info`
+endpoint, providing a means to determine if a Sensu server's configuration
+differs from the rest.
+
+Added a proxy argument to `sensu-install`. To use a proxy for Sensu plugin
+and extension installation with `sensu-install`, use the `-x` or
+`--proxy` argument, e.g. `sensu-install -e statsd --proxy
+http://proxy.example.com:8080`.
+
+Added support for issuing proxy check requests via the Sensu API POST
+`/request` endpoint.
+
+The Sensu API now logs response times.
+
+The Sensu API now returns a 405 (Method Not Allowed) when an API endpoint
+does not support a HTTP request method, e.g. `PUT`, and sets the HTTP
+header "Allow" to indicate which HTTP request methods are supported by the
+requested endpoint.
+
+Added a built-in filter for check dependencies, `check_dependencies`,
+which implements the check dependency filtering logic in the Sensu Plugin
+library.
+
+Added default values for Sensu CLI options `config_file`
+(`"/etc/sensu/config.json"`) and `config_dirs` (`["/etc/sensu/conf.d"]`).
+These defaults are only applied when the associated file and/or directory
+exist.
+
+### Other
+
+Added a Rubocop configuration file and rake tasks for a slow introduction.
+
+### Fixes
+
+The built-in filter `occurrences` now supports `refresh` for flapping
+events (action `flapping`).
+
+Force the configured Redis port to be an integer, as some users make the
+mistake of using a string.
+
 ## 0.28.5 - 2017-03-23
 
 ### Fixes

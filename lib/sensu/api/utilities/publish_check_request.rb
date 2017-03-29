@@ -1,7 +1,11 @@
+require "sensu/utilities"
+
 module Sensu
   module API
     module Utilities
       module PublishCheckRequest
+        include Sensu::Utilities
+
         # Determine the Sensu Transport publish options for a
         # subscription. If a subscription begins with a Transport pipe
         # type, either "direct:" or "roundrobin:", the subscription uses
@@ -33,7 +37,10 @@ module Sensu
         #
         # @param check [Hash] definition.
         def publish_check_request(check)
-          payload = check.merge(:issued => Time.now.to_i)
+          payload = check.reject do |key, value|
+            [:subscribers, :interval].include?(key)
+          end
+          payload[:issued] = Time.now.to_i
           @logger.info("publishing check request", {
             :payload => payload,
             :subscribers => check[:subscribers]
@@ -47,6 +54,49 @@ module Sensu
                   :payload => payload,
                   :error => info[:error].to_s
                 })
+              end
+            end
+          end
+        end
+
+        # Create and publish one or more proxy check requests. This
+        # method iterates through the Sensu client registry for clients
+        # that matched provided proxy request client attributes. A proxy
+        # check request is created for each client in the registry that
+        # matches the proxy request client attributes. Proxy check
+        # requests have their client tokens subsituted by the associated
+        # client attributes values. The check requests are published to
+        # the Transport via `publish_check_request()`.
+        #
+        # @param check [Hash] definition.
+        def publish_proxy_check_requests(check)
+          client_attributes = check[:proxy_requests][:client_attributes]
+          unless client_attributes.empty?
+            @redis.smembers("clients") do |clients|
+              clients.each do |client_name|
+                @redis.get("client:#{client_name}") do |client_json|
+                  unless client_json.nil?
+                    client = Sensu::JSON.load(client_json)
+                    if attributes_match?(client, client_attributes)
+                      @logger.debug("creating a proxy check request", {
+                        :client => client,
+                        :check => check
+                      })
+                      proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
+                      if unmatched_tokens.empty?
+                        proxy_check[:source] ||= client[:name]
+                        publish_check_request(proxy_check)
+                      else
+                        @logger.warn("failed to publish a proxy check request", {
+                          :reason => "unmatched client tokens",
+                          :unmatched_tokens => unmatched_tokens,
+                          :client => client,
+                          :check => check
+                        })
+                      end
+                    end
+                  end
+                end
               end
             end
           end

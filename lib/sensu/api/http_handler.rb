@@ -1,4 +1,5 @@
 require "sensu/api/routes"
+require "sensu/api/utilities/filter_response_content"
 
 gem "em-http-server", "0.1.8"
 
@@ -9,6 +10,7 @@ module Sensu
   module API
     class HTTPHandler < EM::HttpServer::Server
       include Routes
+      include Utilities::FilterResponseContent
 
       attr_accessor :logger, :settings, :redis, :transport
 
@@ -19,6 +21,7 @@ module Sensu
       # @result [Hash]
       def request_details
         return @request_details if @request_details
+        @request_start_time = Time.now.to_f
         _, remote_address = Socket.unpack_sockaddr_in(get_peername)
         @request_details = {
           :remote_address => remote_address,
@@ -40,12 +43,14 @@ module Sensu
         @logger.debug("api request", request_details)
       end
 
-      # Log the HTTP response.
+      # Log the HTTP response. This method calculates the
+      # request/response time.
       def log_response
         @logger.info("api response", {
           :request => request_details,
           :status => @response.status,
-          :content_length => @response.content.to_s.bytesize
+          :content_length => @response.content.to_s.bytesize,
+          :time => (Time.now.to_f - @request_start_time).round(3)
         })
       end
 
@@ -61,13 +66,20 @@ module Sensu
 
       # Parse the HTTP request query string for parameters. This
       # method creates `@params`, a hash of parsed query parameters,
-      # used by the API routes.
+      # used by the API routes. This method also creates
+      # `@filter_params`, a hash of parsed response content filter
+      # parameters.
       def parse_parameters
         @params = {}
         if @http_query_string
           @http_query_string.split("&").each do |pair|
             key, value = pair.split("=")
             @params[key.to_sym] = value
+            if key.start_with?("filter.")
+              filter_param = key.sub(/^filter\./, "")
+              @filter_params ||= {}
+              @filter_params[filter_param] = value
+            end
           end
         end
       end
@@ -166,13 +178,17 @@ module Sensu
       # Respond to an HTTP request. The routes set `@response_status`,
       # `@response_status_string`, and `@response_content`
       # appropriately. The HTTP response status defaults to `200` with
-      # the status string `OK`. The Sensu API only returns JSON
-      # response content, `@response_content` is assumed to be a Ruby
-      # object that can be serialized as JSON.
+      # the status string `OK`. If filter params were provided,
+      # `@response_content` is filtered (mutated). The Sensu API only
+      # returns JSON response content, `@response_content` is assumed
+      # to be a Ruby object that can be serialized as JSON.
       def respond
         @response.status = @response_status || 200
         @response.status_string = @response_status_string || "OK"
         if @response_content && @http_request_method != HEAD_METHOD
+          if @http_request_method == GET_METHOD && @filter_params
+            filter_response_content!
+          end
           @response.content_type "application/json"
           @response.content = Sensu::JSON.dump(@response_content)
         end
@@ -281,6 +297,14 @@ module Sensu
         respond
       end
 
+      # Respond to the HTTP request with a `405` (Method Not Allowed) response.
+      def method_not_allowed!(allowed_http_methods=[])
+        @response.headers["Allow"] = allowed_http_methods.join(", ")
+        @response_status = 405
+        @response_status_string = "Method Not Allowed"
+        respond
+      end
+
       # Respond to the HTTP request with a `412` (Precondition Failed)
       # response.
       def precondition_failed!
@@ -297,25 +321,63 @@ module Sensu
         respond
       end
 
-      # Route the HTTP request. OPTIONS HTTP requests will always
-      # return a `200` with no response content. The route regular
-      # expressions and associated route method calls are provided by
-      # `ROUTES`. If a route match is not found, this method responds
-      # with a `404` (Not Found) HTTP response.
-      def route_request
-        if @http_request_method == OPTIONS_METHOD
-          respond
-        elsif ROUTES.has_key?(@http_request_method)
+      # Determine the allowed HTTP methods for a route. The route
+      # regular expressions and associated route method calls are
+      # provided by `ROUTES`. This method returns an array of HTTP
+      # methods that have a route that matches the HTTP request URI.
+      #
+      # @return [Array]
+      def allowed_http_methods?
+        ROUTES.map { |http_method, routes|
+          match = routes.detect do |route|
+            @http_request_uri =~ route[0]
+          end
+          match ? http_method : nil
+        }.flatten.compact
+      end
+
+      # Determine the route method for the HTTP request method and
+      # URI. The route regular expressions and associated route method
+      # calls are provided by `ROUTES`. This method will return the
+      # first route method name (Ruby symbol) that has matching URI
+      # regular expression. If an HTTP method is not supported, or
+      # there is not a matching regular expression, `nil` will be
+      # returned.
+      #
+      # @return [Symbol]
+      def determine_route_method
+        if ROUTES.has_key?(@http_request_method)
           route = ROUTES[@http_request_method].detect do |route|
             @http_request_uri =~ route[0]
           end
-          unless route.nil?
-            send(route[1])
-          else
-            not_found!
-          end
+          route ? route[1] : nil
         else
-          not_found!
+          nil
+        end
+      end
+
+      # Route the HTTP request. OPTIONS HTTP requests will always
+      # return a `200` with no response content. This method uses
+      # `determine_route_method()` to determine the symbolized route
+      # method to send/call. If a route method does not exist for the
+      # HTTP request method and URI, this method uses
+      # `allowed_http_methods?()` to determine if a 404 (Not Found) or
+      # 405 (Method Not Allowed) HTTP response should be used.
+      def route_request
+        if @http_request_method == OPTIONS_METHOD
+          respond
+        else
+          route_method = determine_route_method
+          if route_method
+            send(route_method)
+          else
+            allowed_http_methods = allowed_http_methods?
+            if allowed_http_methods.empty?
+              not_found!
+            else
+              method_not_allowed!(allowed_http_methods)
+            end
+          end
         end
       end
 

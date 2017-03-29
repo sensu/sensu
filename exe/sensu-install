@@ -10,7 +10,8 @@ module Sensu
           :verbose => false,
           :plugins => [],
           :extensions => [],
-          :clean => false
+          :clean => false,
+          :proxy => nil
         }
         optparse = OptionParser.new do |opts|
           opts.on("-h", "--help", "Display this message") do
@@ -37,6 +38,9 @@ module Sensu
           end
           opts.on("-c", "--clean", "Clean up (remove) other installed versions of the plugin(s) and/or extension(s)") do
             options[:clean] = true
+          end
+          opts.on("-x", "--proxy PROXY", "Install Sensu plugins and extensions via a PROXY URL") do |proxy|
+            options[:proxy] = proxy
           end
         end
         optparse.parse!(arguments)
@@ -70,6 +74,7 @@ module Sensu
         gem_command << " --no-ri --no-rdoc"
         gem_command << " --verbose" if options[:verbose]
         gem_command << " --source #{options[:source]}" if options[:source]
+        gem_command << " --http-proxy #{options[:proxy]}" if options[:proxy]
         log gem_command if options[:verbose]
         unless system(gem_command)
           log "failed to install Sensu gem '#{gem_name}'"

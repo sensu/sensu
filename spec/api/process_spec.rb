@@ -44,11 +44,45 @@ describe "Sensu::API::Process" do
     expect(handler.integer_parameter("42\nabc")).to eq(nil)
   end
 
+  it "can provide the running configuration settings with redaction" do
+    api_test do
+      http_request(4567, "/settings") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body[:client][:name]).to eq("i-424242")
+        expect(body[:client][:service][:password]).to eq("REDACTED")
+        http_request(4567, "/settings?redacted=false") do |http, body|
+          expect(body[:client][:service][:password]).to eq("secret")
+          async_done
+        end
+      end
+    end
+  end
+
+  it "can respond with a 404 when a route could not be found" do
+    api_test do
+      http_request(4567, "/missing") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        async_done
+      end
+    end
+  end
+
+  it "can respond with a 405 when a http method is not supported by a route" do
+    api_test do
+      http_request(4567, "/info", :put) do |http, body|
+        expect(http.response_header.status).to eq(405)
+        expect(http.response_header["Allow"]).to eq("GET, HEAD")
+        async_done
+      end
+    end
+  end
+
   it "can provide basic version and health information" do
     api_test do
       http_request(4567, "/info") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body[:sensu][:version]).to eq(Sensu::VERSION)
+        expect(body[:sensu][:settings][:hexdigest]).to be_kind_of(String)
         expect(body[:redis][:connected]).to be(true)
         expect(body[:transport][:name]).to eq("rabbitmq")
         expect(body[:transport][:connected]).to be(true)
@@ -234,6 +268,18 @@ describe "Sensu::API::Process" do
           check[:name] == "standalone"
         end
         expect(body).to_not contain(test_check)
+        async_done
+      end
+    end
+  end
+
+  it "can provide defined checks that match filter parameters" do
+    api_test do
+      http_request(4567, "/checks?filter.name=tokens&filter.interval=1") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        expect(body.size).to eq(1)
+        expect(body.first[:name]).to eq("tokens")
         async_done
       end
     end
@@ -546,6 +592,26 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can delete a client and invalidate keepalives and check results until deleted" do
+    api_test do
+      http_request(4567, "/clients/i-424242?invalidate=true", :delete) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        async_done
+      end
+    end
+  end
+
+  it "can delete a client and invalidate keepalives and check results for an hour after deletion" do
+    api_test do
+      http_request(4567, "/clients/i-424242?invalidate=true&invalidate_expire=3600", :delete) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        async_done
+      end
+    end
+  end
+
   it "can provide a specific defined check" do
     api_test do
       http_request(4567, "/checks/tokens") do |http, body|
@@ -600,6 +666,21 @@ describe "Sensu::API::Process" do
           ],
           :reason => "post deploy validation",
           :creator => "rspec"
+        }
+      }
+      http_request(4567, "/request", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        async_done
+      end
+    end
+  end
+
+  it "can issue proxy check requests" do
+    api_test do
+      options = {
+        :body => {
+          :check => "unpublished_proxy"
         }
       }
       http_request(4567, "/request", :post, options) do |http, body|
