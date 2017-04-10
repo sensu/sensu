@@ -44,7 +44,7 @@ module Sensu
       # state to `:running`.
       def start
         api = @settings[:api] || {}
-        bind = api[:bind] || "0.0.0.0"
+        bind = api[:bind] || "::"
         port = api[:port] || 4567
         start_http_server(bind, port)
         super
