@@ -1077,6 +1077,7 @@ module Sensu
                   client_name = result_key.split(":").first
                   keepalive_event_exists?(client_name) do |event_exists|
                     unless event_exists
+                      check[:interval] = 30
                       check[:output] = "Last check execution was "
                       check[:output] << "#{time_since_last_execution} seconds ago"
                       check[:status] = check[:ttl_status] || 1
