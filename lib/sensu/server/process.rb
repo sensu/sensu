@@ -434,11 +434,18 @@ module Sensu
       # @return [TrueClass, FalseClass]
       def check_flapping?(stored_event, check)
         if check.has_key?(:low_flap_threshold) && check.has_key?(:high_flap_threshold)
-          was_flapping = stored_event && stored_event[:action] == EVENT_FLAPPING_ACTION
-          if was_flapping
-            check[:total_state_change] > check[:low_flap_threshold]
+          if check[:low_flap_threshold].is_a?(Integer) && check[:high_flap_threshold].is_a?(Integer)
+            was_flapping = stored_event && stored_event[:action] == EVENT_FLAPPING_ACTION
+            if was_flapping
+              check[:total_state_change] > check[:low_flap_threshold]
+            else
+              check[:total_state_change] >= check[:high_flap_threshold]
+            end
           else
-            check[:total_state_change] >= check[:high_flap_threshold]
+            details = {:check => check}
+            details[:client] = stored_event[:client] if stored_event
+            @logger.error("invalid check flap thresholds", details)
+            false
           end
         else
           false
