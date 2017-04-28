@@ -442,9 +442,9 @@ module Sensu
               check[:total_state_change] >= check[:high_flap_threshold]
             end
           else
-            @logger.warn("invalid client flap_threshold", {
-              :client => stored_event[:client]
-            })
+            details = {:check => check}
+            details[:client] = stored_event[:client] if stored_event
+            @logger.error("invalid check flap thresholds", details)
             false
           end
         else
