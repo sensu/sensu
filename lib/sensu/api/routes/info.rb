@@ -14,13 +14,13 @@ module Sensu
         def get_info
           transport_info do |transport|
             servers_info do |servers|
+              sensu = RELEASE_INFO.merge(
+                :settings => {
+                  :hexdigest => @settings.hexdigest
+                }
+              )
               @response_content = {
-                :sensu => {
-                  :version => VERSION,
-                  :settings => {
-                    :hexdigest => @settings.hexdigest
-                  }
-                },
+                :sensu => sensu,
                 :transport => transport,
                 :redis => {
                   :connected => @redis.connected?
