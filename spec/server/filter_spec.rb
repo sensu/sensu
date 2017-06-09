@@ -49,6 +49,12 @@ describe "Sensu::Server::Filter" do
     expect(@server.handle_severity?(handler, @event)).to be(false)
     @event[:check][:history] = [1, 2, 0]
     expect(@server.handle_severity?(handler, @event)).to be(true)
+    @event[:check][:history] = [0, 0, 1, 2, 0]
+    expect(@server.handle_severity?(handler, @event)).to be(true)
+    @event[:check][:history] = [0, 0, 1, 2, 1, 0]
+    expect(@server.handle_severity?(handler, @event)).to be(true)
+    @event[:check][:history] = [0, 0, 1, 2, 1, 0, 0]
+    expect(@server.handle_severity?(handler, @event)).to be(true)
   end
 
   it "can determine if filter attributes match an event" do

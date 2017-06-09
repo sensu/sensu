@@ -38,8 +38,11 @@ module Sensu
       # handle, using the definition attribute `:severities`. The
       # possible severities are "ok", "warning", "critical", and
       # "unknown". Handler severity filtering is bypassed when the
-      # event `:action` is `:resolve`, if the check history contains
-      # one of the specified severities since the last OK result.
+      # event `:action` is `:resolve` and a previous check history
+      # status identifies a severity specified in the handler
+      # definition. It's possible for a check history status of 0 to
+      # have had the flapping action, so we are unable to consider
+      # every past 0 to indicate a resolution.
       #
       # @param handler [Hash] definition.
       # @param event [Hash]
@@ -48,10 +51,7 @@ module Sensu
         if handler.has_key?(:severities)
           case event[:action]
           when :resolve
-            event[:check][:history].reverse[1..-1].any? do |status|
-              if status.to_i == 0
-                break false
-              end
+            event[:check][:history].any? do |status|
               severity = SEVERITIES[status.to_i] || "unknown"
               handler[:severities].include?(severity)
             end
