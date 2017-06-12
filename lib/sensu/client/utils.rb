@@ -1,18 +1,18 @@
 require "sensu/json"
+require "sensu/client/validators/check"
 
 module Sensu
   module Client
     module CheckUtils
       class DataError < StandardError; end
+
       # Validate check result attributes.
       #
       # @param [Hash] check result to validate.
       def validate_check_result(check)
-        unless check[:name] =~ /\A[\w\.-]+\z/
-          raise DataError, "check name must be a string and cannot contain spaces or special characters"
-        end
-        unless check[:source].nil? || check[:source] =~ /\A[\w\.-]+\z/
-          raise DataError, "check source must be a string and cannot contain spaces or special characters"
+        validator = Validators::Check.new
+        unless validator.valid?(check)
+          raise DataError, validator.failures.first[:message]
         end
         unless check[:output].is_a?(String)
           raise DataError, "check output must be a string"
@@ -22,9 +22,6 @@ module Sensu
         end
         unless check[:executed].is_a?(Integer)
           raise DataError, "check executed timestamp must be an integer"
-        end
-        unless check[:ttl].nil? || (check[:ttl].is_a?(Integer) && check[:ttl] > 0)
-          raise DataError, "check ttl must be an integer greater than 0"
         end
       end
 
