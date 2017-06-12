@@ -148,6 +148,11 @@ module Sensu
       end
 
       def install_extensions(extensions, options={})
+        if ENV["EMBEDDED_RUBY"] == "false"
+          log "EMBEDDED_RUBY must be set to true in order to install extensions"
+          log "failed to install extensions: #{extensions}"
+          exit 2
+        end
         log "installing Sensu extensions ..."
         log "provided Sensu extensions: #{extensions}" if options[:verbose]
         extension_gems = extensions.map do |extension|
