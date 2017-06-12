@@ -81,6 +81,11 @@ describe Sensu::Client::Socket do
       "check ttl must be an integer greater than 0 if set",
       {:ttl => -10},
       "check ttl must be an integer greater than 0"
+
+    it_should_behave_like "a validator",
+      "check low flap threshold must be an integer if set",
+      {:low_flap_threshold => "20"},
+      "check low flap threshold must be an integer"
   end
 
   describe "#publish_check_result" do
