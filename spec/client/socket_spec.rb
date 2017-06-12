@@ -35,27 +35,27 @@ describe Sensu::Client::Socket do
     it_should_behave_like "a validator",
       "must contain a non-empty",
       {:name => ""},
-      "check name must be a string and cannot contain spaces or special characters"
+      "check name cannot contain spaces or special characters"
 
     it_should_behave_like "a validator",
       "must contain an acceptable check name",
       {:name => "check name"},
-      "check name must be a string and cannot contain spaces or special characters"
+      "check name cannot contain spaces or special characters"
 
     it_should_behave_like "a validator",
       "must contain a single-line check name",
       {:name => "check\nname"},
-      "check name must be a string and cannot contain spaces or special characters"
+      "check name cannot contain spaces or special characters"
 
     it_should_behave_like "a validator",
       "must contain an acceptable check source",
       {:source => "check source"},
-      "check source must be a string and cannot contain spaces or special characters"
+      "check source cannot contain spaces or special characters"
 
     it_should_behave_like "a validator",
       "must contain a single-line check source",
       {:source => "check\nsource"},
-      "check source must be a string and cannot contain spaces or special characters"
+      "check source cannot contain spaces or special characters"
 
     it_should_behave_like "a validator",
       "must have check output that is a string",
@@ -75,12 +75,12 @@ describe Sensu::Client::Socket do
     it_should_behave_like "a validator",
       "check ttl must be an integer if set",
       {:ttl => "30"},
-      "check ttl must be an integer greater than 0"
+      "check ttl must be an integer"
 
     it_should_behave_like "a validator",
       "check ttl must be an integer greater than 0 if set",
       {:ttl => -10},
-      "check ttl must be an integer greater than 0"
+      "check ttl must be greater than 0"
 
     it_should_behave_like "a validator",
       "check low flap threshold must be an integer if set",
