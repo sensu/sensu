@@ -9,7 +9,7 @@ gem "sensu-extension", "1.5.1"
 gem "sensu-extensions", "1.9.0"
 gem "sensu-transport", "7.0.2"
 gem "sensu-spawn", "2.2.1"
-gem "sensu-redis", "2.1.1"
+gem "sensu-redis", "2.2.0"
 
 require "time"
 require "uri"
