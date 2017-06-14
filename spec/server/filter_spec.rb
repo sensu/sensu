@@ -42,6 +42,12 @@ describe "Sensu::Server::Filter" do
     expect(@server.handle_severity?(handler, @event)).to be(false)
     @event[:check][:status] = 2
     expect(@server.handle_severity?(handler, @event)).to be(true)
+    @event[:check][:status] = 3
+    expect(@server.handle_severity?(handler, @event)).to be(false)
+    @event[:check][:status] = 127
+    expect(@server.handle_severity?(handler, @event)).to be(false)
+    handler[:severities] = ["critical", "unknown"]
+    expect(@server.handle_severity?(handler, @event)).to be(true)
     @event[:check][:status] = 0
     expect(@server.handle_severity?(handler, @event)).to be(false)
     @event[:action] = :resolve
@@ -53,6 +59,8 @@ describe "Sensu::Server::Filter" do
     expect(@server.handle_severity?(handler, @event)).to be(true)
     @event[:check][:history] = [0, 0, 1, 2, 1, 0]
     expect(@server.handle_severity?(handler, @event)).to be(true)
+    @event[:check][:history] = [0, 0, 1, 1, 1, 0, 0]
+    expect(@server.handle_severity?(handler, @event)).to be(false)
     @event[:check][:history] = [0, 0, 1, 2, 1, 0, 0]
     expect(@server.handle_severity?(handler, @event)).to be(true)
   end
