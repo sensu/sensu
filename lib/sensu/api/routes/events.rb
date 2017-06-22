@@ -6,9 +6,9 @@ module Sensu
       module Events
         include Utilities::ResolveEvent
 
-        EVENTS_URI = /^\/events$/
-        EVENTS_CLIENT_URI = /^\/events\/([\w\.-]+)$/
-        EVENT_URI = /^\/events\/([\w\.-]+)\/([\w\.-]+)$/
+        EVENTS_URI = /^\/(?:events|incidents)$/
+        EVENTS_CLIENT_URI = /^\/(?:events|incidents)\/([\w\.-]+)$/
+        EVENT_URI = /^\/(?:events|incidents)\/([\w\.-]+)\/([\w\.-]+)$/
 
         # GET /events
         def get_events
