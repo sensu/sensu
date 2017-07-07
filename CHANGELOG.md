@@ -1,12 +1,17 @@
 ## 1.0.0 - TBD
 
+### Features
+
+Added Sensu API event endpoint alias "incidents", e.g. `/incidents`,
+`/incidents/:client/:check`.
+
 ### Other
 
 Improved Sensu client keepalive configuration validation, now including
-coverage for low/high flap thresholds etc.
+coverage for check low/high flap thresholds etc.
 
 Improved Sensu client socket check result validation, now including
-coverage for low/high flap thresholds etc.
+coverage for check low/high flap thresholds etc.
 
 The `sensu-install` tool now notifies users when it is unable to
 successfully install an extension, when the environment variable
