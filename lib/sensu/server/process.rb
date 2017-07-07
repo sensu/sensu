@@ -1297,6 +1297,11 @@ module Sensu
       def update_server_registry
         @logger.debug("updating the server registry")
         process_cpu_times do |cpu_user, cpu_system, _, _|
+          sensu = RELEASE_INFO.merge(
+            :settings => {
+              :hexdigest => @settings.hexdigest
+            }
+          )
           info = {
             :id => server_id,
             :hostname => system_hostname,
@@ -1308,12 +1313,7 @@ module Sensu
                 :system => cpu_system
               }
             },
-            :sensu => {
-              :version => VERSION,
-              :settings => {
-                :hexdigest => @settings.hexdigest
-              }
-            },
+            :sensu => sensu,
             :timestamp => Time.now.to_i
           }
           @redis.sadd("servers", server_id)

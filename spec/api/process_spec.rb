@@ -142,6 +142,34 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can provide current incidents" do
+    api_test do
+      http_request(4567, "/incidents") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        test_event = Proc.new do |event|
+          event[:check][:name] == "test"
+        end
+        expect(body).to contain(test_event)
+        async_done
+      end
+    end
+  end
+
+  it "can provide current incidents for a specific client" do
+    api_test do
+      http_request(4567, "/incidents/i-424242") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        test_event = Proc.new do |event|
+          event[:check][:name] == "test"
+        end
+        expect(body).to contain(test_event)
+        async_done
+      end
+    end
+  end
+
   it "can create a client" do
     api_test do
       options = {
@@ -371,7 +399,7 @@ describe "Sensu::API::Process" do
         setup_transport do |transport|
           transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
         end
-        timer(1) do
+        timer(3) do
           redis.get("client:i-424242:signature") do |signature|
             expect(signature).to eq("foo")
             check_result = result_template
@@ -401,6 +429,109 @@ describe "Sensu::API::Process" do
   it "can not delete a nonexistent event" do
     api_test do
       http_request(4567, "/events/i-424242/nonexistent", :delete) do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can provide a specific incident" do
+    api_test do
+      http_request(4567, "/incidents/i-424242/test") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Hash)
+        expect(body[:client]).to be_kind_of(Hash)
+        expect(body[:check]).to be_kind_of(Hash)
+        expect(body[:client][:name]).to eq("i-424242")
+        expect(body[:check][:name]).to eq("test")
+        expect(body[:check][:output]).to eq("WARNING")
+        expect(body[:check][:status]).to eq(1)
+        expect(body[:check][:issued]).to be_within(10).of(epoch)
+        expect(body[:action]).to eq("create")
+        expect(body[:occurrences]).to eq(1)
+        async_done
+      end
+    end
+  end
+
+  it "can not provide a nonexistent incident" do
+    api_test do
+      http_request(4567, "/incidents/i-424242/nonexistent") do |http, body|
+        expect(http.response_header.status).to eq(404)
+        expect(body).to be_empty
+        async_done
+      end
+    end
+  end
+
+  it "can delete an incident" do
+    api_test do
+      result_queue do |payload|
+        result = Sensu::JSON.load(payload)
+        expect(result[:client]).to eq("i-424242")
+        expect(result[:check][:name]).to eq("test")
+        expect(result[:check][:status]).to eq(0)
+        timer(0.5) do
+          async_done
+        end
+      end
+      timer(0.5) do
+        http_request(4567, "/incidents/i-424242/test", :delete) do |http, body|
+          expect(http.response_header.status).to eq(202)
+          expect(body).to include(:issued)
+          timer(1) do
+            redis.hget("events:i-424242", "test") do |event_json|
+              expect(event_json).to be_nil
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can delete an incident when the client has a signature" do
+    @server = Sensu::Server::Process.new(options)
+    async_wrapper do
+      @server.setup_connections do
+        @server.setup_keepalives
+        @server.setup_results
+        keepalive = client_template
+        keepalive[:timestamp] = epoch
+        keepalive[:signature] = "foo"
+        setup_transport do |transport|
+          transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+        end
+        timer(3) do
+          redis.get("client:i-424242:signature") do |signature|
+            expect(signature).to eq("foo")
+            check_result = result_template
+            check_result[:signature] = "foo"
+            check_result[:check][:name] = 'signature_test'
+            @server.process_check_result(check_result)
+            timer(1) do
+              api_test do
+                http_request(4567, "/incidents/i-424242/signature_test", :delete) do |http, body|
+                  expect(http.response_header.status).to eq(202)
+                  expect(body).to include(:issued)
+                  timer(2) do
+                    redis.hget("events:i-424242", "signature_test") do |event_json|
+                      expect(event_json).to be_nil
+                      async_done
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can not delete a nonexistent incident" do
+    api_test do
+      http_request(4567, "/incidents/i-424242/nonexistent", :delete) do |http, body|
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done

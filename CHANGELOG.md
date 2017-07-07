@@ -1,3 +1,32 @@
+## 1.0.0 - TBD
+
+### Features
+
+Added Sensu API event endpoint alias "incidents", e.g. `/incidents`,
+`/incidents/:client/:check`.
+
+### Other
+
+Improved Sensu client keepalive configuration validation, now including
+coverage for check low/high flap thresholds etc.
+
+Improved Sensu client socket check result validation, now including
+coverage for check low/high flap thresholds etc.
+
+The `sensu-install` tool now notifies users when it is unable to
+successfully install an extension, when the environment variable
+EMBEDDED_RUBY is set to `false`.
+
+Added the Sensu `RELEASE_INFO` constant, containing information about the
+Sensu release, used by the API `/info` endpoint and Server registration.
+
+### Fixes
+
+Sensu handler severities filtering now accounts for flapping events.
+
+Fixed Sensu Redis connection on error reconnect, no longer reusing the
+existing EventMachine connection handler.
+
 ## 0.29.0 - 2017-03-29
 
 ### Features
