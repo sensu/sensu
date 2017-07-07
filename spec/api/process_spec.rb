@@ -399,7 +399,7 @@ describe "Sensu::API::Process" do
         setup_transport do |transport|
           transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
         end
-        timer(1) do
+        timer(3) do
           redis.get("client:i-424242:signature") do |signature|
             expect(signature).to eq("foo")
             check_result = result_template
@@ -502,7 +502,7 @@ describe "Sensu::API::Process" do
         setup_transport do |transport|
           transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
         end
-        timer(1) do
+        timer(3) do
           redis.get("client:i-424242:signature") do |signature|
             expect(signature).to eq("foo")
             check_result = result_template
