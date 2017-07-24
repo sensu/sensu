@@ -1,3 +1,9 @@
+## 1.0.1 - 2017-07-24
+
+### Fixes
+
+Fixed Sensu configuration validation, it was not being applied.
+
 ## 1.0.0 - 2017-07-11
 
 ### Features
