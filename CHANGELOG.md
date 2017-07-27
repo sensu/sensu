@@ -1,3 +1,14 @@
+## 1.0.2 - 2017-07-27
+
+### Fixes
+
+Addressed an issue with client keepalive transport acknowledgments. We
+discovered a situation where poor Redis performance could negatively
+impact client keepalive processing, potentially triggering a compounding
+failure that the Sensu server is unable to recover from. Moving
+acknowledgments to the next tick of the EventMachine reactor avoids the
+situation entirely.
+
 ## 1.0.1 - 2017-07-24
 
 ### Fixes
