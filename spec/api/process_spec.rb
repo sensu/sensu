@@ -411,7 +411,7 @@ describe "Sensu::API::Process" do
                 http_request(4567, "/events/i-424242/signature_test", :delete) do |http, body|
                   expect(http.response_header.status).to eq(202)
                   expect(body).to include(:issued)
-                  timer(2) do
+                  timer(3) do
                     redis.hget("events:i-424242", "signature_test") do |event_json|
                       expect(event_json).to be_nil
                       async_done
@@ -514,7 +514,7 @@ describe "Sensu::API::Process" do
                 http_request(4567, "/incidents/i-424242/signature_test", :delete) do |http, body|
                   expect(http.response_header.status).to eq(202)
                   expect(body).to include(:issued)
-                  timer(2) do
+                  timer(3) do
                     redis.hget("events:i-424242", "signature_test") do |event_json|
                       expect(event_json).to be_nil
                       async_done
