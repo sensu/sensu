@@ -187,14 +187,14 @@ module Sensu
           @logger.debug("received keepalive", :message => message)
           begin
             client = Sensu::JSON.load(message)
-            update_client_registry(client) do
-              @transport.ack(message_info)
-            end
+            update_client_registry(client)
           rescue Sensu::JSON::ParseError => error
             @logger.error("failed to parse keepalive payload", {
               :message => message,
               :error => error.to_s
             })
+          end
+          EM::next_tick do
             @transport.ack(message_info)
           end
         end
