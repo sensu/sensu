@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
   s.has_rdoc    = false
 
-  s.add_dependency "eventmachine", "1.2.2"
+  s.add_dependency "eventmachine", "1.2.5"
   s.add_dependency "sensu-json", "2.1.0"
   s.add_dependency "sensu-logger", "1.2.1"
   s.add_dependency "sensu-settings", "10.3.0"
