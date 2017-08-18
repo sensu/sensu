@@ -188,7 +188,7 @@ module Sensu
               :http_request_uri => @http_request_uri
             })
             send_response(405, "Method Not Allowed", {
-              :response => "Valid methods for this endpoint: #{reqdef['methods'].keys}"
+              :response => "Valid methods for this endpoint: #{endpoint['methods'].keys}"
             })
           end
         else
