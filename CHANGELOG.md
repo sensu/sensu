@@ -1,3 +1,11 @@
+## 1.0.3 - 2017-08-25
+
+### Fixes
+
+Now using EventMachine version 1.2.5 in order to support larger EM timer
+intervals. EM timers are used by the Sensu check scheduler and many other
+Sensu components.
+
 ## 1.0.2 - 2017-07-27
 
 ### Fixes
