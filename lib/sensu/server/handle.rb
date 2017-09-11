@@ -126,21 +126,13 @@ module Sensu
       # @param event_id [String] event UUID
       def handler_extension(handler, event_data, event_id)
         handler.safe_run(event_data) do |output, status|
-          if output == '' and status == 0
-            @logger.debug("handler extension output", {
-              :extension => handler.definition,
-              :event => { :id => event_id },
-              :output => output,
-              :status => status
-            })
-          else
-            @logger.info("handler extension output", {
-              :extension => handler.definition,
-              :event => { :id => event_id },
-              :output => output,
-              :status => status
-            })
-          end
+          log_level = (output.empty? && status.zero?) ? :debug : :info
+          @logger.send(log_level, "handler extension output", {
+            :extension => handler.definition,
+            :event => { :id => event_id },
+            :output => output,
+            :status => status
+          })
           @in_progress[:events] -= 1 if @in_progress
         end
       end
