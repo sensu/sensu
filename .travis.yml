@@ -10,5 +10,6 @@ services:
   - redis
 env:
   - RACK_ENV=development
-before_script:
+script:
   - gem install bundler --version 1.15.1
+  - bundle exec rake
