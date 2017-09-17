@@ -1,3 +1,9 @@
+### Features
+
+Client socket should be able to accept multiple checks in one request.
+This will improve the performance a lot if user needs to push lots of
+checks into sensu client through HTTP or TCP.
+
 ## 1.0.3 - 2017-08-25
 
 ### Fixes
