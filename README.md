@@ -1,8 +1,8 @@
 ![sensu](https://raw.github.com/sensu/sensu/master/sensu-logo.png)
 
-[![Build Status](https://img.shields.io/travis/sensu/sensu.png)](https://travis-ci.org/sensu/sensu)
+[![Build Status](https://img.shields.io/travis/sensu/sensu.svg)](https://travis-ci.org/sensu/sensu)
 [![Gem Version](https://img.shields.io/gem/v/sensu.svg)](https://github.com/sensu/sensu/blob/master/CHANGELOG.md)
-![MIT Licensed](https://img.shields.io/github/license/sensu/sensu.svg)
+[![MIT Licensed](https://img.shields.io/github/license/sensu/sensu.svg)](https://raw.githubusercontent.com/sensu/sensu/master/MIT-LICENSE.txt)
 
 # Sensu
 
@@ -27,7 +27,7 @@ on configuring and operating Sensu.
 ## Getting Help
 
 If you have questions not covered by the documentation, the Sensu community
-is here to help. Please check out our [chat][4] on Freenode IRC, or the
+is here to help. Please check out our [chat][4] on Slack, or the
 [sensu-users][5] discussion list.
 
 Commercial support is also available. See the [support section of our website][6] for more detail.
@@ -45,7 +45,7 @@ Sensu Core is released under the [MIT license][8].
 [1]: https://sensuapp.org/enterprise
 [2]: https://sensuapp.org/docs/latest/platforms/
 [3]: http://sensuapp.org/docs/latest/overview
-[4]: http://webchat.freenode.net/?channels=%23sensu
+[4]: https://slack.sensu.io/
 [5]: http://groups.google.com/group/sensu-users
 [6]: https://sensuapp.org/support
 [7]: https://github.com/sensu/sensu/blob/master/CONTRIBUTING.md
