@@ -197,6 +197,45 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can execute a check hook, status taking precedence over severity" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        "1" => {
+          :command => "echo STATUS"
+        },
+        :warning => {
+          :command => "echo SEVERITY"
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        expect(check[:hooks]["1"][:output]).to eq("STATUS\n")
+        expect(check[:hooks]["1"][:status]).to eq(0)
+        expect(check[:hooks][:warning]).to_not have_key(:output)
+        async_done
+      end
+    end
+  end
+
+  it "can execute a check hook for non-zero status" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        :ok => {
+          :command => "echo OK"
+        },
+        "non-zero" => {
+          :command => "echo NON-ZERO"
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        expect(check[:hooks]["non-zero"][:output]).to eq("NON-ZERO\n")
+        expect(check[:hooks]["non-zero"][:status]).to eq(0)
+        async_done
+      end
+    end
+  end
+
   it "can execute a check command and a hook" do
     async_wrapper do
       result_queue do |payload|
