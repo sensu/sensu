@@ -120,6 +120,8 @@ module Sensu
       # hook command output will be set to report the unmatched tokens.
       #
       # @param check [Hash]
+      # @yield [check] callback/block called after executing the check
+      #   hook (if any).
       def execute_check_hook(check)
         @logger.debug("attempting to execute check hook", :check => check)
         severity = SEVERITIES[check[:status]] || "unknown"
