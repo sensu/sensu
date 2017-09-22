@@ -1072,6 +1072,8 @@ module Sensu
       # output.
       #
       # @param ttl_keys [Array] of TTL keys.
+      # @param interval [Integer] to use for the check TTL result
+      #   interval.
       # @yield [] callback/block called after the check TTL results
       #   have been created.
       def create_check_ttl_results(ttl_keys, interval=30)
@@ -1113,6 +1115,9 @@ module Sensu
       # relatively small check results slice size (20) is used to
       # reduce the number of check results inspected within a single
       # tick of the EM reactor.
+      #
+      # @param interval [Integer] to use for the check TTL result
+      #   interval.
       def determine_stale_check_results(interval=30)
         @logger.info("determining stale check results (ttl)")
         @redis.smembers("ttl") do |ttl_keys|
@@ -1132,6 +1137,9 @@ module Sensu
       # Set up the check result monitor, a periodic timer to run
       # `determine_stale_check_results()` every 30 seconds. The timer
       # is stored in the timers hash under `:tasks`.
+      #
+      # @param interval [Integer] to use for the check TTL result
+      #   interval.
       def setup_check_result_monitor(interval=30)
         @logger.debug("monitoring check results")
         @timers[:tasks][:check_result_monitor] << EM::PeriodicTimer.new(interval) do
