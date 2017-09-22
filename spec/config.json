@@ -208,7 +208,7 @@
               "timeout": 5
           }
       },
-      "interval": 10
+      "interval": 1
     }
   },
   "client": {
