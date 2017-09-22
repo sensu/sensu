@@ -196,6 +196,19 @@
         "test"
       ],
       "cron": "* * * * *"
+    },
+    "hooked": {
+      "command": "echo FAIL && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "hooks": {
+          "warning": {
+              "command": "echo HOOKED",
+              "timeout": 5
+          }
+      },
+      "interval": 10
     }
   },
   "client": {

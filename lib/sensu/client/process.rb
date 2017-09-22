@@ -110,6 +110,34 @@ module Sensu
         [check[:source], check[:name]].compact.join(":")
       end
 
+      def execute_check_hook(check)
+        @logger.debug("attempting to execute check hook", :check => check)
+        severity = SEVERITIES[check[:status]] || "unknown"
+        hook = check[:hooks][check[:status]] || check[:hooks][severity]
+        if hook.nil? && check[:status] != 0
+          hook = check[:hooks]["non-zero"]
+        end
+        if hook
+          command, unmatched_tokens = substitute_tokens(hook[:command], @settings[:client])
+          started = Time.now.to_f
+          hook[:executed] = started.to_i
+          if unmatched_tokens.empty?
+            Spawn.process(command, :timeout => hook[:timeout]) do |output, status|
+              hook[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
+              hook[:output] = output
+              hook[:status] = status
+              yield(check)
+            end
+          else
+            hook[:output] = "Unmatched client token(s): " + unmatched_tokens.join(", ")
+            hook[:status] = 3
+            yield(check)
+          end
+        else
+          yield(check)
+        end
+      end
+
       # Execute a check command, capturing its output (STDOUT/ERR),
       # exit status code, execution duration, timestamp, and publish
       # the result. This method guards against multiple executions for
@@ -137,8 +165,15 @@ module Sensu
               check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               check[:output] = output
               check[:status] = status
-              publish_check_result(check)
-              @checks_in_progress.delete(in_progress_key)
+              if check[:hooks] && !check[:hooks].empty?
+                execute_check_hook(check) do |check|
+                  publish_check_result(check)
+                  @checks_in_progress.delete(in_progress_key)
+                end
+              else
+                publish_check_result(check)
+                @checks_in_progress.delete(in_progress_key)
+              end
             end
           else
             check[:output] = "Unmatched client token(s): " + unmatched_tokens.join(", ")
@@ -178,8 +213,15 @@ module Sensu
             check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
             check[:output] = output
             check[:status] = status
-            publish_check_result(check)
-            @checks_in_progress.delete(in_progress_key)
+            if check[:hooks] && !check[:hooks].empty?
+              execute_check_hook(check) do |check|
+                publish_check_result(check)
+                @checks_in_progress.delete(in_progress_key)
+              end
+            else
+              publish_check_result(check)
+              @checks_in_progress.delete(in_progress_key)
+            end
           end
         else
           @logger.warn("previous check extension execution in progress", :check => check)
