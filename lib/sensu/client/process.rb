@@ -113,7 +113,7 @@ module Sensu
       def execute_check_hook(check)
         @logger.debug("attempting to execute check hook", :check => check)
         severity = SEVERITIES[check[:status]] || "unknown"
-        hook = check[:hooks][check[:status]] || check[:hooks][severity]
+        hook = check[:hooks][check[:status]] || check[:hooks][severity.to_sym]
         if hook.nil? && check[:status] != 0
           hook = check[:hooks]["non-zero"]
         end

@@ -177,6 +177,28 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can execute a check command and a hook" do
+    async_wrapper do
+      result_queue do |payload|
+        result = Sensu::JSON.load(payload)
+        expect(result[:check][:output]).to eq("WARNING\n")
+        expect(result[:check][:hooks][:warning][:output]).to eq("HOOKED\n")
+        async_done
+      end
+      timer(0.5) do
+        @client.setup_transport do
+          check = check_template
+          check[:hooks] = {
+            :warning => {
+              :command => "echo HOOKED"
+            }
+          }
+          @client.execute_check_command(check)
+        end
+      end
+    end
+  end
+
   it "can run a check extension" do
     async_wrapper do
       result_queue do |payload|
@@ -222,7 +244,7 @@ describe "Sensu::Client::Process" do
       result_queue do |payload|
         result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
-        expect(result[:check][:output]).to eq("i-424242 true")
+        expect(result[:check][:output]).to eq("i-424242 true\n")
         expect(result[:check][:status]).to eq(2)
         async_done
       end
