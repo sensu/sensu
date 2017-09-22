@@ -1064,46 +1064,83 @@ module Sensu
         end
       end
 
+      # Create check TTL results. This method will retrieve check
+      # results from the registry and determine the time since their
+      # last check execution (in seconds). If the time since last
+      # execution is equal to or greater than the defined check TTL, a
+      # warning check result is published with the appropriate check
+      # output.
+      #
+      # @param ttl_keys [Array] of TTL keys.
+      # @param interval [Integer] to use for the check TTL result
+      #   interval.
+      # @yield [] callback/block called after the check TTL results
+      #   have been created.
+      def create_check_ttl_results(ttl_keys, interval=30)
+        result_keys = ttl_keys.map { |ttl_key| "result:#{ttl_key}" }
+        @redis.mget(*result_keys) do |result_json_objects|
+          result_json_objects.each_with_index do |result_json, index|
+            unless result_json.nil?
+              check = Sensu::JSON.load(result_json)
+              next unless check[:ttl] && check[:executed] && !check[:force_resolve]
+              time_since_last_execution = Time.now.to_i - check[:executed]
+              if time_since_last_execution >= check[:ttl]
+                client_name = ttl_keys[index].split(":").first
+                keepalive_event_exists?(client_name) do |event_exists|
+                  unless event_exists
+                    check[:output] = "Last check execution was "
+                    check[:output] << "#{time_since_last_execution} seconds ago"
+                    check[:status] = check[:ttl_status] || 1
+                    check[:interval] = interval
+                    publish_check_result(client_name, check)
+                  end
+                end
+              end
+            else
+              @redis.srem("ttl", result_key)
+            end
+          end
+          yield
+        end
+      end
+
       # Determine stale check results, those that have not executed in
       # a specified amount of time (check TTL). This method iterates
       # through stored check results that have a defined TTL value (in
-      # seconds). The time since last check execution (in seconds) is
-      # calculated for each check result. If the time since last
-      # execution is equal to or greater than the check TTL, a warning
-      # check result is published with the appropriate check output.
-      def determine_stale_check_results(interval = 30)
-        @logger.info("determining stale check results")
-        @redis.smembers("ttl") do |result_keys|
-          result_keys.each do |result_key|
-            @redis.get("result:#{result_key}") do |result_json|
-              unless result_json.nil?
-                check = Sensu::JSON.load(result_json)
-                next unless check[:ttl] && check[:executed] && !check[:force_resolve]
-                time_since_last_execution = Time.now.to_i - check[:executed]
-                if time_since_last_execution >= check[:ttl]
-                  client_name = result_key.split(":").first
-                  keepalive_event_exists?(client_name) do |event_exists|
-                    unless event_exists
-                      check[:output] = "Last check execution was "
-                      check[:output] << "#{time_since_last_execution} seconds ago"
-                      check[:status] = check[:ttl_status] || 1
-                      check[:interval] = interval
-                      publish_check_result(client_name, check)
-                    end
-                  end
-                end
-              else
-                @redis.srem("ttl", result_key)
+      # seconds). The `create_check_ttl_results()` method is used to
+      # inspect each check result, calculating their time since last
+      # check execution (in seconds). If the time since last execution
+      # is equal to or greater than the check TTL, a warning check
+      # result is published with the appropriate check output. A
+      # relatively small check results slice size (20) is used to
+      # reduce the number of check results inspected within a single
+      # tick of the EM reactor.
+      #
+      # @param interval [Integer] to use for the check TTL result
+      #   interval.
+      def determine_stale_check_results(interval=30)
+        @logger.info("determining stale check results (ttl)")
+        @redis.smembers("ttl") do |ttl_keys|
+          ttl_key_count = ttl_keys.length
+          ttl_check_results = Proc.new do |slice_start, slice_size|
+            unless slice_start > ttl_key_count - 1
+              ttl_keys_slice = ttl_keys.slice(slice_start..slice_size)
+              create_check_ttl_results(ttl_keys_slice, interval) do
+                ttl_check_results.call(slice_start + 20, slice_size + 20)
               end
             end
           end
+          ttl_check_results.call(0, 19)
         end
       end
 
       # Set up the check result monitor, a periodic timer to run
       # `determine_stale_check_results()` every 30 seconds. The timer
       # is stored in the timers hash under `:tasks`.
-      def setup_check_result_monitor(interval = 30)
+      #
+      # @param interval [Integer] to use for the check TTL result
+      #   interval.
+      def setup_check_result_monitor(interval=30)
         @logger.debug("monitoring check results")
         @timers[:tasks][:check_result_monitor] << EM::PeriodicTimer.new(interval) do
           determine_stale_check_results(interval)
