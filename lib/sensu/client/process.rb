@@ -110,6 +110,16 @@ module Sensu
         [check[:source], check[:name]].compact.join(":")
       end
 
+      # Execute a check hook, capturing its output (STDOUT/ERR),
+      # exit status code, executed timestamp, and duration. This
+      # method determines which hook command to run by inspecting the
+      # check execution status. Check hook command tokens are
+      # substituted with the associated client attribute values, via
+      # `substitute_tokens()`. If there are unmatched check attribute
+      # value tokens, the check hook will not be executed, instead the
+      # hook command output will be set to report the unmatched tokens.
+      #
+      # @param check [Hash]
       def execute_check_hook(check)
         @logger.debug("attempting to execute check hook", :check => check)
         severity = SEVERITIES[check[:status]] || "unknown"
