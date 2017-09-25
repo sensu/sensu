@@ -320,16 +320,17 @@ module Sensu
         end
       end
 
-      # Truncate check output. For metric checks, (`"type":
-      # "metric"`), check output is truncated to a single line and a
-      # maximum of 255 characters. Check output is currently left
-      # unmodified for standard checks.
+      # Truncate check output. Metric checks (`"type": "metric"`), or
+      # checks with `"truncate_output": true`, have their output
+      # truncated to a single line and a maximum character length of
+      # 255 by default. The maximum character length can be change by
+      # the `"truncate_output_length"` check definition attribute.
       #
       # @param check [Hash]
       # @return [Hash] check with truncated output.
       def truncate_check_output(check)
-        case check[:type]
-        when METRIC_CHECK_TYPE
+        if check[:truncate_output] ||
+           (check[:type] == METRIC_CHECK_TYPE && check[:truncate_output] != false)
           begin
             output_lines = check[:output].split("\n")
           rescue ArgumentError
@@ -341,8 +342,9 @@ module Sensu
             output_lines = utf8_output.split("\n")
           end
           output = output_lines.first || check[:output]
-          if output_lines.length > 1 || output.length > 255
-            output = output[0..255] + "\n..."
+          truncate_output_length = check.fetch(:truncate_output_length, 255)
+          if output_lines.length > 1 || output.length > truncate_output_length
+            output = output[0..truncate_output_length] + "\n..."
           end
           check.merge(:output => output)
         else
