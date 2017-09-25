@@ -139,14 +139,14 @@
   },
   "checks": {
     "tokens": {
-      "command": "echo -n :::name::: :::nested.attribute::: && exit 2",
+      "command": "echo :::name::: :::nested.attribute::: && exit 2",
       "subscribers": [
         "test"
       ],
       "interval": 1
     },
     "standalone": {
-      "command": "echo -n foobar && exit 1",
+      "command": "echo foobar && exit 1",
       "standalone": true,
       "interval": 1,
       "ttl": 10,
@@ -196,6 +196,19 @@
         "test"
       ],
       "cron": "* * * * *"
+    },
+    "hooked": {
+      "command": "echo FAIL && exit 1",
+      "subscribers": [
+        "test"
+      ],
+      "hooks": {
+          "warning": {
+              "command": "echo HOOKED",
+              "timeout": 5
+          }
+      },
+      "interval": 1
     }
   },
   "client": {

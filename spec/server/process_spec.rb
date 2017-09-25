@@ -684,7 +684,7 @@ describe "Sensu::Server::Process" do
 
   it "can schedule check request publishing" do
     async_wrapper do
-      expected = ["tokens", "merger", "source", "cron"]
+      expected = ["tokens", "merger", "source", "cron", "hooked"]
       setup_transport do |transport|
         transport.subscribe(:fanout, "test") do |_, payload|
           check_request = Sensu::JSON.load(payload)

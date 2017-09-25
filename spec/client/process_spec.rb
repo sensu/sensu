@@ -177,6 +177,142 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can execute a check hook" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        :ok => {
+          :command => "echo FAIL"
+        },
+        :warning => {
+          :command => "echo HOOKED"
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        expect(check[:hooks][:ok]).to_not have_key(:output)
+        expect(check[:hooks][:warning][:output]).to eq("HOOKED\n")
+        expect(check[:hooks][:warning][:status]).to eq(0)
+        async_done
+      end
+    end
+  end
+
+  it "can execute a check hook, status taking precedence over severity" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        "1" => {
+          :command => "echo STATUS"
+        },
+        :warning => {
+          :command => "echo SEVERITY"
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        expect(check[:hooks]["1"][:output]).to eq("STATUS\n")
+        expect(check[:hooks]["1"][:status]).to eq(0)
+        expect(check[:hooks][:warning]).to_not have_key(:output)
+        async_done
+      end
+    end
+  end
+
+  it "can execute a check hook for non-zero status" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        :ok => {
+          :command => "echo OK"
+        },
+        "non-zero" => {
+          :command => "echo NON-ZERO"
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        expect(check[:hooks]["non-zero"][:output]).to eq("NON-ZERO\n")
+        expect(check[:hooks]["non-zero"][:status]).to eq(0)
+        async_done
+      end
+    end
+  end
+
+  it "can execute a check hook with token substitution" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        :warning => {
+          :command => "echo :::name::: :::missing|default:::"
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        expect(check[:hooks][:warning][:output]).to eq("i-424242 default\n")
+        expect(check[:hooks][:warning][:status]).to eq(0)
+        async_done
+      end
+    end
+  end
+
+  it "can execute a check hook with stdin data" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        :warning => {
+          :command => "cat",
+          :stdin => true
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        output = Sensu::JSON.load(check[:hooks][:warning][:output])
+        expect(output[:client][:name]).to eq("i-424242")
+        expect(output[:check][:name]).to eq("test")
+        expect(check[:hooks][:warning][:status]).to eq(0)
+        async_done
+      end
+    end
+  end
+
+  it "can execute a check hook with a timeout" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        :warning => {
+          :command => "sleep 10",
+          :timeout => 1
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        expect(check[:hooks][:warning][:output]).to eq("Execution timed out")
+        expect(check[:hooks][:warning][:status]).to eq(2)
+        async_done
+      end
+    end
+  end
+
+  it "can execute a check command and a hook" do
+    async_wrapper do
+      result_queue do |payload|
+        result = Sensu::JSON.load(payload)
+        expect(result[:check][:output]).to eq("WARNING\n")
+        expect(result[:check][:hooks][:warning][:output]).to eq("HOOKED\n")
+        expect(result[:check][:hooks][:warning][:status]).to eq(0)
+        expect(result[:check][:hooks][:warning]).to have_key(:executed)
+        expect(result[:check][:hooks][:warning]).to have_key(:duration)
+        async_done
+      end
+      timer(0.5) do
+        @client.setup_transport do
+          check = check_template
+          check[:hooks] = {
+            :warning => {
+              :command => "echo HOOKED"
+            }
+          }
+          @client.execute_check_command(check)
+        end
+      end
+    end
+  end
+
   it "can run a check extension" do
     async_wrapper do
       result_queue do |payload|
@@ -222,7 +358,7 @@ describe "Sensu::Client::Process" do
       result_queue do |payload|
         result = Sensu::JSON.load(payload)
         expect(result[:client]).to eq("i-424242")
-        expect(result[:check][:output]).to eq("i-424242 true")
+        expect(result[:check][:output]).to eq("i-424242 true\n")
         expect(result[:check][:status]).to eq(2)
         async_done
       end
