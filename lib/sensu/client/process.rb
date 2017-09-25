@@ -130,11 +130,18 @@ module Sensu
           hook = check[:hooks]["non-zero"]
         end
         if hook
-          command, unmatched_tokens = substitute_tokens(hook[:command], @settings[:client])
+          command, unmatched_tokens = substitute_tokens(hook[:command].dup, @settings[:client])
           started = Time.now.to_f
           hook[:executed] = started.to_i
           if unmatched_tokens.empty?
-            Spawn.process(command, :timeout => hook[:timeout]) do |output, status|
+            options = {:timeout => hook[:timeout]}
+            if hook[:stdin]
+              options[:data] = Sensu::JSON.dump({
+                :client => @settings[:client],
+                :check => check
+              })
+            end
+            Spawn.process(command, options) do |output, status|
               hook[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               hook[:output] = output
               hook[:status] = status
@@ -155,8 +162,8 @@ module Sensu
       # the result. This method guards against multiple executions for
       # the same check. Check attribute value tokens are substituted
       # with the associated client attribute values, via
-      # `object_substitute_tokens()`. The original check command is
-      # always published, to guard against publishing
+      # `object_substitute_tokens()`. The original check command and
+      # hooks are always published, to guard against publishing
       # sensitive/redacted client attribute values. If there are
       # unmatched check attribute value tokens, the check will not be
       # executed, instead a check result will be published reporting
@@ -169,7 +176,8 @@ module Sensu
         unless @checks_in_progress.include?(in_progress_key)
           @checks_in_progress << in_progress_key
           substituted, unmatched_tokens = object_substitute_tokens(check.dup, @settings[:client])
-          check = substituted.merge(:command => check[:command])
+          check = substituted.merge(:command => check[:command], :hooks => check[:hooks])
+          check.delete(:hooks) if check[:hooks].nil?
           started = Time.now.to_f
           check[:executed] = started.to_i
           if unmatched_tokens.empty?

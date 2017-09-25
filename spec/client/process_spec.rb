@@ -236,6 +236,41 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can execute a check hook with token substitution" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        :warning => {
+          :command => "echo :::name::: :::missing|default:::"
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        expect(check[:hooks][:warning][:output]).to eq("i-424242 default\n")
+        expect(check[:hooks][:warning][:status]).to eq(0)
+        async_done
+      end
+    end
+  end
+
+  it "can execute a check hook with stdin data" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        :warning => {
+          :command => "cat",
+          :stdin => true
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        output = Sensu::JSON.load(check[:hooks][:warning][:output])
+        expect(output[:client][:name]).to eq("i-424242")
+        expect(output[:check][:name]).to eq("test")
+        expect(check[:hooks][:warning][:status]).to eq(0)
+        async_done
+      end
+    end
+  end
+
   it "can execute a check command and a hook" do
     async_wrapper do
       result_queue do |payload|
