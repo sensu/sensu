@@ -271,6 +271,23 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can execute a check hook with a timeout" do
+    async_wrapper do
+      check = check_template
+      check[:hooks] = {
+        :warning => {
+          :command => "sleep 10",
+          :timeout => 1
+        }
+      }
+      @client.execute_check_hook(check) do |check|
+        expect(check[:hooks][:warning][:output]).to eq("Execution timed out")
+        expect(check[:hooks][:warning][:status]).to eq(2)
+        async_done
+      end
+    end
+  end
+
   it "can execute a check command and a hook" do
     async_wrapper do
       result_queue do |payload|

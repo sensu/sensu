@@ -117,7 +117,13 @@ module Sensu
       # substituted with the associated client attribute values, via
       # `substitute_tokens()`. If there are unmatched check attribute
       # value tokens, the check hook will not be executed, instead the
-      # hook command output will be set to report the unmatched tokens.
+      # hook command output will be set to report the unmatched
+      # tokens. Hook commands may expect/read and utilize JSON
+      # serialized Sensu client and check data via STDIN, if the hook
+      # definition includes `"stdin": true` (default is `false`). A
+      # hook may have a configured execution timeout, e.g. `"timeout":
+      # 30`, if one is not specified, the timeout defaults to 60
+      # seconds.
       #
       # @param check [Hash]
       # @yield [check] callback/block called after executing the check
@@ -134,7 +140,7 @@ module Sensu
           started = Time.now.to_f
           hook[:executed] = started.to_i
           if unmatched_tokens.empty?
-            options = {:timeout => hook[:timeout]}
+            options = {:timeout => hook.fetch(:timeout, 60)}
             if hook[:stdin]
               options[:data] = Sensu::JSON.dump({
                 :client => @settings[:client],
