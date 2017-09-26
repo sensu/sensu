@@ -41,7 +41,7 @@ describe "Sensu::Client::HTTPSocket" do
         end
         timer(1) do
           options = {:body => {:name => "http", :output => "http", :status => 1}}
-          http_request(3031, "/results", :post, options)do |http, body|
+          http_request(3031, "/results", :post, options) do |http, body|
             expect(http.response_header.status).to eq(202)
             expect(body).to eq({:response => "ok"})
           end
@@ -74,6 +74,41 @@ describe "Sensu::Client::HTTPSocket" do
                 expect(body).to be_kind_of(Hash)
                 expect(body[:api][:password]).to eq("bar")
                 async_done
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can protect all endpoints with basic authentication" do
+    async_wrapper do
+      @client.settings[:client][:http_socket][:protect_all_endpoints] = true
+      @client.setup_transport do
+        @client.setup_http_socket
+        timer(1) do
+          options = {
+            :head => {
+              :content_type => "application/json",
+              :authorization => [
+                "wrong",
+                "credentials"
+              ]
+            }
+          }
+          http_request(3031, "/info", :get, options) do |http, body|
+            expect(http.response_header.status).to eq(401)
+            options[:body] = {:name => "http", :output => "http", :status => 1}
+            http_request(3031, "/results", :post, options) do |http, body|
+              expect(http.response_header.status).to eq(401)
+              options[:head][:authorization] = ["foo", "bar"]
+              http_request(3031, "/info", :get, options) do |http, body|
+                expect(http.response_header.status).to eq(200)
+                http_request(3031, "/results", :post, options) do |http, body|
+                  expect(http.response_header.status).to eq(202)
+                  async_done
+                end
               end
             end
           end
