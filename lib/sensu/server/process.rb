@@ -795,45 +795,60 @@ module Sensu
         end
       end
 
-      # Create and publish one or more proxy check requests. This
-      # method iterates through the Sensu client registry for clients
-      # that matched provided proxy request client attributes. A proxy
-      # check request is created for each client in the registry that
-      # matches the proxy request client attributes. Proxy check
-      # requests have their client tokens subsituted by the associated
-      # client attributes values. The check requests are published to
-      # the Transport via `publish_check_request()`.
-      #
-      # @param check [Hash] definition.
-      def publish_proxy_check_requests(check)
+      def determine_matching_clients(clients, attributes)
+        client_keys = clients.map { |client_name| "client:#{client_name}" }
+        @redis.mget(*client_keys) do |client_json_objects|
+          matching_clients = []
+          client_json_objects.each do |client_json|
+            unless client_json.nil?
+              client = Sensu::JSON.load(client_json)
+              if attributes_match?(client, attributes)
+                matching_clients << client
+              end
+            end
+          end
+          yield(matching_clients)
+        end
+      end
+
+      def publish_proxy_check_requests(clients, check)
+        clients.each do |client|
+          @logger.debug("creating a proxy check request", {
+            :client => client,
+            :check => check
+          })
+          proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
+          if unmatched_tokens.empty?
+            proxy_check[:source] ||= client[:name]
+            publish_check_request(proxy_check)
+          else
+            @logger.warn("failed to publish a proxy check request", {
+              :reason => "unmatched client tokens",
+              :unmatched_tokens => unmatched_tokens,
+              :client => client,
+              :check => check
+            })
+          end
+        end
+      end
+
+      def create_proxy_check_requests(check)
         client_attributes = check[:proxy_requests][:client_attributes]
         unless client_attributes.empty?
           @redis.smembers("clients") do |clients|
-            clients.each do |client_name|
-              @redis.get("client:#{client_name}") do |client_json|
-                unless client_json.nil?
-                  client = Sensu::JSON.load(client_json)
-                  if attributes_match?(client, client_attributes)
-                    @logger.debug("creating a proxy check request", {
-                      :client => client,
-                      :check => check
-                    })
-                    proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
-                    if unmatched_tokens.empty?
-                      proxy_check[:source] ||= client[:name]
-                      publish_check_request(proxy_check)
-                    else
-                      @logger.warn("failed to publish a proxy check request", {
-                        :reason => "unmatched client tokens",
-                        :unmatched_tokens => unmatched_tokens,
-                        :client => client,
-                        :check => check
-                      })
-                    end
-                  end
+            client_count = clients.length
+            foobar = Proc.new do |matching, slice_start, slice_size|
+              unless slice_start > client_count - 1
+                clients_slice = clients.slice(slice_start..slice_size)
+                determine_matching_clients(clients_slice, client_attributes) do |matching_clients|
+                  matching += matching_clients
+                  foobar.call(matching, slice_start + 20, slice_size + 20)
                 end
+              else
+                publish_proxy_check_requests(matching, check)
               end
             end
+            foobar.call([], 0, 19)
           end
         end
       end
@@ -849,7 +864,7 @@ module Sensu
         Proc.new do
           unless check_subdued?(check)
             if check[:proxy_requests]
-              publish_proxy_check_requests(check)
+              create_proxy_check_requests(check)
             else
               publish_check_request(check)
             end

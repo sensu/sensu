@@ -674,7 +674,7 @@ describe "Sensu::Server::Process" do
                       :subscriptions => "eval: value.include?('test')"
                     }
                   }
-                  @server.publish_proxy_check_requests(check)
+                  @server.create_proxy_check_requests(check)
                 end
               end
             end
