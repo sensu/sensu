@@ -811,23 +811,40 @@ module Sensu
         end
       end
 
-      def publish_proxy_check_requests(clients, check)
-        clients.each do |client|
-          @logger.debug("creating a proxy check request", {
+      def publish_proxy_check_request(client, check)
+        @logger.debug("creating a proxy check request", {
+          :client => client,
+          :check => check
+        })
+        proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
+        if unmatched_tokens.empty?
+          proxy_check[:source] ||= client[:name]
+          publish_check_request(proxy_check)
+        else
+          @logger.warn("failed to publish a proxy check request", {
+            :reason => "unmatched client tokens",
+            :unmatched_tokens => unmatched_tokens,
             :client => client,
             :check => check
           })
-          proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
-          if unmatched_tokens.empty?
-            proxy_check[:source] ||= client[:name]
-            publish_check_request(proxy_check)
+        end
+      end
+
+      def publish_proxy_check_requests(clients, check)
+        client_count = clients.length
+        splay = 0
+        if check[:proxy_requests][:splay]
+          splay = check[:interval] * 0.9 / client_count
+        end
+        splay_timer = 0
+        clients.each do |client|
+          unless splay == 0
+            EM::Timer.new(splay_timer) do
+              publish_proxy_check_request(client, check)
+            end
+            splay_timer += splay
           else
-            @logger.warn("failed to publish a proxy check request", {
-              :reason => "unmatched client tokens",
-              :unmatched_tokens => unmatched_tokens,
-              :client => client,
-              :check => check
-            })
+            publish_proxy_check_request(client, check)
           end
         end
       end
@@ -837,18 +854,18 @@ module Sensu
         unless client_attributes.empty?
           @redis.smembers("clients") do |clients|
             client_count = clients.length
-            foobar = Proc.new do |matching, slice_start, slice_size|
+            proxy_check_requests = Proc.new do |matching_clients, slice_start, slice_size|
               unless slice_start > client_count - 1
                 clients_slice = clients.slice(slice_start..slice_size)
-                determine_matching_clients(clients_slice, client_attributes) do |matching_clients|
-                  matching += matching_clients
-                  foobar.call(matching, slice_start + 20, slice_size + 20)
+                determine_matching_clients(clients_slice, client_attributes) do |additional_clients|
+                  matching_clients += additional_clients
+                  proxy_check_requests.call(matching_clients, slice_start + 20, slice_size + 20)
                 end
               else
-                publish_proxy_check_requests(matching, check)
+                publish_proxy_check_requests(matching_clients, check)
               end
             end
-            foobar.call([], 0, 19)
+            proxy_check_requests.call([], 0, 19)
           end
         end
       end
