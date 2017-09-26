@@ -489,6 +489,10 @@ describe "Sensu::Server::Process" do
             check[:output] = "foo\nbar\nbaz"
             truncated = @server.truncate_check_output(check)
             expect(truncated[:output]).to eq("foo\nbar\nbaz")
+            check[:truncate_output] = true
+            truncated = @server.truncate_check_output(check)
+            expect(truncated[:output]).to eq("foo\n...")
+            check.delete(:truncate_output)
             check[:type] = "metric"
             truncated = @server.truncate_check_output(check)
             expect(truncated[:output]).to eq("foo\n...")
@@ -504,6 +508,12 @@ describe "Sensu::Server::Process" do
             check[:output] = rand(36**256).to_s(36).rjust(256, '0')
             truncated = @server.truncate_check_output(check)
             expect(truncated[:output]).to eq(check[:output][0..255] + "\n...")
+            check[:truncate_output_length] = 10
+            truncated = @server.truncate_check_output(check)
+            expect(truncated[:output]).to eq(check[:output][0..10] + "\n...")
+            check[:truncate_output] = false
+            truncated = @server.truncate_check_output(check)
+            expect(truncated[:output]).to eq(check[:output])
             client = client_template
             redis.set("client:i-424242", Sensu::JSON.dump(client)) do
               result = result_template
