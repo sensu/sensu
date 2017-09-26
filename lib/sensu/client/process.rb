@@ -187,7 +187,14 @@ module Sensu
           started = Time.now.to_f
           check[:executed] = started.to_i
           if unmatched_tokens.empty?
-            Spawn.process(substituted[:command], :timeout => check[:timeout]) do |output, status|
+            options = {:timeout => check[:timeout]}
+            if check[:stdin]
+              options[:data] = Sensu::JSON.dump({
+                :client => @settings[:client],
+                :check => check
+              })
+            end
+            Spawn.process(substituted[:command], options) do |output, status|
               check[:duration] = ("%.3f" % (Time.now.to_f - started)).to_f
               check[:output] = output
               check[:status] = status

@@ -110,6 +110,28 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "can execute a check command with stdin" do
+    async_wrapper do
+      result_queue do |payload|
+        result = Sensu::JSON.load(payload)
+        expect(result[:client]).to eq("i-424242")
+        output = Sensu::JSON.load(result[:check][:output])
+        expect(output[:client][:name]).to eq("i-424242")
+        expect(output[:check][:name]).to eq("test")
+        expect(result[:check]).to have_key(:executed)
+        async_done
+      end
+      timer(0.5) do
+        @client.setup_transport do
+          check = check_template
+          check[:command] = "cat"
+          check[:stdin] = true
+          @client.execute_check_command(check)
+        end
+      end
+    end
+  end
+
   it "can substitute tokens in a check definition" do
     check = check_template
     check[:command] = "echo :::nested.attribute:::"
