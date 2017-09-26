@@ -558,6 +558,7 @@ describe "Sensu::Server::Process" do
                   client = Sensu::JSON.load(client_json)
                   expect(client[:keepalives]).to be(false)
                   expect(client[:version]).to eq(Sensu::VERSION)
+                  expect(client[:timestamp]).to be_within(10).of(epoch)
                   redis.hget("events:i-888888", "test") do |event_json|
                     event = Sensu::JSON.load(event_json)
                     expect(event[:client][:address]).to eq("unknown")

@@ -605,7 +605,8 @@ module Sensu
           :address => "unknown",
           :subscriptions => ["client:#{name}"],
           :keepalives => false,
-          :version => VERSION
+          :version => VERSION,
+          :timestamp => Time.now.to_i
         }
       end
 
