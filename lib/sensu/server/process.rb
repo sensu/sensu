@@ -834,7 +834,14 @@ module Sensu
         client_count = clients.length
         splay = 0
         if check[:proxy_requests][:splay]
-          splay = check[:interval] * 0.9 / client_count
+          interval = check[:interval]
+          if check[:cron]
+            interval = determine_check_cron_time(check)
+          end
+          unless interval.nil?
+            splay_coverage = check[:proxy_requests].fetch(:splay_coverage, 90)
+            splay = interval * (splay_coverage / 100.0) / client_count
+          end
         end
         splay_timer = 0
         clients.each do |client|
