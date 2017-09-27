@@ -795,45 +795,129 @@ module Sensu
         end
       end
 
+      # Determine and return clients from the registry that match a
+      # set of attributes.
+      #
+      # @param clients [Array] of client names.
+      # @param attributes [Hash]
+      # @yield [Array] callback/block called after determining the
+      #   matching clients, returning them as a block parameter.
+      def determine_matching_clients(clients, attributes)
+        client_keys = clients.map { |client_name| "client:#{client_name}" }
+        @redis.mget(*client_keys) do |client_json_objects|
+          matching_clients = []
+          client_json_objects.each do |client_json|
+            unless client_json.nil?
+              client = Sensu::JSON.load(client_json)
+              if attributes_match?(client, attributes)
+                matching_clients << client
+              end
+            end
+          end
+          yield(matching_clients)
+        end
+      end
+
+      # Publish a proxy check request for a client. This method
+      # substitutes client tokens in the check definition prior to
+      # publish the check request. If there are unmatched client
+      # tokens, a warning is logged, and a check request is not
+      # published.
+      #
+      # @param client [Hash] definition.
+      # @param check [Hash] definition.
+      def publish_proxy_check_request(client, check)
+        @logger.debug("creating a proxy check request", {
+          :client => client,
+          :check => check
+        })
+        proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
+        if unmatched_tokens.empty?
+          proxy_check[:source] ||= client[:name]
+          publish_check_request(proxy_check)
+        else
+          @logger.warn("failed to publish a proxy check request", {
+            :reason => "unmatched client tokens",
+            :unmatched_tokens => unmatched_tokens,
+            :client => client,
+            :check => check
+          })
+        end
+      end
+
+      # Publish proxy check requests for one or more clients. This
+      # method can optionally splay proxy check requests, evenly, over
+      # a period of time, determined by the check interval and a
+      # configurable splay coverage percentage. For example, splay
+      # proxy check requests over 60s * 90%, 54s, leaving 6s for the
+      # last proxy check execution before the the next round of proxy
+      # check requests for the same check. The
+      # `publish_proxy_check_request() method is used to publish the
+      # proxy check requests.
+      #
+      # @param clients [Array] of client definitions.
+      # @param check [Hash] definition.
+      def publish_proxy_check_requests(clients, check)
+        client_count = clients.length
+        splay = 0
+        if check[:proxy_requests][:splay]
+          interval = check[:interval]
+          if check[:cron]
+            interval = determine_check_cron_time(check)
+          end
+          unless interval.nil?
+            splay_coverage = check[:proxy_requests].fetch(:splay_coverage, 90)
+            splay = interval * (splay_coverage / 100.0) / client_count
+          end
+        end
+        splay_timer = 0
+        clients.each do |client|
+          unless splay == 0
+            EM::Timer.new(splay_timer) do
+              publish_proxy_check_request(client, check)
+            end
+            splay_timer += splay
+          else
+            publish_proxy_check_request(client, check)
+          end
+        end
+      end
+
       # Create and publish one or more proxy check requests. This
       # method iterates through the Sensu client registry for clients
       # that matched provided proxy request client attributes. A proxy
       # check request is created for each client in the registry that
       # matches the proxy request client attributes. Proxy check
       # requests have their client tokens subsituted by the associated
-      # client attributes values. The check requests are published to
-      # the Transport via `publish_check_request()`.
+      # client attributes values. The `determine_matching_clients()`
+      # method is used to fetch and inspect each slide of clients from
+      # the registry, returning those that match the configured proxy
+      # request client attributes. A relatively small clients slice
+      # size (20) is used to reduce the number of clients inspected
+      # within a single tick of the EM reactor. The
+      # `publish_proxy_check_requests()` method is used to iterate
+      # through the matching Sensu clients, creating their own unique
+      # proxy check request, substituting client tokens, and then
+      # publishing them to the targetted subscriptions.
       #
       # @param check [Hash] definition.
-      def publish_proxy_check_requests(check)
+      def create_proxy_check_requests(check)
         client_attributes = check[:proxy_requests][:client_attributes]
         unless client_attributes.empty?
           @redis.smembers("clients") do |clients|
-            clients.each do |client_name|
-              @redis.get("client:#{client_name}") do |client_json|
-                unless client_json.nil?
-                  client = Sensu::JSON.load(client_json)
-                  if attributes_match?(client, client_attributes)
-                    @logger.debug("creating a proxy check request", {
-                      :client => client,
-                      :check => check
-                    })
-                    proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
-                    if unmatched_tokens.empty?
-                      proxy_check[:source] ||= client[:name]
-                      publish_check_request(proxy_check)
-                    else
-                      @logger.warn("failed to publish a proxy check request", {
-                        :reason => "unmatched client tokens",
-                        :unmatched_tokens => unmatched_tokens,
-                        :client => client,
-                        :check => check
-                      })
-                    end
-                  end
+            client_count = clients.length
+            proxy_check_requests = Proc.new do |matching_clients, slice_start, slice_size|
+              unless slice_start > client_count - 1
+                clients_slice = clients.slice(slice_start..slice_size)
+                determine_matching_clients(clients_slice, client_attributes) do |additional_clients|
+                  matching_clients += additional_clients
+                  proxy_check_requests.call(matching_clients, slice_start + 20, slice_size + 20)
                 end
+              else
+                publish_proxy_check_requests(matching_clients, check)
               end
             end
+            proxy_check_requests.call([], 0, 19)
           end
         end
       end
@@ -849,7 +933,7 @@ module Sensu
         Proc.new do
           unless check_subdued?(check)
             if check[:proxy_requests]
-              publish_proxy_check_requests(check)
+              create_proxy_check_requests(check)
             else
               publish_check_request(check)
             end

@@ -117,7 +117,8 @@ module Helpers
       :command => "echo WARNING && exit 1",
       :output => "WARNING",
       :status => 1,
-      :executed => 1363224805
+      :executed => 1363224805,
+      :interval => 60
     }
   end
 
