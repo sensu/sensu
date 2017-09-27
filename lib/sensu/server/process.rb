@@ -563,9 +563,13 @@ module Sensu
               event[:last_ok] = stored_event[:last_ok]
               event[:occurrences] = stored_event[:occurrences]
               event[:occurrences_watermark] = stored_event[:occurrences_watermark] || event[:occurrences]
+              event[:check][:previous_output] = stored_event[:check][:output]
+              event[:check][:previous_status] = stored_event[:check][:status]
             else
               event[:id] = random_uuid
               event[:last_ok] = event[:timestamp]
+              event[:check][:previous_output] = nil
+              event[:check][:previous_status] = nil
             end
             if check[:status] != 0 || flapping
               if history[-1] == history[-2]
