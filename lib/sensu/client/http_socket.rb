@@ -87,6 +87,14 @@ module Sensu
         false
       end
 
+      def unauthorized_response
+        @logger.warn("http socket refusing to serve unauthorized request")
+        @response.headers["WWW-Authenticate"] = 'Basic realm="Sensu Client Restricted Area"'
+        send_response(401, "Unauthorized", {
+          :response => "You must be authenticated using your http_options user and password settings"
+        })
+      end
+
       def send_response(status, status_string, content)
         @logger.debug("http socket sending response", {
           :status => status,
@@ -100,6 +108,9 @@ module Sensu
       end
 
       def process_request_info
+        if @settings[:client][:http_socket][:protect_all_endpoints]
+          return unauthorized_response unless authorized?
+        end
         transport_info do |info|
           send_response(200, "OK", {
             :sensu => {
@@ -111,6 +122,9 @@ module Sensu
       end
 
       def process_request_results
+        if @settings[:client][:http_socket][:protect_all_endpoints]
+          return unauthorized_response unless authorized?
+        end
         if @http[:content_type] and @http[:content_type] == "application/json" and @http_content
           begin
             check = Sensu::JSON::load(@http_content)
@@ -125,19 +139,12 @@ module Sensu
       end
 
       def process_request_settings
-        if authorized?
-          @logger.info("http socket responding to request for configuration settings")
-          if @http_query_string and @http_query_string.downcase.include?("redacted=false")
-            send_response(200, "OK", @settings.to_hash)
-          else
-            send_response(200, "OK", redact_sensitive(@settings.to_hash))
-          end
+        return unauthorized_response unless authorized?
+        @logger.info("http socket responding to request for configuration settings")
+        if @http_query_string and @http_query_string.downcase.include?("redacted=false")
+          send_response(200, "OK", @settings.to_hash)
         else
-          @logger.warn("http socket refusing to serve unauthorized settings request")
-          @response.headers["WWW-Authenticate"] = 'Basic realm="Sensu Client Restricted Area"'
-          send_response(401, "Unauthorized", {
-            :response => "You must be authenticated using your http_options user and password settings"
-          })
+          send_response(200, "OK", redact_sensitive(@settings.to_hash))
         end
       end
 
@@ -181,7 +188,7 @@ module Sensu
               :http_request_uri => @http_request_uri
             })
             send_response(405, "Method Not Allowed", {
-              :response => "Valid methods for this endpoint: #{reqdef['methods'].keys}"
+              :response => "Valid methods for this endpoint: #{endpoint['methods'].keys}"
             })
           end
         else

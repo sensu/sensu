@@ -490,45 +490,6 @@ describe "Sensu::API::Process" do
     end
   end
 
-  it "can delete an incident when the client has a signature" do
-    @server = Sensu::Server::Process.new(options)
-    async_wrapper do
-      @server.setup_connections do
-        @server.setup_keepalives
-        @server.setup_results
-        keepalive = client_template
-        keepalive[:timestamp] = epoch
-        keepalive[:signature] = "foo"
-        setup_transport do |transport|
-          transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
-        end
-        timer(3) do
-          redis.get("client:i-424242:signature") do |signature|
-            expect(signature).to eq("foo")
-            check_result = result_template
-            check_result[:signature] = "foo"
-            check_result[:check][:name] = 'signature_test'
-            @server.process_check_result(check_result)
-            timer(1) do
-              api_test do
-                http_request(4567, "/incidents/i-424242/signature_test", :delete) do |http, body|
-                  expect(http.response_header.status).to eq(202)
-                  expect(body).to include(:issued)
-                  timer(3) do
-                    redis.hget("events:i-424242", "signature_test") do |event_json|
-                      expect(event_json).to be_nil
-                      async_done
-                    end
-                  end
-                end
-              end
-            end
-          end
-        end
-      end
-    end
-  end
-
   it "can not delete a nonexistent incident" do
     api_test do
       http_request(4567, "/incidents/i-424242/nonexistent", :delete) do |http, body|

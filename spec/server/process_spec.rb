@@ -489,6 +489,10 @@ describe "Sensu::Server::Process" do
             check[:output] = "foo\nbar\nbaz"
             truncated = @server.truncate_check_output(check)
             expect(truncated[:output]).to eq("foo\nbar\nbaz")
+            check[:truncate_output] = true
+            truncated = @server.truncate_check_output(check)
+            expect(truncated[:output]).to eq("foo\n...")
+            check.delete(:truncate_output)
             check[:type] = "metric"
             truncated = @server.truncate_check_output(check)
             expect(truncated[:output]).to eq("foo\n...")
@@ -504,6 +508,12 @@ describe "Sensu::Server::Process" do
             check[:output] = rand(36**256).to_s(36).rjust(256, '0')
             truncated = @server.truncate_check_output(check)
             expect(truncated[:output]).to eq(check[:output][0..255] + "\n...")
+            check[:truncate_output_length] = 10
+            truncated = @server.truncate_check_output(check)
+            expect(truncated[:output]).to eq(check[:output][0..10] + "\n...")
+            check[:truncate_output] = false
+            truncated = @server.truncate_check_output(check)
+            expect(truncated[:output]).to eq(check[:output])
             client = client_template
             redis.set("client:i-424242", Sensu::JSON.dump(client)) do
               result = result_template
@@ -548,6 +558,7 @@ describe "Sensu::Server::Process" do
                   client = Sensu::JSON.load(client_json)
                   expect(client[:keepalives]).to be(false)
                   expect(client[:version]).to eq(Sensu::VERSION)
+                  expect(client[:timestamp]).to be_within(10).of(epoch)
                   redis.hget("events:i-888888", "test") do |event_json|
                     event = Sensu::JSON.load(event_json)
                     expect(event[:client][:address]).to eq("unknown")
@@ -663,7 +674,91 @@ describe "Sensu::Server::Process" do
                       :subscriptions => "eval: value.include?('test')"
                     }
                   }
-                  @server.publish_proxy_check_requests(check)
+                  @server.create_proxy_check_requests(check)
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can publish proxy check requests with splay (using check interval)" do
+    async_wrapper do
+      setup_transport do |transport|
+        transport.subscribe(:fanout, "test") do |_, payload|
+          check_request = Sensu::JSON.load(payload)
+          expect(check_request[:name]).to eq("test")
+          expect(check_request[:command]).to eq("echo 127.0.0.1 && exit 1")
+          expect(check_request[:source]).to eq("i-424242")
+          expect(check_request[:issued]).to be_within(10).of(epoch)
+          async_done
+        end
+        redis.flushdb do
+          @server.setup_redis do
+            @server.setup_transport do
+              @server.setup_keepalives
+              timer(1) do
+                keepalive = client_template
+                keepalive[:timestamp] = epoch
+                transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+                timer(1) do
+                  check = check_template
+                  check[:command] = "echo :::address::: && exit 1"
+                  check[:subscribers] = ["test"]
+                  check[:proxy_requests] = {
+                    :splay => true,
+                    :splay_coverage => 50,
+                    :client_attributes => {
+                      :name => "i-424242",
+                      :subscriptions => "eval: value.include?('test')"
+                    }
+                  }
+                  @server.create_proxy_check_requests(check)
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  it "can publish proxy check requests with splay (using check cron)" do
+    async_wrapper do
+      setup_transport do |transport|
+        transport.subscribe(:fanout, "test") do |_, payload|
+          check_request = Sensu::JSON.load(payload)
+          expect(check_request[:name]).to eq("test")
+          expect(check_request[:command]).to eq("echo 127.0.0.1 && exit 1")
+          expect(check_request[:source]).to eq("i-424242")
+          expect(check_request[:issued]).to be_within(10).of(epoch)
+          async_done
+        end
+        redis.flushdb do
+          @server.setup_redis do
+            @server.setup_transport do
+              @server.setup_keepalives
+              timer(1) do
+                keepalive = client_template
+                keepalive[:timestamp] = epoch
+                transport.publish(:direct, "keepalives", Sensu::JSON.dump(keepalive))
+                timer(1) do
+                  check = check_template
+                  check.delete(:interval)
+                  check[:cron] = "* * * * *"
+                  check[:command] = "echo :::address::: && exit 1"
+                  check[:subscribers] = ["test"]
+                  check[:proxy_requests] = {
+                    :splay => true,
+                    :splay_coverage => 50,
+                    :client_attributes => {
+                      :name => "i-424242",
+                      :subscriptions => "eval: value.include?('test')"
+                    }
+                  }
+                  @server.create_proxy_check_requests(check)
                 end
               end
             end
@@ -684,7 +779,7 @@ describe "Sensu::Server::Process" do
 
   it "can schedule check request publishing" do
     async_wrapper do
-      expected = ["tokens", "merger", "source", "cron"]
+      expected = ["tokens", "merger", "source", "cron", "hooked"]
       setup_transport do |transport|
         transport.subscribe(:fanout, "test") do |_, payload|
           check_request = Sensu::JSON.load(payload)

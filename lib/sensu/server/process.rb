@@ -320,16 +320,17 @@ module Sensu
         end
       end
 
-      # Truncate check output. For metric checks, (`"type":
-      # "metric"`), check output is truncated to a single line and a
-      # maximum of 255 characters. Check output is currently left
-      # unmodified for standard checks.
+      # Truncate check output. Metric checks (`"type": "metric"`), or
+      # checks with `"truncate_output": true`, have their output
+      # truncated to a single line and a maximum character length of
+      # 255 by default. The maximum character length can be change by
+      # the `"truncate_output_length"` check definition attribute.
       #
       # @param check [Hash]
       # @return [Hash] check with truncated output.
       def truncate_check_output(check)
-        case check[:type]
-        when METRIC_CHECK_TYPE
+        if check[:truncate_output] ||
+           (check[:type] == METRIC_CHECK_TYPE && check[:truncate_output] != false)
           begin
             output_lines = check[:output].split("\n")
           rescue ArgumentError
@@ -341,8 +342,9 @@ module Sensu
             output_lines = utf8_output.split("\n")
           end
           output = output_lines.first || check[:output]
-          if output_lines.length > 1 || output.length > 255
-            output = output[0..255] + "\n..."
+          truncate_output_length = check.fetch(:truncate_output_length, 255)
+          if output_lines.length > 1 || output.length > truncate_output_length
+            output = output[0..truncate_output_length] + "\n..."
           end
           check.merge(:output => output)
         else
@@ -603,7 +605,8 @@ module Sensu
           :address => "unknown",
           :subscriptions => ["client:#{name}"],
           :keepalives => false,
-          :version => VERSION
+          :version => VERSION,
+          :timestamp => Time.now.to_i
         }
       end
 
@@ -792,45 +795,129 @@ module Sensu
         end
       end
 
+      # Determine and return clients from the registry that match a
+      # set of attributes.
+      #
+      # @param clients [Array] of client names.
+      # @param attributes [Hash]
+      # @yield [Array] callback/block called after determining the
+      #   matching clients, returning them as a block parameter.
+      def determine_matching_clients(clients, attributes)
+        client_keys = clients.map { |client_name| "client:#{client_name}" }
+        @redis.mget(*client_keys) do |client_json_objects|
+          matching_clients = []
+          client_json_objects.each do |client_json|
+            unless client_json.nil?
+              client = Sensu::JSON.load(client_json)
+              if attributes_match?(client, attributes)
+                matching_clients << client
+              end
+            end
+          end
+          yield(matching_clients)
+        end
+      end
+
+      # Publish a proxy check request for a client. This method
+      # substitutes client tokens in the check definition prior to
+      # publish the check request. If there are unmatched client
+      # tokens, a warning is logged, and a check request is not
+      # published.
+      #
+      # @param client [Hash] definition.
+      # @param check [Hash] definition.
+      def publish_proxy_check_request(client, check)
+        @logger.debug("creating a proxy check request", {
+          :client => client,
+          :check => check
+        })
+        proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
+        if unmatched_tokens.empty?
+          proxy_check[:source] ||= client[:name]
+          publish_check_request(proxy_check)
+        else
+          @logger.warn("failed to publish a proxy check request", {
+            :reason => "unmatched client tokens",
+            :unmatched_tokens => unmatched_tokens,
+            :client => client,
+            :check => check
+          })
+        end
+      end
+
+      # Publish proxy check requests for one or more clients. This
+      # method can optionally splay proxy check requests, evenly, over
+      # a period of time, determined by the check interval and a
+      # configurable splay coverage percentage. For example, splay
+      # proxy check requests over 60s * 90%, 54s, leaving 6s for the
+      # last proxy check execution before the the next round of proxy
+      # check requests for the same check. The
+      # `publish_proxy_check_request() method is used to publish the
+      # proxy check requests.
+      #
+      # @param clients [Array] of client definitions.
+      # @param check [Hash] definition.
+      def publish_proxy_check_requests(clients, check)
+        client_count = clients.length
+        splay = 0
+        if check[:proxy_requests][:splay]
+          interval = check[:interval]
+          if check[:cron]
+            interval = determine_check_cron_time(check)
+          end
+          unless interval.nil?
+            splay_coverage = check[:proxy_requests].fetch(:splay_coverage, 90)
+            splay = interval * (splay_coverage / 100.0) / client_count
+          end
+        end
+        splay_timer = 0
+        clients.each do |client|
+          unless splay == 0
+            EM::Timer.new(splay_timer) do
+              publish_proxy_check_request(client, check)
+            end
+            splay_timer += splay
+          else
+            publish_proxy_check_request(client, check)
+          end
+        end
+      end
+
       # Create and publish one or more proxy check requests. This
       # method iterates through the Sensu client registry for clients
       # that matched provided proxy request client attributes. A proxy
       # check request is created for each client in the registry that
       # matches the proxy request client attributes. Proxy check
       # requests have their client tokens subsituted by the associated
-      # client attributes values. The check requests are published to
-      # the Transport via `publish_check_request()`.
+      # client attributes values. The `determine_matching_clients()`
+      # method is used to fetch and inspect each slide of clients from
+      # the registry, returning those that match the configured proxy
+      # request client attributes. A relatively small clients slice
+      # size (20) is used to reduce the number of clients inspected
+      # within a single tick of the EM reactor. The
+      # `publish_proxy_check_requests()` method is used to iterate
+      # through the matching Sensu clients, creating their own unique
+      # proxy check request, substituting client tokens, and then
+      # publishing them to the targetted subscriptions.
       #
       # @param check [Hash] definition.
-      def publish_proxy_check_requests(check)
+      def create_proxy_check_requests(check)
         client_attributes = check[:proxy_requests][:client_attributes]
         unless client_attributes.empty?
           @redis.smembers("clients") do |clients|
-            clients.each do |client_name|
-              @redis.get("client:#{client_name}") do |client_json|
-                unless client_json.nil?
-                  client = Sensu::JSON.load(client_json)
-                  if attributes_match?(client, client_attributes)
-                    @logger.debug("creating a proxy check request", {
-                      :client => client,
-                      :check => check
-                    })
-                    proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
-                    if unmatched_tokens.empty?
-                      proxy_check[:source] ||= client[:name]
-                      publish_check_request(proxy_check)
-                    else
-                      @logger.warn("failed to publish a proxy check request", {
-                        :reason => "unmatched client tokens",
-                        :unmatched_tokens => unmatched_tokens,
-                        :client => client,
-                        :check => check
-                      })
-                    end
-                  end
+            client_count = clients.length
+            proxy_check_requests = Proc.new do |matching_clients, slice_start, slice_size|
+              unless slice_start > client_count - 1
+                clients_slice = clients.slice(slice_start..slice_size)
+                determine_matching_clients(clients_slice, client_attributes) do |additional_clients|
+                  matching_clients += additional_clients
+                  proxy_check_requests.call(matching_clients, slice_start + 20, slice_size + 20)
                 end
+              else
+                publish_proxy_check_requests(matching_clients, check)
               end
             end
+            proxy_check_requests.call([], 0, 19)
           end
         end
       end
@@ -846,7 +933,7 @@ module Sensu
         Proc.new do
           unless check_subdued?(check)
             if check[:proxy_requests]
-              publish_proxy_check_requests(check)
+              create_proxy_check_requests(check)
             else
               publish_check_request(check)
             end
@@ -1064,46 +1151,83 @@ module Sensu
         end
       end
 
+      # Create check TTL results. This method will retrieve check
+      # results from the registry and determine the time since their
+      # last check execution (in seconds). If the time since last
+      # execution is equal to or greater than the defined check TTL, a
+      # warning check result is published with the appropriate check
+      # output.
+      #
+      # @param ttl_keys [Array] of TTL keys.
+      # @param interval [Integer] to use for the check TTL result
+      #   interval.
+      # @yield [] callback/block called after the check TTL results
+      #   have been created.
+      def create_check_ttl_results(ttl_keys, interval=30)
+        result_keys = ttl_keys.map { |ttl_key| "result:#{ttl_key}" }
+        @redis.mget(*result_keys) do |result_json_objects|
+          result_json_objects.each_with_index do |result_json, index|
+            unless result_json.nil?
+              check = Sensu::JSON.load(result_json)
+              next unless check[:ttl] && check[:executed] && !check[:force_resolve]
+              time_since_last_execution = Time.now.to_i - check[:executed]
+              if time_since_last_execution >= check[:ttl]
+                client_name = ttl_keys[index].split(":").first
+                keepalive_event_exists?(client_name) do |event_exists|
+                  unless event_exists
+                    check[:output] = "Last check execution was "
+                    check[:output] << "#{time_since_last_execution} seconds ago"
+                    check[:status] = check[:ttl_status] || 1
+                    check[:interval] = interval
+                    publish_check_result(client_name, check)
+                  end
+                end
+              end
+            else
+              @redis.srem("ttl", result_key)
+            end
+          end
+          yield
+        end
+      end
+
       # Determine stale check results, those that have not executed in
       # a specified amount of time (check TTL). This method iterates
       # through stored check results that have a defined TTL value (in
-      # seconds). The time since last check execution (in seconds) is
-      # calculated for each check result. If the time since last
-      # execution is equal to or greater than the check TTL, a warning
-      # check result is published with the appropriate check output.
-      def determine_stale_check_results(interval = 30)
-        @logger.info("determining stale check results")
-        @redis.smembers("ttl") do |result_keys|
-          result_keys.each do |result_key|
-            @redis.get("result:#{result_key}") do |result_json|
-              unless result_json.nil?
-                check = Sensu::JSON.load(result_json)
-                next unless check[:ttl] && check[:executed] && !check[:force_resolve]
-                time_since_last_execution = Time.now.to_i - check[:executed]
-                if time_since_last_execution >= check[:ttl]
-                  client_name = result_key.split(":").first
-                  keepalive_event_exists?(client_name) do |event_exists|
-                    unless event_exists
-                      check[:output] = "Last check execution was "
-                      check[:output] << "#{time_since_last_execution} seconds ago"
-                      check[:status] = check[:ttl_status] || 1
-                      check[:interval] = interval
-                      publish_check_result(client_name, check)
-                    end
-                  end
-                end
-              else
-                @redis.srem("ttl", result_key)
+      # seconds). The `create_check_ttl_results()` method is used to
+      # inspect each check result, calculating their time since last
+      # check execution (in seconds). If the time since last execution
+      # is equal to or greater than the check TTL, a warning check
+      # result is published with the appropriate check output. A
+      # relatively small check results slice size (20) is used to
+      # reduce the number of check results inspected within a single
+      # tick of the EM reactor.
+      #
+      # @param interval [Integer] to use for the check TTL result
+      #   interval.
+      def determine_stale_check_results(interval=30)
+        @logger.info("determining stale check results (ttl)")
+        @redis.smembers("ttl") do |ttl_keys|
+          ttl_key_count = ttl_keys.length
+          ttl_check_results = Proc.new do |slice_start, slice_size|
+            unless slice_start > ttl_key_count - 1
+              ttl_keys_slice = ttl_keys.slice(slice_start..slice_size)
+              create_check_ttl_results(ttl_keys_slice, interval) do
+                ttl_check_results.call(slice_start + 20, slice_size + 20)
               end
             end
           end
+          ttl_check_results.call(0, 19)
         end
       end
 
       # Set up the check result monitor, a periodic timer to run
       # `determine_stale_check_results()` every 30 seconds. The timer
       # is stored in the timers hash under `:tasks`.
-      def setup_check_result_monitor(interval = 30)
+      #
+      # @param interval [Integer] to use for the check TTL result
+      #   interval.
+      def setup_check_result_monitor(interval=30)
         @logger.debug("monitoring check results")
         @timers[:tasks][:check_result_monitor] << EM::PeriodicTimer.new(interval) do
           determine_stale_check_results(interval)
