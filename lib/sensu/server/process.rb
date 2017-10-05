@@ -1065,6 +1065,9 @@ module Sensu
         if @settings.handler_exists?(:keepalive)
           check[:handler] = "keepalive"
         end
+        if @settings[:sensu][:keepalives]
+          check = deep_merge(check, @settings[:sensu][:keepalives])
+        end
         if client.has_key?(:keepalive)
           check = deep_merge(check, client[:keepalive])
         end
