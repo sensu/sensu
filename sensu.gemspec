@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.add_dependency "eventmachine", "1.2.5"
   s.add_dependency "sensu-json", "2.1.0"
   s.add_dependency "sensu-logger", "1.2.1"
-  s.add_dependency "sensu-settings", "10.9.0"
+  s.add_dependency "sensu-settings", "10.10.0"
   s.add_dependency "sensu-extension", "1.5.1"
   s.add_dependency "sensu-extensions", "1.9.0"
   s.add_dependency "sensu-transport", "7.0.2"

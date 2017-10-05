@@ -4,7 +4,7 @@ gem "eventmachine", "1.2.5"
 
 gem "sensu-json", "2.1.0"
 gem "sensu-logger", "1.2.1"
-gem "sensu-settings", "10.9.0"
+gem "sensu-settings", "10.10.0"
 gem "sensu-extension", "1.5.1"
 gem "sensu-extensions", "1.9.0"
 gem "sensu-transport", "7.0.2"
