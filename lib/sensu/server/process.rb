@@ -1184,7 +1184,7 @@ module Sensu
                 end
               end
             else
-              @redis.srem("ttl", result_key)
+              @redis.srem("ttl", ttl_keys[index])
             end
           end
           yield
