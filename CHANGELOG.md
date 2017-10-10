@@ -1,3 +1,11 @@
+## 1.1.1 - 2017-10-10
+
+### Fixes
+
+Fixed a bug in check TTL monitoring that caused the Sensu server to crash.
+Check TTL member deletion, following the deletion of the associated check
+result, would produce an uncaught error.
+
 ## 1.1.0 - 2017-09-27
 
 ### Features
