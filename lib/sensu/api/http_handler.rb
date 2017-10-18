@@ -1,3 +1,4 @@
+require "sensu/utilities"
 require "sensu/api/routes"
 require "sensu/api/utilities/filter_response_content"
 
@@ -21,9 +22,11 @@ module Sensu
       # @result [Hash]
       def request_details
         return @request_details if @request_details
+        @request_id = @http.fetch(:x_request_id, random_uuid)
         @request_start_time = Time.now.to_f
         _, remote_address = Socket.unpack_sockaddr_in(get_peername)
         @request_details = {
+          :request_id => @request_id,
           :remote_address => remote_address,
           :user_agent => @http[:user_agent],
           :method => @http_request_method,
@@ -44,13 +47,21 @@ module Sensu
       end
 
       # Log the HTTP response. This method calculates the
-      # request/response time.
+      # request/response time. The debug log level is used for the
+      # response body log event, as it is generally very verbose and
+      # unnecessary in most cases.
       def log_response
         @logger.info("api response", {
           :request => request_details,
           :status => @response.status,
           :content_length => @response.content.to_s.bytesize,
           :time => (Time.now.to_f - @request_start_time).round(3)
+        })
+        @logger.debug("api response body", {
+          :request => {
+            :request_id => @request_id
+          },
+          :content => @response.content
         })
       end
 
@@ -146,6 +157,13 @@ module Sensu
             @response.headers["Access-Control-Allow-#{header}"] = value
           end
         end
+      end
+
+      # Set the HTTP response headers, including the request ID and
+      # cors headers (via `set_cores_headers()`).
+      def set_headers
+        @response.headers["X-Request-ID"] = @request_id
+        set_cors_headers
       end
 
       # Paginate the provided items. This method uses two HTTP query
@@ -392,7 +410,7 @@ module Sensu
         log_request
         parse_parameters
         create_response
-        set_cors_headers
+        set_headers
         if authorized?
           if connected?
             route_request
