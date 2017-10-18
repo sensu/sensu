@@ -57,12 +57,6 @@ module Sensu
           :content_length => @response.content.to_s.bytesize,
           :time => (Time.now.to_f - @request_start_time).round(3)
         })
-        @logger.debug("api response body", {
-          :request => {
-            :request_id => @request_id
-          },
-          :content => @response.content
-        })
       end
 
       # Parse the HTTP request URI using a regular expression,
