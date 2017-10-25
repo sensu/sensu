@@ -286,6 +286,14 @@ Fixed filter name logging when an event is filtered.
 
 ## 0.27.0 - 2017-01-26
 
+### Non-backwards compatible changes
+
+The CONFIG_DIR environment variable has been renamed to CONFD_DIR. This
+environment varible is used to specify the directory path where	Sensu
+processes will load any JSON config files for deep merging. If you are
+using /etc/default/sensu to specify a custom value for CONFIG_DIR, please
+update it to the new CONFD_DIR variable name.
+
 ### Features
 
 Sensu client HTTP socket for check result input and informational queries.
