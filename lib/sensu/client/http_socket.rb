@@ -108,7 +108,8 @@ module Sensu
       end
 
       def process_request_info
-        if @settings[:client][:http_socket][:protect_all_endpoints]
+        if @settings[:client][:http_socket] &&
+           @settings[:client][:http_socket][:protect_all_endpoints]
           return unauthorized_response unless authorized?
         end
         transport_info do |info|
@@ -122,7 +123,8 @@ module Sensu
       end
 
       def process_request_results
-        if @settings[:client][:http_socket][:protect_all_endpoints]
+        if @settings[:client][:http_socket] &&
+           @settings[:client][:http_socket][:protect_all_endpoints]
           return unauthorized_response unless authorized?
         end
         if @http[:content_type] and @http[:content_type].include?("application/json") and @http_content
