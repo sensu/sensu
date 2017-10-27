@@ -1,3 +1,16 @@
+## 1.1.2 - 2017-10-27
+
+### Fixes
+
+Fixed a bug in the Sensu client HTTP socket that caused the Sensu client
+to crash when the the local client definition did not specify
+`"http_socket"` settings and the `/info` or `/results` endpoints were
+accessed.
+
+Fixed a bug in the Sensu client HTTP socket that caused the Sensu client
+to consider an HTTP content-type that included media-type information as
+invalid, discarding possibly valid content.
+
 ## 1.1.1 - 2017-10-10
 
 ### Fixes
