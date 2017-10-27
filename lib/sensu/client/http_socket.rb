@@ -125,7 +125,7 @@ module Sensu
         if @settings[:client][:http_socket][:protect_all_endpoints]
           return unauthorized_response unless authorized?
         end
-        if @http[:content_type] and @http[:content_type] == "application/json" and @http_content
+        if @http[:content_type] and @http[:content_type].include?("application/json") and @http_content
           begin
             check = Sensu::JSON::load(@http_content)
             process_check_result(check)
