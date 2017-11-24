@@ -223,7 +223,7 @@ describe "Sensu::Client::Process" do
     async_wrapper do
       check = check_template
       check[:hooks] = {
-        "1" => {
+        :"1" => {
           :command => "echo STATUS"
         },
         :warning => {
@@ -231,8 +231,8 @@ describe "Sensu::Client::Process" do
         }
       }
       @client.execute_check_hook(check) do |check|
-        expect(check[:hooks]["1"][:output]).to eq("STATUS\n")
-        expect(check[:hooks]["1"][:status]).to eq(0)
+        expect(check[:hooks][:"1"][:output]).to eq("STATUS\n")
+        expect(check[:hooks][:"1"][:status]).to eq(0)
         expect(check[:hooks][:warning]).to_not have_key(:output)
         async_done
       end
@@ -246,13 +246,13 @@ describe "Sensu::Client::Process" do
         :ok => {
           :command => "echo OK"
         },
-        "non-zero" => {
+        :"non-zero" => {
           :command => "echo NON-ZERO"
         }
       }
       @client.execute_check_hook(check) do |check|
-        expect(check[:hooks]["non-zero"][:output]).to eq("NON-ZERO\n")
-        expect(check[:hooks]["non-zero"][:status]).to eq(0)
+        expect(check[:hooks][:"non-zero"][:output]).to eq("NON-ZERO\n")
+        expect(check[:hooks][:"non-zero"][:status]).to eq(0)
         async_done
       end
     end

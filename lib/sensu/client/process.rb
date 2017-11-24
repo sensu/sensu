@@ -131,9 +131,9 @@ module Sensu
       def execute_check_hook(check)
         @logger.debug("attempting to execute check hook", :check => check)
         severity = SEVERITIES[check[:status]] || "unknown"
-        hook = check[:hooks][check[:status].to_s] || check[:hooks][severity.to_sym]
+        hook = check[:hooks][check[:status].to_s.to_sym] || check[:hooks][severity.to_sym]
         if hook.nil? && check[:status] != 0
-          hook = check[:hooks]["non-zero"]
+          hook = check[:hooks]["non-zero".to_sym]
         end
         if hook
           command, unmatched_tokens = substitute_tokens(hook[:command].dup, @settings[:client])
