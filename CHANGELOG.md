@@ -1,3 +1,11 @@
+## 1.1.3 - 2017-11-24
+
+### Fixes
+
+Fixed a bug in the Sensu client that broke check hooks named after numeric
+statuses (e.g. `"2"`) and `"non-zero"`, they were never executed unless
+the client had a local check definition. (#1773)
+
 ## 1.1.2 - 2017-10-27
 
 ### Fixes
