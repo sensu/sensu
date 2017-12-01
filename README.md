@@ -3,6 +3,7 @@
 [![Build Status](https://img.shields.io/travis/sensu/sensu.svg)](https://travis-ci.org/sensu/sensu)
 [![Gem Version](https://img.shields.io/gem/v/sensu.svg)](https://github.com/sensu/sensu/blob/master/CHANGELOG.md)
 [![MIT Licensed](https://img.shields.io/github/license/sensu/sensu.svg)](https://raw.githubusercontent.com/sensu/sensu/master/MIT-LICENSE.txt)
+[![Join the chat at https://slack.sensu.io/](https://slack.sensu.io/badge.svg)](https://slack.sensu.io/)
 
 # Sensu
 
