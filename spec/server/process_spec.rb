@@ -314,6 +314,36 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can process results with scheduled maintenance silencing" do
+    async_wrapper do
+      @server.setup_redis do
+        redis.flushdb do
+          redis.set("client:i-424242", Sensu::JSON.dump(client_template)) do
+            silenced_info = {
+              :id => "test:*",
+              :begin => Time.now.to_i - 60
+            }
+            redis.set("silence:test:*", Sensu::JSON.dump(silenced_info)) do
+              silenced_info[:id] = "*:test"
+              silenced_info[:begin] = Time.now.to_i + 60
+              redis.set("silence:*:test", Sensu::JSON.dump(silenced_info)) do
+                @server.process_check_result(result_template)
+                timer(1) do
+                  redis.hget("events:i-424242", "test") do |event_json|
+                    event = Sensu::JSON.load(event_json)
+                    expect(event[:silenced]).to eq(true)
+                    expect(event[:silenced_by]).to eq(["test:*"])
+                    async_done
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can have event id and occurrence watermark persist until the event is resolved" do
     async_wrapper do
       @server.setup_redis do
