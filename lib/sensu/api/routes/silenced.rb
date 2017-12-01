@@ -48,6 +48,7 @@ module Sensu
           rules = {
             :subscription => {:type => String, :nil_ok => true, :regex => /\A[\w\.\-\:]+\z/},
             :check => {:type => String, :nil_ok => true, :regex => /\A[\w\.-]+\z/},
+            :begin => {:type => Integer, :nil_ok => true},
             :expire => {:type => Integer, :nil_ok => true},
             :reason => {:type => String, :nil_ok => true},
             :creator => {:type => String, :nil_ok => true},
@@ -64,6 +65,7 @@ module Sensu
                 :check => data[:check],
                 :reason => data[:reason],
                 :creator => data[:creator],
+                :begin => data[:begin],
                 :expire_on_resolve => data.fetch(:expire_on_resolve, false),
                 :timestamp => Time.now.to_i
               }
