@@ -77,7 +77,7 @@ module Sensu
                   if data[:expire]
                     expire = data[:expire]
                     expire += begin_timestamp - timestamp
-                     @redis.expire(silenced_key, expire) do
+                    @redis.expire(silenced_key, expire) do
                       created!
                     end
                   else
