@@ -21,7 +21,7 @@ describe "Sensu::API::Process" do
                   redis.expire("stash:test/test", 3600) do
                     redis.sadd("stashes", "test/test") do
                       redis.sadd("result:i-424242", "test") do
-                        redis.rpush("history:i-424242:test", 0) do
+                        redis.rpush("history:i-424242:test", 1) do
                           @redis = nil
                           async_done
                         end
@@ -656,7 +656,7 @@ describe "Sensu::API::Process" do
         expect(body[0][:check]).to eq("test")
         expect(body[0][:history]).to be_kind_of(Array)
         expect(body[0][:last_execution]).to eq(1363224805)
-        expect(body[0][:last_status]).to eq(0)
+        expect(body[0][:last_status]).to eq(1)
         expect(body[0][:last_result]).to be_kind_of(Hash)
         expect(body[0][:last_result][:output]).to eq("WARNING")
         async_done
@@ -1397,7 +1397,8 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_result = Proc.new do |result|
-          result_template(@check)
+          expected_check = @check.merge(:history => [1])
+          result_template(expected_check)
         end
         expect(body).to contain(test_result)
         async_done
@@ -1411,7 +1412,8 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_result = Proc.new do |result|
-          result_template(@check)
+          expected_check = @check.merge(:history => [1])
+          result_template(expected_check)
         end
         expect(body).to contain(test_result)
         async_done
@@ -1424,7 +1426,8 @@ describe "Sensu::API::Process" do
       http_request(4567, "/results/i-424242/test") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
-        expect(body).to eq(result_template(@check))
+        expected_check = @check.merge(:history => [1])
+        expect(body).to eq(result_template(expected_check))
         async_done
       end
     end
