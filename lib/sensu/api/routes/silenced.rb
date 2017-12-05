@@ -60,14 +60,13 @@ module Sensu
               check = data.fetch(:check, "*")
               silenced_id = "#{subscription}:#{check}"
               timestamp = Time.now.to_i
-              begin_timestamp = data.fetch(:begin, timestamp)
               silenced_info = {
                 :id => silenced_id,
                 :subscription => data[:subscription],
                 :check => data[:check],
                 :reason => data[:reason],
                 :creator => data[:creator],
-                :begin => begin_timestamp,
+                :begin => data[:begin],
                 :expire_on_resolve => data.fetch(:expire_on_resolve, false),
                 :timestamp => timestamp
               }
@@ -76,7 +75,10 @@ module Sensu
                 @redis.sadd("silenced", silenced_key) do
                   if data[:expire]
                     expire = data[:expire]
-                    expire += begin_timestamp - timestamp
+                    if data[:begin]
+                      diff = data[:begin] - timestamp
+                      expire += diff if diff > 0
+                    end
                     @redis.expire(silenced_key, expire) do
                       created!
                     end

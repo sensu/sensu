@@ -1465,7 +1465,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:id]).to eq("test:*")
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to be_nil
-          expect(silenced_info[:begin]).to be_within(10).of(Time.now.to_i)
+          expect(silenced_info[:begin]).to be_nil
           expect(silenced_info[:reason]).to be_nil
           expect(silenced_info[:creator]).to be_nil
           expect(silenced_info[:expire_on_resolve]).to eq(false)
@@ -1490,7 +1490,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:id]).to eq("*:test")
           expect(silenced_info[:subscription]).to be_nil
           expect(silenced_info[:check]).to eq("test")
-          expect(silenced_info[:begin]).to be_within(10).of(Time.now.to_i)
+          expect(silenced_info[:begin]).to be_nil
           expect(silenced_info[:reason]).to be_nil
           expect(silenced_info[:creator]).to be_nil
           expect(silenced_info[:expire_on_resolve]).to eq(false)
@@ -1520,7 +1520,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:id]).to eq("test:test")
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
-          expect(silenced_info[:begin]).to be_within(10).of(Time.now.to_i)
+          expect(silenced_info[:begin]).to be_nil
           expect(silenced_info[:reason]).to eq("testing")
           expect(silenced_info[:creator]).to eq("rspec")
           expect(silenced_info[:expire_on_resolve]).to eq(true)
@@ -1750,7 +1750,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:id]).to eq("test:test")
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
-          expect(silenced_info[:begin]).to be_within(10).of(Time.now.to_i)
+          expect(silenced_info[:begin]).to be_nil
           expect(silenced_info[:expire]).to be_within(10).of(3600)
           expect(silenced_info[:timestamp]).to be_within(10).of(Time.now.to_i)
           http_request(4567, "/silenced/subscriptions/test") do |http, body|
