@@ -36,12 +36,19 @@ module Sensu
                     checks.each_with_index do |check_name, check_index|
                       result_key = "result:#{client_name}:#{check_name}"
                       @redis.get(result_key) do |result_json|
-                        unless result_json.nil?
-                          check = Sensu::JSON.load(result_json)
-                          @response_content << {:client => client_name, :check => check}
-                        end
-                        if client_index == clients.length - 1 && check_index == checks.length - 1
-                          respond
+                        history_key = "history:#{client_name}:#{check_name}"
+                        @redis.lrange(history_key, -21, -1) do |history|
+                          history.map! do |status|
+                            status.to_i
+                          end
+                          unless result_json.nil?
+                            check = Sensu::JSON.load(result_json)
+                            check[:history] = history
+                            @response_content << {:client => client_name, :check => check}
+                          end
+                          if client_index == clients.length - 1 && check_index == checks.length - 1
+                            respond
+                          end
                         end
                       end
                     end
@@ -67,12 +74,19 @@ module Sensu
               checks.each_with_index do |check_name, check_index|
                 result_key = "result:#{client_name}:#{check_name}"
                 @redis.get(result_key) do |result_json|
-                  unless result_json.nil?
-                    check = Sensu::JSON.load(result_json)
-                    @response_content << {:client => client_name, :check => check}
-                  end
-                  if check_index == checks.length - 1
-                    respond
+                  history_key = "history:#{client_name}:#{check_name}"
+                  @redis.lrange(history_key, -21, -1) do |history|
+                    history.map! do |status|
+                      status.to_i
+                    end
+                    unless result_json.nil?
+                      check = Sensu::JSON.load(result_json)
+                      check[:history] = history
+                      @response_content << {:client => client_name, :check => check}
+                    end
+                    if check_index == checks.length - 1
+                      respond
+                    end
                   end
                 end
               end
@@ -88,9 +102,16 @@ module Sensu
           result_key = "result:#{client_name}:#{check_name}"
           @redis.get(result_key) do |result_json|
             unless result_json.nil?
-              check = Sensu::JSON.load(result_json)
-              @response_content = {:client => client_name, :check => check}
-              respond
+              history_key = "history:#{client_name}:#{check_name}"
+              @redis.lrange(history_key, -21, -1) do |history|
+                history.map! do |status|
+                  status.to_i
+                end
+                check = Sensu::JSON.load(result_json)
+                check[:history] = history
+                @response_content = {:client => client_name, :check => check}
+                respond
+              end
             else
               not_found!
             end
