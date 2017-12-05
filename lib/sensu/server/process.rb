@@ -485,7 +485,7 @@ module Sensu
                 silenced_key = "silence:#{silenced_info[:id]}"
                 @redis.srem("silenced", silenced_key)
                 @redis.del(silenced_key)
-              else
+              elsif silenced_info[:begin].nil? || silenced_info[:begin] <= Time.now.to_i
                 event[:silenced_by] << silenced_info[:id]
               end
             end
