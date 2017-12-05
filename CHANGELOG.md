@@ -1,3 +1,21 @@
+## 1.2.0 - 2017-12-05
+
+### Features
+
+Scheduled maintenance, Sensu now gives users the ability to silence a
+check and/or client subscriptions at a predetermined time (`begin`
+epoch timestamp), with an optional expiration (in seconds), enabling
+users to silence events in advance for scheduled maintenance windows.
+
+The Sensu API now logs the "X-Request-ID" header, making it much
+easier to trace a request/response. If the API client does not provide
+a request ID, the API generates one for the request (UUID).
+
+The Sensu API `/results/*` endpoints now include check history in the
+result data.
+
+Check token substitution is now supported in check "subdue".
+
 ## 1.1.3 - 2017-11-24
 
 ### Fixes
