@@ -485,7 +485,7 @@ module Sensu
                 silenced_key = "silence:#{silenced_info[:id]}"
                 @redis.srem("silenced", silenced_key)
                 @redis.del(silenced_key)
-              else
+              elsif silenced_info[:begin].nil? || silenced_info[:begin] <= Time.now.to_i
                 event[:silenced_by] << silenced_info[:id]
               end
             end
@@ -1064,6 +1064,9 @@ module Sensu
         }
         if @settings.handler_exists?(:keepalive)
           check[:handler] = "keepalive"
+        end
+        if @settings[:sensu][:keepalives]
+          check = deep_merge(check, @settings[:sensu][:keepalives])
         end
         if client.has_key?(:keepalive)
           check = deep_merge(check, client[:keepalive])

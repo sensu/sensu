@@ -48,6 +48,7 @@ module Sensu
           rules = {
             :subscription => {:type => String, :nil_ok => true, :regex => /\A[\w\.\-\:]+\z/},
             :check => {:type => String, :nil_ok => true, :regex => /\A[\w\.-]+\z/},
+            :begin => {:type => Integer, :nil_ok => true},
             :expire => {:type => Integer, :nil_ok => true},
             :reason => {:type => String, :nil_ok => true},
             :creator => {:type => String, :nil_ok => true},
@@ -58,20 +59,27 @@ module Sensu
               subscription = data.fetch(:subscription, "*")
               check = data.fetch(:check, "*")
               silenced_id = "#{subscription}:#{check}"
+              timestamp = Time.now.to_i
               silenced_info = {
                 :id => silenced_id,
                 :subscription => data[:subscription],
                 :check => data[:check],
                 :reason => data[:reason],
                 :creator => data[:creator],
+                :begin => data[:begin],
                 :expire_on_resolve => data.fetch(:expire_on_resolve, false),
-                :timestamp => Time.now.to_i
+                :timestamp => timestamp
               }
               silenced_key = "silence:#{silenced_id}"
               @redis.set(silenced_key, Sensu::JSON.dump(silenced_info)) do
                 @redis.sadd("silenced", silenced_key) do
                   if data[:expire]
-                    @redis.expire(silenced_key, data[:expire]) do
+                    expire = data[:expire]
+                    if data[:begin]
+                      diff = data[:begin] - timestamp
+                      expire += diff if diff > 0
+                    end
+                    @redis.expire(silenced_key, expire) do
                       created!
                     end
                   else

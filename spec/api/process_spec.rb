@@ -21,7 +21,7 @@ describe "Sensu::API::Process" do
                   redis.expire("stash:test/test", 3600) do
                     redis.sadd("stashes", "test/test") do
                       redis.sadd("result:i-424242", "test") do
-                        redis.rpush("history:i-424242:test", 0) do
+                        redis.rpush("history:i-424242:test", 1) do
                           @redis = nil
                           async_done
                         end
@@ -656,7 +656,7 @@ describe "Sensu::API::Process" do
         expect(body[0][:check]).to eq("test")
         expect(body[0][:history]).to be_kind_of(Array)
         expect(body[0][:last_execution]).to eq(1363224805)
-        expect(body[0][:last_status]).to eq(0)
+        expect(body[0][:last_status]).to eq(1)
         expect(body[0][:last_result]).to be_kind_of(Hash)
         expect(body[0][:last_result][:output]).to eq("WARNING")
         async_done
@@ -1397,7 +1397,8 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_result = Proc.new do |result|
-          result_template(@check)
+          expected_check = @check.merge(:history => [1])
+          result_template(expected_check)
         end
         expect(body).to contain(test_result)
         async_done
@@ -1411,7 +1412,8 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
         test_result = Proc.new do |result|
-          result_template(@check)
+          expected_check = @check.merge(:history => [1])
+          result_template(expected_check)
         end
         expect(body).to contain(test_result)
         async_done
@@ -1424,7 +1426,8 @@ describe "Sensu::API::Process" do
       http_request(4567, "/results/i-424242/test") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Hash)
-        expect(body).to eq(result_template(@check))
+        expected_check = @check.merge(:history => [1])
+        expect(body).to eq(result_template(expected_check))
         async_done
       end
     end
@@ -1465,6 +1468,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:id]).to eq("test:*")
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to be_nil
+          expect(silenced_info[:begin]).to be_nil
           expect(silenced_info[:reason]).to be_nil
           expect(silenced_info[:creator]).to be_nil
           expect(silenced_info[:expire_on_resolve]).to eq(false)
@@ -1489,6 +1493,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:id]).to eq("*:test")
           expect(silenced_info[:subscription]).to be_nil
           expect(silenced_info[:check]).to eq("test")
+          expect(silenced_info[:begin]).to be_nil
           expect(silenced_info[:reason]).to be_nil
           expect(silenced_info[:creator]).to be_nil
           expect(silenced_info[:expire_on_resolve]).to eq(false)
@@ -1518,12 +1523,48 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:id]).to eq("test:test")
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
+          expect(silenced_info[:begin]).to be_nil
           expect(silenced_info[:reason]).to eq("testing")
           expect(silenced_info[:creator]).to eq("rspec")
           expect(silenced_info[:expire_on_resolve]).to eq(true)
           expect(silenced_info[:timestamp]).to be_within(10).of(Time.now.to_i)
           redis.ttl("silence:test:test") do |ttl|
             expect(ttl).to be_within(10).of(3600)
+            async_done
+          end
+        end
+      end
+    end
+  end
+
+  it "can create a silenced registry entry with a begin time that expires" do
+    api_test do
+      begin_timestamp = Time.now.to_i + 60
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => "test",
+          :begin => begin_timestamp,
+          :expire => 3600,
+          :reason => "testing",
+          :creator => "rspec",
+          :expire_on_resolve => true
+        }
+      }
+      http_request(4567, "/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        redis.get("silence:test:test") do |silenced_info_json|
+          silenced_info = Sensu::JSON.load(silenced_info_json)
+          expect(silenced_info[:id]).to eq("test:test")
+          expect(silenced_info[:subscription]).to eq("test")
+          expect(silenced_info[:check]).to eq("test")
+          expect(silenced_info[:begin]).to eq(begin_timestamp)
+          expect(silenced_info[:reason]).to eq("testing")
+          expect(silenced_info[:creator]).to eq("rspec")
+          expect(silenced_info[:expire_on_resolve]).to eq(true)
+          expect(silenced_info[:timestamp]).to be_within(10).of(Time.now.to_i)
+          redis.ttl("silence:test:test") do |ttl|
+            expect(ttl).to be_within(10).of(3660)
             async_done
           end
         end
@@ -1676,6 +1717,22 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can not create a silenced registry entry with an invalid begin time" do
+    api_test do
+      options = {
+        :body => {
+          :subscription => "test",
+          :check => "test",
+          :begin => Time.now.to_i.to_s
+        }
+      }
+      http_request(4567, "/silenced", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(400)
+        async_done
+      end
+    end
+  end
+
   it "can provide the silenced registry" do
     api_test do
       options = {
@@ -1696,6 +1753,7 @@ describe "Sensu::API::Process" do
           expect(silenced_info[:id]).to eq("test:test")
           expect(silenced_info[:subscription]).to eq("test")
           expect(silenced_info[:check]).to eq("test")
+          expect(silenced_info[:begin]).to be_nil
           expect(silenced_info[:expire]).to be_within(10).of(3600)
           expect(silenced_info[:timestamp]).to be_within(10).of(Time.now.to_i)
           http_request(4567, "/silenced/subscriptions/test") do |http, body|
