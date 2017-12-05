@@ -14,7 +14,7 @@ a request ID, the API generates one for the request (UUID).
 The Sensu API `/results/*` endpoints now include check history in the
 result data.
 
-Check token substitution is now supported in check "subdue".
+Check token substitution is now supported in check "source".
 
 ## 1.1.3 - 2017-11-24
 
