@@ -50,12 +50,12 @@ describe Sensu::Client::Socket do
     it_should_behave_like "a validator",
       "must contain an acceptable check source",
       {:source => "check source"},
-      "check source cannot contain spaces or special characters"
+      "check source cannot contain spaces, special characters, or invalid tokens"
 
     it_should_behave_like "a validator",
       "must contain a single-line check source",
       {:source => "check\nsource"},
-      "check source cannot contain spaces or special characters"
+      "check source cannot contain spaces, special characters, or invalid tokens"
 
     it_should_behave_like "a validator",
       "must have check output that is a string",
