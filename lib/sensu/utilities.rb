@@ -112,7 +112,15 @@ module Sensu
           hash[key] = redact_sensitive(value, keys)
         elsif value.is_a?(Array)
           hash[key] = value.map do |item|
-            item.is_a?(Hash) ? redact_sensitive(item, keys) : item
+            if item.is_a?(Hash)
+              redact_sensitive(item, keys)
+            elsif item.is_a?(Array)
+               item.map do |ytem|
+                 ytem.is_a?(Hash) ? redact_sensitive(ytem, keys) : ytem
+               end
+            else
+              item
+            end
           end
         end
       end
