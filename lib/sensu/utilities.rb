@@ -94,29 +94,35 @@ module Sensu
     # password, passwd, pass, api_key, api_token, access_key,
     # secret_key, private_key, secret
     #
-    # @param hash [Hash] to redact sensitive value from.
+    # @param obj [Object] to redact sensitive value from.
     # @param keys [Array] that indicate sensitive values.
     # @return [Hash] hash with redacted sensitive values.
-    def redact_sensitive(hash, keys=nil)
+    def redact_sensitive(obj, keys=nil)
       keys ||= %w[
         password passwd pass
         api_key api_token
         access_key secret_key private_key
         secret
       ]
-      hash = hash.dup
-      hash.each do |key, value|
-        if keys.include?(key.to_s)
-          hash[key] = "REDACTED"
-        elsif value.is_a?(Hash)
-          hash[key] = redact_sensitive(value, keys)
-        elsif value.is_a?(Array)
-          hash[key] = value.map do |item|
-            item.is_a?(Hash) ? redact_sensitive(item, keys) : item
+      obj = obj.dup
+      if obj.is_a?(Hash)
+        obj.each do |key, value|
+          if keys.include?(key.to_s)
+            obj[key] = "REDACTED"
+          elsif value.is_a?(Hash) || value.is_a?(Array)
+            obj[key] = redact_sensitive(value, keys)
+          end
+        end
+      elsif obj.is_a?(Array)
+        obj.map! do |item|
+          if item.is_a?(Hash) || item.is_a?(Array)
+            redact_sensitive(item, keys)
+          else
+            item
           end
         end
       end
-      hash
+      obj
     end
 
     # Traverse a hash for an attribute value, with a fallback default

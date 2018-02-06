@@ -101,7 +101,9 @@ describe "Sensu::Utilities" do
         :password => "bar"
       },
       :diff_one => [nil, {:secret => "baz"}],
-      :diff_two => [{:secret => "baz"}, {:secret => "qux"}]
+      :diff_two => [{:secret => "baz"}, {:secret => "qux"}],
+      :diff_three => [[{:secret => "jack"}], [{:secret => "jill"}]],
+      :nested_str_array => [["one", "two"]]
     }
     redacted = redact_sensitive(hash)
     expect(redacted[:one]).to eq(1)
@@ -110,6 +112,9 @@ describe "Sensu::Utilities" do
     expect(redacted[:diff_one][1][:secret]).to eq("REDACTED")
     expect(redacted[:diff_two][0][:secret]).to eq("REDACTED")
     expect(redacted[:diff_two][1][:secret]).to eq("REDACTED")
+    expect(redacted[:diff_three][0][0][:secret]).to eq("REDACTED")
+    expect(redacted[:diff_three][1][0][:secret]).to eq("REDACTED")
+    expect(redacted[:nested_str_array]).to eq([["one", "two"]])
   end
 
   it "can substitute dot notation tokens" do
