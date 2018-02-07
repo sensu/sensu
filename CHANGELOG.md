@@ -1,3 +1,10 @@
+## 1.2.1 - 2018-02-06
+
+### Fixes
+
+Fixed a bug in which sensitive values deeply nested in arrays would
+not have been redacted.
+
 ## 1.2.0 - 2017-12-05
 
 ### Features
