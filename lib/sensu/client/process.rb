@@ -455,27 +455,33 @@ module Sensu
       # Setup the Sensu client JSON socket, for external check result
       # input. By default, the client socket is bound to localhost on
       # TCP & UDP port 3030. The socket can be configured via the
-      # client definition, `:socket` with `:bind` and `:port`. The
-      # current instance of the Sensu logger, settings, and transport
+      # client definition, `:socket` with `:bind` and `:port`. Users can opt-out
+      # of using the TCP and UDP socket by setting `:enabled` to `false`.
+      # The current instance of the Sensu logger, settings, and transport
       # are passed to the socket handler, `Sensu::Client::Socket`. The
       # TCP socket server signature (Fixnum) and UDP connection object
       # are stored in `@sockets`, so that they can be managed
       # elsewhere, eg. `close_sockets()`.
       def setup_json_socket
         options = @settings[:client][:socket] || Hash.new
+        options[:enabled] ||= true
         options[:bind] ||= "127.0.0.1"
         options[:port] ||= 3030
-        @logger.debug("binding client tcp and udp sockets", :options => options)
-        @sockets << EM::start_server(options[:bind], options[:port], Socket) do |socket|
-          socket.logger = @logger
-          socket.settings = @settings
-          socket.transport = @transport
-        end
-        @sockets << EM::open_datagram_socket(options[:bind], options[:port], Socket) do |socket|
-          socket.logger = @logger
-          socket.settings = @settings
-          socket.transport = @transport
-          socket.protocol = :udp
+        if options[:enabled]
+          @logger.debug("binding client tcp and udp sockets", :options => options)
+          @sockets << EM::start_server(options[:bind], options[:port], Socket) do |socket|
+            socket.logger = @logger
+            socket.settings = @settings
+            socket.transport = @transport
+          end
+          @sockets << EM::open_datagram_socket(options[:bind], options[:port], Socket) do |socket|
+            socket.logger = @logger
+            socket.settings = @settings
+            socket.transport = @transport
+            socket.protocol = :udp
+          end
+        else
+            @logger.info("client tcp/udp socket disabled per configuration")
         end
       end
 
