@@ -464,10 +464,9 @@ module Sensu
       # elsewhere, eg. `close_sockets()`.
       def setup_json_socket
         options = @settings[:client][:socket] || Hash.new
-        options[:enabled] ||= true
         options[:bind] ||= "127.0.0.1"
         options[:port] ||= 3030
-        if options[:enabled]
+        unless options[:enabled] == false
           @logger.debug("binding client tcp and udp sockets", :options => options)
           @sockets << EM::start_server(options[:bind], options[:port], Socket) do |socket|
             socket.logger = @logger
@@ -506,6 +505,8 @@ module Sensu
             socket.settings = @settings
             socket.transport = @transport
           end
+        else
+          @logger.info("client http socket disabled per configuration")
         end
       end
 
