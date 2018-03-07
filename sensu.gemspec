@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   s.name        = "sensu"
   s.version     = Sensu::VERSION
   s.authors     = ["Sean Porter", "Justin Kolberg"]
-  s.email       = ["portertech@gmail.com", "amdprophet@gmail.com"]
+  s.email       = ["portertech@gmail.com", "amdprophet@gmail.com", "engineering@sensu.io"]
   s.homepage    = "http://sensuapp.org"
   s.summary     = "A monitoring framework"
   s.description = "A monitoring framework that aims to be simple, malleable, and scalable."
@@ -33,4 +33,6 @@ Gem::Specification.new do |s|
   s.executables   = s.files.grep(%r{^exe/}) { |file| File.basename(file) }
   s.bindir        = "exe"
   s.require_paths = ["lib"]
+  s.cert_chain    = ['certs/sensu.pem']
+  s.signing_key   = File.expand_path("~/.ssh/gem-sensu-private_key.pem") if $0 =~ /gem\z/
 end
