@@ -11,3 +11,9 @@
 4. Commit the CHANGELOG and VERSION changes ("major|minor|patch version bump, X.X.X")
 
 5. Release the "sensu" Ruby gem: `bundle exec rake release` (need signature private key)
+
+### Packages
+
+1. Create a sensu-omnibus release tag using the Sensu version and a build iteration (vX.X.X-X)
+
+2. Push the release tag to trigger package builds on Travis CI (pushed to S3 bucket)
