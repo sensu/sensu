@@ -67,7 +67,7 @@ module Sensu
       # @param event_data [Object] to transmit to the TCP socket.
       # @param event_id [String] event UUID
       def tcp_handler(handler, event_data, event_id)
-        if event_data != ""
+        unless event_data.nil? || event_data.empty?
           on_error = handler_error(handler, event_data, event_id)
           begin
             EM::connect(handler[:socket][:host], handler[:socket][:port], Socket) do |socket|
