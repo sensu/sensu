@@ -15,7 +15,7 @@ describe "Sensu::Server::Handle" do
   end
 
   it "can handle an event handler error" do
-    on_error = @server.handler_error(@handlers[:file], @event_data)
+    on_error = @server.handler_error(@handlers[:file], @event_data, @event_id)
     expect(on_error.arity).to be(1)
   end
 
