@@ -8,11 +8,15 @@ module Sensu
       #
       # @param handler [Object]
       # @param event_data [Object]
+      # @param event_id [String] event UUID
       # @return [Proc] error callback.
-      def handler_error(handler, event_data)
+      def handler_error(handler, event_data, event_id)
         Proc.new do |error|
           @logger.error("handler error", {
             :handler => handler,
+            :event => {
+              :id => event_id
+            },
             :event_data => event_data,
             :error => error.to_s
           })
@@ -40,7 +44,9 @@ module Sensu
           log_level = status == 0 ? :info : :error
           @logger.send(log_level, "handler output", {
             :handler => handler,
-            :event => { :id => event_id },
+            :event => {
+              :id => event_id
+            },
             :output => output.split("\n+")
           })
           @in_progress[:events] -= 1 if @in_progress
@@ -59,21 +65,32 @@ module Sensu
       #
       # @param handler [Hash] definition.
       # @param event_data [Object] to transmit to the TCP socket.
-      def tcp_handler(handler, event_data)
-        on_error = handler_error(handler, event_data)
-        begin
-          EM::connect(handler[:socket][:host], handler[:socket][:port], Socket) do |socket|
-            socket.on_success = Proc.new do
-              @in_progress[:events] -= 1 if @in_progress
+      # @param event_id [String] event UUID
+      def tcp_handler(handler, event_data, event_id)
+        unless event_data.nil? || event_data.empty?
+          on_error = handler_error(handler, event_data, event_id)
+          begin
+            EM::connect(handler[:socket][:host], handler[:socket][:port], Socket) do |socket|
+              socket.on_success = Proc.new do
+                @in_progress[:events] -= 1 if @in_progress
+              end
+              socket.on_error = on_error
+              timeout = handler[:timeout] || 10
+              socket.set_timeout(timeout)
+              socket.send_data(event_data.to_s)
+              socket.close_connection_after_writing
             end
-            socket.on_error = on_error
-            timeout = handler[:timeout] || 10
-            socket.set_timeout(timeout)
-            socket.send_data(event_data.to_s)
-            socket.close_connection_after_writing
+          rescue => error
+            on_error.call(error)
           end
-        rescue => error
-          on_error.call(error)
+        else
+          @logger.debug("not connecting to tcp socket due to empty event data", {
+            :handler => handler,
+            :event => {
+              :id => event_id
+            }
+          })
+          @in_progress[:events] -= 1 if @in_progress
         end
       end
 
@@ -83,7 +100,8 @@ module Sensu
       #
       # @param handler [Hash] definition.
       # @param event_data [Object] to transmit to the UDP socket.
-      def udp_handler(handler, event_data)
+      # @param event_id [String] event UUID
+      def udp_handler(handler, event_data, event_id)
         begin
           EM::open_datagram_socket("0.0.0.0", 0, nil) do |socket|
             socket.send_datagram(event_data.to_s, handler[:socket][:host], handler[:socket][:port])
@@ -91,7 +109,7 @@ module Sensu
             @in_progress[:events] -= 1 if @in_progress
           end
         rescue => error
-          handler_error(handler, event_data).call(error)
+          handler_error(handler, event_data, event_id).call(error)
         end
       end
 
@@ -102,13 +120,14 @@ module Sensu
       #
       # @param handler [Hash] definition.
       # @param event_data [Object] to publish to the transport pipe.
-      def transport_handler(handler, event_data)
+      # @param event_id [String] event UUID
+      def transport_handler(handler, event_data, event_id)
         unless event_data.nil? || event_data.empty?
           pipe = handler[:pipe]
           pipe_options = pipe[:options] || {}
           @transport.publish(pipe[:type].to_sym, pipe[:name], event_data, pipe_options) do |info|
             if info[:error]
-              handler_error(handler, event_data).call(info[:error])
+              handler_error(handler, event_data, event_id).call(info[:error])
             end
           end
         end
@@ -129,7 +148,9 @@ module Sensu
           log_level = (output.empty? && status.zero?) ? :debug : :info
           @logger.send(log_level, "handler extension output", {
             :extension => handler.definition,
-            :event => { :id => event_id },
+            :event => {
+              :id => event_id
+            },
             :output => output,
             :status => status
           })
@@ -148,11 +169,11 @@ module Sensu
         when "pipe"
           pipe_handler(handler, event_data, event_id)
         when "tcp"
-          tcp_handler(handler, event_data)
+          tcp_handler(handler, event_data, event_id)
         when "udp"
-          udp_handler(handler, event_data)
+          udp_handler(handler, event_data, event_id)
         when "transport"
-          transport_handler(handler, event_data)
+          transport_handler(handler, event_data, event_id)
         when "extension"
           handler_extension(handler, event_data, event_id)
         end
