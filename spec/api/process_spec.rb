@@ -190,6 +190,23 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can create a client without configured subscriptions" do
+    api_test do
+      options = {
+        :body => {
+          :name => "i-888888",
+          :address => "8.8.8.8"
+        }
+      }
+      http_request(4567, "/clients", :post, options) do |http, body|
+        expect(http.response_header.status).to eq(201)
+        expect(body).to be_kind_of(Hash)
+        expect(body[:name]).to eq("i-888888")
+        async_done
+      end
+    end
+  end
+
   it "can not create a client with an invalid post body (invalid name)" do
     api_test do
       options = {
