@@ -17,6 +17,7 @@ module Sensu
             client[:keepalives] = client.fetch(:keepalives, false)
             client[:version] = VERSION
             client[:timestamp] = Time.now.to_i
+            client[:subscriptions] ||= []
             validator = Validators::Client.new
             if validator.valid?(client)
               client[:subscriptions] = (client[:subscriptions] + ["client:#{client[:name]}"]).uniq
