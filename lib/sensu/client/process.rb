@@ -480,7 +480,7 @@ module Sensu
             socket.protocol = :udp
           end
         else
-            @logger.info("client tcp/udp socket disabled per configuration")
+          @logger.info("client tcp/udp socket disabled per configuration")
         end
       end
 
