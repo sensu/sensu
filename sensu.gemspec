@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-settings", "10.13.1"
   s.add_dependency "sensu-extension", "1.5.2"
   s.add_dependency "sensu-extensions", "1.9.1"
-  s.add_dependency "sensu-transport", "7.0.3"
+  s.add_dependency "sensu-transport", "7.1.0"
   s.add_dependency "sensu-spawn", "2.2.2"
   s.add_dependency "sensu-redis", "2.3.0"
   s.add_dependency "em-http-server", "0.1.8"
