@@ -50,6 +50,29 @@ describe "Sensu::Client::HTTPSocket" do
     end
   end
 
+  it "can accept multiple external check results input" do
+    async_wrapper do
+      @client.setup_transport do
+        @client.setup_http_socket
+        result_queue do |payload|
+          result = Sensu::JSON.load(payload)
+          expect(result[:client]).to eq("i-424242")
+          expect(result[:check][:name]).to eq("http")
+          async_done
+        end
+        timer(1) do
+          options = {:body => [{:name => "http", :output => "http", :status => 1},
+                               {:name => "http2", :output => "http2", :status => 0},
+                               {:name => "http3", :output => "http3", :status => 2}]}
+          http_request(3031, "/results", :post, options)do |http, body|
+            expect(http.response_header.status).to eq(202)
+            expect(body).to eq({:response => "ok"})
+          end
+        end
+      end
+    end
+  end
+
   it "can provide settings" do
     async_wrapper do
       @client.setup_transport do
