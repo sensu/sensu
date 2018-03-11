@@ -58,6 +58,9 @@ describe "Sensu::Client::HTTPSocket" do
           result = Sensu::JSON.load(payload)
           expect(result[:client]).to eq("i-424242")
           expect(result[:check][:name]).to eq("http")
+          expect(result[:check][:name]).to eq("http2")
+          expect(result[:check][:name]).to eq("http3")
+          end
           async_done
         end
         timer(1) do
@@ -66,9 +69,7 @@ describe "Sensu::Client::HTTPSocket" do
                                {:name => "http3", :output => "http3", :status => 2}]}
           http_request(3031, "/results", :post, options)do |http, body|
             len = options[:body].length-1
-            for i in (0..len) do
-              expect(http.response_header.status).to eq(202)
-            end
+            expect(http.response_header.status).to eq(202)
             expect(body).to eq({:response => "ok"})
           end
         end
