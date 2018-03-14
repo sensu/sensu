@@ -252,6 +252,44 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can force resolve a flapping event" do
+    async_wrapper do
+      @server.setup_redis do
+        redis.flushdb do
+          client = client_template
+          redis.set("client:i-424242", Sensu::JSON.dump(client)) do
+            26.times do |index|
+              result = result_template
+              result[:check][:low_flap_threshold] = 5
+              result[:check][:high_flap_threshold] = 20
+              result[:check][:status] = index % 2
+              @server.process_check_result(result)
+            end
+            timer(1) do
+              redis.hget("events:i-424242", "test") do |event_json|
+                event = Sensu::JSON.load(event_json)
+                expect(event[:action]).to eq("flapping")
+                expect(event[:occurrences]).to be_within(2).of(1)
+                result = result_template
+                result[:check][:low_flap_threshold] = 5
+                result[:check][:high_flap_threshold] = 20
+                result[:check][:status] = 0
+                result[:check][:force_resolve] = true
+                @server.process_check_result(result)
+                timer(1) do
+                  redis.hexists("events:i-424242", "test") do |exists|
+                    expect(exists).to be(false)
+                    async_done
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can process results with silencing" do
     async_wrapper do
       @server.setup_redis do
