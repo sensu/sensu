@@ -515,12 +515,13 @@ module Sensu
       #   event requires further processing.
       def update_event_registry(event)
         client_name = event[:client][:name]
-        if event[:check][:status] != 0 || event[:action] == :flapping
+        if event[:check][:status] != 0 || (event[:action] == :flapping && event[:check][:force_resolve] != true)
           @redis.hset("events:#{client_name}", event[:check][:name], Sensu::JSON.dump(event)) do
             yield(true)
           end
         elsif event[:action] == :resolve &&
-            (event[:check][:auto_resolve] != false || event[:check][:force_resolve])
+            (event[:check][:auto_resolve] != false || event[:check][:force_resolve]) ||
+            (event[:action] == :flapping && event[:check][:force_resolve])
           @redis.hdel("events:#{client_name}", event[:check][:name]) do
             yield(true)
           end
