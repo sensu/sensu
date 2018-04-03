@@ -2,6 +2,7 @@ require "sensu/daemon"
 require "sensu/server/filter"
 require "sensu/server/mutate"
 require "sensu/server/handle"
+require "sensu/server/tessen"
 
 module Sensu
   module Server
@@ -1464,6 +1465,14 @@ module Sensu
         end
       end
 
+      # Set up Tessen, the call home mechanism.
+      def setup_tessen
+        @tessen = Tessen.new
+        @tessen.logger = @logger
+        @tessen.redis = @redis
+        @tessen.run
+      end
+
       # Unsubscribe from transport subscriptions (all of them). This
       # method is called when there are issues with connectivity, or
       # the process is stopping.
@@ -1497,6 +1506,7 @@ module Sensu
         setup_results
         setup_task_elections
         setup_server_registry_updater
+        setup_tessen
         @state = :running
       end
 
@@ -1513,10 +1523,10 @@ module Sensu
       # Pause the Sensu server process, unless it is being paused or
       # has already been paused. The process/daemon `@state` is first
       # set to `:pausing`, to indicate that it's in progress. All run
-      # timers are cancelled, and the references are cleared. The
-      # Sensu server will unsubscribe from all transport
-      # subscriptions, relinquish any Sensu server tasks, then set the
-      # process/daemon `@state` to `:paused`.
+      # timers are cancelled, their references are cleared, and Tessen
+      # is stopped. The Sensu server will unsubscribe from all
+      # transport subscriptions, relinquish any Sensu server tasks,
+      # then set the process/daemon `@state` to `:paused`.
       def pause
         unless @state == :pausing || @state == :paused
           @state = :pausing
@@ -1524,6 +1534,7 @@ module Sensu
             timer.cancel
           end
           @timers[:run].clear
+          @tessen.stop if @tessen
           unsubscribe
           relinquish_tasks
           @state = :paused
