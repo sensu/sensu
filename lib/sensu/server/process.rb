@@ -2,6 +2,7 @@ require "sensu/daemon"
 require "sensu/server/filter"
 require "sensu/server/mutate"
 require "sensu/server/handle"
+require "sensu/server/tessen"
 
 module Sensu
   module Server
@@ -1430,6 +1431,8 @@ module Sensu
               :hexdigest => @settings.hexdigest
             }
           )
+          tessen = @settings[:tessen] || {}
+          tessen_enabled = tessen.fetch(:enabled, true)
           info = {
             :id => server_id,
             :hostname => system_hostname,
@@ -1442,6 +1445,9 @@ module Sensu
               }
             },
             :sensu => sensu,
+            :tessen => {
+              :enabled => tessen_enabled
+            },
             :timestamp => Time.now.to_i
           }
           @redis.sadd("servers", server_id)
@@ -1462,6 +1468,16 @@ module Sensu
         @timers[:run] << EM::PeriodicTimer.new(10) do
           update_server_registry
         end
+      end
+
+      # Set up Tessen, the call home mechanism.
+      def setup_tessen
+        @tessen = Tessen.new(
+          :settings => @settings,
+          :logger => @logger,
+          :redis => @redis
+        )
+        @tessen.run if @tessen.enabled?
       end
 
       # Unsubscribe from transport subscriptions (all of them). This
@@ -1497,6 +1513,7 @@ module Sensu
         setup_results
         setup_task_elections
         setup_server_registry_updater
+        setup_tessen
         @state = :running
       end
 
@@ -1513,10 +1530,10 @@ module Sensu
       # Pause the Sensu server process, unless it is being paused or
       # has already been paused. The process/daemon `@state` is first
       # set to `:pausing`, to indicate that it's in progress. All run
-      # timers are cancelled, and the references are cleared. The
-      # Sensu server will unsubscribe from all transport
-      # subscriptions, relinquish any Sensu server tasks, then set the
-      # process/daemon `@state` to `:paused`.
+      # timers are cancelled, their references are cleared, and Tessen
+      # is stopped. The Sensu server will unsubscribe from all
+      # transport subscriptions, relinquish any Sensu server tasks,
+      # then set the process/daemon `@state` to `:paused`.
       def pause
         unless @state == :pausing || @state == :paused
           @state = :pausing
@@ -1524,6 +1541,7 @@ module Sensu
             timer.cancel
           end
           @timers[:run].clear
+          @tessen.stop if @tessen
           unsubscribe
           relinquish_tasks
           @state = :paused

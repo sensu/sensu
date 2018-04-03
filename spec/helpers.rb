@@ -3,6 +3,9 @@ require "eventmachine"
 require "em-http-request"
 require "securerandom"
 require "sensu/json"
+require "webmock/rspec"
+
+WebMock.allow_net_connect!
 
 module Helpers
   def setup_options
