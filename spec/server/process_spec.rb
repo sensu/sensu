@@ -1081,6 +1081,7 @@ describe "Sensu::Server::Process" do
                 expect(server[:tasks]).to be_kind_of(Array)
                 expect(server[:sensu][:version]).to eq(Sensu::VERSION)
                 expect(server[:sensu][:settings][:hexdigest]).to be_kind_of(String)
+                expect(server[:tessen][:enabled]).to eq(true)
                 expect(server[:timestamp]).to be_within(5).of(Time.now.to_i)
                 async_done
               end
