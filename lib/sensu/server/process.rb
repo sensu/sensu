@@ -1468,9 +1468,10 @@ module Sensu
       # Set up Tessen, the call home mechanism.
       def setup_tessen
         @tessen = Tessen.new
+        @tessen.settings = @settings
         @tessen.logger = @logger
         @tessen.redis = @redis
-        @tessen.run
+        @tessen.run if @tessen.enabled?
       end
 
       # Unsubscribe from transport subscriptions (all of them). This

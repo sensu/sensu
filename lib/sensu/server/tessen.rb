@@ -4,10 +4,15 @@ require "sensu/constants"
 module Sensu
   module Server
     class Tessen
-      attr_accessor :logger, :redis
+      attr_accessor :settings, :logger, :redis
 
       def initialize
         @timers = []
+      end
+
+      def enabled?
+        tessen = @settings.to_hash.fetch(:tessen, {})
+        tessen[:enabled] != false
       end
 
       def run
