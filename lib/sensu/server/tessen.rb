@@ -39,24 +39,33 @@ module Sensu
       def create_data
         get_install_id do |install_id|
           get_client_count do |client_count|
-            data = {
-              :token => "",
-              :install => {
-                :id => install_id,
-                :type => "core",
-                :version => Sensu::VERSION
-              },
-              :metrics => {
-                :points => [
-                  {
-                    :name => "client_count",
-                    :value => client_count,
-                    :timestamp => Time.now.to_i
-                  }
-                ]
+            get_server_count do |server_count|
+              type, version = get_version_info
+              timestamp = Time.now.to_i
+              data = {
+                :token => "",
+                :install => {
+                  :id => install_id,
+                  :type => type,
+                  :version => version
+                },
+                :metrics => {
+                  :points => [
+                    {
+                      :name => "client_count",
+                      :value => client_count,
+                      :timestamp => timestamp
+                    },
+                    {
+                      :name => "server_count",
+                      :value => server_count,
+                      :timestamp => timestamp
+                    }
+                  ]
+                }
               }
-            }
-            yield data
+              yield data
+            end
           end
         end
       end
@@ -75,7 +84,22 @@ module Sensu
         end
       end
 
+      def get_server_count
+        @redis.scard("servers") do |count|
+          yield count.to_i
+        end
+      end
+
+      def get_version_info
+        if defined?(Sensu::Enterprise::VERSION)
+          ["enterprise", Sensu::Enterprise::VERSION]
+        else
+          ["core", Sensu::VERSION]
+        end
+      end
+
       def tessen_api_request(data)
+        @logger.debug("sending data to tessen", :data => data)
         options = {:body => Sensu::JSON.dump(data)}
         http = EM::HttpRequest.new("https://tessen.sensu.io/v1/data").post(options)
         http.callback do
