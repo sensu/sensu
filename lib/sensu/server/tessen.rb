@@ -39,6 +39,9 @@ module Sensu
       # Schedule data reports, sending data to the Tessen service
       # immediately and then every 6 hours after that.
       def schedule_data_reports
+        note = "this data helps inform the sensu team about installations"
+        note << " - you can choose to opt-out via configuration: {\"tessen\": {\"enabled\": false}}"
+        @logger.info("sending anonymized data to the tessen call-home service", :note => note)
         send_data
         @timers << EM::PeriodicTimer.new(21600) do
           send_data
@@ -132,12 +135,7 @@ module Sensu
       #
       # @param data [Hash]
       def tessen_api_request(data)
-        note = "this anonymized data helps inform the sensu team about installations"
-        note << " - you can choose to opt-out via configuration: {\"tessen\": {\"enabled\": false}}"
-        @logger.debug("sending data to the tessen call-home service", {
-          :data => data,
-          :note => note
-        })
+        @logger.debug("sending data to the tessen call-home service", :data => data)
         options = {:body => Sensu::JSON.dump(data)}
         http = EM::HttpRequest.new("https://tessen.sensu.io/v1/data").post(options)
         http.callback do
