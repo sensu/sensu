@@ -104,7 +104,12 @@ module Sensu
       end
 
       def tessen_api_request(data)
-        @logger.debug("sending data to tessen", :data => data)
+        note = "this anonymized data helps inform the sensu team about installations"
+        note << " - you can choose to opt-out via configuration: {\"tessen\": {\"enabled\": false}}"
+        @logger.debug("sending data to the tessen call-home service", {
+          :data => data,
+          :note => note
+        })
         options = {:body => Sensu::JSON.dump(data)}
         http = EM::HttpRequest.new("https://tessen.sensu.io/v1/data").post(options)
         http.callback do
