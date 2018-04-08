@@ -139,10 +139,10 @@ module Sensu
         options = {:body => Sensu::JSON.dump(data)}
         http = EM::HttpRequest.new("https://tessen.sensu.io/v1/data").post(options)
         http.callback do
-          @logger.debug("tessen response", :status => http.response_header.status)
+          @logger.debug("tessen call-home service response", :status => http.response_header.status)
         end
         http.errback do
-          @logger.debug("tessen error", :error => http.error)
+          @logger.debug("tessen call-home service error", :error => http.error)
         end
       end
     end
