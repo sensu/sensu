@@ -17,8 +17,7 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 - The Sensu client configuration definition now includes the socket "enabled" attribute, which defaults to `true`, and it can be set to `false` in order to disable the socket. (#1799)
 - The Sensu Ruby gems are now cryptographically signed. To learn more about Ruby gem signing, [please refer to the RubyGems security guide](http://guides.rubygems.org/security/). (#1819)
 - The Sensu API POST /clients endpoint no longer requires client subscriptions to be specified. (#1795)
-
-All Sensu event handler types now include event ID in log events.
+- All Sensu event handler types now include event ID in log events.
 
 ## [1.2.1] - 2018-02-06
 ### Fixed
