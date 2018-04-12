@@ -5,7 +5,12 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
-## [1.3.0 ] - 2018-03-09
+## [1.3.1] - 2018-04-12
+
+### Fixed
+- Posix spawn is now only used on x86_64 and i386 systems. This fixes Sensu on platforms where FFI is unable to compile.
+
+## [1.3.0] - 2018-03-09
 
 ### Fixed
 - Sensu TCP event handlers will no longer connect to a socket if the provided event data is nil or empty. (#1734)
