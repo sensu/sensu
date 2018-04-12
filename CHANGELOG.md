@@ -15,13 +15,8 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 - Redis TLS connection support. Sensu Redis connections can now be configured to use TLS, this includes the Sensu server and Redis transport connections! The Sensu Redis configuration definition now includes the optional "tls" (or "ssl") attribute, a hash containing TLS options (`"private_key_file"`, `"cert_chain_file"`, and `"verify_peer"`).
 - The Sensu client TCP/UDP socket can now be disabled via configuration.
 - The Sensu client configuration definition now includes the socket "enabled" attribute, which defaults to `true`, and it can be set to `false` in order to disable the socket. (#1799)
-
-The Sensu Ruby gems are now cryptographically signed. To learn more
-about Ruby gem signing, [please refer to the RubyGems security
-guide](http://guides.rubygems.org/security/). (#1819)
-
-The Sensu API POST /clients endpoint no longer requires client
-subscriptions to be specified. (#1795)
+- The Sensu Ruby gems are now cryptographically signed. To learn more about Ruby gem signing, [please refer to the RubyGems security guide](http://guides.rubygems.org/security/). (#1819)
+- The Sensu API POST /clients endpoint no longer requires client subscriptions to be specified. (#1795)
 
 All Sensu event handler types now include event ID in log events.
 
