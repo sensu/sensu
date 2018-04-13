@@ -43,11 +43,11 @@ Please observe these [guidelines on contributing][7].
 Sensu Core is released under the [MIT license][8].
 
 
-[1]: https://sensuapp.org/enterprise
-[2]: https://sensuapp.org/docs/latest/platforms/
-[3]: http://sensuapp.org/docs/latest/overview
+[1]: https://sensu.io/solutions/enterprise
+[2]: https://docs.sensu.io/sensu-core/latest/overview/platforms/
+[3]: https://docs.sensu.io/sensu-core/latest/
 [4]: https://slack.sensu.io/
 [5]: http://groups.google.com/group/sensu-users
-[6]: https://sensuapp.org/support
+[6]: https://sensu.io/resources/support
 [7]: https://github.com/sensu/sensu/blob/master/CONTRIBUTING.md
 [8]: https://raw.github.com/sensu/sensu/master/MIT-LICENSE.txt
