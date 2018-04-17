@@ -5,6 +5,11 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.3.2] - 2018-04-17
+
+### Fixed
+- Reverted posix spawn on only x86_64 and i386 systems, causing segfault on CentOS 6.
+
 ## [1.3.1] - 2018-04-12
 
 ### Fixed
