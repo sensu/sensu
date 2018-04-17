@@ -70,15 +70,15 @@ module Sensu
         get_install_id do |install_id|
           get_client_count do |client_count|
             get_server_count do |server_count|
-              token = @options.fetch(:token, "")
-              type, version = get_version_info
+              identity_key = @options.fetch(:identity_key, "")
+              flavour, version = get_version_info
               timestamp = Time.now.to_i
               data = {
-                :token => token,
+                :tessen_identity_key => identity_key,
                 :install => {
                   :id => install_id,
-                  :type => type,
-                  :version => version
+                  :sensu_flavour => flavour,
+                  :sensu_version => version
                 },
                 :metrics => {
                   :points => [
