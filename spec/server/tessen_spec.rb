@@ -89,12 +89,12 @@ describe "Sensu::Server::Tessen" do
       @tessen.redis = setup_redis
       @tessen.create_data do |data|
         expect(data).to be_kind_of(Hash)
-        expect(data[:token]).to be_kind_of(String)
+        expect(data[:tessen_identity_key]).to be_kind_of(String)
         expect(data[:install]).to be_kind_of(Hash)
         expect(data[:install][:id]).to be_kind_of(String)
         expect(data[:install][:id]).to_not be_empty
-        expect(data[:install][:type]).to eq("core")
-        expect(data[:install][:version]).to eq(Sensu::VERSION)
+        expect(data[:install][:sensu_flavour]).to eq("core")
+        expect(data[:install][:sensu_version]).to eq(Sensu::VERSION)
         expect(data[:metrics]).to be_kind_of(Hash)
         expect(data[:metrics][:points]).to be_kind_of(Array)
         expect(data[:metrics][:points].size).to eq(2)
