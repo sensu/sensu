@@ -21,11 +21,17 @@ module Sensu
         @options = @settings.to_hash.fetch(:tessen, {})
       end
 
-      # Determine if Tessen is enabled (opt-out).
+      # Determine if Tessen is enabled (opt-in).
       #
       # @return [TrueClass, FalseClass]
       def enabled?
-        @options[:enabled] != false
+        enabled = @options[:enabled] == true
+        unless enabled
+          note = "tessen collects anonymized data to help inform the sensu team about installations"
+          note << " - you can opt-in via configuration: {\"tessen\": {\"enabled\": true}}"
+          @logger.info("the tessen call-home mechanism is not enabled", :note => note)
+        end
+        enabled
       end
 
       # Run Tessen, scheduling data reports (every 6h).
@@ -44,9 +50,6 @@ module Sensu
       # Schedule data reports, sending data to the Tessen service
       # immediately and then every 6 hours after that.
       def schedule_data_reports
-        note = "this data helps inform the sensu team about installations"
-        note << " - you can choose to opt-out via configuration: {\"tessen\": {\"enabled\": false}}"
-        @logger.info("sending anonymized data to the tessen call-home service", :note => note)
         send_data
         @timers << EM::PeriodicTimer.new(21600) do
           send_data

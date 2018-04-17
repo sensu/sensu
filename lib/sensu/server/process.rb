@@ -1432,7 +1432,7 @@ module Sensu
             }
           )
           tessen = @settings[:tessen] || {}
-          tessen_enabled = tessen.fetch(:enabled, true)
+          tessen_enabled = tessen.fetch(:enabled, false)
           info = {
             :id => server_id,
             :hostname => system_hostname,

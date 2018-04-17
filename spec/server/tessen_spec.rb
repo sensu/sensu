@@ -26,9 +26,9 @@ describe "Sensu::Server::Tessen" do
   end
 
   it "can determine if its enabled" do
-    expect(@tessen.enabled?).to eq(true)
-    @tessen.options[:enabled] = false
     expect(@tessen.enabled?).to eq(false)
+    @tessen.options[:enabled] = true
+    expect(@tessen.enabled?).to eq(true)
   end
 
   it "can run and stop" do
