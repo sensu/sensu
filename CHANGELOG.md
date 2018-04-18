@@ -5,6 +5,12 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.3.3] - 2018-04-18
+
+### Fixed
+- Posix spawn is now only used on x86_64 and i386 systems. (undo revert, a red herring)
+- Now pinning FFI to 1.9.21, newer versions segfault on CentOS 6
+
 ## [1.3.2] - 2018-04-17
 
 ### Fixed
