@@ -4,6 +4,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins/community/blob/master/HOW_WE_CHANGELOG.md)
 
 ## [Unreleased]
+- Sensu call-home mechanism, the Tessen client (opt-in). It sends anonymized data about the Sensu installation to the Tessen hosted service (Sensu Inc), on sensu-server startup and every 6 hours thereafter. All data reports are logged for transparency/awareness and transmitted over HTTPS. The anonymized data currently includes the flavour of Sensu (Core or Enterprise), the Sensu version, and the Sensu client and server counts.
+- Support for writing multiple check results to the client socket (in one payload).
 
 ## [1.3.3] - 2018-04-18
 
