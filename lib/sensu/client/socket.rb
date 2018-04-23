@@ -123,9 +123,15 @@ module Sensu
       # @param [String] data to parse for a check result.
       def parse_check_result(data)
         begin
-          check = Sensu::JSON.load(data)
+          object = Sensu::JSON.load(data)
           cancel_watchdog
-          process_check_result(check)
+          if object.instance_of? Array
+            for check in object do
+              process_check_result(check)
+            end
+          else
+            process_check_result(object)
+          end
           respond("ok")
         rescue Sensu::JSON::ParseError, ArgumentError => error
           if @protocol == :tcp

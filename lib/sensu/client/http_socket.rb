@@ -129,8 +129,14 @@ module Sensu
         end
         if @http[:content_type] and @http[:content_type].include?("application/json") and @http_content
           begin
-            check = Sensu::JSON::load(@http_content)
-            process_check_result(check)
+            object = Sensu::JSON::load(@http_content)
+            if object.instance_of? Array
+              for check in object do
+                process_check_result(check)
+              end
+            else
+              process_check_result(object)
+            end
             send_response(202, "OK", {:response => "ok"})
           rescue Sensu::JSON::ParseError, ArgumentError
             send_response(400, "Failed to parse JSON body", {:response => "Failed to parse JSON body"})
