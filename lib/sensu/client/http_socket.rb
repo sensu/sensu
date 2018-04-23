@@ -130,8 +130,8 @@ module Sensu
         if @http[:content_type] and @http[:content_type].include?("application/json") and @http_content
           begin
             object = Sensu::JSON::load(@http_content)
-            if object.instance_of? Array
-              for check in object do
+            if object.is_a?(Array)
+              object.each do |check|
                 process_check_result(check)
               end
             else

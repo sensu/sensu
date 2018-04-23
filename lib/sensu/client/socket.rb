@@ -116,17 +116,17 @@ module Sensu
         end
       end
 
-      # Parse a JSON check result. For UDP, immediately raise a parser
-      # error. For TCP, record parser errors, so the connection
-      # +watchdog+ can report them.
+      # Parse one or more JSON check results. For UDP, immediately
+      # raise a parser error. For TCP, record parser errors, so the
+      # connection +watchdog+ can report them.
       #
       # @param [String] data to parse for a check result.
       def parse_check_result(data)
         begin
           object = Sensu::JSON.load(data)
           cancel_watchdog
-          if object.instance_of? Array
-            for check in object do
+          if object.is_a?(Array)
+            object.each do |check|
               process_check_result(check)
             end
           else
