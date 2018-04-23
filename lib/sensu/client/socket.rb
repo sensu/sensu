@@ -125,8 +125,8 @@ module Sensu
         begin
           object = Sensu::JSON.load(data)
           cancel_watchdog
-          if object.instance_of? Array
-            for check in object do
+          if object.is_a?(Array)
+            object.each do |check|
               process_check_result(check)
             end
           else
