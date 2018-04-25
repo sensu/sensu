@@ -30,12 +30,17 @@ module Sensu
           @response_content = []
           @redis.smembers("clients") do |clients|
             unless clients.empty?
+              result_keys = []
               clients.each_with_index do |client_name, client_index|
                 @redis.smembers("result:#{client_name}") do |checks|
-                  if !checks.empty?
-                    checks.each_with_index do |check_name, check_index|
-                      result_key = "result:#{client_name}:#{check_name}"
+                  checks.each do |check_name|
+                    result_keys << "result:#{client_name}:#{check_name}"
+                  end
+                  if client_index == clients.length - 1
+                    result_keys = pagination(result_keys)
+                    result_keys.each_with_index do |result_key, result_key_index|
                       @redis.get(result_key) do |result_json|
+                        _, client_name, check_name = result_key.split(":")
                         history_key = "history:#{client_name}:#{check_name}"
                         @redis.lrange(history_key, -21, -1) do |history|
                           history.map! do |status|
@@ -46,15 +51,11 @@ module Sensu
                             check[:history] = history
                             @response_content << {:client => client_name, :check => check}
                           end
-                          if client_index == clients.length - 1 && check_index == checks.length - 1
+                          if result_key_index == result_keys.length - 1
                             respond
                           end
                         end
                       end
-                    end
-                  elsif client_index == clients.length - 1
-                    @redis.ping do
-                      respond
                     end
                   end
                 end
@@ -70,6 +71,7 @@ module Sensu
           client_name = parse_uri(RESULTS_CLIENT_URI).first
           @response_content = []
           @redis.smembers("result:#{client_name}") do |checks|
+            checks = pagination(checks)
             unless checks.empty?
               checks.each_with_index do |check_name, check_index|
                 result_key = "result:#{client_name}:#{check_name}"
