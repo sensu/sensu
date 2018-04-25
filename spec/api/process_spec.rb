@@ -1423,6 +1423,22 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can provide current results with pagination" do
+    api_test do
+      http_request(4567, "/results?limit=1") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        expect(body.length).to eq(1)
+        http_request(4567, "/results?limit=1&offset=1") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Array)
+          expect(body).to be_empty
+          async_done
+        end
+      end
+    end
+  end
+
   it "can provide current results for a specific client" do
     api_test do
       http_request(4567, "/results/i-424242") do |http, body|
@@ -1434,6 +1450,22 @@ describe "Sensu::API::Process" do
         end
         expect(body).to contain(test_result)
         async_done
+      end
+    end
+  end
+
+  it "can provide current results for a specific client with pagination" do
+    api_test do
+      http_request(4567, "/results/i-424242?limit=1") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        expect(body.length).to eq(1)
+        http_request(4567, "/results/i-424242?limit=1&offset=1") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Array)
+          expect(body).to be_empty
+          async_done
+        end
       end
     end
   end
