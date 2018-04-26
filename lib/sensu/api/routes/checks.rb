@@ -7,7 +7,8 @@ module Sensu
 
         # GET /checks
         def get_checks
-          @response_content = @settings.checks.reject { |check| check[:standalone] }
+          checks = @settings.checks.reject { |check| check[:standalone] }
+          @response_content = pagination(checks)
           respond
         end
 

@@ -304,6 +304,22 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can provide defined checks with pagination" do
+    api_test do
+      http_request(4567, "/checks?limit=1") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        expect(body.length).to eq(1)
+        http_request(4567, "/checks?limit=1&offset=1") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Array)
+          expect(body.length).to eq(1)
+          async_done
+        end
+      end
+    end
+  end
+
   it "can provide defined checks without standalone checks" do
     api_test do
       http_request(4567, "/checks") do |http, body|
