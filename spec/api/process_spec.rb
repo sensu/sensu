@@ -128,6 +128,22 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can provide current events with pagination" do
+    api_test do
+      http_request(4567, "/events?limit=1") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        expect(body.length).to eq(1)
+        http_request(4567, "/events?limit=1&offset=1") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Array)
+          expect(body).to be_empty
+          async_done
+        end
+      end
+    end
+  end
+
   it "can provide current events for a specific client" do
     api_test do
       http_request(4567, "/events/i-424242") do |http, body|
@@ -138,6 +154,22 @@ describe "Sensu::API::Process" do
         end
         expect(body).to contain(test_event)
         async_done
+      end
+    end
+  end
+
+  it "can provide current events for a specific client with pagination" do
+    api_test do
+      http_request(4567, "/events/i-424242?limit=1") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        expect(body.length).to eq(1)
+        http_request(4567, "/events/i-424242?limit=1&offset=1") do |http, body|
+          expect(http.response_header.status).to eq(200)
+          expect(body).to be_kind_of(Array)
+          expect(body).to be_empty
+          async_done
+        end
       end
     end
   end
