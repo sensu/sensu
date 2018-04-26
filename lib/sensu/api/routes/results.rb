@@ -38,24 +38,28 @@ module Sensu
                   end
                   if client_index == clients.length - 1
                     result_keys = pagination(result_keys)
-                    result_keys.each_with_index do |result_key, result_key_index|
-                      @redis.get(result_key) do |result_json|
-                        _, client_name, check_name = result_key.split(":")
-                        history_key = "history:#{client_name}:#{check_name}"
-                        @redis.lrange(history_key, -21, -1) do |history|
-                          history.map! do |status|
-                            status.to_i
-                          end
-                          unless result_json.nil?
-                            check = Sensu::JSON.load(result_json)
-                            check[:history] = history
-                            @response_content << {:client => client_name, :check => check}
-                          end
-                          if result_key_index == result_keys.length - 1
-                            respond
+                    unless result_keys.empty?
+                      result_keys.each_with_index do |result_key, result_key_index|
+                        @redis.get(result_key) do |result_json|
+                          _, client_name, check_name = result_key.split(":")
+                          history_key = "history:#{client_name}:#{check_name}"
+                          @redis.lrange(history_key, -21, -1) do |history|
+                            history.map! do |status|
+                              status.to_i
+                            end
+                            unless result_json.nil?
+                              check = Sensu::JSON.load(result_json)
+                              check[:history] = history
+                              @response_content << {:client => client_name, :check => check}
+                            end
+                            if result_key_index == result_keys.length - 1
+                              respond
+                            end
                           end
                         end
                       end
+                    else
+                      respond
                     end
                   end
                 end

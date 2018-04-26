@@ -1053,6 +1053,26 @@ describe "Sensu::API::Process" do
     end
   end
 
+  it "can provide a list of aggregates with pagination" do
+    api_test do
+      server = Sensu::Server::Process.new(options)
+      server.setup_redis do
+        server.aggregate_check_result(client_template, check_template)
+        timer(1) do
+          http_request(4567, "/aggregates?limit=1") do |http, body|
+            expect(body).to be_kind_of(Array)
+            expect(body.length).to eq(1)
+            http_request(4567, "/aggregates?limit=1&offset=1") do |http, body|
+              expect(body).to be_kind_of(Array)
+              expect(body).to be_empty
+              async_done
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can delete an aggregate" do
     api_test do
       server = Sensu::Server::Process.new(options)

@@ -11,6 +11,7 @@ module Sensu
         # GET /aggregates
         def get_aggregates
           @redis.smembers("aggregates") do |aggregates|
+            aggregates = pagination(aggregates)
             aggregates.map! do |aggregate|
               {:name => aggregate}
             end
