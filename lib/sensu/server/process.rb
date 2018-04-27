@@ -1057,6 +1057,8 @@ module Sensu
       # configuration, it's deep merged with the defaults. The check
       # `:name`, `:issued`, and `:executed` values are always
       # overridden to guard against an invalid definition.
+      #
+      # @return [Array] check definition, unmatched client tokens
       def create_keepalive_check(client)
         check = {
           :thresholds => {
@@ -1074,7 +1076,8 @@ module Sensu
           check = deep_merge(check, client[:keepalive])
         end
         timestamp = Time.now.to_i
-        check.merge(:name => "keepalive", :issued => timestamp, :executed => timestamp)
+        check.merge!(:name => "keepalive", :issued => timestamp, :executed => timestamp)
+        object_substitute_tokens(check, client)
       end
 
       # Create client keepalive check results. This method will
@@ -1099,7 +1102,7 @@ module Sensu
             unless client_json.nil?
               client = Sensu::JSON.load(client_json)
               next if client[:keepalives] == false
-              check = create_keepalive_check(client)
+              check, unmatched_tokens = create_keepalive_check(client)
               time_since_last_keepalive = Time.now.to_i - client[:timestamp]
               check[:output] = "No keepalive sent from client for "
               check[:output] << "#{time_since_last_keepalive} seconds"
@@ -1114,6 +1117,10 @@ module Sensu
                 check[:output] = "Keepalive sent from client "
                 check[:output] << "#{time_since_last_keepalive} seconds ago"
                 check[:status] = 0
+              end
+              unless unmatched_tokens.empty?
+                check[:output] << " - Unmatched client token(s): " + unmatched_tokens.join(", ")
+                check[:status] = 1 if check[:status] == 0
               end
               publish_check_result(client[:name], check)
             end

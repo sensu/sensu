@@ -222,7 +222,10 @@
     "keepalive": {
       "thresholds": {
         "warning": 10
-      }
+      },
+      "contacts": [
+        ":::primary_contact|ops:::"
+      ]
     },
     "deregister": true,
     "deregistration": {
