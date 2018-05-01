@@ -375,6 +375,9 @@ module Sensu
         @redis.sadd("ttl", result_key) if check[:ttl]
         @redis.rpush(history_key, check[:status])
         @redis.ltrim(history_key, -21, -1)
+        if check[:status] == 0
+          @redis.set("#{history_key}:last_ok", check.fetch(:executed, Time.now.to_i))
+        end
         @redis.exec do
           yield
         end
@@ -396,6 +399,8 @@ module Sensu
       #   result exit status codes.
       # @yieldparam total_state_change [Float] percentage for the
       #   check history (exit status codes).
+      # @yieldparam last_ok [Integer] execution timestamp of the last
+      #   OK check result.
       def check_history(client, check)
         history_key = "history:#{client[:name]}:#{check[:name]}"
         @redis.lrange(history_key, -21, -1) do |history|
@@ -413,7 +418,10 @@ module Sensu
             end
             total_state_change = (state_changes.fdiv(20) * 100).to_i
           end
-          yield(history, total_state_change)
+          @redis.get("#{history_key}:last_ok") do |last_ok|
+            last_ok = last_ok.to_i unless last_ok.nil?
+            yield(history, total_state_change, last_ok)
+          end
         end
       end
 
@@ -545,29 +553,27 @@ module Sensu
       #   resulting event.
       # @yieldparam event [Hash]
       def create_event(client, check)
-        check_history(client, check) do |history, total_state_change|
+        check_history(client, check) do |history, total_state_change, last_ok|
           check[:history] = history
           check[:total_state_change] = total_state_change
           @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
             stored_event = event_json ? Sensu::JSON.load(event_json) : nil
             flapping = check_flapping?(stored_event, check)
             event = {
+              :id => random_uuid,
               :client => client,
               :check => check,
               :occurrences => 1,
               :occurrences_watermark => 1,
+              :last_ok => last_ok,
               :action => (flapping ? :flapping : :create),
               :timestamp => Time.now.to_i
             }
             if stored_event
               event[:id] = stored_event[:id]
               event[:last_state_change] = stored_event[:last_state_change]
-              event[:last_ok] = stored_event[:last_ok]
               event[:occurrences] = stored_event[:occurrences]
               event[:occurrences_watermark] = stored_event[:occurrences_watermark] || event[:occurrences]
-            else
-              event[:id] = random_uuid
-              event[:last_ok] = event[:timestamp]
             end
             if check[:status] != 0 || flapping
               if history[-1] == history[-2]
@@ -582,9 +588,6 @@ module Sensu
             elsif stored_event
               event[:last_state_change] = event[:timestamp]
               event[:action] = :resolve
-            end
-            if check[:status] == 0
-              event[:last_ok] = event[:timestamp]
             end
             event_silenced?(event) do |event|
               yield(event)

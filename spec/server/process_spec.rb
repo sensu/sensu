@@ -216,6 +216,7 @@ describe "Sensu::Server::Process" do
               result[:check][:low_flap_threshold] = 5
               result[:check][:high_flap_threshold] = 20
               result[:check][:status] = index % 2
+              result[:check][:executed] = epoch
               @server.process_check_result(result)
             end
             timer(1) do
@@ -225,6 +226,7 @@ describe "Sensu::Server::Process" do
                   event = Sensu::JSON.load(event_json)
                   expect(event[:action]).to eq("flapping")
                   expect(event[:occurrences]).to be_within(2).of(1)
+                  expect(event[:last_ok]).to be_within(10).of(epoch)
                   26.times do |index|
                     result = result_template
                     result[:check][:low_flap_threshold] = 5
@@ -263,6 +265,7 @@ describe "Sensu::Server::Process" do
               result[:check][:low_flap_threshold] = 5
               result[:check][:high_flap_threshold] = 20
               result[:check][:status] = index % 2
+              result[:check][:executed] = epoch
               @server.process_check_result(result)
             end
             timer(1) do
@@ -270,6 +273,7 @@ describe "Sensu::Server::Process" do
                 event = Sensu::JSON.load(event_json)
                 expect(event[:action]).to eq("flapping")
                 expect(event[:occurrences]).to be_within(2).of(1)
+                expect(event[:last_ok]).to be_within(10).of(epoch)
                 result = result_template
                 result[:check][:low_flap_threshold] = 5
                 result[:check][:high_flap_threshold] = 20
@@ -475,7 +479,7 @@ describe "Sensu::Server::Process" do
                             expect(event[:check][:status]).to eq(1)
                             expect(event[:occurrences]).to eq(2)
                             expect(event[:occurrences_watermark]).to eq(2)
-                            expect(event[:last_ok]).to be_within(30).of(epoch)
+                            expect(event[:last_ok]).to be_nil
                             expect(event[:silenced]).to eq(false)
                             expect(event[:silenced_by]).to be_empty
                             expect(event[:action]).to eq("create")
