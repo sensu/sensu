@@ -6,7 +6,8 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 ## [Unreleased]
 - Sensu call-home mechanism, the Tessen client (opt-in). It sends anonymized data about the Sensu installation to the Tessen hosted service (Sensu Inc), on sensu-server startup and every 6 hours thereafter. All data reports are logged for transparency/awareness and transmitted over HTTPS. The anonymized data currently includes the flavour of Sensu (Core or Enterprise), the Sensu version, and the Sensu client and server counts.
 - Support for writing multiple check results to the client socket (in one payload).
-- API list endpoints (e.g. /events) now all support pagination
+- API list endpoints (e.g. /events) now all support pagination.
+- Improved event last_ok, now updating the value when storing latest check results for better accuracy.
 
 ## [1.3.3] - 2018-04-18
 
