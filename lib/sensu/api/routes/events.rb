@@ -13,14 +13,19 @@ module Sensu
         # GET /events
         def get_events
           @response_content = []
+          raw_event_json = []
           @redis.smembers("clients") do |clients|
             unless clients.empty?
               clients.each_with_index do |client_name, index|
                 @redis.hgetall("events:#{client_name}") do |events|
                   events.each do |check_name, event_json|
-                    @response_content << Sensu::JSON.load(event_json)
+                    raw_event_json << event_json
                   end
                   if index == clients.length - 1
+                    raw_event_json = pagination(raw_event_json)
+                    raw_event_json.each do |event_json|
+                      @response_content << Sensu::JSON.load(event_json)
+                    end
                     respond
                   end
                 end
@@ -35,8 +40,13 @@ module Sensu
         def get_events_client
           client_name = parse_uri(EVENTS_CLIENT_URI).first
           @response_content = []
+          raw_event_json = []
           @redis.hgetall("events:#{client_name}") do |events|
             events.each do |check_name, event_json|
+              raw_event_json << event_json
+            end
+            raw_event_json = pagination(raw_event_json)
+            raw_event_json.each do |event_json|
               @response_content << Sensu::JSON.load(event_json)
             end
             respond

@@ -2,6 +2,7 @@ require "sensu/daemon"
 require "sensu/server/filter"
 require "sensu/server/mutate"
 require "sensu/server/handle"
+require "sensu/server/tessen"
 
 module Sensu
   module Server
@@ -374,6 +375,9 @@ module Sensu
         @redis.sadd("ttl", result_key) if check[:ttl]
         @redis.rpush(history_key, check[:status])
         @redis.ltrim(history_key, -21, -1)
+        if check[:status] == 0
+          @redis.set("#{history_key}:last_ok", check.fetch(:executed, Time.now.to_i))
+        end
         @redis.exec do
           yield
         end
@@ -395,6 +399,8 @@ module Sensu
       #   result exit status codes.
       # @yieldparam total_state_change [Float] percentage for the
       #   check history (exit status codes).
+      # @yieldparam last_ok [Integer] execution timestamp of the last
+      #   OK check result.
       def check_history(client, check)
         history_key = "history:#{client[:name]}:#{check[:name]}"
         @redis.lrange(history_key, -21, -1) do |history|
@@ -412,7 +418,10 @@ module Sensu
             end
             total_state_change = (state_changes.fdiv(20) * 100).to_i
           end
-          yield(history, total_state_change)
+          @redis.get("#{history_key}:last_ok") do |last_ok|
+            last_ok = last_ok.to_i unless last_ok.nil?
+            yield(history, total_state_change, last_ok)
+          end
         end
       end
 
@@ -544,29 +553,27 @@ module Sensu
       #   resulting event.
       # @yieldparam event [Hash]
       def create_event(client, check)
-        check_history(client, check) do |history, total_state_change|
+        check_history(client, check) do |history, total_state_change, last_ok|
           check[:history] = history
           check[:total_state_change] = total_state_change
           @redis.hget("events:#{client[:name]}", check[:name]) do |event_json|
             stored_event = event_json ? Sensu::JSON.load(event_json) : nil
             flapping = check_flapping?(stored_event, check)
             event = {
+              :id => random_uuid,
               :client => client,
               :check => check,
               :occurrences => 1,
               :occurrences_watermark => 1,
+              :last_ok => last_ok,
               :action => (flapping ? :flapping : :create),
               :timestamp => Time.now.to_i
             }
             if stored_event
               event[:id] = stored_event[:id]
               event[:last_state_change] = stored_event[:last_state_change]
-              event[:last_ok] = stored_event[:last_ok]
               event[:occurrences] = stored_event[:occurrences]
               event[:occurrences_watermark] = stored_event[:occurrences_watermark] || event[:occurrences]
-            else
-              event[:id] = random_uuid
-              event[:last_ok] = event[:timestamp]
             end
             if check[:status] != 0 || flapping
               if history[-1] == history[-2]
@@ -581,9 +588,6 @@ module Sensu
             elsif stored_event
               event[:last_state_change] = event[:timestamp]
               event[:action] = :resolve
-            end
-            if check[:status] == 0
-              event[:last_ok] = event[:timestamp]
             end
             event_silenced?(event) do |event|
               yield(event)
@@ -1056,6 +1060,8 @@ module Sensu
       # configuration, it's deep merged with the defaults. The check
       # `:name`, `:issued`, and `:executed` values are always
       # overridden to guard against an invalid definition.
+      #
+      # @return [Array] check definition, unmatched client tokens
       def create_keepalive_check(client)
         check = {
           :thresholds => {
@@ -1073,7 +1079,8 @@ module Sensu
           check = deep_merge(check, client[:keepalive])
         end
         timestamp = Time.now.to_i
-        check.merge(:name => "keepalive", :issued => timestamp, :executed => timestamp)
+        check.merge!(:name => "keepalive", :issued => timestamp, :executed => timestamp)
+        object_substitute_tokens(check, client)
       end
 
       # Create client keepalive check results. This method will
@@ -1098,7 +1105,7 @@ module Sensu
             unless client_json.nil?
               client = Sensu::JSON.load(client_json)
               next if client[:keepalives] == false
-              check = create_keepalive_check(client)
+              check, unmatched_tokens = create_keepalive_check(client)
               time_since_last_keepalive = Time.now.to_i - client[:timestamp]
               check[:output] = "No keepalive sent from client for "
               check[:output] << "#{time_since_last_keepalive} seconds"
@@ -1113,6 +1120,10 @@ module Sensu
                 check[:output] = "Keepalive sent from client "
                 check[:output] << "#{time_since_last_keepalive} seconds ago"
                 check[:status] = 0
+              end
+              unless unmatched_tokens.empty?
+                check[:output] << " - Unmatched client token(s): " + unmatched_tokens.join(", ")
+                check[:status] = 1 if check[:status] == 0
               end
               publish_check_result(client[:name], check)
             end
@@ -1430,6 +1441,8 @@ module Sensu
               :hexdigest => @settings.hexdigest
             }
           )
+          tessen = @settings[:tessen] || {}
+          tessen_enabled = tessen.fetch(:enabled, false)
           info = {
             :id => server_id,
             :hostname => system_hostname,
@@ -1442,6 +1455,9 @@ module Sensu
               }
             },
             :sensu => sensu,
+            :tessen => {
+              :enabled => tessen_enabled
+            },
             :timestamp => Time.now.to_i
           }
           @redis.sadd("servers", server_id)
@@ -1462,6 +1478,16 @@ module Sensu
         @timers[:run] << EM::PeriodicTimer.new(10) do
           update_server_registry
         end
+      end
+
+      # Set up Tessen, the call home mechanism.
+      def setup_tessen
+        @tessen = Tessen.new(
+          :settings => @settings,
+          :logger => @logger,
+          :redis => @redis
+        )
+        @tessen.run if @tessen.enabled?
       end
 
       # Unsubscribe from transport subscriptions (all of them). This
@@ -1497,6 +1523,7 @@ module Sensu
         setup_results
         setup_task_elections
         setup_server_registry_updater
+        setup_tessen
         @state = :running
       end
 
@@ -1513,10 +1540,10 @@ module Sensu
       # Pause the Sensu server process, unless it is being paused or
       # has already been paused. The process/daemon `@state` is first
       # set to `:pausing`, to indicate that it's in progress. All run
-      # timers are cancelled, and the references are cleared. The
-      # Sensu server will unsubscribe from all transport
-      # subscriptions, relinquish any Sensu server tasks, then set the
-      # process/daemon `@state` to `:paused`.
+      # timers are cancelled, their references are cleared, and Tessen
+      # is stopped. The Sensu server will unsubscribe from all
+      # transport subscriptions, relinquish any Sensu server tasks,
+      # then set the process/daemon `@state` to `:paused`.
       def pause
         unless @state == :pausing || @state == :paused
           @state = :pausing
@@ -1524,6 +1551,7 @@ module Sensu
             timer.cancel
           end
           @timers[:run].clear
+          @tessen.stop if @tessen
           unsubscribe
           relinquish_tasks
           @state = :paused

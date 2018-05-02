@@ -216,6 +216,7 @@ describe "Sensu::Server::Process" do
               result[:check][:low_flap_threshold] = 5
               result[:check][:high_flap_threshold] = 20
               result[:check][:status] = index % 2
+              result[:check][:executed] = epoch
               @server.process_check_result(result)
             end
             timer(1) do
@@ -225,6 +226,7 @@ describe "Sensu::Server::Process" do
                   event = Sensu::JSON.load(event_json)
                   expect(event[:action]).to eq("flapping")
                   expect(event[:occurrences]).to be_within(2).of(1)
+                  expect(event[:last_ok]).to be_within(10).of(epoch)
                   26.times do |index|
                     result = result_template
                     result[:check][:low_flap_threshold] = 5
@@ -263,6 +265,7 @@ describe "Sensu::Server::Process" do
               result[:check][:low_flap_threshold] = 5
               result[:check][:high_flap_threshold] = 20
               result[:check][:status] = index % 2
+              result[:check][:executed] = epoch
               @server.process_check_result(result)
             end
             timer(1) do
@@ -270,6 +273,7 @@ describe "Sensu::Server::Process" do
                 event = Sensu::JSON.load(event_json)
                 expect(event[:action]).to eq("flapping")
                 expect(event[:occurrences]).to be_within(2).of(1)
+                expect(event[:last_ok]).to be_within(10).of(epoch)
                 result = result_template
                 result[:check][:low_flap_threshold] = 5
                 result[:check][:high_flap_threshold] = 20
@@ -475,7 +479,7 @@ describe "Sensu::Server::Process" do
                             expect(event[:check][:status]).to eq(1)
                             expect(event[:occurrences]).to eq(2)
                             expect(event[:occurrences_watermark]).to eq(2)
-                            expect(event[:last_ok]).to be_within(30).of(epoch)
+                            expect(event[:last_ok]).to be_nil
                             expect(event[:silenced]).to eq(false)
                             expect(event[:silenced_by]).to be_empty
                             expect(event[:action]).to eq("create")
@@ -900,9 +904,11 @@ describe "Sensu::Server::Process" do
         client1[:name] = "foo"
         client1[:timestamp] = epoch - 60
         client1[:keepalive][:handler] = "debug"
+        client1[:keepalive][:contact] = ":::foobar:::"
         client2 = client_template
         client2[:name] = "bar"
         client2[:timestamp] = epoch - 120
+        client1[:keepalive][:contacts] = [":::foobar|ops:::"]
         client3 = client_template
         client3[:name] = "qux"
         client3[:keepalives] = false
@@ -917,10 +923,13 @@ describe "Sensu::Server::Process" do
                     timer(1) do
                       redis.hget("events:foo", "keepalive") do |event_json|
                         event = Sensu::JSON.load(event_json)
+                        expect(event[:check][:output]).to match(/- Unmatched client token\(s\): foobar$/)
                         expect(event[:check][:status]).to eq(1)
                         expect(event[:check][:handler]).to eq("debug")
                         redis.hget("events:bar", "keepalive") do |event_json|
                           event = Sensu::JSON.load(event_json)
+                          expect(event[:check][:output]).
+                            to match(/^No keepalive sent from client for 12[0-9]+ seconds \(>=120\)$/)
                           expect(event[:check][:status]).to eq(2)
                           expect(event[:check][:handler]).to eq("keepalive")
                           redis.hget("events:qux", "keepalive") do |event_json|
@@ -1081,6 +1090,7 @@ describe "Sensu::Server::Process" do
                 expect(server[:tasks]).to be_kind_of(Array)
                 expect(server[:sensu][:version]).to eq(Sensu::VERSION)
                 expect(server[:sensu][:settings][:hexdigest]).to be_kind_of(String)
+                expect(server[:tessen][:enabled]).to eq(false)
                 expect(server[:timestamp]).to be_within(5).of(Time.now.to_i)
                 async_done
               end

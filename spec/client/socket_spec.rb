@@ -154,6 +154,21 @@ describe Sensu::Client::Socket do
       expect(subject).to receive(:respond).with("ok")
       subject.parse_check_result(json_check_data)
     end
+    
+    it "also accepts multiple check results" do
+      json_check_data = "[{\"name\": \"test1\", \"output\": \"good!\"},
+                          {\"name\": \"test2\", \"output\": \"still good!\"}]"
+      checks = [{:name => "test1", :output => "good!"},
+                {:name => "test2", :output => "still good!"}]
+      expect(subject).to receive(:cancel_watchdog)
+      len = checks.length-1
+      for i in (0..len) do
+        expect(subject).to receive(:process_check_result).with(checks[i])
+      end
+      expect(subject).to receive(:respond).with("ok")
+      subject.parse_check_result(json_check_data)
+    end
+    
   end
 
   describe "#process_data" do
