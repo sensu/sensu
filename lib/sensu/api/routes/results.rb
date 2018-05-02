@@ -132,8 +132,11 @@ module Sensu
             if result_exists
               @redis.srem("result:#{client_name}", check_name) do
                 @redis.del(result_key) do
-                  @redis.del("history:#{client_name}:#{check_name}") do
-                    no_content!
+                  history_key = "history:#{client_name}:#{check_name}"
+                  @redis.del(history_key) do
+                    @redis.del("#{history_key}:last_ok") do
+                      no_content!
+                    end
                   end
                 end
               end
