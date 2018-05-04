@@ -5,8 +5,10 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.4.1] - 2018-05-04
+
 ### Fixed
-- Include em-http-request gem in runtime dependencies
+- Include em-http-request Ruby gem in runtime dependencies
 
 ## [1.4.0] - 2018-05-02
 
