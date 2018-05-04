@@ -22,11 +22,11 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-spawn", "2.5.0"
   s.add_dependency "sensu-redis", "2.3.0"
   s.add_dependency "em-http-server", "0.1.8"
+  s.add_dependency "em-http-request", "1.1.5"
   s.add_dependency "parse-cron", "0.1.4"
 
   s.add_development_dependency "rake", "10.5.0"
   s.add_development_dependency "rspec", "~> 3.0.0"
-  s.add_development_dependency "em-http-request", "~> 1.1"
   s.add_development_dependency "addressable", "2.3.8"
   s.add_development_dependency "webmock", "3.3.0"
 
