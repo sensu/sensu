@@ -1,3 +1,5 @@
+gem "em-http-request", "1.1.5"
+
 require "em-http-request"
 require "sensu/constants"
 
