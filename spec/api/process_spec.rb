@@ -22,8 +22,19 @@ describe "Sensu::API::Process" do
                     redis.sadd("stashes", "test/test") do
                       redis.sadd("result:i-424242", "test") do
                         redis.rpush("history:i-424242:test", 1) do
-                          @redis = nil
-                          async_done
+                          client[:name] = "i-555555"
+                          redis.set("client:i-555555", Sensu::JSON.dump(client)) do
+                            redis.sadd("clients", "i-555555") do
+                              redis.set("result:i-555555:test", Sensu::JSON.dump(@check)) do
+                                redis.sadd("result:i-555555", "test") do
+                                  redis.rpush("history:i-555555:test", 1) do
+                                    @redis = nil
+                                    async_done
+                                  end
+                                end
+                              end
+                            end
+                          end
                         end
                       end
                     end
@@ -1481,11 +1492,20 @@ describe "Sensu::API::Process" do
       http_request(4567, "/results") do |http, body|
         expect(http.response_header.status).to eq(200)
         expect(body).to be_kind_of(Array)
-        test_result = Proc.new do |result|
+        test_result_one = Proc.new do |result|
           expected_check = @check.merge(:history => [1])
-          result_template(expected_check)
+          expected_result = result_template(expected_check)
+          expected_result[:client] = "i-424242"
+          result == expected_result
         end
-        expect(body).to contain(test_result)
+        test_result_two = Proc.new do |result|
+          expected_check = @check.merge(:history => [1])
+          expected_result = result_template(expected_check)
+          expected_result[:client] = "i-555555"
+          result == expected_result
+        end
+        expect(body).to contain(test_result_one)
+        expect(body).to contain(test_result_two)
         async_done
       end
     end
@@ -1500,8 +1520,13 @@ describe "Sensu::API::Process" do
         http_request(4567, "/results?limit=1&offset=1") do |http, body|
           expect(http.response_header.status).to eq(200)
           expect(body).to be_kind_of(Array)
-          expect(body).to be_empty
-          async_done
+          expect(body.length).to eq(1)
+          http_request(4567, "/results?limit=1&offset=2") do |http, body|
+            expect(http.response_header.status).to eq(200)
+            expect(body).to be_kind_of(Array)
+            expect(body).to be_empty
+            async_done
+          end
         end
       end
     end
