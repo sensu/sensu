@@ -5,6 +5,9 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+### Fixed
+- Fixed API GET /results, results were incorrectly reported under a single client name.
+
 ## [1.4.1] - 2018-05-04
 
 ### Fixed
