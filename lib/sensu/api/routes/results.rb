@@ -41,13 +41,13 @@ module Sensu
                     unless result_keys.empty?
                       result_keys.each_with_index do |result_key, result_key_index|
                         @redis.get(result_key) do |result_json|
-                          _, client_name, check_name = result_key.split(":")
-                          history_key = "history:#{client_name}:#{check_name}"
+                          history_key = result_key.sub(/^result:/, "history:")
                           @redis.lrange(history_key, -21, -1) do |history|
                             history.map! do |status|
                               status.to_i
                             end
                             unless result_json.nil?
+                              client_name = history_key.split(":")[1]
                               check = Sensu::JSON.load(result_json)
                               check[:history] = history
                               @response_content << {:client => client_name, :check => check}
