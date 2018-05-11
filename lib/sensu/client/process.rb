@@ -535,6 +535,38 @@ module Sensu
         end
       end
 
+      def wait_until_running
+        retry_until_true do
+          if @state != :running
+            yield
+            true
+          end
+        end
+      end
+
+      # Create a check result intended for registration a client.
+      # Client definitions may contain `:registration` configuration,
+      # containing custom attributes and handler information. By
+      # default, the registration check result sets the `:handler` to
+      # `registration`. If the client provides its own `:deregistration`
+      # configuration, it's deep merged with the defaults. The
+      # check `:name`, `:output`, `:issued`, and `:executed` values
+      # are always overridden to guard against an invalid definition.
+      def register
+        return if !@settings[:client].has_key?(:registration)
+        timestamp = Time.now.to_i
+        check = {
+          :name => "registration",
+          :output => "client initiated registration",
+          :issued => timestamp,
+          :executed => timestamp,
+          :status => 1,
+          :handler => @settings[:client][:registration]
+        }
+        puts @state
+        publish_check_result(check)
+      end
+
       # Create a check result intended for deregistering a client.
       # Client definitions may contain `:deregistration` configuration,
       # containing custom attributes and handler information. By
@@ -592,6 +624,9 @@ module Sensu
         setup_transport do
           setup_sockets
           bootstrap
+        end
+        wait_until_running do
+          register
         end
       end
 
