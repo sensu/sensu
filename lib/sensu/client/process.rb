@@ -84,6 +84,7 @@ module Sensu
       #
       # @param check [Hash]
       def publish_check_result(check)
+        check.delete(:source) if check[:source] == ""
         payload = {
           :client => @settings[:client][:name],
           :check => check

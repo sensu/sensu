@@ -35,6 +35,8 @@ describe "Sensu::Server::Mutate" do
           expect(event_data).to eq("WARNING")
           handler[:mutator] = "tag"
           @server.mutate_event(handler, @event) do |event_data|
+            puts event_data
+            puts event_data.bytes.inspect
             expect(Sensu::JSON.load(event_data)).to include(:mutated)
             async_done
           end
