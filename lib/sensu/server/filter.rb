@@ -192,7 +192,11 @@ module Sensu
       #   filtered.
       # @yieldparam event [Hash]
       def filter_event(handler, event)
-        details = {:handler => handler, :event => event}
+        handler_info = case handler[:type]
+          when "extension" then handler.definition
+          else handler  
+        end
+        details = {:handler => handler_info, :event => event}
         filter_message = case
         when handling_disabled?(event)
           "event handling disabled for event"
