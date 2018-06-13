@@ -68,6 +68,25 @@ describe "Sensu::Client::Process" do
     end
   end
 
+  it "does not send a check result with an empty check source" do
+    async_wrapper do
+      result_queue do |payload|
+        result = Sensu::JSON.load(payload)
+        expect(result[:client]).to eq("i-424242")
+        expect(result[:check][:name]).to eq("test")
+        expect(result[:check][:source]).to be_nil
+        async_done
+      end
+      timer(0.5) do
+        @client.setup_transport do
+          check = result_template[:check]
+          check[:source] = ""
+          @client.publish_check_result(check)
+        end
+      end
+    end
+  end
+
   it "can send a deregistraion check result" do
     async_wrapper do
       result_queue do |payload|

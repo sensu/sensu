@@ -10,7 +10,6 @@ Gem::Specification.new do |s|
   s.summary     = "A monitoring framework"
   s.description = "A monitoring framework that aims to be simple, malleable, and scalable."
   s.license     = "MIT"
-  s.has_rdoc    = false
 
   s.add_dependency "eventmachine", "1.2.5"
   s.add_dependency "sensu-json", "2.1.1"
