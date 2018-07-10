@@ -16,7 +16,8 @@ module Sensu
             :name => {:type => String, :nil_ok => false, :regex => /\A[\w\.-]+\z/},
             :output => {:type => String, :nil_ok => false},
             :status => {:type => Integer, :nil_ok => true},
-            :source => {:type => String, :nil_ok => true, :regex => /\A[\w\.-]+\z/}
+            :source => {:type => String, :nil_ok => true, :regex => /\A[\w\.-]+\z/},
+            :ttl => {:type => Integer, :nil_ok => true}
           }
           read_data(rules) do |data|
             publish_check_result("sensu-api", data)
