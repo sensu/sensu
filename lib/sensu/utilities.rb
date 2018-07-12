@@ -51,6 +51,31 @@ module Sensu
       merged
     end
 
+    # Creates a deep dup of basic ruby objects with support for walking
+    # hashes and arrays.
+    #
+    # @param obj [Object]
+    # @return [obj] a dup of the original object.
+    def deep_dup(obj)
+      if obj.class == Hash
+        new_obj = obj.dup
+        new_obj.each do |key, value|
+          new_obj[deep_dup(key)] = deep_dup(value)
+        end
+        new_obj
+      elsif obj.class == Array
+        arr = []
+        obj.each do |item|
+          arr << deep_dup(item)
+        end
+        arr
+      elsif obj.class == String
+        obj.dup
+      else
+        obj
+      end
+    end
+
     # Retrieve the system hostname. If the hostname cannot be
     # determined and an error is thrown, `nil` will be returned.
     #
