@@ -63,6 +63,32 @@ describe "Sensu::Utilities" do
     expect(deep_merge(hash_one, hash_two)).to eq(expected)
   end
 
+  it "can deeply merge a hash" do
+    hash = {
+      :foo => "bar",
+      :baz => 1,
+      :qux => false,
+      :poy => ["one", "two", "three"],
+      :xef => {
+        :foo => "bar"
+      }
+    }
+    expected = {
+      :foo => "bar",
+      :baz => 1,
+      :qux => false,
+      :poy => ["one", "two", "three"],
+      :xef => {
+        :foo => "bar"
+      }
+    }
+    copy = deep_dup(hash)
+    copy[:foo].upcase!
+    copy[:poy][0].upcase!
+    copy[:xef][:foo].upcase!
+    expect(hash).to eq(expected)
+  end
+
   it "can determine the system hostname" do
     hostname = system_hostname
     expect(hostname).to be_kind_of(String)
