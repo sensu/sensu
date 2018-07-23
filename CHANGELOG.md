@@ -5,6 +5,14 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.4.3] - 2018-07-23
+
+### Fixed
+- Prevent check results from being published with an empty source attribute.
+- Use handler extension definitions when logging rather than handler extension objects.
+- Added validation for ttl attribute in results API.
+- Fixed case where proxy checks with token substitution can retain previous values.
+
 ## [1.4.2] - 2018-05-10
 
 ### Fixed
