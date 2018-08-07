@@ -142,6 +142,7 @@ module Sensu
                             result_key = "#{client_name}:#{check_name}"
                             @redis.del("result:#{result_key}")
                             @redis.del("history:#{result_key}")
+                            @redis.del("history:#{result_key}:last_ok")
                           end
                           @redis.del("result:#{client_name}")
                         end
