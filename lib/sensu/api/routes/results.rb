@@ -15,6 +15,7 @@ module Sensu
         def post_results
           read_data do |check|
             check[:status] ||= 0
+            check[:executed] ||= Time.now.to_i
             validator = Validators::Check.new
             if validator.valid?(check)
               publish_check_result("sensu-api", check)

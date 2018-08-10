@@ -20,12 +20,19 @@ module Sensu
         # @param client [Hash]
         # @return [TrueClass, FalseClass]
         def valid?(check)
+          must_be_a_string(check[:output]) ||
+            invalid(check, "check output must be a string")
+          must_be_an_integer(check[:status]) ||
+            invalid(check, "check status must be an integer")
+          must_be_an_integer(check[:executed]) ||
+            invalid(check, "check executed timestamp must be an integer")
           validate_check_name(check)
-          validate_check_source(check) if check[:source]
           validate_check_handling(check)
-          validate_check_ttl(check) if check[:ttl]
           validate_check_aggregate(check)
           validate_check_flap_detection(check)
+          validate_check_truncate_output(check)
+          validate_check_source(check) if check[:source]
+          validate_check_ttl(check) if check[:ttl]
           @failures.empty?
         end
 
