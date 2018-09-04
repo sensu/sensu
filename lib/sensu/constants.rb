@@ -1,7 +1,7 @@
 module Sensu
   unless defined?(Sensu::VERSION)
     # Sensu release version.
-    VERSION = "1.4.3".freeze
+    VERSION = "1.5.0".freeze
 
     # Sensu release information.
     RELEASE_INFO = {
