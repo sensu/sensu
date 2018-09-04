@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-logger", "1.2.2"
   s.add_dependency "sensu-settings", "10.14.0"
   s.add_dependency "sensu-extension", "1.5.2"
-  s.add_dependency "sensu-extensions", "1.9.1"
+  s.add_dependency "sensu-extensions", "1.10.0"
   s.add_dependency "sensu-transport", "7.1.0"
   s.add_dependency "sensu-spawn", "2.5.0"
   s.add_dependency "sensu-redis", "2.3.0"

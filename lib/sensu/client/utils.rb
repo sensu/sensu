@@ -14,15 +14,6 @@ module Sensu
         unless validator.valid?(check)
           raise DataError, validator.failures.first[:message]
         end
-        unless check[:output].is_a?(String)
-          raise DataError, "check output must be a string"
-        end
-        unless check[:status].is_a?(Integer)
-          raise DataError, "check status must be an integer"
-        end
-        unless check[:executed].is_a?(Integer)
-          raise DataError, "check executed timestamp must be an integer"
-        end
       end
 
       # Process a check result. Set check result attribute defaults,
