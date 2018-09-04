@@ -1,3 +1,4 @@
+require "sensu/api/validators/check"
 require "sensu/api/utilities/publish_check_result"
 
 module Sensu
@@ -12,17 +13,17 @@ module Sensu
 
         # POST /results
         def post_results
-          rules = {
-            :name => {:type => String, :nil_ok => false, :regex => /\A[\w\.-]+\z/},
-            :output => {:type => String, :nil_ok => false},
-            :status => {:type => Integer, :nil_ok => true},
-            :source => {:type => String, :nil_ok => true, :regex => /\A[\w\.-]+\z/},
-            :ttl => {:type => Integer, :nil_ok => true}
-          }
-          read_data(rules) do |data|
-            publish_check_result("sensu-api", data)
-            @response_content = {:issued => Time.now.to_i}
-            accepted!
+          read_data do |check|
+            check[:status] ||= 0
+            check[:executed] ||= Time.now.to_i
+            validator = Validators::Check.new
+            if validator.valid?(check)
+              publish_check_result("sensu-api", check)
+              @response_content = {:issued => Time.now.to_i}
+              accepted!
+            else
+              bad_request!
+            end
           end
         end
 
