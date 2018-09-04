@@ -5,6 +5,12 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.5.0] - 2018-09-04
+
+### Fixed
+- Bumped sensu-extensions to version 1.10.0 to include subscription support in the check dependencies filter.
+- Improved check result validation by applying existing validation rules from sensu-settings to check results created using the API and the client socket.
+
 ## [1.4.3] - 2018-07-23
 
 ### Fixed
