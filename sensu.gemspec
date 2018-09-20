@@ -34,5 +34,5 @@ Gem::Specification.new do |s|
   s.bindir        = "exe"
   s.require_paths = ["lib"]
   s.cert_chain    = ['certs/sensu.pem']
-  s.signing_key   = File.expand_path("~/.ssh/gem-sensu-private_key.pem") if $0 =~ /gem\z/
+  #s.signing_key   = File.expand_path("~/.ssh/gem-sensu-private_key.pem") if $0 =~ /gem\z/
 end
