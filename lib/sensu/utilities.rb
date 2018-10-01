@@ -128,6 +128,14 @@ module Sensu
         api_key api_token
         access_key secret_key private_key
         secret
+        routing_key
+        access_token_read access_token_write access_token_path
+        webhook_url
+        nickserv_password channel_password
+        community
+        keystore_password truststore_password
+        proxy_password
+        access_key_id secret_access_key
       ]
       obj = obj.dup
       if obj.is_a?(Hash)
