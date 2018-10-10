@@ -208,22 +208,13 @@ describe "Sensu::Server::Process" do
       @server.setup_redis do
         redis.flushdb do
           @server.setup_transport do
-            check = check_template
-            check[:command] = "echo :::address::: && exit 1"
-            check[:subscribers] = ["test"]
-            check[:proxy_requests] = {
-              :client_attributes => {
-                :name => "i-424242",
-                :subscriptions => "eval: value.include?('test')"
-              }
-            }
-            @server.settings[:checks][check[:name].to_sym] = check
             result = result_template
+            result[:check][:name] = "unpublished_proxy"
             result[:check][:command] = "echo 127.0.0.1 && exit 1"
             result[:check][:source] = "i-424242"
             @server.process_check_result(result)
             timer(1) do
-              redis.hget("events:i-424242", "test") do |event_json|
+              redis.hget("events:i-424242", "unpublished_proxy") do |event_json|
                 event = Sensu::JSON.load(event_json)
                 expect(event[:check][:command]).to eq("echo :::address::: && exit 1")
                 async_done

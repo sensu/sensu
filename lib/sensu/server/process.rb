@@ -703,7 +703,7 @@ module Sensu
             end
             check[:type] ||= STANDARD_CHECK_TYPE
             check[:origin] = result[:client] if check[:source]
-            if @settings.check_exists?(check[:name].to_sym) && client[:type] == "proxy"
+            if @settings.check_exists?(check[:name]) && client[:type] == "proxy"
               check[:command] = @settings[:checks][check[:name].to_sym][:command]
             end
             aggregate_check_result(client, check) if check[:aggregates] || check[:aggregate]
