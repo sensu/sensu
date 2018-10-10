@@ -22,14 +22,16 @@ describe "Sensu::API::Process" do
                     redis.sadd("stashes", "test/test") do
                       redis.sadd("result:i-424242", "test") do
                         redis.rpush("history:i-424242:test", 1) do
-                          client[:name] = "i-555555"
-                          redis.set("client:i-555555", Sensu::JSON.dump(client)) do
-                            redis.sadd("clients", "i-555555") do
-                              redis.set("result:i-555555:test", Sensu::JSON.dump(@check)) do
-                                redis.sadd("result:i-555555", "test") do
-                                  redis.rpush("history:i-555555:test", 1) do
-                                    @redis = nil
-                                    async_done
+                          redis.set("history:i-424242:test:last_ok", Time.now.to_i) do
+                            client[:name] = "i-555555"
+                            redis.set("client:i-555555", Sensu::JSON.dump(client)) do
+                              redis.sadd("clients", "i-555555") do
+                                redis.set("result:i-555555:test", Sensu::JSON.dump(@check)) do
+                                  redis.sadd("result:i-555555", "test") do
+                                    redis.rpush("history:i-555555:test", 1) do
+                                      @redis = nil
+                                      async_done
+                                    end
                                   end
                                 end
                               end
@@ -798,6 +800,27 @@ describe "Sensu::API::Process" do
         expect(http.response_header.status).to eq(404)
         expect(body).to be_empty
         async_done
+      end
+    end
+  end
+
+  it "can delete a check" do
+    api_test do
+      http_request(4567, "/checks/test", :delete) do |http, body|
+        expect(http.response_header.status).to eq(202)
+        expect(body).to include(:issued)
+        timer(0.5) do
+          redis.exists("result:i-424242:test") do |result|
+            redis.exists("history:i-424242:test") do |history|
+              redis.exists("history:i-424242:test:last_ok") do |last_ok|
+                expect(result).to eq(false)
+                expect(history).to eq(false)
+                expect(last_ok).to eq(false)
+                async_done
+              end
+            end
+          end
+        end
       end
     end
   end

@@ -76,6 +76,7 @@ module Sensu
         ],
         DELETE_METHOD => [
           [CLIENT_URI, :delete_client],
+          [CHECK_URI, :delete_check],
           [EVENT_URI, :delete_event],
           [AGGREGATE_URI, :delete_aggregate],
           [STASH_URI, :delete_stash],
