@@ -7,7 +7,7 @@ gem "sensu-logger", "1.2.2"
 gem "sensu-settings", "10.14.0"
 gem "sensu-extension", "1.5.2"
 gem "sensu-extensions", "1.10.0"
-gem "sensu-transport", "7.1.0"
+gem "sensu-transport", "8.0.0"
 gem "sensu-spawn", "2.5.0"
 gem "sensu-redis", "2.3.0"
 
