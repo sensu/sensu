@@ -5,7 +5,7 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
-## [1.6.0] - 2018-10-11
+## [1.6.0] - 2018-10-12
 
 ### Fixed
 - Now using EventMachine version 1.2.7 to allow newer compiler versions to build this project.
