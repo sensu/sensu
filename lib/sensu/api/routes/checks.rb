@@ -22,6 +22,22 @@ module Sensu
             not_found!
           end
         end
+
+        # DELETE /checks/:check_name
+        def delete_check
+          check_name = parse_uri(CHECK_URI).first
+          @redis.smembers("clients") do |clients|
+            result_keys = clients.map {|client_name| "result:#{client_name}:#{check_name}"}
+            history_keys = clients.map {|client_name| "history:#{client_name}:#{check_name}"}
+            last_ok_keys = clients.map {|client_name| "history:#{client_name}:#{check_name}:last_ok"}
+            keys = result_keys.concat(history_keys).concat(last_ok_keys)
+            keys.each do |key|
+              @redis.del(key)
+            end
+          end
+          @response_content = {:issued => Time.now.to_i}
+          accepted!
+        end
       end
     end
   end

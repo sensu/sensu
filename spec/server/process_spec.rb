@@ -203,6 +203,29 @@ describe "Sensu::Server::Process" do
     end
   end
 
+  it "can process results from proxy clients" do
+    async_wrapper do
+      @server.setup_redis do
+        redis.flushdb do
+          @server.setup_transport do
+            result = result_template
+            result[:check][:name] = "unpublished_proxy"
+            result[:check][:command] = "echo 127.0.0.1 && exit 1"
+            result[:check][:source] = "i-424242"
+            @server.process_check_result(result)
+            timer(1) do
+              redis.hget("events:i-424242", "unpublished_proxy") do |event_json|
+                event = Sensu::JSON.load(event_json)
+                expect(event[:check][:command]).to eq("echo :::address::: && exit 1")
+                async_done
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
   it "can process results with flap detection" do
     FileUtils.rm_rf("/tmp/sensu_event")
     expect(File.exists?("/tmp/sensu_event")).to eq(false)
@@ -919,22 +942,24 @@ describe "Sensu::Server::Process" do
               redis.sadd("clients", "bar") do
                 redis.set("client:qux", Sensu::JSON.dump(client3)) do
                   redis.sadd("clients", "qux") do
-                    @server.determine_stale_clients
                     timer(1) do
-                      redis.hget("events:foo", "keepalive") do |event_json|
-                        event = Sensu::JSON.load(event_json)
-                        expect(event[:check][:output]).to match(/- Unmatched client token\(s\): foobar$/)
-                        expect(event[:check][:status]).to eq(1)
-                        expect(event[:check][:handler]).to eq("debug")
-                        redis.hget("events:bar", "keepalive") do |event_json|
+                      @server.determine_stale_clients
+                      timer(1) do
+                        redis.hget("events:foo", "keepalive") do |event_json|
                           event = Sensu::JSON.load(event_json)
-                          expect(event[:check][:output]).
-                            to match(/^No keepalive sent from client for 12[0-9]+ seconds \(>=120\)$/)
-                          expect(event[:check][:status]).to eq(2)
-                          expect(event[:check][:handler]).to eq("keepalive")
-                          redis.hget("events:qux", "keepalive") do |event_json|
-                            expect(event_json).to be(nil)
-                            async_done
+                          expect(event[:check][:output]).to match(/- Unmatched client token\(s\): foobar$/)
+                          expect(event[:check][:status]).to eq(1)
+                          expect(event[:check][:handler]).to eq("debug")
+                          redis.hget("events:bar", "keepalive") do |event_json|
+                            event = Sensu::JSON.load(event_json)
+                            expect(event[:check][:output]).
+                              to match(/^No keepalive sent from client for 12[0-9]+ seconds \(>=120\)$/)
+                            expect(event[:check][:status]).to eq(2)
+                            expect(event[:check][:handler]).to eq("keepalive")
+                            redis.hget("events:qux", "keepalive") do |event_json|
+                              expect(event_json).to be(nil)
+                              async_done
+                            end
                           end
                         end
                       end
@@ -1007,22 +1032,24 @@ describe "Sensu::Server::Process" do
           client[:timestamp] = epoch - 120
           redis.set("client:i-424242", Sensu::JSON.dump(client)) do
             redis.sadd("clients", "i-424242") do
-              @server.determine_stale_clients
               timer(1) do
-                redis.hget("events:i-424242", "keepalive") do |event_json|
-                  event = Sensu::JSON.load(event_json)
-                  expect(event[:check][:status]).to eq(2)
-                  stale_result = result_template
-                  stale_result[:check][:status] = 0
-                  stale_result[:check][:ttl] = 60
-                  stale_result[:check][:executed] = epoch - 1200
-                  setup_transport do |transport|
-                    transport.publish(:direct, "results", Sensu::JSON.dump(stale_result)) do
-                      @server.determine_stale_check_results
-                      timer(1) do
-                        redis.hexists("events:i-424242", "test") do |ttl_event_exists|
-                          expect(ttl_event_exists).to eq(false)
-                          async_done
+                @server.determine_stale_clients
+                timer(1) do
+                  redis.hget("events:i-424242", "keepalive") do |event_json|
+                    event = Sensu::JSON.load(event_json)
+                    expect(event[:check][:status]).to eq(2)
+                    stale_result = result_template
+                    stale_result[:check][:status] = 0
+                    stale_result[:check][:ttl] = 60
+                    stale_result[:check][:executed] = epoch - 1200
+                    setup_transport do |transport|
+                      transport.publish(:direct, "results", Sensu::JSON.dump(stale_result)) do
+                        @server.determine_stale_check_results
+                        timer(1) do
+                          redis.hexists("events:i-424242", "test") do |ttl_event_exists|
+                            expect(ttl_event_exists).to eq(false)
+                            async_done
+                          end
                         end
                       end
                     end

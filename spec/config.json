@@ -179,7 +179,7 @@
       ]
     },
     "unpublished_proxy": {
-      "command": "/bin/true",
+      "command": "echo :::address::: && exit 1",
       "publish": false,
       "subscribers": [
         "test"

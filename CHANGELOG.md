@@ -5,6 +5,19 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.6.0] - 2018-10-11
+
+### Fixed
+- Now using EventMachine version 1.2.7 to allow newer compiler versions to build this project.
+
+### Added
+- Add additional sensitive information to default redaction list.
+- Added API DELETE /check/:check_name that will deletes all results & history for a given check name.
+
+### Changed
+- Replace proxy check result commands with their original definition value.
+- Now using sensu-transport 8.1.0 to use separate RabbitMQ transport connections for improved flow control.
+
 ## [1.5.0] - 2018-09-04
 
 ### Fixed
