@@ -5,6 +5,11 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.6.1] - 2018-10-23
+
+### Fixed
+- Now using sensu-transport 8.2.0 which fixes an issue where Sensu would freeze when trying to reconnect to RabbitMQ.
+
 ## [1.6.0] - 2018-10-12
 
 ### Fixed
