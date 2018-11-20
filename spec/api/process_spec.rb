@@ -10,6 +10,8 @@ describe "Sensu::API::Process" do
     async_wrapper do
       client = client_template
       client[:timestamp] = epoch
+      client[:redact] = ["supersecret"]
+      client[:supersecret] = "this should get redacted"
       @event = event_template
       @check = check_template
       redis.flushdb do
@@ -328,6 +330,21 @@ describe "Sensu::API::Process" do
         expect(body).to be_kind_of(Array)
         test_client = Proc.new do |client|
           client[:name] == "i-424242"
+        end
+        expect(body).to contain(test_client)
+        async_done
+      end
+    end
+  end
+
+
+  it "can provide current clients with redacted attributes" do
+    api_test do
+      http_request(4567, "/clients") do |http, body|
+        expect(http.response_header.status).to eq(200)
+        expect(body).to be_kind_of(Array)
+        test_client = Proc.new do |client|
+          client[:supersecret] == "REDACTED"
         end
         expect(body).to contain(test_client)
         async_done
@@ -657,6 +674,7 @@ describe "Sensu::API::Process" do
         expect(body[:address]).to eq("127.0.0.1")
         expect(body[:subscriptions]).to eq(["test"])
         expect(body[:timestamp]).to be_within(10).of(epoch)
+        expect(body[:supersecret]).to eq("REDACTED")
         async_done
       end
     end

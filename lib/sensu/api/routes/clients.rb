@@ -42,7 +42,8 @@ module Sensu
               clients.each_with_index do |client_name, index|
                 @redis.get("client:#{client_name}") do |client_json|
                   unless client_json.nil?
-                    @response_content << Sensu::JSON.load(client_json)
+                    client = Sensu::JSON.load(client_json)
+                    @response_content << redact_sensitive(client, client[:redact])
                   else
                     @logger.error("client data missing from registry", :client_name => client_name)
                     @redis.srem("clients", client_name)
@@ -63,7 +64,8 @@ module Sensu
           client_name = parse_uri(CLIENT_URI).first
           @redis.get("client:#{client_name}") do |client_json|
             unless client_json.nil?
-              @response_content = Sensu::JSON.load(client_json)
+              client = Sensu::JSON.load(client_json)
+              @response_content = redact_sensitive(client, client[:redact])
               respond
             else
               not_found!
