@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.add_dependency "sensu-extensions", "1.10.0"
   s.add_dependency "sensu-transport", "8.2.0"
   s.add_dependency "sensu-spawn", "2.5.0"
-  s.add_dependency "sensu-redis", "2.3.0"
+  s.add_dependency "sensu-redis", "2.4.0"
   s.add_dependency "em-http-server", "0.1.8"
   s.add_dependency "em-http-request", "1.1.5"
   s.add_dependency "parse-cron", "0.1.4"
