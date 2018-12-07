@@ -5,6 +5,13 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.6.2] - 2018-12-07
+
+### Fixed
+- Fixed Redis Sentinel DNS resolution error handling. Sentinel DNS
+hostname resolution is now done upfront, an IP address is provided to
+EventMachine.
+
 ## [1.6.1] - 2018-10-23
 
 ### Fixed
