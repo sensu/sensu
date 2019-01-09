@@ -117,7 +117,7 @@ describe "Sensu::API::Process" do
         expect(body).to be_empty
         http_request(4567, "/health?consumers=1000") do |http, body|
           expect(http.response_header.status).to eq(412)
-          expect(body).to be_empty
+          expect(body).to eq(["keepalive consumers (0) less than min_consumers (1000)", "result consumers (0) less than min_consumers (1000)"])
           http_request(4567, "/health?consumers=1000&messages=1000") do |http, body|
             expect(http.response_header.status).to eq(412)
             async_done
