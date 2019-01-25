@@ -190,7 +190,7 @@ module Sensu
         :replace => ""
       })
       substituted = encoded_tokens.gsub(/:::([^:].*?):::/) do
-        token, default = $1.to_s.split("|", -1)
+        token, default = $1.to_s.split("|", 2)
         path = token.split(".").map(&:to_sym)
         matched = find_attribute_value(attributes, path, default)
         if matched.nil?
