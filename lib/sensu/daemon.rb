@@ -51,6 +51,9 @@ module Sensu
       unless EM::reactor_running?
         EM::epoll
         EM::set_max_timers(200000)
+        EM::error_handler do |error|
+          unexpected_error(error)
+        end
       end
       setup_logger(options)
       load_settings(options)
@@ -59,6 +62,29 @@ module Sensu
         setup_spawn
       end
       setup_process(options)
+    end
+
+    # Handle an unexpected error. This method is used for EM global
+    # catch-all error handling, accepting an error object. Error
+    # handling is opt-in via a configuration option, e.g. `"sensu":
+    # {"global_error_handler": true}`. If a user does not opt-in, the
+    # provided error will be raised (uncaught). If a user opts-in via
+    # configuration, the error will be logged and ignored :itsfine:.
+    #
+    # @param error [Object]
+    def unexpected_error(error)
+      unless @settings && @settings[:sensu][:global_error_handler]
+        raise error
+      end
+      backtrace = error.backtrace.join("\n")
+      if @logger
+        @logger.error("unexpected error", {
+          :error => error.to_s,
+          :backtrace => backtrace
+        })
+      else
+        puts "unexpected error: #{error.to_s}\n#{backtrace}"
+      end
     end
 
     # Set up the Sensu logger and its process signal traps for log
