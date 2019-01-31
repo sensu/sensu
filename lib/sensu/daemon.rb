@@ -73,17 +73,18 @@ module Sensu
     #
     # @param error [Object]
     def unexpected_error(error)
-      unless @settings && @settings[:sensu][:global_error_handler]
-        raise error
-      end
-      backtrace = error.backtrace.join("\n")
-      if @logger
-        @logger.error("unexpected error", {
-          :error => error.to_s,
-          :backtrace => backtrace
-        })
+      if @settings && @settings[:sensu][:global_error_handler]
+        backtrace = error.backtrace.join("\n")
+        if @logger
+          @logger.fatal("unexpected error - please address this immediately", {
+            :error => error.to_s,
+            :backtrace => backtrace
+          })
+        else
+          puts "unexpected error - please address this immediately: #{error.to_s}\n#{backtrace}"
+        end
       else
-        puts "unexpected error: #{error.to_s}\n#{backtrace}"
+        raise error
       end
     end
 
