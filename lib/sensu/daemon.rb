@@ -78,6 +78,7 @@ module Sensu
         if @logger
           @logger.fatal("unexpected error - please address this immediately", {
             :error => error.to_s,
+            :error_class => error.class,
             :backtrace => backtrace
           })
         else
