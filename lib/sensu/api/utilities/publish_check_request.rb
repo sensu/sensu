@@ -82,7 +82,7 @@ module Sensu
                         :client => client,
                         :check => check
                       })
-                      proxy_check, unmatched_tokens = object_substitute_tokens(check.dup, client)
+                      proxy_check, unmatched_tokens = object_substitute_tokens(deep_dup(check.dup), client)
                       if unmatched_tokens.empty?
                         proxy_check[:source] ||= client[:name]
                         publish_check_request(proxy_check)
