@@ -4,7 +4,7 @@ gem "eventmachine", "1.2.7"
 
 gem "sensu-json", "2.1.1"
 gem "sensu-logger", "1.2.2"
-gem "sensu-settings", "10.14.0"
+gem "sensu-settings", "10.15.0"
 gem "sensu-extension", "1.5.2"
 gem "sensu-extensions", "1.11.0"
 gem "sensu-transport", "8.2.0"
@@ -51,6 +51,9 @@ module Sensu
       unless EM::reactor_running?
         EM::epoll
         EM::set_max_timers(200000)
+        EM::error_handler do |error|
+          unexpected_error(error)
+        end
       end
       setup_logger(options)
       load_settings(options)
@@ -59,6 +62,33 @@ module Sensu
         setup_spawn
       end
       setup_process(options)
+    end
+
+    # Handle an unexpected error. This method is used for EM global
+    # catch-all error handling, accepting an error object. Error
+    # handling is opt-in via a configuration option, e.g. `"sensu":
+    # {"global_error_handler": true}`. If a user does not opt-in, the
+    # provided error will be raised (uncaught). If a user opts-in via
+    # configuration, the error will be logged and ignored :itsfine:.
+    #
+    # @param error [Object]
+    def unexpected_error(error)
+      if @settings && @settings[:sensu][:global_error_handler]
+        backtrace = error.backtrace.join("\n")
+        if @logger
+          @logger.warn("global catch-all error handling enabled")
+          @logger.fatal("unexpected error - please address this immediately", {
+            :error => error.to_s,
+            :error_class => error.class,
+            :backtrace => backtrace
+          })
+        else
+          puts "global catch-all error handling enabled"
+          puts "unexpected error - please address this immediately: #{error.to_s}\n#{error.class}\n#{backtrace}"
+        end
+      else
+        raise error
+      end
     end
 
     # Set up the Sensu logger and its process signal traps for log
