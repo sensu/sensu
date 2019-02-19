@@ -95,7 +95,7 @@ module Sensu
           })
         else
           puts "global catch-all error handling enabled"
-          puts "unexpected error - please address this immediately: #{error.to_s}\n#{backtrace}"
+          puts "unexpected error - please address this immediately: #{error.to_s}\n#{error.class}\n#{backtrace}"
         end
       else
         raise error
