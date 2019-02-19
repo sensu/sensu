@@ -17,7 +17,7 @@ module Sensu
                       if server[:timestamp] >= (Time.now.to_i - 30)
                         info << server
                       else
-                        @redis.del(server_id) do
+                        @redis.del("server:#{server_id}") do
                           @redis.srem("servers", server_id)
                         end
                       end
