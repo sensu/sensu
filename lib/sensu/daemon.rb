@@ -51,9 +51,7 @@ module Sensu
       unless EM::reactor_running?
         EM::epoll
         EM::set_max_timers(200000)
-        EM::error_handler do |error|
-          unexpected_error(error)
-        end
+        global_error_handler
       end
       setup_logger(options)
       load_settings(options)
@@ -62,6 +60,19 @@ module Sensu
         setup_spawn
       end
       setup_process(options)
+    end
+
+    # Set up the EM global catch-all error handler. See
+    # unexpected_error() for details.
+    def global_error_handler
+      if @settings && @settings[:sensu][:global_error_handler]
+        @logger.warn("global catch-all error handling enabled")
+      else
+        @logger.debug("global catch-all error handling not enabled")
+      end
+      EM::error_handler do |error|
+        unexpected_error(error)
+      end
     end
 
     # Handle an unexpected error. This method is used for EM global
@@ -76,12 +87,14 @@ module Sensu
       if @settings && @settings[:sensu][:global_error_handler]
         backtrace = error.backtrace.join("\n")
         if @logger
+          @logger.warn("global catch-all error handling enabled")
           @logger.fatal("unexpected error - please address this immediately", {
             :error => error.to_s,
             :error_class => error.class,
             :backtrace => backtrace
           })
         else
+          puts "global catch-all error handling enabled"
           puts "unexpected error - please address this immediately: #{error.to_s}\n#{backtrace}"
         end
       else
