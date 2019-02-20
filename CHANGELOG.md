@@ -5,6 +5,20 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.7.0] - 2018-02-19
+
+### Added
+- Added a response body to the api health endpoint including transport consumer & message counts.
+- Bump sensu-extensions to 1.11.0 to add support for built-in sensu-extensions-deregistration handler.
+- Added an eventmachine globbal catch-all error handler.
+
+### Fixed
+- Token substitution will now only split on the first instance of the pipe character.
+- Use `deep_dup` in api token substitution to prevent an issue where substitution could use an incorrect value.
+- Redacted attributes are now redacted from the `/clients` and `/clients/:client` routes.
+- Server registry entires that fail to expire are now cleaned up.
+- Improved error logging.
+
 ## [1.6.2] - 2018-12-07
 
 ### Fixed
