@@ -5,7 +5,7 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
-## [1.7.0] - 2018-02-19
+## [1.7.0] - 2019-02-19
 
 ### Added
 - Added a response body to the api health endpoint including transport consumer & message counts.
