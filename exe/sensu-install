@@ -71,7 +71,7 @@ module Sensu
         gem_name, gem_version = raw_gem.split(":")
         gem_command = "gem install #{gem_name}"
         gem_command << " --version '#{gem_version}'" if gem_version
-        gem_command << " --no-ri --no-rdoc"
+        gem_command << " --no-document"
         gem_command << " --verbose" if options[:verbose]
         gem_command << " --source #{options[:source]}" if options[:source]
         gem_command << " --http-proxy #{options[:proxy]}" if options[:proxy]
