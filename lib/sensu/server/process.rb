@@ -372,7 +372,11 @@ module Sensu
         @redis.multi
         @redis.sadd("result:#{client[:name]}", check[:name])
         @redis.set("result:#{result_key}", Sensu::JSON.dump(check_truncated))
-        @redis.sadd("ttl", result_key) if check[:ttl]
+        if check[:ttl]
+          @redis.sadd("ttl", result_key)
+          @redis.set("ttl:#{result_key}", 1)
+          @redis.expire("ttl:#{result_key}", check[:ttl])
+        end
         @redis.rpush(history_key, check[:status])
         @redis.ltrim(history_key, -21, -1)
         if check[:status] == 0
@@ -1182,30 +1186,36 @@ module Sensu
       # @yield [] callback/block called after the check TTL results
       #   have been created.
       def create_check_ttl_results(ttl_keys, interval=30)
-        result_keys = ttl_keys.map { |ttl_key| "result:#{ttl_key}" }
-        @redis.mget(*result_keys) do |result_json_objects|
-          result_json_objects.each_with_index do |result_json, index|
-            unless result_json.nil?
-              check = Sensu::JSON.load(result_json)
-              next unless check[:ttl] && check[:executed] && !check[:force_resolve]
-              time_since_last_execution = Time.now.to_i - check[:executed]
-              if time_since_last_execution >= check[:ttl]
-                client_name = ttl_keys[index].split(":").first
-                keepalive_event_exists?(client_name) do |event_exists|
-                  unless event_exists
-                    check[:output] = "Last check execution was "
-                    check[:output] << "#{time_since_last_execution} seconds ago"
-                    check[:status] = check[:ttl_status] || 1
-                    check[:interval] = interval
-                    publish_check_result(client_name, check)
+        expire_keys = ttl_keys.map { |ttl_key| "ttl:#{ttl_key}" }
+        @redis.mget(*expire_keys) do |expired|
+          result_keys = []
+          expired.each_with_index do |value, index|
+            result_keys << "result:#{ttl_keys[index]}" if value.nil?
+          end
+          @redis.mget(*result_keys) do |result_json_objects|
+            result_json_objects.each_with_index do |result_json, index|
+              unless result_json.nil?
+                check = Sensu::JSON.load(result_json)
+                next unless check[:ttl] && check[:executed] && !check[:force_resolve]
+                time_since_last_execution = Time.now.to_i - check[:executed]
+                if time_since_last_execution >= check[:ttl]
+                  client_name = result_keys[index].split(":")[1]
+                  keepalive_event_exists?(client_name) do |event_exists|
+                    unless event_exists
+                      check[:output] = "Last check execution was "
+                      check[:output] << "#{time_since_last_execution} seconds ago"
+                      check[:status] = check[:ttl_status] || 1
+                      check[:interval] = interval
+                      publish_check_result(client_name, check)
+                    end
                   end
                 end
+              else
+                @redis.srem("ttl", ttl_keys[index])
               end
-            else
-              @redis.srem("ttl", ttl_keys[index])
             end
+            yield
           end
-          yield
         end
       end
 
