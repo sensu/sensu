@@ -842,7 +842,7 @@ describe "Sensu::Server::Process" do
                 timer(1) do
                   check = check_template
                   check.delete(:interval)
-                  check[:cron] = "* * * * *"
+                  check[:cron] = "* * * * * * *"
                   check[:command] = "echo :::address::: && exit 1"
                   check[:subscribers] = ["test"]
                   check[:proxy_requests] = {
