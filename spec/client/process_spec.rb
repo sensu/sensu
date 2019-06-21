@@ -518,7 +518,7 @@ describe "Sensu::Client::Process" do
   it "can schedule standalone check execution using the cron syntax" do
     async_wrapper do
       check = check_template
-      check[:cron] = "* * * * *"
+      check[:cron] = "* * * * * * *"
       @client.schedule_checks([check])
       expect(@client.instance_variable_get(:@timers)[:run].size).to eq(1)
       async_done
