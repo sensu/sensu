@@ -894,7 +894,7 @@ describe "Sensu::Server::Process" do
   it "can schedule check request publishing using the cron syntax" do
     async_wrapper do
       check = check_template
-      check[:cron] = "* * * * *"
+      check[:cron] = "* * * * * * *"
       @server.schedule_checks([check])
       expect(@server.instance_variable_get(:@timers)[:tasks][:check_request_publisher].size).to eq(1)
       async_done
