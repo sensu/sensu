@@ -195,7 +195,7 @@
       "subscribers": [
         "test"
       ],
-      "cron": "* * * * *"
+      "cron": "* * * * * * *"
     },
     "hooked": {
       "command": "echo FAIL && exit 1",
