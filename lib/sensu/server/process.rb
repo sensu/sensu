@@ -733,7 +733,11 @@ module Sensu
       # mechanism. Result JSON parsing errors are logged.
       def setup_results
         @logger.debug("subscribing to results")
-        @transport.subscribe(:direct, "results", "results", :ack => true) do |message_info, message|
+        results_pipe = "results"
+        if @settings[:sensu][:server] && @settings[:sensu][:server][:results_pipe]
+          results_pipe = @settings[:sensu][:server][:results_pipe]
+        end
+        @transport.subscribe(:direct, results_pipe, "results", :ack => true) do |message_info, message|
           begin
             result = Sensu::JSON.load(message)
             @logger.debug("received result", :result => result)
