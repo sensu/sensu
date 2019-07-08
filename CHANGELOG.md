@@ -5,6 +5,12 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.7.1] - 2019-07-08
+
+### Fixed
+- Now using sensu-transport 8.3.0 which will trigger a reconnect when trying to publish to RabbitMQ when in a disconnected state.
+- Use `--no-document` when installing gems via `sensu-install` instead of deprecated `--no-ri --no-rdoc`.
+
 ## [1.7.0] - 2019-02-19
 
 ### Added
