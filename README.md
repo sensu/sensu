@@ -7,9 +7,16 @@
 
 ** ANNOUNCEMENT - Sensu 1.x End-Of-Life on December 31st, 2019 **
 
-Sensu 1.x is currently in maintenance mode (critical bugs and security patch releases only) with no new feature enhancements or additions being planned at this time. The project will be end-of-life on December 31st, 2019. Please see our Discourse post for more details: https://discourse.sensu.io/t/the-eol-schedule-for-sensu-core-1-x-and-sensu-enterprise-3-x/1222
+Sensu 1.x is currently in maintenance mode (critical bugs and security
+patch releases only) with no new feature enhancements or additions
+being planned at this time. The project will be end-of-life on
+December 31st, 2019. Please see our Discourse post for more details:
+https://discourse.sensu.io/t/the-eol-schedule-for-sensu-core-1-x-and-sensu-enterprise-3-x/1222
 
-As always, we want to hear from the Community and please reach out on Slack or Discourse if you have any questions or concerns. 
+Sensu 1.x has been superseded by [Sensu Go](https://github.com/sensu/sensu-go).
+
+As always, we want to hear from the Community and please reach out on
+Slack or Discourse if you have any questions or concerns.
 
 # Sensu
 
