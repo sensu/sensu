@@ -5,6 +5,14 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.8.0] - 2019-07-09
+
+### Added
+- The sensu-server results and keepalives Sensu Transport pipes are now
+configurable. These values should only be set/changed when creating
+active-active Sensu deployments, leveraging the RabbitMQ shovel	plugin for
+cross site check result and keepalive replication.
+
 ## [1.7.1] - 2019-07-08
 
 ### Fixed
