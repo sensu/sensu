@@ -39,7 +39,10 @@ module Sensu
       #   process via STDIN.
       # @param event_id [String] event UUID
       def pipe_handler(handler, event_data, event_id)
-        options = {:data => event_data, :timeout => handler[:timeout]}
+        options = {
+          :data => event_data,
+          :timeout => handler[:timeout] || 10
+        }
         Spawn.process(handler[:command], options) do |output, status|
           log_level = status == 0 ? :info : :error
           @logger.send(log_level, "handler output", {
