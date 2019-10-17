@@ -8,6 +8,7 @@ require "socket"
 module Sensu
   module Utilities
     EVAL_PREFIX = "eval:".freeze
+    NANOSECOND_RESOLUTION = 9.freeze
 
     # Determine if Sensu is being tested, using the process name.
     # Sensu is being test if the process name is "rspec",
@@ -334,9 +335,9 @@ module Sensu
         end_time = Time.parse(condition[:end])
         if end_time < begin_time
           if Time.now < end_time
-            begin_time = Time.new(*begin_time.strftime("%Y %m %d 00 00 00 %:z").split("\s"))
+            begin_time = Time.parse(*begin_time.strftime("%Y-%m-%d 00:00:00.#{Array.new(NANOSECOND_RESOLUTION, 0).join} %:z"))
           else
-            end_time = Time.new(*end_time.strftime("%Y %m %d 23 59 59 %:z").split("\s"))
+            end_time = Time.parse(*end_time.strftime("%Y-%m-%d 23:59:59.#{Array.new(NANOSECOND_RESOLUTION, 9).join} %:z"))
           end
         end
         Time.now >= begin_time && Time.now <= end_time
