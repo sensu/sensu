@@ -5,7 +5,7 @@
 [![MIT Licensed](https://img.shields.io/github/license/sensu/sensu.svg)](https://raw.githubusercontent.com/sensu/sensu/master/MIT-LICENSE.txt)
 [![Join the chat at https://slack.sensu.io/](https://slack.sensu.io/badge.svg)](https://slack.sensu.io/)
 
-** ANNOUNCEMENT - Sensu 1.x End-Of-Life on December 31st, 2019 **
+:warning: **ANNOUNCEMENT - Sensu 1.x End-Of-Life on December 31st, 2019**
 
 Sensu 1.x is currently in maintenance mode (critical bugs and security
 patch releases only) with no new feature enhancements or additions
