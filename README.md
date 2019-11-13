@@ -11,7 +11,7 @@ Sensu 1.x is currently in maintenance mode (critical bugs and security
 patch releases only) with no new feature enhancements or additions
 being planned at this time. The project will be end-of-life on
 December 31st, 2019 and existing package repositories will become 
-unreachable on January 6th, 202. Please see our blog post for more details:
+unreachable on January 6th, 2020. Please see our blog post for more details:
 https://blog.sensu.io/announcing-the-sensu-archives
 
 Sensu 1.x has been superseded by [Sensu Go](https://github.com/sensu/sensu-go).
