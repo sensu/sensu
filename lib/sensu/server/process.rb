@@ -175,6 +175,33 @@ module Sensu
         end
       end
 
+      # Determine if a transport message is under the optional
+      # configured max message size. This method helps prevent
+      # oversized messages from consuming memory and being persisted
+      # to the datastore.
+      #
+      # @param message [String]
+      # @return [TrueClass,FalseClass]
+      def message_size_ok?(message)
+        if @settings[:sensu][:server] &&
+           @settings[:sensu][:server][:max_message_size]
+          message_size = message.bytesize
+          max_message_size = @settings[:sensu][:server][:max_message_size]
+          if message_size <= max_message_size
+            true
+          else
+            @logger.error("message exceeds the configured max message size", {
+              :max_message_size => max_message_size,
+              :message_size => message_size,
+              :message => message
+            })
+            false
+          end
+        else
+          true
+        end
+      end
+
       # Set up the client keepalive consumer, keeping the Sensu client
       # registry updated. The consumer receives JSON serialized client
       # keepalives from the transport, parses them, and calls
@@ -190,14 +217,16 @@ module Sensu
         @logger.debug("subscribing to keepalives", :pipe => keepalives_pipe)
         @transport.subscribe(:direct, keepalives_pipe, "keepalives", :ack => true) do |message_info, message|
           @logger.debug("received keepalive", :message => message)
-          begin
-            client = Sensu::JSON.load(message)
-            update_client_registry(client)
-          rescue Sensu::JSON::ParseError => error
-            @logger.error("failed to parse keepalive payload", {
-              :message => message,
-              :error => error.to_s
-            })
+          if message_size_ok?(message)
+            begin
+              client = Sensu::JSON.load(message)
+              update_client_registry(client)
+            rescue Sensu::JSON::ParseError => error
+              @logger.error("failed to parse keepalive payload", {
+                :message => message,
+                :error => error.to_s
+              })
+            end
           end
           EM::next_tick do
             @transport.ack(message_info)
@@ -742,15 +771,17 @@ module Sensu
         end
         @logger.debug("subscribing to results", :pipe => results_pipe)
         @transport.subscribe(:direct, results_pipe, "results", :ack => true) do |message_info, message|
-          begin
-            result = Sensu::JSON.load(message)
-            @logger.debug("received result", :result => result)
-            process_check_result(result)
-          rescue Sensu::JSON::ParseError => error
-            @logger.error("failed to parse result payload", {
-              :message => message,
-              :error => error.to_s
-            })
+          if message_size_ok?(message)
+            begin
+              result = Sensu::JSON.load(message)
+              @logger.debug("received result", :result => result)
+              process_check_result(result)
+            rescue Sensu::JSON::ParseError => error
+              @logger.error("failed to parse result payload", {
+                :message => message,
+                :error => error.to_s
+              })
+            end
           end
           EM::next_tick do
             @transport.ack(message_info)
