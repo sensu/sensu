@@ -5,6 +5,17 @@ This CHANGELOG follows the format listed [here](https://github.com/sensu-plugins
 
 ## [Unreleased]
 
+## [1.9.0] - 2019-12-18
+
+### Fixed
+- Fixed check subdue times resolution, now including nanoseconds.
+- API 204 no content responses now return a nil body.
+- Fixed Travis CI testing (RabbitMQ was missing on Xenial).
+
+### Added
+- Added support for discarding oversized transport messages to protect
+Sensu, e.g. {"sensu":{"server": {"max_message_size": 2097152}}}.
+
 ## [1.8.0] - 2019-07-09
 
 ### Added
