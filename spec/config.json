@@ -244,5 +244,10 @@
       "user": "foo",
       "password": "bar"
     }
+  },
+  "sensu": {
+    "server": {
+      "max_message_size": 2097152
+    }
   }
 }

@@ -1127,4 +1127,10 @@ describe "Sensu::Server::Process" do
       end
     end
   end
+
+  it "can discard oversized transport messages" do
+    expect(@server.message_size_ok?("foo")).to eq(true)
+    expect(@server.message_size_ok?("0" * 2097152)).to eq(true)
+    expect(@server.message_size_ok?("0" * 2097153)).to eq(false)
+  end
 end
