@@ -1,4 +1,8 @@
-sudo: true
+sudo: false
+addons:
+  apt:
+    packages:
+    - rabbitmq-server
 language: ruby
 rvm:
   - 2.2.0
