@@ -281,6 +281,7 @@ module Sensu
       def no_content!
         @response_status = 204
         @response_status_string = "No Content"
+        @response_content = nil
         respond
       end
 

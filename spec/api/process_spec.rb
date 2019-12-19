@@ -124,7 +124,7 @@ describe "Sensu::API::Process" do
       http_request(4567, "/health?consumers=0&messages=1000") do |http, body|
         expect(http.response_header.status).to eq(204)
         expect(http.response_header.http_reason).to eq('No Content')
-        expect(body).to be_empty
+        expect(body).to be_nil
         http_request(4567, "/health?consumers=1000") do |http, body|
           expect(http.response_header.status).to eq(412)
           expect(body).to eq(["keepalive consumers (0) less than min_consumers (1000)", "result consumers (0) less than min_consumers (1000)"])
@@ -1126,7 +1126,7 @@ describe "Sensu::API::Process" do
       http_request(4567, "/stash/test/test", :delete) do |http, body|
         expect(http.response_header.status).to eq(204)
         expect(http.response_header.http_reason).to eq('No Content')
-        expect(body).to be_empty
+        expect(body).to be_nil
         redis.exists("stash:test/test") do |exists|
           expect(exists).to be(false)
           async_done
@@ -1190,7 +1190,7 @@ describe "Sensu::API::Process" do
           http_request(4567, "/aggregates/test", :delete) do |http, body|
             expect(http.response_header.status).to eq(204)
             expect(http.response_header.http_reason).to eq('No Content')
-            expect(body).to be_empty
+            expect(body).to be_nil
             redis.sismember("aggregates", "test") do |exists|
               expect(exists).to be(false)
               async_done
@@ -1212,7 +1212,7 @@ describe "Sensu::API::Process" do
           http_request(4567, "/aggregates/TEST", :delete) do |http, body|
             expect(http.response_header.status).to eq(204)
             expect(http.response_header.http_reason).to eq('No Content')
-            expect(body).to be_empty
+            expect(body).to be_nil
             redis.sismember("aggregates", "TEST") do |exists|
               expect(exists).to be(false)
               async_done
@@ -1629,7 +1629,7 @@ describe "Sensu::API::Process" do
       http_request(4567, "/results/i-424242/test", :delete) do |http, body|
         expect(http.response_header.status).to eq(204)
         expect(http.response_header.http_reason).to eq('No Content')
-        expect(body).to be_empty
+        expect(body).to be_nil
         async_done
       end
     end
