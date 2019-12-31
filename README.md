@@ -5,13 +5,11 @@
 [![MIT Licensed](https://img.shields.io/github/license/sensu/sensu.svg)](https://raw.githubusercontent.com/sensu/sensu/master/MIT-LICENSE.txt)
 [![Join the chat at https://slack.sensu.io/](https://slack.sensu.io/badge.svg)](https://slack.sensu.io/)
 
-:warning: **ANNOUNCEMENT - Sensu 1.x End-Of-Life on December 31st, 2019**
+:warning: **ANNOUNCEMENT - Sensu 1.x has reached End-Of-Life (December 31st, 2019)**
 
-Sensu 1.x is currently in maintenance mode (critical bugs and security
-patch releases only) with no new feature enhancements or additions
-being planned at this time. The project will be end-of-life on
-December 31st, 2019 and existing package repositories will become 
-unreachable on January 6th, 2020. Please see our blog post for more details:
+The Sensu 1.x project reached end-of-life on December 31st, 2019. The
+existing package repositories became unreachable on January 6th, 2020.
+Please see our blog post for more details:
 https://blog.sensu.io/announcing-the-sensu-archives
 
 Sensu 1.x has been superseded by [Sensu Go](https://github.com/sensu/sensu-go).

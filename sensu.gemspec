@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.version     = Sensu::VERSION
   s.authors     = ["Sean Porter", "Justin Kolberg"]
   s.email       = ["portertech@gmail.com", "amdprophet@gmail.com", "engineering@sensu.io"]
-  s.homepage    = "http://sensuapp.org"
+  s.homepage    = "https://sensu.io"
   s.summary     = "A monitoring framework"
   s.description = "A monitoring framework that aims to be simple, malleable, and scalable."
   s.license     = "MIT"
